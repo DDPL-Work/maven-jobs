@@ -1,0 +1,47 @@
+/* GlobalSearchForm — z-index guarantees so dropdowns never hide behind
+   dashboard headers or other stacking contexts. Variant styling lives in
+   the page CSS (.lp-search / .jlp-search). */
+.gsf--raised.gsf {
+  position: relative;
+  z-index: 1200;
+}
+
+.gsf--raised.gsf .lp-suggestions,
+.gsf--raised.gsf .lp-exp-drop,
+.gsf--raised.gsf .jlp-suggestions,
+.gsf--raised.gsf .jlp-exp-drop {
+  z-index: 1300;
+}
+
+/* Align LocationAutocomplete inside GlobalSearchForm to match the other fields */
+.gsf .la-input-wrapper {
+  gap: 10px;
+}
+.gsf .la-input-icon {
+  position: static;
+  color: inherit;
+  font-size: 1rem;
+}
+.gsf .la-input {
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 500;
+}
+
+/* Fix Search button border-radius when stacked vertically on mobile */
+@media (max-width: 768px) {
+  .gsf--landing.gsf {
+    border-radius: 14px;
+  }
+  .gsf--landing.gsf .lp-search__btn {
+    border-radius: 0 0 14px 14px !important;
+  }
+  
+  /* Make experience dropdown full width on mobile */
+  .gsf .lp-exp-drop, .gsf .jlp-exp-drop, .gsf .lp-suggestions, .gsf .jlp-suggestions {
+    width: 100% !important;
+    left: 0;
+    right: 0;
+  }
+}

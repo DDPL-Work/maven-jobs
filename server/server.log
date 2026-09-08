@@ -1,0 +1,180 @@
+◇ injected env (43) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+2026-06-26 16:01:50 [Maven CRM QR] [32minfo[39m: [notif] All email subscribers registered
+2026-06-26 16:01:50 [Maven CRM QR] [32minfo[39m: [recommendations:subscriber] Registered recommendation event handlers
+2026-06-26 16:01:50 [Maven CRM QR] [32minfo[39m: [recommendations:scheduler] PRO schedule registered: 0 9 * * * (daily 9AM IST)
+2026-06-26 16:01:50 [Maven CRM QR] [32minfo[39m: [recommendations:scheduler] ELITE schedules registered: 0 9 * * *, 0 18 * * * (9AM & 6PM IST)
+[db] MongoDB connected to ac-bu5verr-shard-00-02.wqkscet.mongodb.net
+
+==================================================
+Maven CRM QR Started Successfully
+==================================================
+Version       : v1
+Environment   : development
+Port          : 5050
+Database Host : ac-bu5verr-shard-00-02.wqkscet.mongodb.net
+Database      : Connected Successfully
+Base URL      : http://localhost:5050
+API Base      : http://localhost:5050/api/v1
+==================================================
+
+REQUEST 2026-06-26T10:46:43.673Z [::1] GET /api/v1/landing/employer http://localhost:5173/
+REQUEST 2026-06-26T10:46:43.809Z [::1] GET /api/v1/landing/employer http://localhost:5173/
+REQUEST 2026-06-26T10:46:50.055Z [::1] POST /api/v1/company-panel/auth/login http://localhost:5173/
+REQUEST 2026-06-26T10:46:52.715Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T10:46:53.163Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T10:46:53.547Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T10:46:59.133Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:46:59.432Z [::1] GET /api/v1/chatbot/matched-jobs http://localhost:5173/
+REQUEST 2026-06-26T10:48:08.926Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:48:14.840Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:48:15.058Z [::1] GET /api/v1/chatbot/matched-jobs http://localhost:5173/
+REQUEST 2026-06-26T10:48:32.931Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:48:35.747Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:48:35.769Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T10:48:35.791Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T10:48:35.862Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T10:48:35.875Z [::1] POST /api/v1/candidate/auth/refresh http://localhost:5173/
+REQUEST 2026-06-26T10:48:36.174Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:48:36.181Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T10:48:36.229Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T10:48:36.290Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T10:48:37.339Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T10:53:09.566Z [::1] GET /api/v1/landing/employer http://localhost:5173/
+REQUEST 2026-06-26T10:53:09.651Z [::1] GET /api/v1/landing/employer http://localhost:5173/
+REQUEST 2026-06-26T10:53:13.669Z [::1] POST /api/v1/company-panel/auth/login http://localhost:5173/
+REQUEST 2026-06-26T10:53:14.657Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T10:53:15.077Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T10:53:15.477Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T10:53:16.817Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:53:17.019Z [::1] GET /api/v1/chatbot/top-applicants http://localhost:5173/
+REQUEST 2026-06-26T10:53:17.024Z [::1] GET /api/v1/chatbot/matched-jobs http://localhost:5173/
+REQUEST 2026-06-26T10:53:38.847Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T10:54:02.339Z [::1] GET /api/v1/chatbot/threads/details http://localhost:5173/
+REQUEST 2026-06-26T10:54:05.048Z [::1] GET /api/v1/chatbot/threads/6a3a63d0045412a6cca55a27/messages?limit=100 http://localhost:5173/
+REQUEST 2026-06-26T10:56:24.743Z [::1] POST /api/v1/chatbot/message http://localhost:5173/
+REQUEST 2026-06-26T10:58:03.845Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:58:09.823Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:58:10.025Z [::1] GET /api/v1/chatbot/matched-jobs http://localhost:5173/
+REQUEST 2026-06-26T10:58:20.827Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:58:25.830Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T10:58:26.027Z [::1] GET /api/v1/chatbot/matched-jobs http://localhost:5173/
+REQUEST 2026-06-26T10:59:09.126Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T11:03:14.870Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:05:41.156Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:05:46.232Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T11:17:45.316Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:17:45.364Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:17:45.378Z [::1] POST /api/v1/candidate/auth/refresh http://localhost:5173/
+REQUEST 2026-06-26T11:17:45.593Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:17:45.794Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:17:46.803Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:17:46.857Z [::1] POST /api/v1/candidate/auth/refresh http://localhost:5173/
+REQUEST 2026-06-26T11:17:46.997Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:17:51.118Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:17:51.520Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:17:51.933Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T11:24:11.030Z [::1] GET /api/v1/candidate/quiz/ranking http://localhost:5173/
+REQUEST 2026-06-26T11:24:41.695Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:24:42.018Z [::1] GET /api/v1/company-panel/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:24:42.447Z [::1] GET /api/v1/chatbot/recommend-candidates http://localhost:5173/
+REQUEST 2026-06-26T11:25:38.955Z [::1] GET /api/v1/landing/employer http://localhost:5173/
+REQUEST 2026-06-26T11:25:39.004Z [::1] GET /api/v1/landing/employer http://localhost:5173/
+REQUEST 2026-06-26T11:25:46.397Z [::1] GET /api/v1/landing/home http://localhost:5173/
+REQUEST 2026-06-26T11:25:46.406Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:25:46.473Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:25:51.119Z [::1] POST /api/v1/candidate/auth/login http://localhost:5173/
+REQUEST 2026-06-26T11:25:51.535Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:25:52.889Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:25:52.892Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:25:52.899Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:25:52.909Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:25:52.949Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:25:52.982Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:25:53.431Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:25:53.465Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:25:53.790Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:26:38.365Z [::1] GET /api/v1/landing/home http://localhost:5173/
+REQUEST 2026-06-26T11:26:38.380Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:26:38.419Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.529Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.533Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.536Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.538Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.577Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.611Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.823Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:26:40.946Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:26:46.680Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:26:46.797Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:31:28.249Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:31:28.315Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:31:28.320Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T11:31:28.437Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:31:28.445Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T11:31:28.483Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:31:32.721Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:31:32.724Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:31:32.729Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:31:32.736Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:31:32.778Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:31:32.800Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:31:33.163Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:31:33.339Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:31:35.220Z [::1] GET /api/v1/landing/home http://localhost:5173/
+REQUEST 2026-06-26T11:31:35.227Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:31:35.269Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:31:37.285Z [::1] POST /api/v1/candidate/auth/login http://localhost:5173/
+REQUEST 2026-06-26T11:31:37.598Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:31:38.841Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:31:38.843Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:31:38.845Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:31:38.847Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:31:38.888Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:31:38.923Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:31:39.191Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:31:39.296Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:31:39.496Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:31:42.268Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:31:42.383Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.428Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.438Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.441Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.445Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.487Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.523Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.769Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:34:22.902Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:34:24.025Z [::1] GET /api/v1/landing/home http://localhost:5173/
+REQUEST 2026-06-26T11:34:24.030Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:34:24.070Z [::1] GET /api/v1/blog/published?limit=4 http://localhost:5173/
+REQUEST 2026-06-26T11:34:26.893Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:34:26.896Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:34:26.900Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:34:26.902Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:34:26.943Z [::1] GET /api/v1/blog/published?page=1&limit=8 http://localhost:5173/
+REQUEST 2026-06-26T11:34:26.978Z [::1] GET /api/v1/candidate/notifications http://localhost:5173/
+REQUEST 2026-06-26T11:34:27.187Z [::1] GET /api/v1/candidate/dashboard http://localhost:5173/
+REQUEST 2026-06-26T11:34:27.387Z [::1] GET /api/v1/candidate/chats http://localhost:5173/
+REQUEST 2026-06-26T11:34:29.475Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:34:29.597Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:34:46.074Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:34:46.081Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:34:46.084Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:34:46.086Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T11:34:46.088Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:34:46.092Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T11:36:45.713Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:36:45.761Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:36:45.768Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T11:36:45.778Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:36:45.781Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:36:45.786Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+[db] MongoDB connection re-established.
+[db] MongoDB connection re-established.
+REQUEST 2026-06-26T11:42:38.342Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:42:38.430Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:42:38.434Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T11:42:38.442Z [::1] GET /api/v1/candidate/applications http://localhost:5173/
+REQUEST 2026-06-26T11:42:38.448Z [::1] GET /api/v1/chatbot/usage http://localhost:5173/
+REQUEST 2026-06-26T11:42:38.454Z [::1] GET /api/v1/candidate/auth/me http://localhost:5173/
+REQUEST 2026-06-26T11:42:50.893Z [::1] GET /api/v1/candidate/applications http://localhost:5173/

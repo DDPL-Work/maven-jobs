@@ -1,0 +1,318 @@
+<div
+  style="background:#ffffff;border-radius:20px;padding:40px 20px 32px;display:flex;flex-direction:column;align-items:center;gap:32px;font-family:system-ui,sans-serif;">
+
+  <canvas id="orb" width="320" height="320" style="cursor:grab;display:block;border-radius:50%;"></canvas>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+    <div id="pill-discovery"
+      style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:100px;background:#EEF2FF;border:1.5px solid rgba(0,35,102,0.15);cursor:pointer;transition:all 0.2s;user-select:none;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#002366;flex-shrink:0;"></span>
+      <span style="font-size:13px;font-weight:600;color:#002366;">Discovery</span>
+    </div>
+    <div id="pill-connect"
+      style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:100px;background:#E1F5EE;border:1.5px solid rgba(16,185,129,0.2);cursor:pointer;transition:all 0.2s;user-select:none;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;"></span>
+      <span style="font-size:13px;font-weight:600;color:#0F6E56;">Connect</span>
+    </div>
+    <div id="pill-match"
+      style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:100px;background:#f0f7ff;border:1.5px solid rgba(37,99,235,0.15);cursor:pointer;transition:all 0.2s;user-select:none;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#2563eb;flex-shrink:0;"></span>
+      <span style="font-size:13px;font-weight:600;color:#185FA5;">Match AI</span>
+    </div>
+  </div>
+
+  <div id="label-row" style="height:36px;display:flex;align-items:center;justify-content:center;">
+    <span id="label-text"
+      style="font-size:14px;font-weight:500;color:#475569;letter-spacing:0.02em;opacity:0;transition:opacity 0.3s;"></span>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+  (function () {
+    const C = document.getElementById('orb');
+    const ctx = C.getContext('2d');
+    const W = 320, H = 320, CX = 160, CY = 160, R = 96;
+
+    const st = {
+      glow: 0.5, pulse: 0.4, ringA: 0,
+      scaleV: 0, tiltX: 0, tiltY: 0,
+      mode: 0,
+      modeAlpha: [1, 0, 0],
+      particleT: 0
+    };
+
+    const MODES = [
+      { name: 'Discovery', blue: true, green: false, label: 'Mapping premium talent in real-time' },
+      { name: 'Connect', blue: false, green: true, label: 'Reaching candidates across all channels' },
+      { name: 'Match AI', blue: true, green: true, label: 'AI scoring 14+ profile dimensions' }
+    ];
+
+    let tRX = 0, tRY = 0, rX = 0, rY = 0, grabbed = false, lastMX = 0, lastMY = 0, velX = 0, velY = 0;
+
+    C.addEventListener('mousedown', e => { grabbed = true; lastMX = e.clientX; lastMY = e.clientY; velX = 0; velY = 0; C.style.cursor = 'grabbing'; });
+    window.addEventListener('mouseup', () => { grabbed = false; C.style.cursor = 'grab'; });
+    window.addEventListener('mousemove', e => {
+      if (grabbed) {
+        velX = (e.clientX - lastMX) * 0.018;
+        velY = (e.clientY - lastMY) * 0.012;
+        tRY += velX; tRX -= velY;
+        lastMX = e.clientX; lastMY = e.clientY;
+      } else {
+        const rect = C.getBoundingClientRect();
+        const mx = (e.clientX - rect.left - CX) / CX;
+        const my = (e.clientY - rect.top - CY) / CY;
+        tRX = -my * 0.4; tRY = mx * 0.4;
+      }
+    });
+    C.addEventListener('mouseleave', () => { if (!grabbed) { tRX = 0; tRY = 0; } });
+
+    gsap.to(st, { glow: 1, duration: 2.0, ease: 'sine.inOut', repeat: -1, yoyo: true });
+    gsap.to(st, { pulse: 1, duration: 1.5, ease: 'sine.inOut', repeat: -1, yoyo: true, delay: 0.5 });
+    gsap.to(st, { ringA: Math.PI * 2, duration: 9, ease: 'none', repeat: -1 });
+    gsap.to(st, { scaleV: 1, duration: 1.2, ease: 'elastic.out(1,0.65)' });
+    gsap.to(st, { particleT: 1, duration: 1, ease: 'none', repeat: -1 });
+
+    function setMode(i) {
+      const prev = st.mode; if (prev === i) return;
+      gsap.to(st.modeAlpha, { [prev]: 0, duration: 0.4, ease: 'power2.out' });
+      st.mode = i;
+      gsap.to(st.modeAlpha, { [i]: 1, duration: 0.5, ease: 'power2.out' });
+      const lt = document.getElementById('label-text');
+      gsap.to(lt, { opacity: 0, duration: 0.2, onComplete: () => { lt.textContent = MODES[i].label; gsap.to(lt, { opacity: 1, duration: 0.3 }); } });
+    }
+
+    document.getElementById('pill-discovery').addEventListener('click', () => setMode(0));
+    document.getElementById('pill-connect').addEventListener('click', () => setMode(1));
+    document.getElementById('pill-match').addEventListener('click', () => setMode(2));
+
+    setTimeout(() => {
+      const lt = document.getElementById('label-text');
+      lt.textContent = MODES[0].label;
+      gsap.to(lt, { opacity: 1, duration: 0.5 });
+    }, 1200);
+
+    const NPTS = 14;
+    const pts = Array.from({ length: NPTS }, (_, i) => {
+      const phi = Math.acos(-1 + 2 * (i + 0.5) / NPTS);
+      const th = Math.PI * (1 + Math.sqrt(5)) * i;
+      return [Math.sin(phi) * Math.cos(th), Math.cos(phi), Math.sin(phi) * Math.sin(th), Math.random() * Math.PI * 2];
+    });
+
+    const LATS = 11, LONS = 20;
+    function makeSphere() {
+      const lines = [];
+      for (let i = 0; i <= LATS; i++) {
+        const phi = (i / LATS) * Math.PI;
+        const row = [];
+        for (let j = 0; j <= LONS; j++) {
+          const th = (j / LONS) * Math.PI * 2;
+          row.push([Math.sin(phi) * Math.cos(th), Math.cos(phi), Math.sin(phi) * Math.sin(th)]);
+        }
+        lines.push(row);
+      }
+      const cols = [];
+      for (let j = 0; j <= LONS; j++) {
+        const col = [];
+        for (let i = 0; i <= LATS; i++) {
+          const phi = (i / LATS) * Math.PI, th = (j / LONS) * Math.PI * 2;
+          col.push([Math.sin(phi) * Math.cos(th), Math.cos(phi), Math.sin(phi) * Math.sin(th)]);
+        }
+        cols.push(col);
+      }
+      return { rows: lines, cols };
+    }
+    const sphere = makeSphere();
+
+    function rot([x, y, z], rx, ry) {
+      let x1 = x * Math.cos(ry) + z * Math.sin(ry);
+      let z1 = -x * Math.sin(ry) + z * Math.cos(ry);
+      let y2 = y * Math.cos(rx) - z1 * Math.sin(rx);
+      let z2 = y * Math.sin(rx) + z1 * Math.cos(rx);
+      return [x1, y2, z2];
+    }
+
+    function drawRing(cx, cy, rx, ry, angle, tilt, lineW, alpha, color) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.scale(1, Math.abs(Math.sin(tilt)) * 0.28 + 0.06);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = color.replace('A', alpha.toFixed(2));
+      ctx.lineWidth = lineW;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    let frameCount = 0;
+    function frame() {
+      frameCount++;
+      ctx.clearRect(0, 0, W, H);
+      ctx.save();
+      ctx.translate(CX, CY);
+      ctx.scale(st.scaleV, st.scaleV);
+
+      if (!grabbed) {
+        rX += (tRX - rX) * 0.055;
+        rY += (tRY - rY) * 0.055;
+      } else {
+        rX = tRX; rY = tRY;
+      }
+      if (!grabbed) { velX *= 0.95; velY *= 0.95; tRY += velX * 0.3; tRX += velY * 0.3; }
+
+      const autoRY = st.ringA * 0.15 + rY;
+      const mA = st.modeAlpha;
+
+      const blueStr = Math.max(mA[0], mA[2]);
+      const greenStr = Math.max(mA[1], mA[2]);
+
+      const outerR = R + 28 + st.glow * 16;
+      const og = ctx.createRadialGradient(0, 0, R * 0.5, 0, 0, outerR);
+      og.addColorStop(0, `rgba(0,35,102,${0.10 * blueStr * st.glow})`);
+      og.addColorStop(0.4, `rgba(16,185,129,${0.08 * greenStr * st.glow})`);
+      og.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.beginPath(); ctx.arc(0, 0, outerR, 0, Math.PI * 2);
+      ctx.fillStyle = og; ctx.fill();
+
+      const sg = ctx.createRadialGradient(-R * 0.25, -R * 0.22, R * 0.02, 0, 0, R);
+      sg.addColorStop(0, `rgba(180,215,255,${0.22 + blueStr * 0.12})`);
+      sg.addColorStop(0.15, `rgba(20,80,200,${0.75 + blueStr * 0.12})`);
+      sg.addColorStop(0.5, `rgba(0,35,102,${0.92})`);
+      sg.addColorStop(0.82, `rgba(0,15,48,0.98)`);
+      sg.addColorStop(1, `rgba(0,8,28,1)`);
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fillStyle = sg; ctx.fill();
+
+      const wA = 0.18 + blueStr * 0.14;
+      sphere.rows.forEach((row, ri) => {
+        const isGreen = (ri % 3 === 0);
+        for (let j = 0; j < row.length - 1; j++) {
+          const [ax, ay, az] = rot(row[j], rX, autoRY);
+          const [bx, by, bz] = rot(row[j + 1], rX, autoRY);
+          if (az < -0.08 && bz < -0.08) continue;
+          const d = ((az + bz) / 2 + 1) / 2;
+          ctx.beginPath();
+          ctx.moveTo(ax * R, ay * R);
+          ctx.lineTo(bx * R, by * R);
+          ctx.strokeStyle = isGreen
+            ? `rgba(16,185,129,${d * (wA * 1.1) * greenStr + 0.03})`
+            : `rgba(80,148,255,${d * wA * blueStr + 0.03})`;
+          ctx.lineWidth = 0.55; ctx.stroke();
+        }
+      });
+      sphere.cols.forEach((col, ci) => {
+        for (let i = 0; i < col.length - 1; i++) {
+          const [ax, ay, az] = rot(col[i], rX, autoRY);
+          const [bx, by, bz] = rot(col[i + 1], rX, autoRY);
+          if (az < -0.08 && bz < -0.08) continue;
+          const d = ((az + bz) / 2 + 1) / 2;
+          ctx.beginPath();
+          ctx.moveTo(ax * R, ay * R);
+          ctx.lineTo(bx * R, by * R);
+          ctx.strokeStyle = `rgba(40,100,220,${d * 0.22 * blueStr + 0.02})`;
+          ctx.lineWidth = 0.4; ctx.stroke();
+        }
+      });
+
+      const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.52);
+      cg.addColorStop(0, `rgba(16,185,129,${0.28 * greenStr * st.pulse})`);
+      cg.addColorStop(0.5, `rgba(0,80,180,${0.14 * blueStr * st.pulse})`);
+      cg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.beginPath(); ctx.arc(0, 0, R * 0.52, 0, Math.PI * 2);
+      ctx.fillStyle = cg; ctx.fill();
+
+      const rim = ctx.createRadialGradient(0, 0, R * 0.76, 0, 0, R);
+      rim.addColorStop(0, 'rgba(0,0,0,0)');
+      rim.addColorStop(0.65, `rgba(16,185,129,${0.06 * greenStr})`);
+      rim.addColorStop(1, `rgba(16,185,129,${0.22 * greenStr * st.glow})`);
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fillStyle = rim; ctx.fill();
+
+      const spec = ctx.createRadialGradient(-R * 0.28, -R * 0.3, 0, -R * 0.22, -R * 0.24, R * 0.42);
+      spec.addColorStop(0, 'rgba(255,255,255,0.30)');
+      spec.addColorStop(0.4, 'rgba(200,228,255,0.10)');
+      spec.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fillStyle = spec; ctx.fill();
+
+      const ring1R = R * 1.30 + st.glow * 6;
+      const ring2R = R * 1.18 + st.pulse * 5;
+      const ring3R = R * 1.46 + st.glow * 4;
+
+      ctx.save();
+      ctx.rotate(st.ringA * 0.18);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ring1R, ring1R * 0.18, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,35,102,${0.55 * blueStr * st.glow})`;
+      ctx.lineWidth = 2.2; ctx.stroke();
+      ctx.strokeStyle = `rgba(0,35,102,${0.15 * blueStr})`;
+      ctx.lineWidth = 7; ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.rotate(-st.ringA * 0.12 + 1.05);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ring2R, ring2R * 0.22, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(16,185,129,${0.60 * greenStr * st.pulse})`;
+      ctx.lineWidth = 1.8; ctx.stroke();
+      ctx.strokeStyle = `rgba(16,185,129,${0.12 * greenStr})`;
+      ctx.lineWidth = 6; ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.rotate(st.ringA * 0.09 + 2.1);
+      ctx.setLineDash([4, 7]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ring3R, ring3R * 0.12, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(37,99,235,${0.28 * (blueStr * 0.6 + greenStr * 0.4) * st.glow})`;
+      ctx.lineWidth = 1.0; ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      pts.forEach(([nx, ny, nz, phase], i) => {
+        const nm = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        const [rx2, ry2, rz2] = rot([nx / nm, ny / nm, nz / nm], rX, autoRY);
+        if (rz2 < 0) return;
+        const d = (rz2 + 1) / 2;
+        const sx = rx2 * R, sy = ry2 * R;
+        const isBlue = (i % 3 !== 0);
+        const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.04 + phase);
+        const nr = 2.8 + d * 2.2 + pulse * 1.2;
+        const haloR = nr * 3.5;
+        const activeStr = isBlue ? blueStr : greenStr;
+        const color = isBlue ? '0,35,102' : '16,185,129';
+
+        const ng = ctx.createRadialGradient(sx, sy, 0, sx, sy, haloR);
+        ng.addColorStop(0, `rgba(${color},${activeStr * d * 0.55})`);
+        ng.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.beginPath(); ctx.arc(sx, sy, haloR, 0, Math.PI * 2);
+        ctx.fillStyle = ng; ctx.fill();
+
+        ctx.beginPath(); ctx.arc(sx, sy, nr, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${d * 0.88 * activeStr})`;
+        ctx.fill();
+
+        ctx.beginPath(); ctx.arc(sx, sy, nr * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${color},${d * 0.6 * activeStr})`;
+        ctx.fill();
+      });
+
+      ctx.restore();
+      requestAnimationFrame(frame);
+    }
+
+    frame();
+
+    const pills = [
+      document.getElementById('pill-discovery'),
+      document.getElementById('pill-connect'),
+      document.getElementById('pill-match')
+    ];
+    pills.forEach((p, i) => {
+      p.addEventListener('mouseenter', () => { p.style.transform = 'translateY(-2px)'; p.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)'; });
+      p.addEventListener('mouseleave', () => { p.style.transform = ''; p.style.boxShadow = ''; });
+    });
+  })();
+</script>

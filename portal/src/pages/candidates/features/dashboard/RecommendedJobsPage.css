@@ -1,0 +1,29 @@
+/* Recommended Jobs Page */
+.rjp-root {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.rjp-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.rjp-page .rj-root {
+  background: #f8fafc;
+}
+
+.rjp-page .rj-container {
+  max-width: none;
+  padding: 28px 24px 0;
+}
+
+@media (max-width: 480px) {
+  .rjp-page .rj-container {
+    padding: 20px 14px 0;
+  }
+
+  .rjp-page .rj-header-right .rj-helper-text {
+    display: none;
+  }
+}

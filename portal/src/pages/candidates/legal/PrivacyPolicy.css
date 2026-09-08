@@ -1,0 +1,358 @@
+/* Privacy Policy — trust-center theme */
+.pp-page {
+  min-height: 100vh;
+  background: #fbfdff;
+  color: #14233d;
+  font-family: "DM Sans", sans-serif;
+}
+
+/* ── Hero ── */
+.pp-hero {
+  background: linear-gradient(135deg, #dbeafe 0%, #eef6ff 45%, #d6e4ff 100%);
+  padding: 72px 24px 96px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pp-hero::before {
+  content: "";
+  position: absolute;
+  left: -80px;
+  bottom: -140px;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.16), transparent 70%);
+}
+
+.pp-hero::after {
+  content: "";
+  position: absolute;
+  right: -60px;
+  top: -100px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.18), transparent 70%);
+}
+
+.pp-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.pp-hero-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.35);
+}
+
+.pp-hero-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #2563eb;
+}
+
+.pp-hero h1 {
+  margin: 14px 0 0;
+  font-family: "Sora", sans-serif;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f2c66;
+}
+
+.pp-hero p {
+  margin: 16px auto 0;
+  max-width: 620px;
+  font-size: 1.02rem;
+  line-height: 1.75;
+  color: #3f5b96;
+}
+
+.pp-hero-meta {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pp-hero-meta span,
+.pp-hero-meta a {
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #cbd8f5;
+  color: #24437f;
+  padding: 7px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+/* ── Stats strip ── */
+.pp-stats {
+  max-width: 860px;
+  margin: -40px auto 0;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 0 20px;
+}
+
+.pp-stat {
+  background: #fff;
+  border: 1px solid #dbe7fa;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(31, 67, 143, 0.08);
+}
+
+.pp-stat strong {
+  display: block;
+  font-family: "Sora", sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #2563eb;
+  line-height: 1;
+}
+
+.pp-stat span {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ── Asymmetric layout ── */
+.pp-layout {
+  max-width: 1040px;
+  margin: 48px auto 96px;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  align-items: start;
+}
+
+.pp-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pp-card {
+  background: #fff;
+  border: 1px solid #dbe7fa;
+  border-radius: 18px;
+  padding: 26px 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pp-card-dark {
+  background: linear-gradient(135deg, #122a5c, #1b3a7e);
+  border-color: #122a5c;
+}
+
+.pp-card-dark h2,
+.pp-card-dark h3,
+.pp-card-dark .pp-lead,
+.pp-card-dark p {
+  color: #fff;
+}
+
+.pp-card-dark .pp-list li {
+  color: #c9d8f7;
+}
+
+.pp-card-dark .pp-list li strong {
+  color: #fff;
+}
+
+.pp-card-dark .pp-card-icon {
+  background: rgba(255, 255, 255, 0.14);
+  color: #bfd6ff;
+}
+
+.pp-card-icon {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #e8f1ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+
+.pp-card h2 {
+  margin: 0 0 14px;
+  font-family: "Sora", sans-serif;
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: #122a5c;
+}
+
+.pp-card h3 {
+  margin: 16px 0 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2563eb;
+}
+
+.pp-card-dark h3 {
+  color: #93c5fd;
+}
+
+.pp-lead {
+  margin: 0 0 10px;
+  font-weight: 700;
+  color: #24437f;
+}
+
+.pp-card p {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.75;
+  color: #43526d;
+}
+
+.pp-card a {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.pp-card-dark a {
+  color: #93c5fd;
+}
+
+.pp-list {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.pp-list li {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: #43526d;
+}
+
+.pp-list li strong {
+  color: #122a5c;
+}
+
+/* ── Sidebar ── */
+.pp-aside {
+  position: sticky;
+  top: 20px;
+}
+
+.pp-aside-card {
+  background: #fff;
+  border: 1px solid #dbe7fa;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 18px 44px rgba(31, 67, 143, 0.1);
+}
+
+.pp-aside-card h3 {
+  margin: 0 0 16px;
+  font-family: "Sora", sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #122a5c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-aside-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pp-aside-card li {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.pp-aside-card li svg {
+  color: #2563eb;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.pp-aside-card li strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #14233d;
+}
+
+.pp-aside-card li span {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.pp-aside-note {
+  margin: 16px 0 0 !important;
+  font-size: 0.78rem !important;
+  line-height: 1.6 !important;
+  color: #64748b !important;
+  border-top: 1px dashed #cbd8f5;
+  padding-top: 14px;
+}
+
+@media (max-width: 860px) {
+  .pp-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .pp-aside {
+    position: static;
+  }
+
+  .pp-stats {
+    grid-template-columns: 1fr;
+    margin-top: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pp-hero {
+    padding: 48px 20px 72px;
+  }
+
+  .pp-card {
+    padding: 20px 18px;
+  }
+}
