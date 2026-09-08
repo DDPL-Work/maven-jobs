@@ -874,7 +874,7 @@ export default function HomeDashboard() {
             <div className="pd-card" id="section-recommended">
               <div className="pd-section-header">
                 <h3>Recommended for you</h3>
-                <Link to="/jobs" className="pd-text-btn">
+                <Link to="/recommended-jobs" className="pd-text-btn">
                   View all <FiChevronRight size={14} />
                 </Link>
               </div>
