@@ -8,6 +8,7 @@ import { useFolder, useDeleteFolder, useUpdateFolder, useRemoveCandidateFromFold
 import CreateFolderModal from '../../../../components/employer/CreateFolderModal';
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
 import './SingleFolderPage.css';
+import EmployerHeader from '../../../../components/employer/EmployerHeader';
 
 export default function SingleFolderPage() {
   const { folderId } = useParams();
@@ -132,6 +133,7 @@ export default function SingleFolderPage() {
 
   return (
     <div className="sfp-root">
+      <EmployerHeader />
       <div className="sfp-container">
         <EmployerBreadcrumb items={[
           { label: 'Employer Dashboard', path: '/employer-dashboard' },
@@ -211,6 +213,7 @@ export default function SingleFolderPage() {
                   onToggleSelect={toggleSelect}
                   isSelected={selectedIds.has(candidate.userId || candidate.id)}
                   context="folder"
+                  isInFolder={true}
                   onRemoveFromFolder={handleRemoveCandidate}
                   onMoveFolder={(c) => { setMoveCandidateId(c.userId || c.id); setMoveModalOpen(true); }}
                 />

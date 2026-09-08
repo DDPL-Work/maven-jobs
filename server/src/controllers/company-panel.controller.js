@@ -32,6 +32,9 @@ const {
   issueTokenPair,
   setRefreshCookie,
 } = require("../services/auth.service");
+const { esAvailable } = require("../config/elasticsearch");
+const esService = require("../services/elasticsearch.service");
+const { scheduleIndex, scheduleDelete } = esService;
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -789,6 +792,9 @@ exports.createJob = asyncHandler(async (req, res) => {
       jobTitle: job.title,
       jobId: job._id,
     });
+
+    // Async incremental ES index — fires after response is sent
+    scheduleIndex(job);
   }
 
   require("../services/recruiter-activity.service").fireAndForget({
@@ -867,6 +873,13 @@ exports.updateJob = asyncHandler(async (req, res) => {
   }
 
   await job.save();
+
+  // Async incremental ES sync — fires after response is sent
+  if (job.approvalStatus === "APPROVED" && job.isActive) {
+    scheduleIndex(job);
+  } else if (!job.isActive) {
+    scheduleDelete(String(job._id));
+  }
 
   res.json({
     success: true,
@@ -1931,6 +1944,149 @@ exports.getRecentActivity = asyncHandler(async (req, res) => {
         totalPages,
         hasPrevPage: page > 1,
         hasNextPage: page < totalPages,
+      },
+    },
+  });
+});
+
+// GET /company-panel/subscriptions — subscriptions and CRM approver for current company
+exports.getSubscriptions = asyncHandler(async (req, res) => {
+  const companyId = req.company?._id || req.user?.companyId;
+  const Company = require("../models/Company");
+  const PaymentTransaction = require("../models/PaymentTransaction");
+
+  const company = companyId
+    ? await Company.findById(companyId)
+        .populate("createdByCRM", "fullName email phone role profileImageUrl territory")
+        .lean()
+    : null;
+
+  // Retrieve real payment transactions from DB for this company / client user
+  const transactions = await PaymentTransaction.find({
+    $or: [
+      ...(companyId ? [{ companyId }] : []),
+      ...(req.user?._id ? [{ userId: req.user._id }] : []),
+    ],
+    status: "PAID",
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Determine the CRM approver / creator purely from DB
+  const approverData = company?.createdByCRM || null;
+  const approver = approverData
+    ? {
+        name: approverData.fullName || "CRM Approver",
+        email: approverData.email || "sales@mavenjobs.com",
+        phone: approverData.phone || "1800 102 2558",
+        role: approverData.role || "CRM Approver",
+        avatar: approverData.profileImageUrl || "",
+      }
+    : company?.accountManager
+    ? {
+        name: company.accountManager,
+        email: "sales@mavenjobs.com",
+        phone: "1800 102 2558",
+        role: "Account Manager",
+        avatar: "",
+      }
+    : null;
+
+  const formatDate = (d) => {
+    try {
+      return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    } catch {
+      return "";
+    }
+  };
+
+  const subscriptions = [];
+
+  // 1. Build subscriptions from real PaymentTransaction records in DB
+  if (transactions && transactions.length > 0) {
+    transactions.forEach((tx) => {
+      const createdAt = tx.createdAt ? new Date(tx.createdAt) : new Date();
+      const expiresAt = new Date(createdAt.getTime() + (tx.durationDays || 30) * 86400000);
+      const isStillActive = expiresAt > new Date();
+
+      const planNameMap = {
+        PRO: "MavenPro Monthly Package",
+        ELITE: "MavenPro Elite Monthly Package",
+        ELITE_QUARTERLY: "MavenPro Elite Quarterly Package",
+        PREMIUM: "MavenJobs Premium Package",
+        JOB_PACKAGE_1: "5 Hot Vacancy Job Postings Package",
+        JOB_PACKAGE_2: "12 Hot Vacancy Job Postings Package",
+        JOB_PACKAGE_3: "20 Hot Vacancy Job Postings Package",
+      };
+
+      subscriptions.push({
+        id: String(tx._id),
+        transactionId: tx.razorpayPaymentId || `TX-${String(tx._id).slice(-8).toUpperCase()}`,
+        date: formatDate(createdAt),
+        amountPaid: tx.amount || 0,
+        amountFormatted: `₹ ${Number(tx.amount || 0).toLocaleString("en-IN")}`,
+        status: isStillActive ? "ACTIVE" : "EXPIRED",
+        products: [
+          {
+            id: `prod-${tx._id}`,
+            name: planNameMap[tx.planType] || `${tx.planType || "Corporate"} Package`,
+            validity: `From ${formatDate(createdAt)} to ${formatDate(expiresAt)}`,
+            status: isStillActive ? "ACTIVE" : "EXPIRED",
+          },
+        ],
+      });
+    });
+  }
+
+  // 2. Build active subscription from Company package record in DB if assigned
+  if (company && company.packageType) {
+    const validFrom = company.createdAt ? new Date(company.createdAt) : new Date();
+    const validTo = company.packageExpiresAt
+      ? new Date(company.packageExpiresAt)
+      : new Date(validFrom.getTime() + 365 * 24 * 60 * 60 * 1000);
+    const isActive = validTo > new Date();
+
+    const planPrices = {
+      STANDARD: 0,
+      PREMIUM: 330400,
+      ELITE: 599900,
+    };
+    const amount = planPrices[company.packageType] ?? 0;
+
+    subscriptions.push({
+      id: `company-plan-${company._id}`,
+      transactionId: `MJ-${String(company._id).slice(-8).toUpperCase()}`,
+      date: formatDate(validFrom),
+      amountPaid: amount,
+      amountFormatted: amount > 0 ? `₹ ${Number(amount).toLocaleString("en-IN")}` : "Enterprise Plan",
+      status: isActive ? "ACTIVE" : "EXPIRED",
+      products: [
+        {
+          id: `prod-main-${company._id}`,
+          name: `MavenJobs ${company.packageType} Package`,
+          validity: `From ${formatDate(validFrom)} to ${formatDate(validTo)}`,
+          status: isActive ? "ACTIVE" : "EXPIRED",
+        },
+        {
+          id: `prod-jobs-${company._id}`,
+          name: `${company.jobLimit || 2} Hot Vacancy Postings for Corporates`,
+          validity: `From ${formatDate(validFrom)} to ${formatDate(validTo)}`,
+          status: isActive ? "ACTIVE" : "EXPIRED",
+        },
+      ],
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      subscriptions,
+      totalCount: subscriptions.length,
+      approver,
+      salesEnquiry: {
+        tollFree: "1800 102 2558",
+        email: "sales@mavenjobs.com",
+        region: "INDIA",
       },
     },
   });

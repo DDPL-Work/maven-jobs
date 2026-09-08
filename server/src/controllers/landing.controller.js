@@ -6,6 +6,8 @@ const Company = require("../models/Company");
 const Application = require("../models/Application");
 const CandidateProfile = require("../models/CandidateProfile");
 const CompanyReview = require("../models/CompanyReview");
+const { esAvailable } = require("../config/elasticsearch");
+const esService = require("../services/elasticsearch.service");
 
 const formatCompactCount = (value = 0) => {
   const count = Number(value || 0);
@@ -280,8 +282,179 @@ const parseRange = (value) => {
   return { min: parts[0], max: parts.length > 1 ? parts[1] : null };
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ES-powered job search helper — returns formatted response identical to MongoDB path
+// ─────────────────────────────────────────────────────────────────────────────
+async function esGetPublicJobs(req, res) {
+  const search = String(req.query.search || "").trim();
+  const location = String(req.query.location || "").trim();
+  const experience = String(req.query.experience || "").trim();
+  const department = String(req.query.department || "").trim();
+  const workMode = String(req.query.workMode || "").trim();
+  const jobType = String(req.query.jobType || "").trim();
+  const skills = String(req.query.skills || "").trim();
+  const company = String(req.query.company || "").trim();
+  const salary = String(req.query.salary || "").trim();
+  const sort = String(req.query.sort || "").trim();
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+
+  const searchStartTime = Date.now();
+  console.log(`[ES:Search] 🔍 Hit "/landing/jobs" — query="${search}" location="${location}" dept="${department}" mode="${workMode}" type="${jobType}" page=${page} limit=${limit}`);
+
+  // ES search
+  const { jobs: esHits, total, totalPages } = await esService.searchJobs({
+    search, location, experience, department, workMode, jobType,
+    skills, company, salary, sort, page, limit,
+  });
+
+  // Build application map for authenticated users
+  let applicationMap = new Map();
+  if (req.user && esHits.length > 0) {
+    const jobIds = esHits.map((j) => j.id);
+    const applications = await Application.find({
+      candidateId: req.user._id,
+      jobId: { $in: jobIds },
+    });
+    applicationMap = new Map(applications.map((a) => [String(a.jobId), a]));
+  }
+
+  // Filter out already-applied jobs
+  let filteredHits = esHits;
+  if (req.user) {
+    filteredHits = esHits.filter((j) => !applicationMap.has(j.id));
+  }
+
+  // Fetch review data for paginated jobs
+  const companyIds = [...new Set(filteredHits.map((j) => j.companyId).filter(Boolean))];
+  let reviewMap = new Map();
+  if (companyIds.length > 0) {
+    try {
+      const aggs = await CompanyReview.aggregate([
+        { $match: { companyId: { $in: companyIds.map((id) => new mongoose.Types.ObjectId(id)) }, status: "PUBLISHED" } },
+        { $group: { _id: "$companyId", avgRating: { $avg: "$rating" }, reviewCount: { $sum: 1 } } },
+      ]);
+      reviewMap = new Map(aggs.map((a) => [String(a._id), a]));
+    } catch (_) { /* non-critical */ }
+  }
+
+  // Fetch available filters from MongoDB (lightweight — lean query)
+  let availableFilters = { departments: [], workplaceTypes: [], locations: [], jobTypes: [] };
+  try {
+    const fullPool = await Job.find({ isActive: true, approvalStatus: "APPROVED" })
+      .limit(500).lean().select("department workplaceType location jobType");
+    const dedupeFilters = (arr) => {
+      const seen = new Set();
+      return arr.filter((v) => {
+        const key = String(v || "").toLowerCase().trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).sort();
+    };
+    availableFilters = {
+      departments: dedupeFilters(fullPool.map((j) => j.department)).filter((d) => {
+        const ld = d.toLowerCase(); return ld !== "all" && ld !== "all domains";
+      }),
+      workplaceTypes: dedupeFilters(fullPool.map((j) => normalizeWorkMode(j.workplaceType))),
+      locations: dedupeFilters(fullPool.map((j) => j.location)),
+      jobTypes: dedupeFilters(fullPool.map((j) => normalizeJobType(j.jobType))),
+    };
+  } catch (_) { /* non-critical */ }
+
+  // Format hits to match the existing response shape
+  const formattedJobs = filteredHits.map((j) => {
+    const r = reviewMap.get(j.companyId) || {};
+    const formatted = {
+      id: j.id,
+      companyId: j.companyId,
+      companyName: j.companyName || "Unknown company",
+      companyLogoUrl: "",
+      companyCoverUrl: "",
+      company: j.companyId ? {
+        id: j.companyId,
+        name: j.companyName || "",
+        industry: j.companyIndustry || "",
+        type: "",
+        location: {},
+        logoUrl: "",
+        coverImageUrl: "",
+      } : null,
+      title: j.title || "",
+      department: j.department || "",
+      jobType: normalizeJobType(j.jobType),
+      workplaceType: normalizeWorkMode(j.workplaceType),
+      location: j.location || "",
+      experience: j.experience || "",
+      salaryMin: Number(j.salaryMin || 0),
+      salaryMax: Number(j.salaryMax || 0),
+      summary: j.summary || "",
+      description: j.description || "",
+      externalLink: j.externalLink || "",
+      skills: Array.isArray(j.skills) ? j.skills : [],
+      isActive: Boolean(j.isActive),
+      rating: r.avgRating ? Math.round(r.avgRating * 10) / 10 : null,
+      reviews: r.reviewCount || 0,
+      hasScreeningQuestions: false,
+      screeningQuestions: [],
+      _score: j._score,
+    };
+    if (req.user) formatted.hasApplied = applicationMap.has(j.id);
+    return formatted;
+  });
+
+  // Enrich logo/cover from MongoDB for paginated set (best-effort)
+  try {
+    const uniqueCompanyIds = [...new Set(formattedJobs.map((j) => j.companyId).filter(Boolean))];
+    if (uniqueCompanyIds.length > 0) {
+      const companies = await Company.find(
+        { _id: { $in: uniqueCompanyIds } },
+        { logoUrl: 1, coverImageUrl: 1 }
+      ).lean();
+      const companyLogoMap = new Map(companies.map((c) => [String(c._id), c]));
+      formattedJobs.forEach((j) => {
+        const c = companyLogoMap.get(j.companyId);
+        if (c) {
+          j.companyLogoUrl = c.logoUrl || "";
+          j.companyCoverUrl = c.coverImageUrl || "";
+          if (j.company) {
+            j.company.logoUrl = c.logoUrl || "";
+            j.company.coverImageUrl = c.coverImageUrl || "";
+          }
+        }
+      });
+    }
+  } catch (_) { /* non-critical */ }
+
+  const searchDuration = Date.now() - searchStartTime;
+  console.log(`[ES:Search] ⚡ Served via Elasticsearch in ${searchDuration}ms | Total matches: ${total} | Page ${page}/${totalPages} (${formattedJobs.length} jobs returned)`);
+
+  return res.json({
+    success: true,
+    data: {
+      jobs: formattedJobs,
+      availableFilters,
+      total,
+      page,
+      totalPages,
+      appliedFilters: { search, location, experience, department, workMode, jobType, sort },
+      _source: "elasticsearch",
+    },
+  });
+}
+
 exports.getPublicJobs = async (req, res) => {
   try {
+    // ── Elasticsearch path ──────────────────────────────────────────
+    if (await esAvailable()) {
+      try {
+        return await esGetPublicJobs(req, res);
+      } catch (esErr) {
+        console.error("[ES] getPublicJobs ES path failed, falling back to MongoDB:", esErr.message);
+        // Fall through to MongoDB path below
+      }
+    }
+    // ── MongoDB fallback path (original logic below) ────────────────
     const search = String(req.query.search || "").trim();
     const location = String(req.query.location || "").trim();
     const experience = String(req.query.experience || "").trim();
@@ -837,12 +1010,29 @@ exports.getLandingPageData = async (req, res) => {
 
 exports.getSearchSuggestions = async (req, res) => {
   try {
-    const q = String(req.query.q || "").trim().toLowerCase();
+    const q = String(req.query.q || "").trim();
     if (!q) {
       return res.json({ success: true, data: { suggestions: [] } });
     }
 
-    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // ── Elasticsearch path ──────────────────────────────────────────
+    if (await esAvailable()) {
+      try {
+        const suggStartTime = Date.now();
+        const suggestions = await esService.getSuggestions(q);
+        const suggDuration = Date.now() - suggStartTime;
+        console.log(`[ES:Suggestions] 💡 Served query="${q}" via Elasticsearch in ${suggDuration}ms (${suggestions.length} suggestions: [${suggestions.join(", ")}])`);
+        return res.json({ success: true, data: { suggestions } });
+      } catch (esErr) {
+        console.error("[ES:Suggestions] ⚠️ ES path failed, falling back to MongoDB:", esErr.message);
+        // Fall through to MongoDB path
+      }
+    }
+
+    console.log(`[ES:Suggestions] 📦 Fetching suggestions for "${q}" via MongoDB fallback`);
+
+    // ── MongoDB fallback ────────────────────────────────────────────
+    const escaped = q.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const regex = new RegExp("^" + escaped, "i");
 
     const [titles, skills, companyNames] = await Promise.all([

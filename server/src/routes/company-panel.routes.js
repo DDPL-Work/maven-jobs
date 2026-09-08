@@ -56,6 +56,7 @@ router.post("/reviews/react", controller.toggleReviewReaction);
 router.get("/profile", controller.getProfile);
 router.patch("/profile", controller.updateProfile);
 router.patch("/profile/media", uploadCompanyMedia, controller.updateCompanyMedia);
+router.get("/subscriptions", controller.getSubscriptions);
 
 // Account
 router.post("/delete-account", controller.deleteAccount);

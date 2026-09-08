@@ -35,6 +35,9 @@ const {
   issueTokenPair,
   setRefreshCookie,
 } = require("../services/auth.service");
+const { esAvailable } = require("../config/elasticsearch");
+const esService = require("../services/elasticsearch.service");
+const { scheduleIndex, scheduleDelete } = esService;
 
 const defaultPackages = DEFAULT_PACKAGE_CATALOG;
 const CRM_DASHBOARD_FEED_LIMIT = 24;
@@ -1117,6 +1120,9 @@ exports.createJob = asyncHandler(async (req, res) => {
         jobId: job._id,
       });
     }
+
+    // Async incremental ES index — fires after response is sent
+    scheduleIndex(job);
   }
 
   const hydratedJob = await Job.findById(job._id).populate("companyId", "name");
@@ -1178,6 +1184,13 @@ exports.updateJob = asyncHandler(async (req, res) => {
 
   if (job.approvalStatus === "APPROVED") {
     await syncCompanyCapacity(company._id);
+
+    // Async incremental ES sync — fires after response is sent
+    if (job.isActive) {
+      scheduleIndex(job);
+    } else {
+      scheduleDelete(String(job._id));
+    }
   }
 
   res.status(200).json({
@@ -1261,6 +1274,13 @@ exports.updateJobApproval = asyncHandler(async (req, res) => {
   }
 
   const hydratedJob = await Job.findById(job._id).populate("companyId", "name");
+
+  // Async incremental ES sync — fires after response is sent
+  if (decision === "APPROVE") {
+    scheduleIndex(hydratedJob);
+  } else {
+    scheduleDelete(String(job._id));
+  }
 
   res.status(200).json({
     success: true,

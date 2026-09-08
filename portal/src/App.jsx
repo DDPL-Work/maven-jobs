@@ -60,6 +60,11 @@ import DraftJobs from "./pages/employer/features/jobs/DraftJobs";
 import ReviewSharePage from "./pages/employer/features/reviews/ReviewSharePage";
 import FolderListPage from "./pages/employer/features/folders/FolderListPage";
 import SingleFolderPage from "./pages/employer/features/folders/SingleFolderPage";
+import JobPostingReport from "./pages/employer/report/JobPostingReport";
+import ResdexReport from "./pages/employer/report/ResdexReport";
+// Employer Company Profile
+import CompanyProfilePage from "./pages/employer/features/profile/CompanyProfilePage";
+import MySubscriptionsPage from "./pages/employer/features/subscriptions/MySubscriptionsPage";
 import PublicProfileByShareId from "./pages/candidates/features/profile/PublicProfileByShareId";
 import PublicCandidateProfile from "./pages/candidates/features/profile/PublicCandidateProfile";
 import CandidateSitemap from "./pages/candidates/features/landing/CandidateSitemap";
@@ -221,13 +226,22 @@ function AppContent() {
         <Route path="/post-job" element={<ProtectedEmployerRoute><PostJob /></ProtectedEmployerRoute>} />
         <Route path="/employer-draft-jobs" element={<ProtectedEmployerRoute><DraftJobs /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard" element={<ProtectedEmployerRoute><EmployerDashboard /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/company-profile" element={<ProtectedEmployerRoute><CompanyProfilePage /></ProtectedEmployerRoute>} />
+        <Route path="/company-profile" element={<ProtectedEmployerRoute><CompanyProfilePage /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/subscriptions" element={<ProtectedEmployerRoute><MySubscriptionsPage /></ProtectedEmployerRoute>} />
+        <Route path="/my-subscriptions" element={<ProtectedEmployerRoute><MySubscriptionsPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/analytics" element={<ProtectedEmployerRoute><AnalyticsPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/pricing" element={<ProtectedEmployerRoute><Pricing /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/folders" element={<ProtectedEmployerRoute><FolderListPage /></ProtectedEmployerRoute>} />
+        <Route path="/manage-folders" element={<ProtectedEmployerRoute><FolderListPage /></ProtectedEmployerRoute>} />
+        <Route path="/manage-folders/:tab" element={<ProtectedEmployerRoute><FolderListPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/folders/:folderId" element={<ProtectedEmployerRoute><SingleFolderPage /></ProtectedEmployerRoute>} />
         <Route path="/resdex" element={<ProtectedEmployerRoute><SearchResume /></ProtectedEmployerRoute>} />
         <Route path="/resdex/search-results" element={<ProtectedEmployerRoute><SearchResults /></ProtectedEmployerRoute>} />
         <Route path="/manage-search" element={<ProtectedEmployerRoute><ManageSearch /></ProtectedEmployerRoute>} />
+        <Route path="/reports-job-posting" element={<ProtectedEmployerRoute><JobPostingReport /></ProtectedEmployerRoute>} />
+        <Route path="/report/resdex" element={<ProtectedEmployerRoute><ResdexReport /></ProtectedEmployerRoute>} />
+        <Route path="/reports-resdex" element={<ProtectedEmployerRoute><ResdexReport /></ProtectedEmployerRoute>} />
       </Routes>
 
       <DailyQuizNotification

@@ -6,6 +6,8 @@ const ResdexSearch = require("../models/ResdexSearch");
 const Application = require("../models/Application");
 const OpenAIService = require("../services/openai/OpenAIService");
 const activityService = require("../services/recruiter-activity.service");
+const { esAvailable } = require("../config/elasticsearch");
+const esService = require("../services/elasticsearch.service");
 
 const SEARCH_DEFAULTS = { page: 1, limit: 20, sort: "relevance" };
 const MAX_LIMIT = 100;
@@ -59,7 +61,201 @@ function buildNoticePeriodQuery(noticePeriods) {
   return conditions.length > 0 ? { $or: conditions } : null;
 }
 
+async function esSearchCandidates(req, res) {
+  const company = req.company;
+  const {
+    keyword, skills, booleanQuery, currentCompany, previousCompany,
+    designation, excludeKeywords, preferredSkills,
+    minExperience, maxExperience,
+    currentCity, preferredCity, remote, hybrid, relocation,
+    currency, currentSalaryMin, currentSalaryMax,
+    expectedSalaryMin, expectedSalaryMax,
+    noticePeriod,
+    department, role, industry, employmentType, employmentStatus,
+    ug, pg, doctorate, institute, university, graduationYear, minPercentage,
+    certifications,
+    diversityGender, careerBreak, veterans, disabilities,
+    returnship, womenHiring, campusHiring, freshers,
+    minAge, maxAge, languages, workPermit, passport, visa,
+    openToRemote, portfolio, github, linkedIn,
+    page, limit, sort, saveSearch, searchName,
+  } = req.query;
+
+  const currentPage = Math.max(1, toInt(page, SEARCH_DEFAULTS.page));
+  const currentLimit = Math.min(MAX_LIMIT, Math.max(1, toInt(limit, SEARCH_DEFAULTS.limit)));
+
+  const searchStartTime = Date.now();
+  console.log(`[ES:CandidateSearch] 🔍 Hit "/resdex/search" — keyword="${keyword || ''}" skills="${skills || ''}" location="${currentCity || ''}" expMin=${minExperience || 0} expMax=${maxExperience || 0} page=${currentPage} limit=${currentLimit}`);
+
+  const esResult = await esService.searchCandidatesEs({
+    keyword, skills, booleanQuery, currentCompany, previousCompany,
+    designation, excludeKeywords, preferredSkills,
+    minExperience, maxExperience,
+    currentCity, preferredCity, remote, hybrid, relocation,
+    currency, currentSalaryMin, currentSalaryMax,
+    expectedSalaryMin, expectedSalaryMax,
+    noticePeriod,
+    department, role, industry, employmentType, employmentStatus,
+    ug, pg, doctorate, institute, university, graduationYear, minPercentage,
+    certifications,
+    diversityGender, careerBreak, veterans, disabilities,
+    returnship, womenHiring, campusHiring, freshers,
+    minAge, maxAge, languages, workPermit, passport, visa,
+    openToRemote, portfolio, github, linkedIn,
+    page: currentPage, limit: currentLimit, sort,
+  });
+
+  const { candidates: esHits, total, totalPages } = esResult;
+
+  // 1. Applications lookup for logged-in company
+  const candidateIds = esHits.map((c) => c.id || c.candidateId);
+  const userIds = esHits.map((c) => c.userId).filter(Boolean);
+  const allCandidateKeys = [...new Set([...candidateIds, ...userIds])];
+
+  let applicationMap = new Map();
+  if (company?._id && allCandidateKeys.length > 0) {
+    try {
+      const apps = await Application.find({
+        companyId: company._id,
+        $or: [
+          { candidateId: { $in: allCandidateKeys } },
+          { candidateUserId: { $in: allCandidateKeys } },
+        ],
+      }, { candidateId: 1, candidateUserId: 1, status: 1, createdAt: 1 }).lean();
+
+      apps.forEach((a) => {
+        if (a.candidateId) applicationMap.set(String(a.candidateId), a);
+        if (a.candidateUserId) applicationMap.set(String(a.candidateUserId), a);
+      });
+    } catch (_) {}
+  }
+
+  // 2. Enrich from MongoDB CandidateProfile (for fresh profile images, resumes, phone)
+  let profileMap = new Map();
+  try {
+    const validOids = candidateIds.filter((id) => mongoose.isValidObjectId(id));
+    const validUserOids = userIds.filter((id) => mongoose.isValidObjectId(id));
+    if (validOids.length > 0 || validUserOids.length > 0) {
+      const mongoProfiles = await CandidateProfile.find({
+        $or: [
+          ...(validOids.length > 0 ? [{ _id: { $in: validOids } }] : []),
+          ...(validUserOids.length > 0 ? [{ userId: { $in: validUserOids } }] : []),
+        ],
+      }).populate("userId", "name email avatar phone").lean();
+
+      mongoProfiles.forEach((p) => {
+        profileMap.set(String(p._id), p);
+        if (p.userId?._id) profileMap.set(String(p.userId._id), p);
+      });
+    }
+  } catch (_) {}
+
+  // 3. Assemble clean candidate response matching existing shape
+  const formattedCandidates = esHits.map((c) => {
+    const p = profileMap.get(String(c.id)) || profileMap.get(String(c.userId));
+    const app = applicationMap.get(String(c.id)) || applicationMap.get(String(c.userId));
+
+    const name = p?.userId?.name || p?.name || c.name || c.fullName || "Candidate";
+    const title = p?.currentTitle || p?.headline || c.currentTitle || c.designation || "";
+    const comp = p?.currentCompany || c.currentCompany || c.recentCompany || "";
+    const city = p?.currentCity || c.currentCity || c.location || "";
+    const exp = p?.totalExperience || c.totalExperience || (c.experience != null ? `${c.experience} years` : "0");
+    const skillsList = (p?.skills?.length ? p.skills : c.skills) || [];
+
+    return {
+      id: c.id,
+      _id: c.id,
+      userId: c.userId || c.id,
+      name,
+      fullName: name,
+      email: p?.userId?.email || c.email || "",
+      avatar: p?.userId?.avatar || c.avatar || c.profilePic || "",
+      phone: p?.phone || p?.userId?.phone || c.phone || "",
+      headline: p?.headline || c.headline || "",
+      summary: p?.summary || c.summary || "",
+      currentTitle: title,
+      designation: title,
+      currentCompany: comp,
+      recentCompany: comp,
+      totalExperience: exp,
+      experience: c.experience,
+      currentCity: city,
+      location: city,
+      currentState: p?.currentState || c.currentState || "",
+      preferredLocations: p?.preferredLocations || c.preferredLocations || [],
+      preferredRoles: p?.preferredRoles || c.preferredRoles || "",
+      skills: skillsList,
+      noticePeriod: p?.noticePeriod || c.noticePeriod || "",
+      expectedSalary: p?.expectedSalary || c.expectedSalary || c.ctcExpected || 0,
+      ctcExpected: p?.expectedSalary || c.expectedSalary || c.ctcExpected || 0,
+      education: p?.education || c.education || "",
+      linkedInUrl: p?.linkedInUrl || c.linkedInUrl || "",
+      portfolioUrl: p?.portfolioUrl || c.portfolioUrl || "",
+      profilePic: p?.profilePic || c.profilePic || c.avatar || "",
+      resume: p?.resume || c.resume || "",
+      publicShareId: p?.publicShareId || c.publicShareId || "",
+      profileViews: p?.profileViews || c.profileViews || 0,
+      recruiterActions: p?.recruiterActions || c.recruiterActions || 0,
+      hasApplied: Boolean(app),
+      applicationStatus: app ? app.status : null,
+      appliedAt: app ? app.createdAt : null,
+      createdAt: p?.createdAt || c.createdAt || null,
+      updatedAt: p?.updatedAt || c.updatedAt || null,
+      _score: c._score,
+    };
+  });
+
+  // Always log search in recent history (upsert by keyword)
+  if (company?._id) {
+    try {
+      const kw = String(keyword || "").trim();
+      const autoName = searchName ? String(searchName).trim() : (kw || "Search with filters");
+      await ResdexSearch.findOneAndUpdate(
+        { companyId: company._id, "filters.keyword": kw || "__all__" },
+        {
+          companyId: company._id,
+          name: autoName,
+          filters: req.query,
+          resultCount: total,
+          lastRunAt: new Date(),
+          $setOnInsert: { isPinned: false },
+        },
+        { upsert: true, new: true },
+      );
+    } catch (_) {}
+  }
+
+  const duration = Date.now() - searchStartTime;
+  console.log(`[ES:CandidateSearch] ⚡ Served via Elasticsearch in ${duration}ms (ES took: ${esResult.took}ms) | Total matches: ${total} | Page ${currentPage}/${totalPages} (${formattedCandidates.length} candidates returned)`);
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      candidates: formattedCandidates,
+      pagination: {
+        page: currentPage,
+        limit: currentLimit,
+        total,
+        totalPages,
+      },
+      _source: "elasticsearch",
+    },
+  });
+}
+
 exports.searchCandidates = asyncHandler(async (req, res) => {
+  // ── Elasticsearch path ──────────────────────────────────────────
+  if (await esAvailable()) {
+    try {
+      return await esSearchCandidates(req, res);
+    } catch (esErr) {
+      console.error("[ES:CandidateSearch] ⚠️ ES path failed, falling back to MongoDB:", esErr.message);
+      // Fall through to MongoDB path below
+    }
+  }
+
+  console.log("[ES:CandidateSearch] 📦 Served via MongoDB fallback");
+
   const company = req.company;
   const {
     keyword, skills, booleanQuery, currentCompany, previousCompany,

@@ -52,6 +52,10 @@ const bindConnectionListeners = () => {
 
   mongoose.connection.on("connected", () => {
     console.log(`[db] MongoDB connected to ${mongoose.connection.host}`);
+    try {
+      const { initJobChangeStream } = require("../services/elasticsearch.service");
+      initJobChangeStream();
+    } catch (_) {}
   });
 
   mongoose.connection.on("reconnected", () => {

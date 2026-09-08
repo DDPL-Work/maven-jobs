@@ -1,4 +1,7 @@
+import { useMemo } from 'react';
 import EmployerHeader from './EmployerHeader';
+import EmployerFooter from './EmployerFooter';
+import { useEmployerAuth } from '../../hooks/useEmployerAuth';
 
 const C = {
   navy: "#002366",
@@ -8,7 +11,8 @@ const C = {
 };
 
 export default function EmployerLayout({
-  company = {},
+  company,
+  user,
   activeTab = 'home',
   onNavigate,
   onMessagesClick,
@@ -17,10 +21,37 @@ export default function EmployerLayout({
   containerWidth = 1160,
   children,
 }) {
+  const { session } = useEmployerAuth();
+
+  const resolvedCompany = useMemo(() => {
+    if (company && (company.name || company.logoUrl)) return company;
+    if (session) {
+      return {
+        name: session.companyName || session.name || session.username || '',
+        logoUrl: session.logoUrl || session.avatar || '',
+        ...(company || {}),
+      };
+    }
+    return company || {};
+  }, [company, session]);
+
+  const resolvedUser = useMemo(() => {
+    if (user && (user.name || user.username || user.email)) return user;
+    if (session) return session;
+    return user;
+  }, [user, session]);
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f0f4f9', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: '#f0f4f9',
+      fontFamily: "'DM Sans', sans-serif"
+    }}>
       <EmployerHeader
-        company={company}
+        company={resolvedCompany}
+        user={resolvedUser}
         activeTab={activeTab}
         onNavigate={onNavigate}
         onMessagesClick={onMessagesClick}
@@ -29,12 +60,16 @@ export default function EmployerLayout({
         requireAuth
       />
       <div style={{
+        flex: 1,
+        width: '100%',
         maxWidth: containerWidth,
         margin: '0 auto',
         padding: '20px 20px 48px',
+        boxSizing: 'border-box',
       }}>
         {children}
       </div>
+      <EmployerFooter />
     </div>
   );
 }

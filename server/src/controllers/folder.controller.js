@@ -141,7 +141,7 @@ exports.getFolder = asyncHandler(async (req, res) => {
 
 // POST /folders
 exports.createFolder = asyncHandler(async (req, res) => {
-  const { name, description, icon, color, isPublic } = req.body;
+  const { name, description, icon, color, isPublic, sharedWith } = req.body;
   const companyId = req.company._id;
   const employerId = req.user._id;
 
@@ -166,6 +166,7 @@ exports.createFolder = asyncHandler(async (req, res) => {
     icon: icon || "folder",
     color: color || "#002366",
     isPublic: Boolean(isPublic),
+    sharedWith: Array.isArray(sharedWith) ? sharedWith : (sharedWith ? [sharedWith] : []),
     createdBy: req.user.name || req.user.email || "Unknown",
     lastActivityAt: new Date(),
   });
@@ -184,7 +185,7 @@ exports.createFolder = asyncHandler(async (req, res) => {
 
 // PATCH /folders/:id
 exports.updateFolder = asyncHandler(async (req, res) => {
-  const { name, description, icon, color, isPublic } = req.body;
+  const { name, description, icon, color, isPublic, sharedWith } = req.body;
   const folder = await Folder.findOne({
     _id: req.params.id,
     companyId: req.company._id,
@@ -210,6 +211,9 @@ exports.updateFolder = asyncHandler(async (req, res) => {
   if (icon !== undefined) folder.icon = icon;
   if (color !== undefined) folder.color = color;
   if (isPublic !== undefined) folder.isPublic = Boolean(isPublic);
+  if (sharedWith !== undefined) {
+    folder.sharedWith = Array.isArray(sharedWith) ? sharedWith : [sharedWith];
+  }
 
   await folder.save();
 
