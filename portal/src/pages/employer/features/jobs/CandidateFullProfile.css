@@ -1,0 +1,836 @@
+/* ─── CandidateFullProfile.css ─── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.cfp-page-container {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 20px 60px 20px;
+  color: #1e293b;
+}
+
+/* ─── Loading & Error States ─── */
+.cfp-loading-state,
+.cfp-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #64748b;
+  text-align: center;
+}
+
+.cfp-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: cfp-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes cfp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Toast Notification ─── */
+.cfp-toast-notification {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  animation: cfp-toast-in 0.25s ease-out;
+}
+
+@keyframes cfp-toast-in {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ─── 1. Top Action Toolbar ─── */
+.cfp-top-toolbar {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.cfp-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cfp-toolbar-sep {
+  width: 1px;
+  height: 24px;
+  background: #cbd5e1;
+  margin: 0 4px;
+}
+
+/* Status Pill Buttons */
+.cfp-btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #ffffff;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.cfp-btn-shortlist {
+  border: 1.5px solid #16a34a;
+  color: #16a34a;
+}
+.cfp-btn-shortlist:hover,
+.cfp-btn-shortlist.is-active {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.cfp-btn-maybe {
+  border: 1.5px solid #475569;
+  color: #475569;
+}
+.cfp-btn-maybe:hover,
+.cfp-btn-maybe.is-active {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.cfp-btn-reject {
+  border: 1.5px solid #dc2626;
+  color: #dc2626;
+}
+.cfp-btn-reject:hover,
+.cfp-btn-reject.is-active {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* Action Icon Buttons */
+.cfp-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cfp-btn-action:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.cfp-btn-whatsapp:hover {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+/* ─── 2. Comment Box ─── */
+.cfp-comment-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.cfp-comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cfp-comment-form {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.cfp-comment-input {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  background: #ffffff;
+  transition: border-color 0.15s;
+}
+
+.cfp-comment-input:focus {
+  border-color: #3b82f6;
+}
+
+.cfp-comment-input::placeholder {
+  color: #94a3b8;
+}
+
+.cfp-comment-post-btn {
+  padding: 7px 16px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cfp-comment-post-btn:hover {
+  background: #1d4ed8;
+}
+
+/* Comments stream */
+.cfp-comments-stream {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cfp-comment-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.cfp-comment-author {
+  font-weight: 600;
+  color: #334155;
+  font-size: 12.5px;
+}
+
+.cfp-comment-text {
+  color: #0f172a;
+  flex: 1;
+}
+
+.cfp-comment-time {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* ─── 3. Card Base ─── */
+.cfp-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+.cfp-card-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  margin: 0;
+  background: #ffffff;
+}
+
+.cfp-card-body {
+  padding: 18px 20px;
+}
+
+/* ─── Header Card ─── */
+.cfp-header-card {
+  padding: 20px 24px;
+  overflow: visible !important;
+  position: relative;
+  z-index: 50;
+}
+
+.cfp-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.cfp-header-info {
+  flex: 1;
+}
+
+.cfp-candidate-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  line-height: 1.2;
+}
+
+.cfp-headline-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #475569;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.cfp-dot-sep {
+  color: #94a3b8;
+}
+
+.cfp-view-resume-textlink {
+  color: #0284c7;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.cfp-view-resume-textlink:hover {
+  text-decoration: underline;
+  color: #0369a1;
+}
+
+/* Action pills row */
+.cfp-header-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Contact | Status Pill */
+.cfp-contact-status-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 5px 14px;
+  background: #ffffff;
+  font-size: 13px;
+  color: #334155;
+}
+
+.cfp-pill-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cfp-pill-trigger-btn:hover {
+  color: #0284c7;
+}
+
+.cfp-pill-trigger-btn.has-status {
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.cfp-pill-sep {
+  margin: 0 10px;
+  color: #cbd5e1;
+}
+
+.cfp-phone-revealed-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0284c7;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cfp-phone-revealed-text:hover {
+  text-decoration: underline;
+}
+
+/* Dropdown Menu */
+.cfp-status-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  min-width: 150px;
+  z-index: 9999;
+  padding: 4px 0;
+  animation: cfp-toast-in 0.12s ease-out;
+}
+
+.cfp-dropdown-opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.1s, color 0.1s;
+}
+
+.cfp-dropdown-opt:hover {
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.cfp-dropdown-opt.is-selected {
+  background: #e0f2fe;
+  color: #0284c7;
+  font-weight: 600;
+}
+
+/* Call from app button */
+.cfp-call-app-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: 1px solid #bae6fd;
+  border-radius: 20px;
+  background: #f0f9ff;
+  color: #0284c7;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cfp-call-app-btn:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+/* Header View Resume Button */
+.cfp-header-resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px;
+  border: 1.5px solid #2563eb;
+  border-radius: 20px;
+  background: #2563eb;
+  color: #ffffff !important;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+}
+
+.cfp-header-resume-btn:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+/* Top-right Avatar */
+.cfp-header-avatar-col {
+  flex-shrink: 0;
+}
+
+.cfp-avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e2e8f0;
+}
+
+.cfp-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0f2fe;
+  color: #0284c7;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* ─── 4. Candidate Details Card ─── */
+.cfp-candidate-details-card .cfp-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 36px;
+  row-gap: 12px;
+  padding: 18px 20px;
+}
+
+.cfp-detail-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cfp-detail-item--full {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+.cfp-detail-label {
+  color: #64748b;
+  min-width: 140px;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.cfp-detail-val {
+  color: #0f172a;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.cfp-detail-val--skills {
+  font-weight: 400;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.cfp-app-date-row {
+  border-top: 1px solid #f1f5f9;
+  padding: 12px 20px;
+  font-size: 12px;
+  color: #64748b;
+  background: #ffffff;
+}
+
+/* ─── 5. "Jump to" Navigation Bar ─── */
+.cfp-jumpto-bar {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 9px 18px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.cfp-jumpto-label {
+  font-weight: 600;
+  color: #64748b;
+  margin-right: 2px;
+}
+
+.cfp-jumpto-bar a {
+  color: #0284c7;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.12s;
+}
+
+.cfp-jumpto-bar a:hover {
+  text-decoration: underline;
+  color: #0369a1;
+}
+
+.cfp-jumpto-sep {
+  color: #cbd5e1;
+}
+
+/* ─── Summary ─── */
+.cfp-summary-para {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #334155;
+  margin: 0;
+}
+
+/* ─── Work Experience ─── */
+.cfp-exp-block {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cfp-exp-block:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.cfp-exp-company-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.cfp-exp-role-meta {
+  font-size: 13.5px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.cfp-exp-role {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.cfp-exp-dates {
+  color: #64748b;
+}
+
+.cfp-exp-description {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #475569;
+  margin: 0;
+}
+
+/* ─── Education ─── */
+.cfp-edu-block {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cfp-edu-block:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.cfp-edu-level {
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
+.cfp-edu-degree {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0284c7;
+  margin-bottom: 4px;
+}
+
+.cfp-edu-meta {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* ─── Tables (IT Skills & Languages) ─── */
+.cfp-card-table-wrapper {
+  overflow-x: auto;
+}
+
+.cfp-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.cfp-data-table th {
+  background: #ffffff;
+  color: #64748b;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cfp-data-table td {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+
+.cfp-data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cfp-table-cell-bold {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cfp-table-center {
+  text-align: center;
+}
+
+.cfp-icon-check {
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.cfp-icon-cross {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ─── Other Details ─── */
+.cfp-other-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 40px;
+  row-gap: 20px;
+}
+
+.cfp-subsection {
+  margin-bottom: 18px;
+}
+
+.cfp-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.cfp-subsection-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 10px 0;
+}
+
+.cfp-info-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.cfp-info-lbl {
+  color: #64748b;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.cfp-info-val {
+  color: #0f172a;
+  font-weight: 500;
+}
+
+/* ─── Attached Resume Card ─── */
+.cfp-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.cfp-resume-download-link {
+  color: #0284c7;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.cfp-resume-download-link:hover {
+  text-decoration: underline;
+}
+
+.cfp-resume-viewer-frame {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.cfp-resume-iframe {
+  width: 100%;
+  height: 750px;
+  border: none;
+  display: block;
+}
+
+.cfp-no-resume-box {
+  padding: 40px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13.5px;
+}
+
+/* ─── Responsive Adjustments ─── */
+@media (max-width: 768px) {
+  .cfp-candidate-details-card .cfp-details-grid,
+  .cfp-other-details-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cfp-header-content {
+    flex-direction: column-reverse;
+  }
+
+  .cfp-top-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cfp-toolbar-sep {
+    display: none;
+  }
+
+  .cfp-jumpto-bar {
+    display: none;
+  }
+}

@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import EmployerHeader from './EmployerHeader';
 import EmployerFooter from './EmployerFooter';
 import { useEmployerAuth } from '../../hooks/useEmployerAuth';
@@ -21,7 +22,22 @@ export default function EmployerLayout({
   containerWidth = 1160,
   children,
 }) {
+  const navigate = useNavigate();
   const { session } = useEmployerAuth();
+
+  const handleDefaultNavigate = useCallback((tabId) => {
+    if (onNavigate) {
+      onNavigate(tabId);
+      return;
+    }
+    if (tabId === 'home') {
+      navigate('/employer-dashboard');
+    } else if (tabId === 'analysis') {
+      navigate('/employer-dashboard/analytics');
+    } else if (tabId === 'jobs') {
+      navigate('/post-job');
+    }
+  }, [onNavigate, navigate]);
 
   const resolvedCompany = useMemo(() => {
     if (company && (company.name || company.logoUrl)) return company;
@@ -53,7 +69,7 @@ export default function EmployerLayout({
         company={resolvedCompany}
         user={resolvedUser}
         activeTab={activeTab}
-        onNavigate={onNavigate}
+        onNavigate={handleDefaultNavigate}
         onMessagesClick={onMessagesClick}
         onNotificationsClick={onNotificationsClick}
         onLogout={onLogout}

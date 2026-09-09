@@ -66,6 +66,25 @@ const applicationSchema = new mongoose.Schema(
       enum: ["QUICK_APPLY", "JOB_DETAILS"],
       default: "JOB_DETAILS",
     },
+
+    callStatus: {
+      type: String,
+      default: "",
+    },
+
+    isViewed: {
+      type: Boolean,
+      default: false,
+    },
+
+    comments: [
+      {
+        text: { type: String, required: true },
+        authorId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        authorName: { type: String, default: "Recruiter" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

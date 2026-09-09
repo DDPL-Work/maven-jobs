@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FiHome, FiBriefcase, FiTrendingUp, FiMessageSquare, FiBell,
@@ -272,8 +272,18 @@ export default function EmployerHeader({
   }, [showProfileSidebar, showNotifications]);
 
   const handleNavClick = useCallback((tabId) => {
-    if (onNavigate) onNavigate(tabId);
-  }, [onNavigate]);
+    if (onNavigate) {
+      onNavigate(tabId);
+    } else {
+      if (tabId === "home") {
+        navigate(localStorage.getItem("employerToken") ? "/employer-dashboard" : "/employer-login");
+      } else if (tabId === "analysis") {
+        navigate("/employer-dashboard/analytics");
+      } else if (tabId === "jobs") {
+        navigate("/post-job");
+      }
+    }
+  }, [onNavigate, navigate]);
 
   const handleLogoutAction = useCallback(() => {
     if (onLogout) {
@@ -288,6 +298,59 @@ export default function EmployerHeader({
     setShowLogoutConfirm(false);
   }, [onLogout, navigate]);
 
+  const resolvedActiveTab = useMemo(() => {
+    const pathname = location.pathname;
+    // Under Jobs
+    if (
+      pathname.startsWith('/post-job') ||
+      pathname.includes('/jobs-responses') ||
+      pathname.includes('/job-responses') ||
+      pathname.includes('/draft-jobs')
+    ) {
+      return 'jobs';
+    }
+    // Under Resdex
+    if (
+      pathname.startsWith('/resdex') ||
+      pathname.includes('/manage-search') ||
+      pathname.includes('/folders')
+    ) {
+      return 'resdex';
+    }
+    // Under Report
+    if (
+      pathname.includes('/report') ||
+      pathname.includes('/reports-')
+    ) {
+      return 'report';
+    }
+    // Under Analysis
+    if (
+      pathname.includes('/analytics') ||
+      pathname.includes('/analysis')
+    ) {
+      return 'analysis';
+    }
+    // If on sidebar/settings pages, do not point out home
+    if (
+      pathname.includes('/manage-users') ||
+      pathname.includes('/manage-quota') ||
+      pathname.includes('/company-profile') ||
+      pathname.includes('/subscriptions')
+    ) {
+      return '';
+    }
+    // Explicit prop if not 'home'
+    if (activeTab && activeTab !== 'home') {
+      return activeTab;
+    }
+    // Home exact path
+    if (pathname === '/employer-dashboard' || pathname === '/employer-dashboard/') {
+      return 'home';
+    }
+    return '';
+  }, [location.pathname, activeTab]);
+
   const navLinks = [
     { id: "home",     icon: FiHome,       label: "Home" },
     { id: "analysis", icon: FiTrendingUp,  label: "Analysis" },
@@ -297,10 +360,10 @@ export default function EmployerHeader({
     {
       id: "jobs", icon: FiBriefcase, label: "Jobs",
       items: [
-        { label: "Hot Vacancy",   path: "/post-job?type=hot" },
-        { label: "Internship",    path: "/post-job?type=internship" },
-        { label: "Management",    path: "/post-job?type=management" },
-        { label: "Draft",         path: "/employer-draft-jobs" },
+        { label: "Post a Hot Vacancy",   path: "/post-job?type=hot" },
+        { label: "Post a SMB Job",    path: "/post-job?type=management" },
+        { label: "Post a Internship",    path: "/post-job?type=internship" },
+        { label: "Manage Jobs & Responses",        path: "/employer/jobs-responses" },
       ],
     },
     {
@@ -354,7 +417,7 @@ export default function EmployerHeader({
           <nav className="ep-nav-desktop" style={{ display: "flex", alignItems: "stretch", flex: 1, paddingLeft: 12, height: 58 }}>
             {navLinks.map(n => (
               <button key={n.id}
-                className={`ep-nav-link${activeTab === n.id ? " active" : ""}`}
+                className={`ep-nav-link${resolvedActiveTab === n.id ? " active" : ""}`}
                 onClick={() => handleNavClick(n.id)}
                 style={{ flexDirection: "column", gap: 2, fontSize: 11, fontWeight: 600, padding: "8px 14px", alignItems: "center", justifyContent: "center" }}
               >
@@ -369,7 +432,7 @@ export default function EmployerHeader({
                 onMouseLeave={() => setOpenDropdown(null)}
               >
                 <button
-                  className={`ep-nav-link${openDropdown === nav.id ? " active" : ""}`}
+                  className={`ep-nav-link${(openDropdown === nav.id || resolvedActiveTab === nav.id) ? " active" : ""}`}
                   style={{ flexDirection: "column", gap: 2, fontSize: 11, fontWeight: 600, padding: "8px 14px", cursor: "pointer", alignItems: "center", justifyContent: "center" }}
                 >
                   <nav.icon size={17} />
@@ -861,7 +924,7 @@ export default function EmployerHeader({
                             <button
                               onClick={() => {
                                 setShowProfileSidebar(false);
-                                navigate("/manage-folders");
+                                navigate("/manage-users");
                               }}
                               className="ep-sidebar-subbtn"
                               style={{
@@ -883,7 +946,7 @@ export default function EmployerHeader({
                             <button
                               onClick={() => {
                                 setShowProfileSidebar(false);
-                                navigate("/employer-dashboard/pricing");
+                                navigate("/manage-quota");
                               }}
                               className="ep-sidebar-subbtn"
                               style={{
@@ -1315,8 +1378,8 @@ export default function EmployerHeader({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '14px 16px', borderRadius: 12, border: 'none',
-                    background: activeTab === n.id ? `${C.navy}10` : 'transparent',
-                    color: activeTab === n.id ? C.navy : C.s700,
+                    background: resolvedActiveTab === n.id ? `${C.navy}10` : 'transparent',
+                    color: resolvedActiveTab === n.id ? C.navy : C.s700,
                     fontSize: 14, fontWeight: 600, fontFamily: C.dm,
                     cursor: 'pointer', textAlign: 'left', width: '100%',
                   }}
