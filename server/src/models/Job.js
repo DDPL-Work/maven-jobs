@@ -98,4 +98,43 @@ const jobSchema = new mongoose.Schema(
 
 jobSchema.index({ companyId: 1, isActive: 1 });
 
+// Automatically sync deletions to Elasticsearch and trigger debounced reindex
+jobSchema.post("findOneAndDelete", function (doc) {
+  if (doc?._id) {
+    try {
+      const { scheduleDelete, scheduleReindex } = require("../services/elasticsearch.service");
+      scheduleDelete(String(doc._id));
+      scheduleReindex(1500);
+    } catch (_) {}
+  }
+});
+
+jobSchema.post("deleteOne", { document: true, query: false }, function () {
+  if (this?._id) {
+    try {
+      const { scheduleDelete, scheduleReindex } = require("../services/elasticsearch.service");
+      scheduleDelete(String(this._id));
+      scheduleReindex(1500);
+    } catch (_) {}
+  }
+});
+
+jobSchema.post("deleteOne", { document: false, query: true }, function () {
+  try {
+    const filter = this.getFilter();
+    const { scheduleDelete, scheduleReindex } = require("../services/elasticsearch.service");
+    if (filter?._id) {
+      scheduleDelete(String(filter._id));
+    }
+    scheduleReindex(1500);
+  } catch (_) {}
+});
+
+jobSchema.post("deleteMany", function () {
+  try {
+    const { scheduleReindex } = require("../services/elasticsearch.service");
+    scheduleReindex(1500);
+  } catch (_) {}
+});
+
 module.exports = mongoose.model("Job", jobSchema);

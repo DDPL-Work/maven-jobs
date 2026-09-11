@@ -60,6 +60,16 @@ import DraftJobs from "./pages/employer/features/jobs/DraftJobs";
 import ReviewSharePage from "./pages/employer/features/reviews/ReviewSharePage";
 import FolderListPage from "./pages/employer/features/folders/FolderListPage";
 import SingleFolderPage from "./pages/employer/features/folders/SingleFolderPage";
+import JobPostingReport from "./pages/employer/report/JobPostingReport";
+import ResdexReport from "./pages/employer/report/ResdexReport";
+// Employer Company Profile
+import CompanyProfilePage from "./pages/employer/features/profile/CompanyProfilePage";
+import MySubscriptionsPage from "./pages/employer/features/subscriptions/MySubscriptionsPage";
+import UserManagement from "./pages/employer/features/userManagement/UserManagement";
+import ManageQuota from "./pages/employer/features/manageQuota/ManageQuota";
+import ManageJobsResponses from "./pages/employer/features/jobs/ManageJobsResponses";
+import JobResponsesDetail from "./pages/employer/features/jobs/JobResponsesDetail";
+import CandidateFullProfile from "./pages/employer/features/jobs/CandidateFullProfile";
 import PublicProfileByShareId from "./pages/candidates/features/profile/PublicProfileByShareId";
 import PublicCandidateProfile from "./pages/candidates/features/profile/PublicCandidateProfile";
 import CandidateSitemap from "./pages/candidates/features/landing/CandidateSitemap";
@@ -221,13 +231,31 @@ function AppContent() {
         <Route path="/post-job" element={<ProtectedEmployerRoute><PostJob /></ProtectedEmployerRoute>} />
         <Route path="/employer-draft-jobs" element={<ProtectedEmployerRoute><DraftJobs /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard" element={<ProtectedEmployerRoute><EmployerDashboard /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/company-profile" element={<ProtectedEmployerRoute><CompanyProfilePage /></ProtectedEmployerRoute>} />
+        <Route path="/company-profile" element={<ProtectedEmployerRoute><CompanyProfilePage /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/subscriptions" element={<ProtectedEmployerRoute><MySubscriptionsPage /></ProtectedEmployerRoute>} />
+        <Route path="/my-subscriptions" element={<ProtectedEmployerRoute><MySubscriptionsPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/analytics" element={<ProtectedEmployerRoute><AnalyticsPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/pricing" element={<ProtectedEmployerRoute><Pricing /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/folders" element={<ProtectedEmployerRoute><FolderListPage /></ProtectedEmployerRoute>} />
+        <Route path="/manage-folders" element={<ProtectedEmployerRoute><FolderListPage /></ProtectedEmployerRoute>} />
+        <Route path="/manage-folders/:tab" element={<ProtectedEmployerRoute><FolderListPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/folders/:folderId" element={<ProtectedEmployerRoute><SingleFolderPage /></ProtectedEmployerRoute>} />
         <Route path="/resdex" element={<ProtectedEmployerRoute><SearchResume /></ProtectedEmployerRoute>} />
         <Route path="/resdex/search-results" element={<ProtectedEmployerRoute><SearchResults /></ProtectedEmployerRoute>} />
         <Route path="/manage-search" element={<ProtectedEmployerRoute><ManageSearch /></ProtectedEmployerRoute>} />
+        <Route path="/manage-users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/manage-users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />
+        <Route path="/manage-quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/manage-quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
+        <Route path="/employer/jobs-responses" element={<ProtectedEmployerRoute><ManageJobsResponses /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/jobs-responses" element={<ProtectedEmployerRoute><ManageJobsResponses /></ProtectedEmployerRoute>} />
+        <Route path="/employer/job-responses/:jobId" element={<ProtectedEmployerRoute><JobResponsesDetail /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/job-responses/:jobId" element={<ProtectedEmployerRoute><JobResponsesDetail /></ProtectedEmployerRoute>} />
+        <Route path="/employer/candidate/:candidateId" element={<ProtectedEmployerRoute><CandidateFullProfile /></ProtectedEmployerRoute>} />
+        <Route path="/reports-job-posting" element={<ProtectedEmployerRoute><JobPostingReport /></ProtectedEmployerRoute>} />
+        <Route path="/report/resdex" element={<ProtectedEmployerRoute><ResdexReport /></ProtectedEmployerRoute>} />
+        <Route path="/reports-resdex" element={<ProtectedEmployerRoute><ResdexReport /></ProtectedEmployerRoute>} />
       </Routes>
 
       <DailyQuizNotification

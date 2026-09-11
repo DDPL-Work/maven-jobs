@@ -12,6 +12,7 @@ const folderSchema = new mongoose.Schema({
   candidateCount: { type: Number, default: 0 },
   lastActivityAt: { type: Date, default: null },
   createdBy: { type: String, default: "" },
+  sharedWith: [{ type: String, trim: true }],
 }, { timestamps: true });
 
 folderSchema.index({ companyId: 1, name: 1 }, { unique: true });

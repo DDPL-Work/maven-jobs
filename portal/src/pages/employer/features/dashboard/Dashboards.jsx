@@ -802,10 +802,6 @@ export default function EmployerProfile() {
     const [jobFilter, setJobFilter] = useState("all");
     const [jobPage, setJobPage] = useState(0);
     const [anaTab, setAnaTab] = useState("overview");
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [notificationsLoading, setNotificationsLoading] = useState(false);
-    const [employerNotifications, setEmployerNotifications] = useState([]);
-    const [notificationsError, setNotificationsError] = useState("");
     const [showViewJob, setShowViewJob] = useState(false);
     const [showEditJob, setShowEditJob] = useState(false);
     const [selectedJob, setSelectedJob] = useState(null);
@@ -1070,35 +1066,7 @@ export default function EmployerProfile() {
         return () => { cancelled = true; };
     }, [dashboard]);
 
-    useEffect(() => {
-        if (!showNotifications) return;
 
-        let active = true;
-        const loadNotifications = async () => {
-            setNotificationsLoading(true);
-            setNotificationsError("");
-
-            try {
-                const resp = await authService.getEmployerNotifications();
-                const list = resp?.data || resp?.notifications || resp || [];
-                if (!active) return;
-                setEmployerNotifications(Array.isArray(list) ? list : []);
-            } catch (err) {
-                if (!active) return;
-                setNotificationsError((err?.message || err?.error || "").toString());
-                setEmployerNotifications([]);
-            } finally {
-                if (!active) return;
-                setNotificationsLoading(false);
-            }
-        };
-
-        loadNotifications();
-
-        return () => {
-            active = false;
-        };
-    }, [showNotifications]);
 
     useEffect(() => {
         if (showMsg) setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -2082,7 +2050,6 @@ export default function EmployerProfile() {
                             if (tabId === "analysis") { navigate("/employer-dashboard/analytics"); return; }
                         }}
                         onMessagesClick={handleRequestChat}
-                        onNotificationsClick={() => setShowNotifications(true)}
                         onLogout={handleLogout}
                         requireAuth
                     />
@@ -4447,90 +4414,6 @@ export default function EmployerProfile() {
                             </div>
                         )}
                     </Modal>
-
-                    {/* ─── Notification Sidebar ─── */}
-                    <div className={`pd-notif-overlay ${showNotifications ? 'show' : ''}`} onClick={() => setShowNotifications(false)} />
-                    <div className={`pd-notif-sidebar ${showNotifications ? 'show' : ''}`}>
-                        <div className="pd-notif-head">
-                            <h3>Notifications</h3>
-                            <button className="pd-notif-close" onClick={() => setShowNotifications(false)}><FiX size={18} /></button>
-                        </div>
-                        <div className="pd-notif-body">
-                            <div className="pd-notif-date">Today</div>
-
-                            {notificationsLoading && (
-                                <div style={{ padding: "0 24px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                                    <div style={{ fontSize: 12.5, fontWeight: 800, color: C.s500, fontFamily: C.fd }}>
-                                        Loading notifications...
-                                    </div>
-                                    <div style={{ height: 40 }} />
-                                </div>
-                            )}
-
-                            {!notificationsLoading && notificationsError && (
-                                <div style={{ padding: "0 24px 16px", color: "#b91c1c", fontSize: 12.5, fontWeight: 800, fontFamily: C.fd }}>
-                                    {notificationsError}
-                                </div>
-                            )}
-
-                            {!notificationsLoading && !notificationsError && employerNotifications.length === 0 && (
-                                <div style={{ padding: "0 24px 16px", color: C.s400, fontSize: 12.5, fontWeight: 700, fontFamily: C.fd }}>
-                                    No notifications right now.
-                                </div>
-                            )}
-
-                            {!notificationsLoading && employerNotifications.map((n) => {
-                                const id = String(n?.id || n?._id || "");
-                                const isRead = String(n?.status || "").toUpperCase() === "READ";
-                                const title = n?.title || "";
-                                const desc = n?.message || n?.desc || "";
-                                const time = n?.lastUpdated || n?.createdAt || "";
-
-                                return (
-                                    <div
-                                        className="pd-notif-item"
-                                        key={id || title + time}
-                                        onClick={async () => {
-                                            if (!id) return;
-
-                                            try {
-                                                await authService.markEmployerNotificationRead(id);
-                                            } catch {
-                                                // keep UI resilient
-                                            }
-
-                                            setEmployerNotifications((current) =>
-                                                current.map((x) => {
-                                                    const xid = String(x?.id || x?._id || "");
-                                                    if (!xid || xid !== id) return x;
-                                                    return { ...x, status: "READ" };
-                                                })
-                                            );
-                                        }}
-                                        style={{ background: isRead ? "transparent" : "#EEF2FF" }}
-                                    >
-                                        <div
-                                            className="pd-notif-icon"
-                                            style={{
-                                                background: isRead ? C.s200 : `${C.indigo}14`,
-                                                color: isRead ? C.s500 : C.indigo,
-                                            }}
-                                        >
-                                            <FiBell size={16} />
-                                        </div>
-
-                                        <div className="pd-notif-content">
-                                            <div className="pd-notif-title" style={{ opacity: isRead ? 0.7 : 1 }}>
-                                                {title}
-                                            </div>
-                                            {desc ? <div className="pd-notif-desc">{desc}</div> : null}
-                                            {time ? <div className="pd-notif-time">{time}</div> : null}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
 
                 </div>
             )}

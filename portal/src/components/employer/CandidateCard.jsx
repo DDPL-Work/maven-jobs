@@ -124,6 +124,7 @@ const CandidateCard = memo(function CandidateCard({
   context = "search",
   onRemoveFromFolder,
   onMoveFolder,
+  isInFolder,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showResume, setShowResume] = useState(false);
@@ -203,6 +204,7 @@ const CandidateCard = memo(function CandidateCard({
   }, [candidate.email]);
 
   const isFolderContext = context === "folder";
+  const showFolderCornerCheck = isInFolder || isFolderContext || Boolean(candidate.folderCandidateId) || Boolean(candidate.isInFolder) || Boolean(candidate.inFolder);
 
   return (
     <motion.div ref={cardRef} layout
@@ -210,10 +212,36 @@ const CandidateCard = memo(function CandidateCard({
       animate={{ opacity: 1, y: 0 }}
       style={{
         background: "#fff", borderRadius: 16, border: `1px solid ${C.s200}`,
-        overflow: "hidden", transition: "box-shadow 0.2s",
+        overflow: "hidden", transition: "box-shadow 0.2s", position: "relative",
       }}
       whileHover={{ boxShadow: "0 4px 20px rgba(10,22,40,0.07)" }}
     >
+      {/* Top-left corner checkmark ribbon when added to folder */}
+      {showFolderCornerCheck && (
+        <div
+          title="Added to folder"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: 28,
+            height: 28,
+            zIndex: 4,
+            pointerEvents: "none",
+          }}
+        >
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M0 0H28L0 28V0Z" fill="#1d68bd" />
+            <path
+              d="M4.5 10.5L8.5 14.5L16 6.5"
+              stroke="#ffffff"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      )}
       <div style={{ padding: "18px 20px" }}>
         <div style={{ display: "flex", gap: 14 }}>
           {onToggleSelect && (

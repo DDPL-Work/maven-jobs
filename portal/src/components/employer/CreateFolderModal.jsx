@@ -1,16 +1,27 @@
-import { useState } from 'react';
-import { FiX, FiFolder, FiSave } from 'react-icons/fi';
-
-const COLORS = ['#002366', '#1d4ed8', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#be123c'];
-const ICONS = ['folder', 'star', 'heart', 'briefcase', 'users', 'target', 'bookmark', 'layers'];
+import { useState, useEffect } from 'react';
+import { FiX, FiSave, FiUsers } from 'react-icons/fi';
 
 export default function CreateFolderModal({ isOpen, onClose, onSubmit, initialData }) {
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
-  const [color, setColor] = useState(initialData?.color || COLORS[0]);
-  const [icon, setIcon] = useState(initialData?.icon || 'folder');
-  const [isPublic, setIsPublic] = useState(initialData?.isPublic || false);
+  const [sharedWith, setSharedWith] = useState(
+    Array.isArray(initialData?.sharedWith)
+      ? initialData.sharedWith.join(', ')
+      : (initialData?.sharedWith || initialData?.shareWithUsers || '')
+  );
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialData?.name || '');
+      setDescription(initialData?.description || '');
+      const initialShared = Array.isArray(initialData?.sharedWith)
+        ? initialData.sharedWith.join(', ')
+        : (initialData?.sharedWith || initialData?.shareWithUsers || '');
+      setSharedWith(initialShared);
+      setError('');
+    }
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -22,7 +33,18 @@ export default function CreateFolderModal({ isOpen, onClose, onSubmit, initialDa
       return;
     }
     setError('');
-    onSubmit({ name: trimmed, description: description.trim(), color, icon, isPublic });
+    const usersArray = sharedWith
+      ? sharedWith.split(',').map(u => u.trim()).filter(Boolean)
+      : [];
+    onSubmit({
+      name: trimmed,
+      description: description.trim(),
+      color: initialData?.color || '#002366',
+      icon: initialData?.icon || 'folder',
+      isPublic: initialData?.isPublic || false,
+      sharedWith: usersArray,
+      shareWithUsers: sharedWith.trim(),
+    });
   };
 
   return (
@@ -71,38 +93,23 @@ export default function CreateFolderModal({ isOpen, onClose, onSubmit, initialDa
             />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Color</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {COLORS.map((c) => (
-                <button key={c} type="button" onClick={() => setColor(c)} style={{
-                  width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? '3px solid #0f172a' : '2px solid transparent',
-                  cursor: 'pointer', transition: 'all 0.15s', padding: 0,
-                }} />
-              ))}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Share with users</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                value={sharedWith}
+                onChange={(e) => setSharedWith(e.target.value)}
+                placeholder="Enter user emails or names (e.g. alex@example.com, john@company.com)"
+                style={{
+                  width: '100%', padding: '10px 14px 10px 38px', fontSize: 14, border: '1.5px solid #e2e8f0',
+                  borderRadius: 10, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s',
+                }}
+              />
+              <FiUsers size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             </div>
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Icon</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {ICONS.map((ic) => (
-                <button key={ic} type="button" onClick={() => setIcon(ic)} style={{
-                  width: 36, height: 36, borderRadius: 8, background: icon === ic ? '#f0f5ff' : '#f8fafc',
-                  border: icon === ic ? '2px solid #002366' : '1.5px solid #e2e8f0',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#475569', fontSize: 16, transition: 'all 0.15s', padding: 0,
-                }}>
-                  <FiFolder size={16} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" id="isPublic" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)}
-              style={{ width: 16, height: 16, cursor: 'pointer' }} />
-            <label htmlFor="isPublic" style={{ fontSize: 13, color: '#475569', cursor: 'pointer' }}>Make this folder visible to team members</label>
+            <span style={{ fontSize: 11, color: '#64748b', display: 'block', marginTop: 4 }}>
+              Separate multiple users or email addresses with commas
+            </span>
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>

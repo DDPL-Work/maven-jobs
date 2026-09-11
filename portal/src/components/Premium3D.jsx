@@ -628,6 +628,18 @@ const Premium3D = React.memo(() => {
     }
   }, []);
 
+  const [sidebarHidden, setSidebarHidden] = useState(() => {
+    return typeof document !== "undefined" && document.body.classList.contains("employer-sidebar-open");
+  });
+
+  useEffect(() => {
+    const handler = (e) => {
+      setSidebarHidden(!!e.detail?.open);
+    };
+    window.addEventListener("employer-sidebar-toggle", handler);
+    return () => window.removeEventListener("employer-sidebar-toggle", handler);
+  }, []);
+
   useEffect(() => {
     refreshAuth();
     window.addEventListener("candidate-session-expired", refreshAuth);
@@ -1064,6 +1076,15 @@ const Premium3D = React.memo(() => {
           position: fixed; bottom: 28px; right: 28px; z-index: 9999;
           font-family: 'DM Sans', system-ui, sans-serif;
           display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+          transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        body.employer-sidebar-open .mvn-wrap,
+        .mvn-wrap.mvn-wrap-hidden {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
 
         .mvn-panel {
@@ -1399,7 +1420,10 @@ const Premium3D = React.memo(() => {
       }
     `}</style>
 
-      <div className="mvn-wrap">
+      <div
+        className={`mvn-wrap ${sidebarHidden ? "mvn-wrap-hidden" : ""}`}
+        style={sidebarHidden ? { display: "none" } : undefined}
+      >
 
         {chatOpen && !minimized && (
           <div className="mvn-panel">

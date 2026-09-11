@@ -82,11 +82,15 @@ const uploadToCloudinary = async (file, userId) =>
       return;
     }
 
+    const extension = path.extname(file.originalname || "").toLowerCase().replace(".", "") || "pdf";
+    const isPdf = extension === "pdf" || file.mimetype === "application/pdf";
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        resource_type: "raw",
+        resource_type: "image",
         folder: "candidate_resumes",
         public_id: `candidate_resume_${userId}_${Date.now()}`,
+        format: isPdf ? "pdf" : extension,
         use_filename: false,
       },
       (error, result) => {
@@ -101,7 +105,7 @@ const uploadToCloudinary = async (file, userId) =>
           url: result.secure_url,
           storageProvider: "CLOUDINARY",
           sizeBytes: file.size,
-          mimeType: file.mimetype,
+          mimeType: file.mimetype || (isPdf ? "application/pdf" : undefined),
         });
       },
     );
@@ -117,7 +121,10 @@ const deleteFromCloudinary = async (publicId = "") => {
   if (!publicId) return;
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) return;
   try {
-    await cloudinary.uploader.destroy(publicId, { resource_type: "raw", invalidate: true });
+    const res = await cloudinary.uploader.destroy(publicId, { resource_type: "image", invalidate: true });
+    if (res?.result !== "ok") {
+      await cloudinary.uploader.destroy(publicId, { resource_type: "raw", invalidate: true });
+    }
   } catch {
     // Ignore deletion failures
   }

@@ -1,6 +1,7 @@
 const express = require("express");
 const authController = require("../controllers/auth.controller");
 const controller = require("../controllers/company-panel.controller");
+const employerJobController = require("../controllers/employer-job.controller");
 const chatController = require("../controllers/chat.controller");
 const resdexController = require("../controllers/resdex.controller");
 const nviteController = require("../controllers/nvite.controller");
@@ -40,6 +41,20 @@ router.get("/dashboard", controller.getDashboard);
 router.post("/jobs", controller.createJob);
 router.get("/jobs/:id", controller.getJob);
 router.patch("/jobs/:id", controller.updateJob);
+
+// Manage Jobs & Responses endpoints
+router.get("/jobs-responses", employerJobController.getEmployerJobs);
+router.get("/jobs-responses/filters", employerJobController.getEmployerJobFilters);
+router.get("/jobs-responses/:jobId/detail", employerJobController.getJobDetailWithResponses);
+router.get("/jobs-responses/:jobId/responses", employerJobController.getJobResponses);
+router.patch("/jobs-responses/:jobId/applications/:applicationId/status", employerJobController.updateCandidateJobStatus);
+router.post("/jobs-responses/:jobId/applications/:applicationId/comments", employerJobController.addCandidateComment);
+router.patch("/jobs-responses/:jobId/close", employerJobController.closeEmployerJob);
+router.post("/jobs-responses/bulk-close", employerJobController.bulkCloseJobs);
+router.post("/jobs-responses/bulk-refresh", employerJobController.bulkRefreshJobs);
+
+// Full Candidate Profile (for employer view when clicking candidate name)
+router.get("/candidates/:candidateId/full-profile", employerJobController.getCandidateFullProfile);
 router.get("/package-change-requests", controller.getPackageChangeRequests);
 router.post("/package-change-requests", controller.createPackageChangeRequest);
 router.get("/applications", controller.getApplications);
@@ -56,6 +71,7 @@ router.post("/reviews/react", controller.toggleReviewReaction);
 router.get("/profile", controller.getProfile);
 router.patch("/profile", controller.updateProfile);
 router.patch("/profile/media", uploadCompanyMedia, controller.updateCompanyMedia);
+router.get("/subscriptions", controller.getSubscriptions);
 
 // Account
 router.post("/delete-account", controller.deleteAccount);

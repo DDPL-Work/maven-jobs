@@ -86,4 +86,61 @@ const candidateProfileSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Automatically sync CandidateProfile changes to Elasticsearch
+candidateProfileSchema.post("save", function (doc) {
+  if (doc?._id) {
+    try {
+      const { scheduleIndexCandidate } = require("../services/elasticsearch.service");
+      scheduleIndexCandidate(doc);
+    } catch (_) {}
+  }
+});
+
+candidateProfileSchema.post("findOneAndUpdate", function (doc) {
+  if (doc?._id) {
+    try {
+      const { scheduleIndexCandidate } = require("../services/elasticsearch.service");
+      scheduleIndexCandidate(doc);
+    } catch (_) {}
+  }
+});
+
+candidateProfileSchema.post("findOneAndDelete", function (doc) {
+  if (doc?._id) {
+    try {
+      const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/elasticsearch.service");
+      scheduleDeleteCandidate(String(doc._id));
+      scheduleReindexCandidates(1500);
+    } catch (_) {}
+  }
+});
+
+candidateProfileSchema.post("deleteOne", { document: true, query: false }, function () {
+  if (this?._id) {
+    try {
+      const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/elasticsearch.service");
+      scheduleDeleteCandidate(String(this._id));
+      scheduleReindexCandidates(1500);
+    } catch (_) {}
+  }
+});
+
+candidateProfileSchema.post("deleteOne", { document: false, query: true }, function () {
+  try {
+    const filter = this.getFilter();
+    const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/elasticsearch.service");
+    if (filter?._id) {
+      scheduleDeleteCandidate(String(filter._id));
+    }
+    scheduleReindexCandidates(1500);
+  } catch (_) {}
+});
+
+candidateProfileSchema.post("deleteMany", function () {
+  try {
+    const { scheduleReindexCandidates } = require("../services/elasticsearch.service");
+    scheduleReindexCandidates(1500);
+  } catch (_) {}
+});
+
 module.exports = mongoose.model("CandidateProfile", candidateProfileSchema);

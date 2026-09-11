@@ -467,6 +467,15 @@ const authService = {
     }
   },
 
+  getEmployerSubscriptions: async () => {
+    try {
+      const response = await api.get('/company-panel/subscriptions');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch employer subscriptions' };
+    }
+  },
+
   submitEmployerEnquiry: async (payload) => {
     try {
       const response = await api.post('/lead-generator/client-intakes', payload);

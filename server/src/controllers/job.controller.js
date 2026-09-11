@@ -7,6 +7,9 @@ const {
   loadPackageCatalog,
   applyCompanyPackageSnapshot,
 } = require("../services/package-limit.service");
+const { esAvailable } = require("../config/elasticsearch");
+const esService = require("../services/elasticsearch.service");
+const { scheduleIndex, scheduleDelete } = esService;
 
 // Create job (CLIENT or CRM)
 exports.createJob = async (req, res) => {
@@ -57,6 +60,9 @@ exports.createJob = async (req, res) => {
       jobTitle: job.title,
       jobId: job._id,
     });
+
+    // Async incremental ES index — fires after response is sent, zero latency impact
+    scheduleIndex(job);
   }
 
   res.status(201).json(job);
@@ -101,6 +107,9 @@ exports.approveJob = async (req, res) => {
       jobId: job._id,
     });
   }
+
+  // Async incremental ES index — fires after response is sent, zero latency impact
+  scheduleIndex(job);
 
   res.json({ message: "Job approved" });
 };
