@@ -1,0 +1,833 @@
+/* PublicCandidateProfile.css - Styling modeled cleanly with rich modern aesthetics */
+.pcp-page-wrapper {
+  min-height: 100vh;
+  background-color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+}
+
+/* Top bar */
+.pcp-topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pcp-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.pcp-crumb-link {
+  color: #002366;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pcp-crumb-link:hover {
+  text-decoration: underline;
+}
+
+.pcp-crumb-sep {
+  color: #94a3b8;
+}
+
+.pcp-crumb-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.pcp-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 13px;
+}
+
+.pcp-topbar-action-btn {
+  background: transparent;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.pcp-topbar-action-btn:hover {
+  background: #f1f5f9;
+  color: #002366;
+}
+
+.pcp-nav-arrows {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pcp-nav-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.pcp-nav-btn:hover:not(:disabled) {
+  color: #002366;
+}
+
+.pcp-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Secondary Actions Bar */
+.pcp-action-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.pcp-act-btn {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.pcp-act-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* Main Layout Grid */
+.pcp-main-content {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 24px 60px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .pcp-main-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left & Right Panels */
+.pcp-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pcp-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+}
+
+/* Standard White Card */
+.pcp-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 22px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* Header summary card */
+.pcp-hero-card {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.pcp-avatar-wrap {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e2e8f0;
+  flex-shrink: 0;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pcp-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pcp-avatar-placeholder {
+  font-size: 34px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.pcp-hero-details {
+  flex: 1;
+}
+
+.pcp-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.pcp-candidate-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.pcp-save-btn {
+  background: transparent;
+  border: none;
+  color: #0073e6;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pcp-meta-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 13px;
+  color: #475569;
+  margin: 6px 0 12px;
+  flex-wrap: wrap;
+}
+
+.pcp-meta-inline-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pcp-meta-inline-item strong {
+  color: #0f172a;
+}
+
+.pcp-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #334155;
+  margin-bottom: 16px;
+}
+
+.pcp-info-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: baseline;
+}
+
+.pcp-info-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.pcp-info-val {
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.pcp-highlight-text {
+  background: #fef08a;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  color: #854d0e;
+}
+
+/* Contact CTAs in Header */
+.pcp-contact-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.pcp-btn-view-phone {
+  background: #ffffff;
+  border: 1px solid #0073e6;
+  color: #0073e6;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pcp-btn-view-phone:hover {
+  background: #f0f7ff;
+}
+
+.pcp-btn-call {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pcp-btn-call:hover {
+  background: #f8fafc;
+}
+
+.pcp-btn-whatsapp {
+  background: #ffffff;
+  border: 1px solid #22c55e;
+  color: #15803d;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pcp-btn-whatsapp:hover {
+  background: #f0fdf4;
+}
+
+.pcp-icon-link {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #0073e6;
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.pcp-icon-link:hover {
+  background: #e2e8f0;
+}
+
+.pcp-email-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #475569;
+  margin-top: 10px;
+}
+
+.pcp-verified-badge {
+  color: #10b981;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Experience timeline bar */
+.pcp-exp-bar-wrap {
+  margin: 16px 0 6px;
+  position: relative;
+}
+
+.pcp-exp-bar-track {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  position: relative;
+}
+
+.pcp-exp-bar-fill {
+  height: 100%;
+  background: #818cf8;
+  border-radius: 2px;
+}
+
+.pcp-exp-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+/* Card bottom meta row */
+.pcp-hero-foot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.pcp-hero-foot-left,
+.pcp-hero-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Tabs: Profile detail vs Attached CV */
+.pcp-tab-nav {
+  display: flex;
+  gap: 28px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 20px;
+}
+
+.pcp-tab-btn {
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  color: #64748b;
+  padding: 10px 0;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.pcp-tab-btn.active {
+  color: #0f172a;
+}
+
+.pcp-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #ef4444;
+  border-radius: 2px 2px 0 0;
+}
+
+/* Quote/Highlight Box */
+.pcp-quote-box {
+  background: #f8fafc;
+  border-left: 4px solid #0073e6;
+  padding: 14px 18px;
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+  margin-bottom: 24px;
+}
+
+/* Section block in detail */
+.pcp-detail-section {
+  margin-bottom: 28px;
+}
+
+.pcp-detail-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px 0;
+}
+
+.pcp-detail-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 16px 0 8px 0;
+}
+
+/* Skills chip cloud */
+.pcp-skills-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pcp-skill-tag {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.pcp-skill-tag.highlight {
+  background: #fef08a;
+  border-color: #fde047;
+  color: #713f12;
+  font-weight: 600;
+}
+
+/* Other details definition tables */
+.pcp-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px 20px;
+  margin-top: 8px;
+}
+
+.pcp-spec-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pcp-spec-item label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.pcp-spec-item span {
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* Work Experience Timeline item */
+.pcp-work-exp-item {
+  position: relative;
+  padding-left: 20px;
+  border-left: 2px solid #e2e8f0;
+  margin-bottom: 18px;
+}
+
+.pcp-work-exp-item::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0073e6;
+}
+
+.pcp-work-exp-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.pcp-work-exp-company {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.pcp-work-exp-date {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 2px 0 6px 0;
+}
+
+/* Right Sidebar: Comments Card */
+.pcp-comments-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+}
+
+.pcp-comments-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  margin: 0;
+}
+
+.pcp-add-comments-link {
+  color: #0073e6;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+/* Right Sidebar: AI Matched Similar Profiles */
+.pcp-similar-card {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pcp-similar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.pcp-ai-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.pcp-ai-sparkle {
+  color: #8b5cf6;
+}
+
+.pcp-view-all-link {
+  color: #0073e6;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pcp-similar-tabs {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 14px;
+}
+
+.pcp-similar-list-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.pcp-similar-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+.pcp-similar-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pcp-similar-list-container::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+.pcp-similar-list-container::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+.pcp-similar-tab {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  padding: 6px 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.pcp-similar-tab.active {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.pcp-similar-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ef4444;
+}
+
+/* Similar candidate mini card */
+.pcp-similar-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: block;
+}
+
+.pcp-similar-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pcp-sim-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.pcp-sim-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #475569;
+  font-size: 13px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.pcp-sim-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pcp-sim-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pcp-sim-role {
+  font-size: 12px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.pcp-sim-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.pcp-sim-loc {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pcp-sim-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.pcp-sim-skill {
+  background: #f1f5f9;
+  color: #334155;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.pcp-sim-skill.highlight {
+  background: #fef08a;
+  color: #854d0e;
+  font-weight: 600;
+}
+
+.pcp-sim-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #94a3b8;
+  padding-top: 6px;
+  border-top: 1px solid #f8fafc;
+}
+
+.pcp-view-similar-btn {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  border-radius: 6px;
+  color: #0073e6;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  display: block;
+  text-decoration: none;
+  margin-top: 8px;
+}
+
+.pcp-view-similar-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}

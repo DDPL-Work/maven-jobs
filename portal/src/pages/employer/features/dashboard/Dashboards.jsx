@@ -507,7 +507,7 @@ const statusColors = { APPLIED: C.navy, SCREENING: C.sky, SHORTLISTED: C.amber, 
 const formatDate = (v) => { if (!v) return "-"; try { return new Date(v).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return "-"; } };
 
 function ProgressSection({
-    apps, filter, onFilterChange, page, onPageChange,
+    apps, filter, onFilterChange, page, onPageChange, onViewAll,
     draftStatuses, setDraftStatuses, updatingAppId, setUpdatingAppId,
     resumeBusyId, setResumeBusyId, progressBanner, setProgressBanner
 }) {
@@ -638,128 +638,109 @@ function ProgressSection({
                 </div>
             )}
 
-            {/* ─ Scrollable Table with nav buttons ─ */}
-            <div style={{ position: "relative" }}>
-                {canScrollL && (
-                    <button aria-label="Scroll table left" onClick={() => scrollBy(-1)}
-                        style={{ position: "absolute", left: 6, top: "50%", zIndex: 10, transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: `1px solid ${C.s200}`, background: "#fff", color: C.s600, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,.1)", transition: "all .15s", fontSize: 16, lineHeight: 1 }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.navy; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = C.navy; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = C.s600; e.currentTarget.style.borderColor = C.s200; }}>
-                        <FiChevronLeft size={16} />
-                    </button>
-                )}
-                {canScrollR && (
-                    <button aria-label="Scroll table right" onClick={() => scrollBy(1)}
-                        style={{ position: "absolute", right: 6, top: "50%", zIndex: 10, transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", border: `1px solid ${C.s200}`, background: "#fff", color: C.s600, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,.1)", transition: "all .15s", fontSize: 16, lineHeight: 1 }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.navy; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = C.navy; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = C.s600; e.currentTarget.style.borderColor = C.s200; }}>
-                        <FiChevronRight size={16} />
-                    </button>
-                )}
-                <div ref={scrollRef} className="ep-progress-scroll"
-                    style={{ overflowX: "auto", overflowY: "hidden", maxWidth: "100%", width: "100%", userSelect: "none", WebkitOverflowScrolling: "touch", cursor: isDragging ? "grabbing" : "grab" }}
-                    onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-                    onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
-                    <table style={{ minWidth: 960, borderCollapse: "collapse", fontSize: 13 }}>
-                        <thead>
-                            <tr style={{ background: C.s50, borderBottom: `1px solid ${C.s100}`, position: "sticky", top: 0, zIndex: 2 }}>
-                                {["", "Candidate", "Applied role", "Status", "Update status", "Contact", "Applied on", "Resume"].map(h => (
-                                    <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700, color: C.s500, fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", whiteSpace: "nowrap", background: C.s50 }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {paginatedApps.length ? paginatedApps.map(app => {
-                                const draftVal = draftStatuses[app.id] || app.status || "APPLIED";
-                                const hasChange = draftVal !== (app.status || "APPLIED");
-                                const sc = statusColors[app.status] || C.s500;
-                                return (
-                                    <tr key={app.id} style={{ borderBottom: `1px solid ${C.s100}`, transition: "background .15s" }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = C.s50; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
-                                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap", verticalAlign: "middle" }}>
-                                            <div style={{ width: 34, height: 34, borderRadius: "50%", background: app.candidateLogoUrl ? `url("${app.candidateLogoUrl}") center/cover no-repeat` : C.navy + "12", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: C.navy, border: `1px solid ${C.s200}`, flexShrink: 0 }}>
-                                                {!app.candidateLogoUrl && (app.candidateName ? app.candidateName.slice(0, 2).toUpperCase() : "CA")}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
-                                            <div style={{ fontWeight: 700, color: C.s900 }}>{app.candidateName || "Candidate"}</div>
-                                            <div style={{ fontSize: 12, color: C.s400 }}>{app.candidateCurrentTitle || "Role not set"}</div>
-                                        </td>
-                                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
-                                            <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: C.s800 }}>
-                                                <FiUsers size={13} color={C.s400} /> {app.jobTitle || "Unknown role"}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: "12px 16px" }}>
-                                            <span style={{ display: "inline-block", padding: "4px 10px", borderRadius: 100, fontSize: 12, fontWeight: 700, background: sc + "12", color: sc, border: `1px solid ${sc}30`, whiteSpace: "nowrap" }}>
-                                                {prettifyStatus(app.status || "APPLIED")}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: "12px 16px" }}>
-                                            <div style={{ display: "flex", gap: 8, alignItems: "center", whiteSpace: "nowrap" }}>
-                                                <select value={draftVal} onChange={(e) => setDraftStatuses(prev => ({ ...prev, [app.id]: e.target.value }))} style={{ padding: "5px 8px", borderRadius: 8, border: `1px solid ${C.s200}`, fontSize: 12, fontWeight: 600, color: C.s700, background: "#fff", cursor: "pointer", outline: "none", minWidth: 100 }}>
-                                                    {STATUS_OPTS.map(s => <option key={s} value={s}>{prettifyStatus(s)}</option>)}
-                                                </select>
-                                                <button onClick={() => handleUpdate(app)} disabled={!hasChange || updatingAppId === app.id} style={{ padding: "5px 10px", borderRadius: 8, border: "none", background: hasChange ? C.navy : C.s200, color: "#fff", fontSize: 12, fontWeight: 700, cursor: hasChange ? "pointer" : "default", opacity: updatingAppId === app.id ? 0.6 : 1, whiteSpace: "nowrap" }}>
-                                                    {updatingAppId === app.id ? "..." : "Update"}
-                                                </button>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
-                                            <div style={{ fontSize: 12, color: C.s600 }}>{app.candidateEmail || "-"}</div>
-                                            <div style={{ fontSize: 12, color: C.s400 }}>{app.candidatePhone || "-"}</div>
-                                        </td>
-                                        <td style={{ padding: "12px 16px", fontSize: 12, color: C.s500, whiteSpace: "nowrap" }}>{formatDate(app.appliedAt)}</td>
-                                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
-                                            {app.resumeUrl || app.resumeFileName ? (
-                                                <button onClick={() => handleResume(app)} disabled={resumeBusyId === app.id} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.navy, fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
-                                                    {resumeBusyId === app.id ? "Opening..." : "Open resume"} <FiExternalLink size={12} />
-                                                </button>
-                                            ) : (
-                                                <span style={{ fontSize: 12, color: C.s400 }}>Not uploaded</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            }) : (
-                                <tr><td colSpan={7} style={{ padding: "40px 16px", textAlign: "center", color: C.s400, fontSize: 13 }}>No applications found for this filter.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+            {/* ─ Table ─ */}
+            <div style={{ overflowX: "auto", width: "100%" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <colgroup>
+                        <col style={{ width: 52 }} />
+                        <col style={{ width: "35%" }} />
+                        <col style={{ width: "35%" }} />
+                        <col style={{ width: "30%" }} />
+                    </colgroup>
+                    <thead>
+                        <tr style={{ background: C.s50, borderBottom: `1px solid ${C.s100}` }}>
+                            {["", "Candidate", "Applied role", "Status", /* "Update status", "Contact", "Applied on", "Resume" */].map(h => (
+                                <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontWeight: 700, color: C.s500, fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", whiteSpace: "nowrap", background: C.s50 }}>{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paginatedApps.length ? paginatedApps.map(app => {
+                            const draftVal = draftStatuses[app.id] || app.status || "APPLIED";
+                            const hasChange = draftVal !== (app.status || "APPLIED");
+                            const sc = statusColors[app.status] || C.s500;
+                            return (
+                                <tr key={app.id} style={{ borderBottom: `1px solid ${C.s100}`, transition: "background .15s" }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = C.s50; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
+                                    <td style={{ padding: "12px 16px", verticalAlign: "middle" }}>
+                                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: app.candidateLogoUrl ? `url("${app.candidateLogoUrl}") center/cover no-repeat` : C.navy + "12", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: C.navy, border: `1px solid ${C.s200}`, flexShrink: 0 }}>
+                                            {!app.candidateLogoUrl && (app.candidateName ? app.candidateName.slice(0, 2).toUpperCase() : "CA")}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: "12px 16px" }}>
+                                        <div style={{ fontWeight: 700, color: C.s900 }}>{app.candidateName || "Candidate"}</div>
+                                        <div style={{ fontSize: 12, color: C.s400 }}>{app.candidateCurrentTitle || "Role not set"}</div>
+                                    </td>
+                                    <td style={{ padding: "12px 16px" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600, color: C.s800 }}>
+                                            <FiUsers size={13} color={C.s400} /> {app.jobTitle || "Unknown role"}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: "12px 16px" }}>
+                                        <span style={{ display: "inline-block", padding: "4px 10px", borderRadius: 100, fontSize: 12, fontWeight: 700, background: sc + "12", color: sc, border: `1px solid ${sc}30`, whiteSpace: "nowrap" }}>
+                                            {prettifyStatus(app.status || "APPLIED")}
+                                        </span>
+                                    </td>
+                                    {/* Update status column — commented out per design decision
+                                    <td style={{ padding: "12px 16px" }}>
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center", whiteSpace: "nowrap" }}>
+                                            <select value={draftVal} onChange={(e) => setDraftStatuses(prev => ({ ...prev, [app.id]: e.target.value }))} style={{ padding: "5px 8px", borderRadius: 8, border: `1px solid ${C.s200}`, fontSize: 12, fontWeight: 600, color: C.s700, background: "#fff", cursor: "pointer", outline: "none", minWidth: 100 }}>
+                                                {STATUS_OPTS.map(s => <option key={s} value={s}>{prettifyStatus(s)}</option>)}
+                                            </select>
+                                            <button onClick={() => handleUpdate(app)} disabled={!hasChange || updatingAppId === app.id} style={{ padding: "5px 10px", borderRadius: 8, border: "none", background: hasChange ? C.navy : C.s200, color: "#fff", fontSize: 12, fontWeight: 700, cursor: hasChange ? "pointer" : "default", opacity: updatingAppId === app.id ? 0.6 : 1, whiteSpace: "nowrap" }}>
+                                                {updatingAppId === app.id ? "..." : "Update"}
+                                            </button>
+                                        </div>
+                                    </td>
+                                    */}
+                                    {/* Contact column — commented out per design decision
+                                    <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                                        <div style={{ fontSize: 12, color: C.s600 }}>{app.candidateEmail || "-"}</div>
+                                        <div style={{ fontSize: 12, color: C.s400 }}>{app.candidatePhone || "-"}</div>
+                                    </td>
+                                    */}
+                                    {/* Applied on column — commented out per design decision
+                                    <td style={{ padding: "12px 16px", fontSize: 12, color: C.s500, whiteSpace: "nowrap" }}>{formatDate(app.appliedAt)}</td>
+                                    */}
+                                    {/* Resume column — commented out per design decision
+                                    <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                                        {app.resumeUrl || app.resumeFileName ? (
+                                            <button onClick={() => handleResume(app)} disabled={resumeBusyId === app.id} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.navy, fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+                                                {resumeBusyId === app.id ? "Opening..." : "Open resume"} <FiExternalLink size={12} />
+                                            </button>
+                                        ) : (
+                                            <span style={{ fontSize: 12, color: C.s400 }}>Not uploaded</span>
+                                        )}
+                                    </td>
+                                    */}
+                                </tr>
+                            );
+                        }) : (
+                            <tr><td colSpan={4} style={{ padding: "40px 16px", textAlign: "center", color: C.s400, fontSize: 13 }}>No applications found for this filter.</td></tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
 
-            {/* ─ Pagination ─ */}
+            {/* ─ Footer: View All button ─ */}
             {totalFiltered > 0 && (
                 <div style={{ padding: "14px 20px", borderTop: `1px solid ${C.s100}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, background: C.s50 + "80" }}>
                     <div style={{ fontSize: 12.5, color: C.s500, fontWeight: 600 }}>
-                        Showing <strong>{(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, totalFiltered)}</strong> of <strong>{totalFiltered}</strong> applications
+                        Showing <strong>{Math.min(PAGE_SIZE, totalFiltered)}</strong> of <strong>{totalFiltered}</strong> applications
                     </div>
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        <button onClick={() => onPageChange(Math.max(1, safePage - 1))} disabled={safePage <= 1}
-                            style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${C.s200}`, background: safePage <= 1 ? C.s50 : "#fff", color: safePage <= 1 ? C.s300 : C.s700, display: "flex", alignItems: "center", justifyContent: "center", cursor: safePage <= 1 ? "default" : "pointer", fontSize: 14, transition: "all .15s", outline: "none" }}
-                            onMouseEnter={e => { if (safePage > 1) { e.currentTarget.style.borderColor = C.navy; e.currentTarget.style.color = C.navy; } }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = C.s200; e.currentTarget.style.color = safePage <= 1 ? C.s300 : C.s700; }}>
-                            <FiChevronLeft size={15} />
-                        </button>
-                        {pageNumbers.map((n, i) => n === "..." ? (
-                            <span key={`e${i}`} style={{ width: 28, textAlign: "center", fontSize: 12, color: C.s400, fontWeight: 600 }}>...</span>
-                        ) : (
-                            <button key={n} onClick={() => onPageChange(n)}
-                                style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${safePage === n ? C.navy : C.s200}`, background: safePage === n ? C.navy : "#fff", color: safePage === n ? "#fff" : C.s700, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", outline: "none" }}
-                                onMouseEnter={e => { if (safePage !== n) { e.currentTarget.style.borderColor = C.navy; e.currentTarget.style.color = C.navy; } }}
-                                onMouseLeave={e => { if (safePage !== n) { e.currentTarget.style.borderColor = C.s200; e.currentTarget.style.color = C.s700; } }}>
-                                {n}
-                            </button>
-                        ))}
-                        <button onClick={() => onPageChange(Math.min(totalPages, safePage + 1))} disabled={safePage >= totalPages}
-                            style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${C.s200}`, background: safePage >= totalPages ? C.s50 : "#fff", color: safePage >= totalPages ? C.s300 : C.s700, display: "flex", alignItems: "center", justifyContent: "center", cursor: safePage >= totalPages ? "default" : "pointer", fontSize: 14, transition: "all .15s", outline: "none" }}
-                            onMouseEnter={e => { if (safePage < totalPages) { e.currentTarget.style.borderColor = C.navy; e.currentTarget.style.color = C.navy; } }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = C.s200; e.currentTarget.style.color = safePage >= totalPages ? C.s300 : C.s700; }}>
-                            <FiChevronRight size={15} />
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => onViewAll()}
+                        style={{
+                            display: "inline-flex", alignItems: "center", gap: 6,
+                            padding: "7px 18px", borderRadius: 9, fontSize: 12.5, fontWeight: 700,
+                            border: `1.5px solid ${C.navy}`, background: C.navy, color: "#fff",
+                            cursor: "pointer", fontFamily: C.fd, transition: "all .15s"
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.navyD; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = C.navy; }}>
+                        View all <FiArrowRight size={13} />
+                    </button>
                 </div>
             )}
         </Card>
@@ -2406,6 +2387,7 @@ export default function EmployerProfile() {
                                         onFilterChange={setProgressFilter}
                                         page={progressPage}
                                         onPageChange={setProgressPage}
+                                        onViewAll={() => navigate("/employer/jobs-responses")}
                                         draftStatuses={draftStatuses}
                                         setDraftStatuses={setDraftStatuses}
                                         updatingAppId={updatingAppId}
@@ -2561,51 +2543,28 @@ export default function EmployerProfile() {
                                                 No jobs match the current filter.
                                             </div>
                                         )}
+                                        {/* Jobs footer: View All button (pagination removed) */}
                                         <div style={{
                                             padding: "12px 20px", borderTop: `1px solid ${C.s100}`,
                                             display: "flex", justifyContent: "space-between", alignItems: "center"
                                         }}>
                                             <span style={{ fontSize: 12, color: C.s400, fontWeight: 600 }}>
                                                 {filteredJobs.length > 0
-                                                    ? `Showing ${jobPage * jobPageSize + 1}–${Math.min((jobPage + 1) * jobPageSize, filteredJobs.length)} of ${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''}`
+                                                    ? `Showing ${Math.min(jobPageSize, filteredJobs.length)} of ${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''}`
                                                     : 'No jobs match the current filter'}
                                             </span>
-                                            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                                {totalJobPages > 1 && (
-                                                    <>
-                                                        <button disabled={jobPage === 0} onClick={() => setJobPage(p => p - 1)}
-                                                            style={{
-                                                                padding: "4px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                                                                border: `1px solid ${jobPage === 0 ? C.s100 : C.s200}`, background: "#fff",
-                                                                color: jobPage === 0 ? C.s300 : C.s500, cursor: jobPage === 0 ? "default" : "pointer",
-                                                                fontFamily: "inherit", opacity: jobPage === 0 ? 0.5 : 1
-                                                            }}>
-                                                            <FiChevronLeft size={12} />
-                                                        </button>
-                                                        {Array.from({ length: totalJobPages }, (_, pi) => (
-                                                            <button key={pi} onClick={() => setJobPage(pi)}
-                                                                style={{
-                                                                    width: 26, height: 26, borderRadius: 6, fontSize: 11, fontWeight: 800,
-                                                                    border: pi === jobPage ? `1.5px solid ${C.navy}` : `1px solid ${C.s200}`,
-                                                                    background: pi === jobPage ? C.navy : "#fff",
-                                                                    color: pi === jobPage ? "#fff" : C.s500, cursor: "pointer", fontFamily: C.fd
-                                                                }}>
-                                                                {pi + 1}
-                                                            </button>
-                                                        ))}
-                                                        <button disabled={jobPage >= totalJobPages - 1} onClick={() => setJobPage(p => p + 1)}
-                                                            style={{
-                                                                padding: "4px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                                                                border: `1px solid ${jobPage >= totalJobPages - 1 ? C.s100 : C.s200}`, background: "#fff",
-                                                                color: jobPage >= totalJobPages - 1 ? C.s300 : C.s500, cursor: jobPage >= totalJobPages - 1 ? "default" : "pointer",
-                                                                fontFamily: "inherit", opacity: jobPage >= totalJobPages - 1 ? 0.5 : 1
-                                                            }}>
-                                                            <FiChevronRight size={12} />
-                                                        </button>
-                                                        <div style={{ width: 1, height: 20, background: C.s200, margin: "0 6px" }} />
-                                                    </>
-                                                )}
-                                            </div>
+                                            <button
+                                                onClick={() => navigate("/employer/jobs-responses")}
+                                                style={{
+                                                    display: "inline-flex", alignItems: "center", gap: 6,
+                                                    padding: "7px 18px", borderRadius: 9, fontSize: 12.5, fontWeight: 700,
+                                                    border: `1.5px solid ${C.navy}`, background: C.navy, color: "#fff",
+                                                    cursor: "pointer", fontFamily: C.fd, transition: "all .15s"
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = C.navyD; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = C.navy; }}>
+                                                View all <FiArrowRight size={13} />
+                                            </button>
                                         </div>
                                     </Card>
                                 )}

@@ -10,6 +10,7 @@ import {
 import EmployerLayout from '../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../components/employer/EmployerBreadcrumb';
 import authService from '../../../services/authService';
+import DynamicReportTable from './DynamicReportTable';
 import './ResdexReport.css';
 
 const TABS = [
@@ -22,14 +23,16 @@ const TABS = [
 ];
 
 const DEFAULT_USERS = [
-  { id: 'u1', name: 'Admin (Master User)', email: 'admin@mavenjobs.in', role: 'Master Admin' },
-  { id: 'u2', name: 'Rahul Sharma', email: 'rahul.s@mavenjobs.in', role: 'Lead Recruiter' },
-  { id: 'u3', name: 'Priya Verma', email: 'priya.v@mavenjobs.in', role: 'Senior Talent Sourcer' },
-  { id: 'u4', name: 'Amit Patel', email: 'amit.p@mavenjobs.in', role: 'Tech Hiring Specialist' },
-  { id: 'u5', name: 'Sneha Kulkarni', email: 'sneha.k@mavenjobs.in', role: 'Executive Sourcer' },
-  { id: 'u6', name: 'Vikram Malhotra', email: 'vikram.m@mavenjobs.in', role: 'HR Partner' },
-  { id: 'u7', name: 'Ananya Roy', email: 'ananya.r@mavenjobs.in', role: 'Talent Acquisition' },
-  { id: 'u8', name: 'Rohan Gupta', email: 'rohan.g@mavenjobs.in', role: 'Recruitment Associate' },
+  { id: 'u1', name: 'khushi chawla', email: 'sales@mavenjobs.in', role: 'Sales' },
+  { id: 'u2', name: 'Ankita', email: 'recruiter05@mavenjobs.in', role: 'Recruiter' },
+  { id: 'u3', name: 'khushi chawla', email: 'bd4@mavenjobs.in', role: 'Business Development' },
+  { id: 'u4', name: 'Khushi', email: 'bd3@mavenjobs.in', role: 'Business Development' },
+  { id: 'u5', name: 'Nikita', email: 'hr@mavenjobs.in', role: 'HR' },
+  { id: 'u6', name: 'muskan', email: 'recruit@mavenjobs.in', role: 'Recruiter' },
+  { id: 'u7', name: 'admin', email: 'admin@mavenjobs.in', role: 'Admin' },
+  { id: 'u8', name: 'saloni', email: 'info@mavenjobs.in', role: 'Operations' },
+  { id: 'u9', name: 'sheena', email: 'recruiter4@mavenjobs.in', role: 'Recruiter' },
+  { id: 'u10', name: 'test', email: 'jobs@mavenjobs.in', role: 'Tester' },
 ];
 
 const formatYMD = (date) => {
@@ -37,6 +40,18 @@ const formatYMD = (date) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${month}-${day}`;
+};
+
+const formatResdexDuration = (start, end) => {
+  const formatSingle = (date) => {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  };
+  return `${formatSingle(start)} To ${formatSingle(end)}`;
 };
 
 const getYesterday = () => {
@@ -139,7 +154,7 @@ export default function ResdexReport() {
   const [isAddingEmail, setIsAddingEmail] = useState(false);
 
   // Report Generation & Export
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingBtn, setGeneratingBtn] = useState(null); // 'oneClick' | 'customised' | null
   const [generatedReport, setGeneratedReport] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
@@ -148,6 +163,9 @@ export default function ResdexReport() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   }, []);
+
+  const [isSavingSubscription, setIsSavingSubscription] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -160,32 +178,65 @@ export default function ResdexReport() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load employer company details
+  // Load employer company details & superuser email & subscriptions
   useEffect(() => {
     let isMounted = true;
-    const loadSession = async () => {
+    (async () => {
       try {
+        let superUserEmail = '';
+
+        // 1. Read logged-in client user from localStorage
         const stored = localStorage.getItem('employerUser');
         if (stored) {
-          const parsed = JSON.parse(stored);
-          if (isMounted) setCompany({ name: parsed.companyName || 'My Company' });
+          try {
+            const parsed = JSON.parse(stored);
+            if (isMounted) setCompany({ name: parsed.companyName || 'My Company' });
+            superUserEmail = parsed.email || '';
+          } catch {}
         }
-        const res = await authService.getEmployerDashboard().catch(() => null);
-        if (isMounted && res?.data?.company) {
-          setCompany(res.data.company);
-        }
-      } catch {}
-    };
-    loadSession();
 
-    // Load stored email subscriptions if available
-    const savedSubs = localStorage.getItem('maven_resdex_subscriptions');
-    if (savedSubs) {
-      try {
-        const parsed = JSON.parse(savedSubs);
-        setEmailSubscriptions(parsed);
+        // 2. Fetch authoritative dashboard API
+        const res = await authService.getEmployerDashboard().catch(() => null);
+        if (isMounted && res?.data) {
+          if (res.data.company) setCompany(res.data.company);
+          if (res.data.user?.email) superUserEmail = res.data.user.email;
+        }
+
+        // 3. Fetch backend Resdex subscriptions
+        let backendSub = null;
+        try {
+          const subRes = await authService.getResdexReportSubscription();
+          if (subRes?.success && subRes?.data) {
+            backendSub = subRes.data;
+          }
+        } catch {}
+
+        if (isMounted) {
+          if (backendSub) {
+            if (backendSub.subscriptions) {
+              setEmailSubscriptions(prev => ({ ...prev, ...backendSub.subscriptions }));
+            }
+            if (Array.isArray(backendSub.emailList) && backendSub.emailList.length > 0) {
+              setEmailList(backendSub.emailList);
+            } else if (superUserEmail) {
+              setEmailList([superUserEmail]);
+            }
+          } else {
+            // Fallback to localStorage
+            const savedSubs = localStorage.getItem('maven_resdex_subscriptions');
+            if (savedSubs) {
+              try {
+                const parsed = JSON.parse(savedSubs);
+                setEmailSubscriptions(prev => ({ ...prev, ...parsed }));
+              } catch {}
+            }
+            if (superUserEmail) {
+              setEmailList([superUserEmail]);
+            }
+          }
+        }
       } catch {}
-    }
+    })();
 
     return () => { isMounted = false; };
   }, []);
@@ -238,18 +289,56 @@ export default function ResdexReport() {
   };
 
   // Save Auto Emailing for the current active tab
-  const handleSaveAutoEmail = () => {
+  const handleSaveAutoEmail = async () => {
     const currentSub = emailSubscriptions[activeTab];
-    localStorage.setItem('maven_resdex_subscriptions', JSON.stringify(emailSubscriptions));
-    showToast(currentSub === 'disabled'
-      ? `Auto emailing disabled for ${TABS.find(t => t.id === activeTab)?.label}.`
-      : `Subscribed successfully to ${currentSub} reports for ${TABS.find(t => t.id === activeTab)?.label}!`
-    );
+    setIsSavingSubscription(true);
+    try {
+      await authService.saveResdexReportSubscription({
+        subscriptions: emailSubscriptions,
+        emailList,
+      });
+
+      localStorage.setItem('maven_resdex_subscriptions', JSON.stringify(emailSubscriptions));
+      showToast(currentSub === 'disabled'
+        ? `Auto emailing disabled for ${TABS.find(t => t.id === activeTab)?.label}.`
+        : `Subscribed successfully to ${currentSub} reports for ${TABS.find(t => t.id === activeTab)?.label}!`
+      );
+    } catch (err) {
+      showToast(err?.message || 'Failed to save auto emailing preferences.');
+    } finally {
+      setIsSavingSubscription(false);
+    }
+  };
+
+  // Send Resdex report email immediately
+  const handleSendNow = async () => {
+    const validEmails = emailList.filter(e => e && e.includes('@'));
+    if (!validEmails.length) {
+      showToast('Please specify at least one recipient email.');
+      return;
+    }
+
+    const currentSub = emailSubscriptions[activeTab];
+    const sendPeriod = currentSub === 'monthly' ? 'monthly' : currentSub === 'daily' ? 'daily' : 'weekly';
+
+    setIsSendingEmail(true);
+    try {
+      const res = await authService.sendResdexReportEmail({
+        tab: activeTab,
+        period: sendPeriod,
+        emailList: validEmails,
+      });
+      showToast(res?.message || `Excel report sent successfully to ${validEmails.join(', ')}!`);
+    } catch (err) {
+      showToast(err?.message || 'Failed to send report email.');
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   // CSV / Excel export
-  const exportToExcel = useCallback((reportData, filename) => {
-    if (!reportData || reportData.length === 0) {
+  const exportToExcel = useCallback((headers, rows, filename) => {
+    if (!rows || rows.length === 0) {
       showToast('No records available for export.');
       return;
     }
@@ -259,44 +348,7 @@ export default function ResdexReport() {
       return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
 
-    let headers = [];
-    let rows = [];
-
-    if (activeTab === 'database-usage') {
-      headers = ['User Name', 'Email', 'Role', 'Searches', 'NVites Sent', 'CV Views', 'Excel Downloads', 'Word Downloads', 'CV Access'];
-      rows = reportData.map(r => [
-        esc(r.userName), esc(r.userEmail), esc(r.role),
-        r.searches, r.nvites, r.cvViews, r.excelDownloads, r.wordDownloads, r.cvAccess
-      ]);
-    } else if (activeTab === 'search-report') {
-      headers = ['Search Query / Keywords', 'Performed By', 'Experience', 'Location Filter', 'Results Count', 'Date & Time'];
-      rows = reportData.map(r => [
-        esc(r.query), esc(r.user), esc(r.exp), esc(r.location), r.results, r.date
-      ]);
-    } else if (activeTab === 'user-login') {
-      headers = ['User Name', 'Email', 'IP Address', 'Login Time', 'Logout Time', 'Session Duration', 'Status'];
-      rows = reportData.map(r => [
-        esc(r.userName), esc(r.email), esc(r.ip), r.loginTime, r.logoutTime, esc(r.duration), esc(r.status)
-      ]);
-    } else if (activeTab === 'contacted-candidate-mis') {
-      headers = ['Candidate Name', 'Target Role', 'Contact Method', 'Initiated By', 'Status', 'Contact Date'];
-      rows = reportData.map(r => [
-        esc(r.candidateName), esc(r.role), esc(r.channel), esc(r.recruiter), esc(r.status), r.date
-      ]);
-    } else if (activeTab === 'comments-reports') {
-      headers = ['Candidate Name', 'Folder', 'Added By', 'Rating / Tag', 'Notes & Feedback', 'Date'];
-      rows = reportData.map(r => [
-        esc(r.candidateName), esc(r.folder), esc(r.addedBy), esc(r.rating), esc(r.notes), r.date
-      ]);
-    } else {
-      // Call report
-      headers = ['Candidate Name', 'Phone Number', 'Caller (Recruiter)', 'Call Status', 'Duration', 'Date'];
-      rows = reportData.map(r => [
-        esc(r.candidateName), esc(r.phone), esc(r.caller), esc(r.status), esc(r.duration), r.date
-      ]);
-    }
-
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const csv = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -308,268 +360,132 @@ export default function ResdexReport() {
     URL.revokeObjectURL(url);
 
     showToast('Report exported successfully to Excel/CSV!');
-  }, [activeTab, showToast]);
+  }, [showToast]);
+
+  // Data definitions matching reference screenshots
+  const DB_USAGE_DATA = [
+    { name: 'khushi chawla | sales@mavenjobs.in', searches: 14, cvViews: 19, excelDl: 0, wordDl: 0, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 19, uniqueCv: 19, uniqueExcel: 0, a: 19, b: 0, c: 0, total: 19 },
+    { name: 'Ankita | recruiter05@mavenjobs.in', searches: 10, cvViews: 25, excelDl: 0, wordDl: 20, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 0, uniqueCv: 25, uniqueExcel: 0, a: 25, b: 0, c: 0, total: 25 },
+    { name: 'khushi chawla | bd4@mavenjobs.in', searches: 2, cvViews: 1, excelDl: 0, wordDl: 1, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 0, uniqueCv: 1, uniqueExcel: 0, a: 1, b: 0, c: 0, total: 1 },
+    { name: 'Khushi | bd3@mavenjobs.in', searches: 2, cvViews: 10, excelDl: 0, wordDl: 0, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 9, uniqueCv: 10, uniqueExcel: 0, a: 9, b: 0, c: 0, total: 9 },
+    { name: 'Nikita | hr@mavenjobs.in', searches: 5, cvViews: 23, excelDl: 0, wordDl: 2, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 11, uniqueCv: 15, uniqueExcel: 0, a: 12, b: 0, c: 0, total: 12 },
+    { name: 'muskan | recruit@mavenjobs.in', searches: 0, cvViews: 0, excelDl: 0, wordDl: 0, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 0, uniqueCv: 0, uniqueExcel: 0, a: 0, b: 0, c: 0, total: 0 },
+    { name: 'admin | admin@mavenjobs.in', searches: 0, cvViews: 0, excelDl: 0, wordDl: 0, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 0, uniqueCv: 0, uniqueExcel: 0, a: 0, b: 0, c: 0, total: 0 },
+    { name: 'saloni | info@mavenjobs.in', searches: 0, cvViews: 0, excelDl: 0, wordDl: 0, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 0, uniqueCv: 0, uniqueExcel: 0, a: 0, b: 0, c: 0, total: 0 },
+    { name: 'sheena | recruiter4@mavenjobs.in', searches: 0, cvViews: 0, excelDl: 0, wordDl: 0, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 0, uniqueCv: 0, uniqueExcel: 0, a: 0, b: 0, c: 0, total: 0 },
+    { name: 'test | jobs@mavenjobs.in', searches: 0, cvViews: 0, excelDl: 0, wordDl: 0, nvites: 0, dup: 0, fwd: 0, sms: 0, phone: 0, uniqueCv: 0, uniqueExcel: 0, a: 0, b: 0, c: 0, total: 0 },
+  ];
+
+  const CALL_DATA = [
+    { name: 'khushi chawla | sales@mavenjobs.in', views: 19, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'Ankita | recruiter05@mavenjobs.in', views: 25, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'khushi chawla | bd4@mavenjobs.in', views: 1, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'Khushi | bd3@mavenjobs.in', views: 10, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'Nikita | hr@mavenjobs.in', views: 23, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'muskan | recruit@mavenjobs.in', views: 0, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'admin | admin@mavenjobs.in', views: 0, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'saloni | info@mavenjobs.in', views: 0, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'sheena | recruiter4@mavenjobs.in', views: 0, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+    { name: 'test | jobs@mavenjobs.in', views: 0, appPct: 0, callsInit: 0, callsConn: 0, uniqContacted: 0, totDuration: '00:00', avgDuration: '00:00' },
+  ];
+
+  const LOGIN_DATA = [
+    ['09-Sep-26', 'khushi chawla', '09:15 AM', '06:30 PM', '555', '192.168.1.10'],
+    ['09-Sep-26', 'Ankita', '09:30 AM', '06:45 PM', '555', '192.168.1.11'],
+    ['09-Sep-26', 'khushi chawla (bd4)', '09:45 AM', '06:15 PM', '510', '192.168.1.12'],
+    ['09-Sep-26', 'Khushi (bd3)', '10:00 AM', '07:00 PM', '540', '192.168.1.13'],
+    ['09-Sep-26', 'Nikita', '09:00 AM', '06:00 PM', '540', '192.168.1.14'],
+    ['09-Sep-26', 'muskan', '09:15 AM', '06:00 PM', '525', '192.168.1.15'],
+    ['09-Sep-26', 'admin', '08:45 AM', '07:30 PM', '645', '192.168.1.16'],
+    ['09-Sep-26', 'saloni', '09:30 AM', '06:30 PM', '540', '192.168.1.17'],
+    ['09-Sep-26', 'sheena', '09:00 AM', '06:15 PM', '555', '192.168.1.18'],
+    ['09-Sep-26', 'test', '10:00 AM', '05:30 PM', '450', '192.168.1.19'],
+  ];
 
   // One Click Report Handler
-  const handleOneClickGenerate = () => {
-    setIsGenerating(true);
-    let start = new Date();
-    let end = new Date();
+  const handleOneClickGenerate = async () => {
+    setGeneratingBtn('oneClick');
+    try {
+      const res = await authService.getResdexReport({
+        tab: activeTab,
+        mode: 'one_click',
+        period: oneClickPeriod,
+      });
 
-    if (oneClickPeriod === 'yesterday') {
-      start.setDate(start.getDate() - 1);
-      end.setDate(end.getDate() - 1);
-    } else if (oneClickPeriod === 'week') {
-      start.setDate(start.getDate() - 7);
-    } else if (oneClickPeriod === 'month') {
-      start.setDate(start.getDate() - 30);
-    }
-
-    const selectedUsers = DEFAULT_USERS.filter(u => selectedUserIds.includes(u.id));
-
-    setTimeout(() => {
-      if (activeTab === 'user-login') {
-        const mockRows = selectedUsers.map((u, i) => ({
-          subUser: u.name,
-          userEmail: u.email,
-          loginDate: formatYMD(start),
-          loginTime: `09:${String(15 + i * 5).padStart(2, '0')} AM`,
-          logoutTime: `06:${String(30 + i * 3).padStart(2, '0')} PM`,
-          duration: '8h 45m',
-          ipAddress: `192.168.1.${10 + i}`,
-          status: 'Active',
-        }));
-
-        const metrics = {
-          stat1: { label: 'Total Logins', val: mockRows.length },
-          stat2: { label: 'Active Sessions', val: mockRows.length },
-          stat3: { label: 'Avg Session Duration', val: '8h 15m' },
-          stat4: { label: 'Unique Users', val: selectedUsers.length },
-        };
-
-        setGeneratedReport({
-          title: `One Click Login Report (${oneClickPeriod.toUpperCase()})`,
-          periodLabel: `${formatYMD(start)} to ${formatYMD(end)}`,
-          rows: mockRows,
-          metrics,
-        });
-        setIsGenerating(false);
-        showToast(`One Click Login Report generated for ${oneClickPeriod}!`);
-        return;
-      }
-
-      if (activeTab === 'call-report') {
-        const mockRows = selectedUsers.map((u, i) => ({
-          recruiter: u.name,
-          email: u.email,
-          totalViews: 35 + (i * 14),
-          viewsOnAppPercent: `${28 + (i * 4)}%`,
-          callsInitiated: 18 + (i * 6),
-          callsConnected: 12 + (i * 4),
-          uniqueJobSeekers: 15 + (i * 5),
-          totalDuration: `${(18 + i * 6) * 4} mins`,
-          avgDuration: '3.8 mins',
-        }));
-
-        const metrics = {
-          stat1: { label: 'Total Calls Initiated', val: mockRows.reduce((a, r) => a + r.callsInitiated, 0) },
-          stat2: { label: 'Calls Connected', val: mockRows.reduce((a, r) => a + r.callsConnected, 0) },
-          stat3: { label: 'Total CV Views (Web+App)', val: mockRows.reduce((a, r) => a + r.totalViews, 0) },
-          stat4: { label: 'Avg Call Duration', val: '3.8 mins' },
-        };
-
-        setGeneratedReport({
-          title: `One Click Call Report (${oneClickPeriod.toUpperCase()})`,
-          periodLabel: `${formatYMD(start)} to ${formatYMD(end)}`,
-          rows: mockRows,
-          metrics,
-        });
-        setIsGenerating(false);
-        showToast(`One Click Call Report generated for ${oneClickPeriod}!`);
-        return;
-      }
-
-      const mockRows = selectedUsers.map((u, i) => ({
-        userName: u.name,
-        userEmail: u.email,
-        role: u.role,
-        searches: 24 + (i * 12),
-        nvites: 8 + (i * 3),
-        cvViews: 45 + (i * 18),
-        excelDownloads: 12 + (i * 5),
-        wordDownloads: 6 + (i * 2),
-        cvAccess: 38 + (i * 15),
-      }));
-
-      const metrics = {
-        stat1: { label: 'Total Searches', val: mockRows.reduce((a, r) => a + r.searches, 0) },
-        stat2: { label: 'Total CV Views', val: mockRows.reduce((a, r) => a + r.cvViews, 0) },
-        stat3: { label: 'Excel Downloads', val: mockRows.reduce((a, r) => a + r.excelDownloads, 0) },
-        stat4: { label: 'NVites Sent', val: mockRows.reduce((a, r) => a + r.nvites, 0) },
-      };
+      const rows = res.data && res.data.length > 0 ? res.data : [];
+      const headers = res.headers && res.headers.length > 0 ? res.headers : [];
+      const durationStr = formatResdexDuration(res.from || new Date(), res.to || new Date());
 
       setGeneratedReport({
-        title: `One Click Report (${oneClickPeriod.toUpperCase()})`,
-        periodLabel: `${formatYMD(start)} to ${formatYMD(end)}`,
-        rows: mockRows,
-        metrics,
+        reportType: 'One Click Report',
+        durationLabel: durationStr,
+        headers: headers.length ? headers : ['Subuser', 'Total CV Views', 'Total Searches'],
+        rows: rows.length ? rows : [['No data recorded for this period', 0, 0]],
+        showTotalRow: activeTab === 'database-usage',
+        showNote: activeTab === 'database-usage',
+        filename: `Resdex_${activeTab}_One_Click`,
       });
-      setIsGenerating(false);
-      showToast(`One Click Report generated for ${oneClickPeriod}!`);
-    }, 300);
+
+      showToast(`One Click Report generated for "${oneClickPeriod}"!`);
+    } catch (err) {
+      showToast(err?.message || 'Failed to generate one-click report.');
+    } finally {
+      setGeneratingBtn(null);
+    }
   };
 
-  // Generate Report Handler
-  const handleGenerateReport = () => {
+  // Generate Report Handler (Customised Report)
+  const handleGenerateReport = async () => {
     if (!fromDate || !toDate) {
       showToast('Please select From and To dates.');
       return;
     }
+    if (new Date(fromDate) > new Date(toDate)) {
+      showToast('From date cannot be after To date.');
+      return;
+    }
 
-    setIsGenerating(true);
+    setGeneratingBtn('customised');
+    try {
+      const params = {
+        tab: activeTab,
+        mode: 'customised',
+        from: fromDate,
+        to: toDate,
+        userIds: selectedUserIds.join(','),
+        keyword: searchFilterKeyword,
+        sortType: loginSortType,
+      };
 
-    const selectedUsers = DEFAULT_USERS.filter(u => selectedUserIds.includes(u.id));
-
-    setTimeout(() => {
-      let mockRows = [];
-      let metrics = {};
-
-      if (activeTab === 'database-usage') {
-        mockRows = selectedUsers.map((u, i) => ({
-          userName: u.name,
-          userEmail: u.email,
-          role: u.role,
-          searches: 24 + (i * 12),
-          nvites: 8 + (i * 3),
-          cvViews: 45 + (i * 18),
-          excelDownloads: 12 + (i * 5),
-          wordDownloads: 6 + (i * 2),
-          cvAccess: 38 + (i * 15),
-        }));
-
-        metrics = {
-          stat1: { label: 'Total Searches', val: mockRows.reduce((a, r) => a + r.searches, 0) },
-          stat2: { label: 'Total CV Views', val: mockRows.reduce((a, r) => a + r.cvViews, 0) },
-          stat3: { label: 'Excel Downloads', val: mockRows.reduce((a, r) => a + r.excelDownloads, 0) },
-          stat4: { label: 'NVites Sent', val: mockRows.reduce((a, r) => a + r.nvites, 0) },
-        };
-      } else if (activeTab === 'search-report') {
-        const queries = [
-          'Full Stack Developer (React, Node)', 'Senior Data Scientist (Python, ML)',
-          'Product Manager (B2B SaaS)', 'DevOps Engineer (AWS, Kubernetes)',
-          'UI/UX Designer (Figma)', 'Sales Executive (Enterprise Software)',
-          'Backend Engineer (Java, Microservices)', 'Frontend Engineer (React, Next.js)'
-        ];
-
-        mockRows = queries.map((q, i) => ({
-          query: q,
-          user: selectedUsers[i % selectedUsers.length]?.name || 'Admin',
-          exp: `${2 + i} - ${5 + i} Yrs`,
-          location: i % 2 === 0 ? 'Mumbai / Remote' : 'Bengaluru / Hybrid',
-          results: 140 - (i * 12),
-          date: `${fromDate} 1${i}:30`,
-        }));
-
-        metrics = {
-          stat1: { label: 'Total Searches', val: mockRows.length },
-          stat2: { label: 'Total Candidates Found', val: mockRows.reduce((a, r) => a + r.results, 0) },
-          stat3: { label: 'Avg Results / Search', val: Math.round(mockRows.reduce((a, r) => a + r.results, 0) / mockRows.length) },
-          stat4: { label: 'Active Recruiters', val: selectedUsers.length },
-        };
-      } else if (activeTab === 'user-login') {
-        mockRows = selectedUsers.map((u, i) => ({
-          userName: u.name,
-          email: u.email,
-          ip: `192.168.1.${10 + i}`,
-          loginTime: `${fromDate} 09:${15 + i * 5} AM`,
-          logoutTime: `${fromDate} 06:${30 - i * 2} PM`,
-          duration: `${8 - Math.floor(i / 3)}h ${30 + i * 4}m`,
-          status: 'Active',
-        }));
-
-        metrics = {
-          stat1: { label: 'Total Logins', val: mockRows.length },
-          stat2: { label: 'Active Sessions', val: mockRows.length },
-          stat3: { label: 'Avg Session Duration', val: '7h 45m' },
-          stat4: { label: 'Unique Users', val: selectedUsers.length },
-        };
-      } else if (activeTab === 'contacted-candidate-mis') {
-        const candidates = ['Aarav Patel', 'Neha Sharma', 'Rohan Das', 'Tanvi Mehta', 'Kunal Verma', 'Isha Sen'];
-        mockRows = candidates.map((c, i) => ({
-          candidateName: c,
-          role: i % 2 === 0 ? 'Senior React Engineer' : 'Product Lead',
-          channel: i % 3 === 0 ? 'NVite' : i % 3 === 1 ? 'Email' : 'Direct Call',
-          recruiter: selectedUsers[i % selectedUsers.length]?.name || 'Admin',
-          status: i % 2 === 0 ? 'Responded' : 'Delivered',
-          date: `${fromDate}`,
-        }));
-
-        metrics = {
-          stat1: { label: 'Candidates Contacted', val: mockRows.length },
-          stat2: { label: 'NVites Dispatched', val: 4 },
-          stat3: { label: 'Response Rate', val: '48%' },
-          stat4: { label: 'Recruiter Outreach', val: selectedUsers.length },
-        };
-      } else if (activeTab === 'comments-reports') {
-        const notes = [
-          'Strong system design expertise, recommended for client round.',
-          'Good cultural fit, notice period is 15 days.',
-          'Expected CTC is within our budget band, cleared tech screen.',
-          'Portfolio looks impressive, follow up on references.'
-        ];
-        mockRows = notes.map((note, i) => ({
-          candidateName: `Candidate ${String.fromCharCode(65 + i)}`,
-          folder: i % 2 === 0 ? 'Shortlisted Candidates' : 'Frontend Pipeline',
-          addedBy: selectedUsers[i % selectedUsers.length]?.name || 'Lead Recruiter',
-          rating: '★★★★☆',
-          notes: note,
-          date: `${fromDate}`,
-        }));
-
-        metrics = {
-          stat1: { label: 'Total Feedback Entries', val: mockRows.length },
-          stat2: { label: 'Candidates Reviewed', val: mockRows.length },
-          stat3: { label: 'Shortlisted Tagged', val: 3 },
-          stat4: { label: 'Contributing Team', val: selectedUsers.length },
-        };
-      } else {
-        // Call Report
-        mockRows = selectedUsers.map((u, i) => ({
-          recruiter: u.name,
-          email: u.email,
-          cvViews: 42 + (i * 12),
-          cvViewsAppPercent: `${30 + (i * 3)}%`,
-          callsInitiated: 20 + (i * 5),
-          callsConnected: 14 + (i * 4),
-          uniqueJobSeekers: 16 + (i * 4),
-          totalDuration: `${(20 + i * 5) * 4} mins`,
-          avgDuration: '3.6 mins',
-          date: `${fromDate} to ${toDate}`,
-        }));
-
-        metrics = {
-          stat1: { label: 'Total Calls Initiated', val: mockRows.reduce((a, r) => a + r.callsInitiated, 0) },
-          stat2: { label: 'Calls Connected', val: mockRows.reduce((a, r) => a + r.callsConnected, 0) },
-          stat3: { label: 'Total CV Views (Web+App)', val: mockRows.reduce((a, r) => a + r.cvViews, 0) },
-          stat4: { label: 'Average Duration', val: '3.6 mins' },
-        };
-      }
-
-      setIsGenerating(false);
+      const res = await authService.getResdexReport(params);
+      const rows = res.data && res.data.length > 0 ? res.data : [];
+      const headers = res.headers && res.headers.length > 0 ? res.headers : [];
+      const durationStr = formatResdexDuration(res.from || fromDate, res.to || toDate);
+      const filename = `Resdex_${activeTab}_Customised`;
 
       if (displayFormat === 'excel') {
-        exportToExcel(mockRows, `Resdex_${activeTab}`);
-        return;
+        exportToExcel(
+          headers.length ? headers : ['Subuser', 'Activity'],
+          rows.length ? rows : [['No data recorded for this period', 0]],
+          filename
+        );
+      } else {
+        setGeneratedReport({
+          reportType: 'Customised Report',
+          durationLabel: durationStr,
+          headers: headers.length ? headers : ['Subuser', 'Activity'],
+          rows: rows.length ? rows : [['No data recorded for this period', 0]],
+          showTotalRow: activeTab === 'database-usage',
+          showNote: activeTab === 'database-usage',
+          filename,
+        });
+        showToast(`${TABS.find(t => t.id === activeTab)?.label} generated successfully!`);
       }
-
-      setGeneratedReport({
-        title: TABS.find(t => t.id === activeTab)?.label,
-        periodLabel: `${fromDate} to ${toDate}`,
-        rows: mockRows,
-        metrics,
-      });
-      showToast(`${TABS.find(t => t.id === activeTab)?.label} generated successfully!`);
-    }, 300);
+    } catch (err) {
+      showToast(err?.message || 'Failed to generate report.');
+    } finally {
+      setGeneratingBtn(null);
+    }
   };
 
   // Filtered rows for table search
@@ -615,17 +531,31 @@ export default function ResdexReport() {
           ))}
         </div>
 
-        {/* Main Resdex Report Filter Card (hidden on search-report & contacted-candidate-mis per screenshot) */}
-        {activeTab !== 'search-report' && activeTab !== 'contacted-candidate-mis' && (
-        <div className="rxr-card">
-          {(activeTab === 'database-usage' || activeTab === 'user-login' || activeTab === 'call-report') ? (
-            <>
-              {/* ─────────────────────────────────────────────────────────────
-                  1. One Click Report (Database Usage, User Login & Call Report)
-                 ───────────────────────────────────────────────────────────── */}
-              <h2 className="rxr-section-title" style={{ fontSize: 19, fontWeight: 700, marginBottom: 18 }}>
-                One Click Report
-              </h2>
+        {generatedReport ? (
+          <DynamicReportTable
+            reportType={generatedReport.reportType}
+            durationLabel={generatedReport.durationLabel}
+            headers={generatedReport.headers}
+            rows={generatedReport.rows}
+            showTotalRow={generatedReport.showTotalRow}
+            showNote={generatedReport.showNote !== false}
+            theme="blue"
+            onNewReport={() => setGeneratedReport(null)}
+            filename={generatedReport.filename || 'Resdex_Report'}
+          />
+        ) : (
+          <>
+            {/* Main Resdex Report Filter Card (hidden on search-report & contacted-candidate-mis per screenshot) */}
+            {activeTab !== 'search-report' && activeTab !== 'contacted-candidate-mis' && (
+            <div className="rxr-card">
+              {(activeTab === 'database-usage' || activeTab === 'user-login' || activeTab === 'call-report') ? (
+                <>
+                  {/* ─────────────────────────────────────────────────────────────
+                      1. One Click Report (Database Usage, User Login & Call Report)
+                     ───────────────────────────────────────────────────────────── */}
+                  <h2 className="rxr-section-title" style={{ fontSize: 19, fontWeight: 700, marginBottom: 18 }}>
+                    One Click Report
+                  </h2>
 
               <div className="rxr-form-row">
                 <div className="rxr-row-label">Specify Time Period:</div>
@@ -675,9 +605,10 @@ export default function ResdexReport() {
                     type="button"
                     className="rxr-btn-primary"
                     onClick={handleOneClickGenerate}
-                    disabled={isGenerating}
+                    disabled={generatingBtn === 'oneClick'}
                   >
-                    Generate Report
+                    <FiBarChart2 size={15} />
+                    {generatingBtn === 'oneClick' ? 'Generating...' : 'Generate Report'}
                   </button>
                 </div>
               </div>
@@ -1095,9 +1026,10 @@ export default function ResdexReport() {
                     type="button"
                     className="rxr-btn-primary"
                     onClick={handleGenerateReport}
-                    disabled={isGenerating}
+                    disabled={generatingBtn === 'customised'}
                   >
-                    Generate Report
+                    <FiBarChart2 size={15} />
+                    {generatingBtn === 'customised' ? 'Generating...' : 'Generate Report'}
                   </button>
                 </div>
               </div>
@@ -1279,10 +1211,10 @@ export default function ResdexReport() {
                     type="button"
                     className="rxr-btn-primary"
                     onClick={handleGenerateReport}
-                    disabled={isGenerating}
+                    disabled={generatingBtn === 'customised'}
                   >
                     <FiBarChart2 size={15} />
-                    {isGenerating ? 'Generating...' : 'Generate Report'}
+                    {generatingBtn === 'customised' ? 'Generating...' : 'Generate Report'}
                   </button>
                 </div>
               </div>
@@ -1624,284 +1556,42 @@ export default function ResdexReport() {
               </div>
             </div>
 
-            {/* Save Button */}
+            {/* Save & Send Report Now Buttons */}
             <div className="rxr-form-row" style={{ marginBottom: 0 }}>
               <div className="rxr-row-label"></div>
-              <div className="rxr-row-content">
+              <div className="rxr-row-content" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <button
                   type="button"
                   className="rxr-btn-primary"
                   onClick={handleSaveAutoEmail}
+                  disabled={isSavingSubscription}
                 >
-                  Save
+                  {isSavingSubscription ? 'Saving...' : 'Save'}
+                </button>
+
+                <button
+                  type="button"
+                  className="rxr-btn-primary"
+                  onClick={handleSendNow}
+                  disabled={isSendingEmail || !emailList.length}
+                  style={{
+                    background: '#ffffff',
+                    color: '#002366',
+                    border: '1px solid #002366',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                  title="Generate and email the current Resdex report immediately to the selected email(s)"
+                >
+                  <FiMail size={15} />
+                  {isSendingEmail ? 'Sending Email...' : 'Send Report Now'}
                 </button>
               </div>
             </div>
           </div>
         )}
-
-        {/* ─────────────────────────────────────────────────────────────
-            Report Results Table (when generated in browser)
-           ───────────────────────────────────────────────────────────── */}
-        {activeTab !== 'search-report' && generatedReport && (
-          <div className="rxr-results-card">
-            <div className="rxr-results-header">
-              <div>
-                <h2 className="rxr-section-title" style={{ margin: 0, fontSize: 19 }}>
-                  {generatedReport.title}
-                </h2>
-                <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                  Time Duration: <strong style={{ color: '#0f172a' }}>{generatedReport.periodLabel}</strong>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative' }}>
-                  <FiSearch style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} size={14} />
-                  <input
-                    type="text"
-                    placeholder="Search in report..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{
-                      border: '1.5px solid #cbd5e1',
-                      borderRadius: 8,
-                      padding: '7px 12px 7px 32px',
-                      fontSize: 13,
-                      outline: 'none',
-                      fontFamily: "'DM Sans', sans-serif"
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="rxr-btn-primary"
-                  style={{ padding: '8px 16px', fontSize: 13 }}
-                  onClick={() => exportToExcel(generatedReport.rows, `Resdex_${activeTab}`)}
-                >
-                  <FiDownload size={14} />
-                  Export Excel
-                </button>
-              </div>
-            </div>
-
-            {/* KPI Cards */}
-            <div className="rxr-kpi-grid">
-              {Object.entries(generatedReport.metrics).map(([k, metric]) => (
-                <div key={k} className="rxr-kpi-box">
-                  <div className="rxr-kpi-icon" style={{ background: '#e0f2fe', color: '#0284c7' }}>
-                    <FiLayers />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b' }}>{metric.label}</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>{metric.val}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Dynamic Results Table */}
-            <div className="rxr-table-wrapper">
-              <table className="rxr-table">
-                {activeTab === 'database-usage' && (
-                  <>
-                    <thead>
-                      <tr>
-                        <th>User Name</th>
-                        <th>Email / Role</th>
-                        <th style={{ textAlign: 'center' }}>Searches</th>
-                        <th style={{ textAlign: 'center' }}>NVites</th>
-                        <th style={{ textAlign: 'center' }}>CV Views</th>
-                        <th style={{ textAlign: 'center' }}>Excel Downloads</th>
-                        <th style={{ textAlign: 'center' }}>Word Downloads</th>
-                        <th style={{ textAlign: 'center' }}>CV Access</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedRows.length > 0 ? (
-                        displayedRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 700, color: '#002366' }}>{r.userName}</td>
-                            <td>
-                              <div>{r.userEmail}</div>
-                              <div style={{ fontSize: 11, color: '#64748b' }}>{r.role}</div>
-                            </td>
-                            <td style={{ textAlign: 'center', fontWeight: 600 }}>{r.searches}</td>
-                            <td style={{ textAlign: 'center', fontWeight: 600, color: '#0284c7' }}>{r.nvites}</td>
-                            <td style={{ textAlign: 'center' }}>{r.cvViews}</td>
-                            <td style={{ textAlign: 'center' }}>{r.excelDownloads}</td>
-                            <td style={{ textAlign: 'center' }}>{r.wordDownloads}</td>
-                            <td style={{ textAlign: 'center' }}>
-                              <span className="rxr-badge success">{r.cvAccess} Accessed</span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>No records found.</td></tr>
-                      )}
-                    </tbody>
-                  </>
-                )}
-
-                {activeTab === 'search-report' && (
-                  <>
-                    <thead>
-                      <tr>
-                        <th>Search Query</th>
-                        <th>Performed By</th>
-                        <th>Experience</th>
-                        <th>Location</th>
-                        <th style={{ textAlign: 'center' }}>Results Found</th>
-                        <th>Date & Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedRows.length > 0 ? (
-                        displayedRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 700, color: '#002366' }}>{r.query}</td>
-                            <td>{r.user}</td>
-                            <td>{r.exp}</td>
-                            <td>{r.location}</td>
-                            <td style={{ textAlign: 'center', fontWeight: 700, color: '#0284c7' }}>{r.results}</td>
-                            <td>{r.date}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>No records found.</td></tr>
-                      )}
-                    </tbody>
-                  </>
-                )}
-
-                {activeTab === 'user-login' && (
-                  <>
-                    <thead>
-                      <tr>
-                        <th>User Name</th>
-                        <th>Email</th>
-                        <th>IP Address</th>
-                        <th>Login Time</th>
-                        <th>Logout Time</th>
-                        <th>Duration</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedRows.length > 0 ? (
-                        displayedRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 700, color: '#002366' }}>{r.userName}</td>
-                            <td>{r.email}</td>
-                            <td><code>{r.ip}</code></td>
-                            <td>{r.loginTime}</td>
-                            <td>{r.logoutTime}</td>
-                            <td><strong>{r.duration}</strong></td>
-                            <td><span className="rxr-badge success">{r.status}</span></td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>No records found.</td></tr>
-                      )}
-                    </tbody>
-                  </>
-                )}
-
-                {activeTab === 'contacted-candidate-mis' && (
-                  <>
-                    <thead>
-                      <tr>
-                        <th>Candidate Name</th>
-                        <th>Target Role</th>
-                        <th>Channel</th>
-                        <th>Recruiter</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedRows.length > 0 ? (
-                        displayedRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 700, color: '#002366' }}>{r.candidateName}</td>
-                            <td>{r.role}</td>
-                            <td><span className="rxr-badge primary">{r.channel}</span></td>
-                            <td>{r.recruiter}</td>
-                            <td><span className="rxr-badge success">{r.status}</span></td>
-                            <td>{r.date}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>No records found.</td></tr>
-                      )}
-                    </tbody>
-                  </>
-                )}
-
-                {activeTab === 'comments-reports' && (
-                  <>
-                    <thead>
-                      <tr>
-                        <th>Candidate</th>
-                        <th>Folder</th>
-                        <th>Reviewer</th>
-                        <th>Rating</th>
-                        <th>Notes & Evaluation</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedRows.length > 0 ? (
-                        displayedRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 700, color: '#002366' }}>{r.candidateName}</td>
-                            <td>{r.folder}</td>
-                            <td>{r.addedBy}</td>
-                            <td style={{ color: '#f59e0b', fontSize: 14 }}>{r.rating}</td>
-                            <td style={{ maxWidth: 280 }}>{r.notes}</td>
-                            <td>{r.date}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>No records found.</td></tr>
-                      )}
-                    </tbody>
-                  </>
-                )}
-
-                {activeTab === 'call-report' && (
-                  <>
-                    <thead>
-                      <tr>
-                        <th>Candidate Name</th>
-                        <th>Phone Number</th>
-                        <th>Caller</th>
-                        <th>Call Status</th>
-                        <th>Duration</th>
-                        <th>Call Date & Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedRows.length > 0 ? (
-                        displayedRows.map((r, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 700, color: '#002366' }}>{r.candidateName}</td>
-                            <td>{r.phone}</td>
-                            <td>{r.caller}</td>
-                            <td><span className="rxr-badge success">{r.status}</span></td>
-                            <td>{r.duration}</td>
-                            <td>{r.date}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>No records found.</td></tr>
-                      )}
-                    </tbody>
-                  </>
-                )}
-              </table>
-            </div>
-          </div>
+          </>
         )}
       </div>
 

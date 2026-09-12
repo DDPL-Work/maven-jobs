@@ -237,6 +237,7 @@ router.get(
 );
 
 router.get("/:id", candidateController.getPublicCandidateById);
+router.get("/:id/similar", candidateController.getSimilarCandidates);
 router.get("/:id/resume", candidateController.getPublicCandidateResume);
 router.get("/:id/resume/download", candidateController.downloadPublicCandidateResume);
 

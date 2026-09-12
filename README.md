@@ -375,24 +375,48 @@
 | Total Views | Job listing view count |
 | Shortlisted Candidates | Count of shortlisted applicants |
 
-### Job Management
+### Job Management (`ManageJobsResponses.jsx`)
 | Feature | Description |
 |---------|-------------|
 | **Post Job** (`/post-job`) | Full job form: title, JD, required skills, salary range, location, job type, department, openings, deadline |
 | **Edit Job** | Update any field on existing job |
 | **Close/Pause Job** | Toggle job active/inactive |
-| **Draft Jobs** (`/employer-draft-jobs`) | Save incomplete jobs; resume editing later |
+| **Draft Jobs** (`/employer-draft-jobs`) | Save incomplete jobs; resume editing later; tab synced to URL (`?tab=drafts`) |
 | **Job Performance** | Per-job views, applications, conversion rate |
+| **Job List Tabs** | Switch between All Jobs (`?tab=all`) and Draft Jobs (`?tab=drafts`) |
+| **Client-side Dynamic Filters** | Filters (Status, Category, Posted By) are generated from fetched data via `generateFiltersFromData()`; all filtering done in-browser via `queryLocalJobs()` — no separate filter endpoint needed |
+| **Filter Sidebar** | Sticky sidebar with internal scroll; collapses when content exceeds viewport height |
+| **Multi-select Filters** | Status, Category, and Posted By filters support multiple selections simultaneously |
+| **Search** | Full-text search across job title and location |
+| **Sorting** | By date (newest first), total responses (most first), or title (A–Z) |
+| **Pagination** | Configurable page size (default 60); server-side slicing done locally |
+| **Bulk Actions** | Select multiple jobs; available bulk operation toolbar |
+| **Row Action Menu** | Per-job dropdown for edit, close, view responses |
 
-### Application Management
+### Application Management (`JobResponsesDetail.jsx`)
 | Feature | Description |
 |---------|-------------|
-| **View Applications** | All applications per job with candidate details |
-| **Status Pipeline** | Move applicant through: Applied → Screening → Shortlisted → Interview → Offered → Hired / Rejected |
+| **View Applications** | All applications per job with candidate details; fetched via `employerJobService.getJobDetailWithResponses(jobId)` |
+| **Primary Status Tabs** | Tabs: All / Shortlisted / Maybe / Rejected — counts update live from local state as actions are taken |
+| **Sub-filter Pills** | Secondary filters: All / New responses / Not viewed / Action pending — computed dynamically from live candidate state |
+| **Candidate Action Buttons** | Per-card Shortlist / Maybe / Reject buttons; call `handleUpdateStatus()` which updates backend and immediately reflects in local state |
+| **Action Visual Indicator** | When a status action is taken, the corresponding button shows a circular checkmark badge (`.jrd-action-active-badge`) in its top-left corner and adopts an active filled-background style |
+| **Status Pipeline** | Move applicant through: Applied → Shortlisted / Maybe / Rejected |
+| **Bulk Shortlist / Reject** | Toolbar bulk actions via `handleBulkShortlist()` and `handleBulkReject()` |
+| **Candidate Filters Sidebar** | Sticky sidebar with internal scroll; filters are fully client-side, generated from candidate data returned by the API |
+| **Client-side Dynamic Filters** | 12 accordion filter sections: Keywords, Location, Locality, Experience (histogram + range), Notice Period, Salary (range + "not mentioned"), Education, Diversity, Industry, Designation, Company, Department, Institute |
+| **Filter Counts** | Each accordion shows a blue count badge for active selections; "Clear all (N)" button shows when any filter is active |
+| **Keyword Search** | Search across candidate name, role, and skills; option to restrict to key skills only |
+| **AI Recommendations** | Toggle to filter only AI-recommended candidates; count shown if any exist |
+| **Contact Reveal** | Click to reveal phone number; copies to clipboard automatically |
+| **WhatsApp Message** | Opens WhatsApp web with pre-filled message to candidate |
+| **Email** | Opens system mail client with subject pre-filled for the job |
+| **Call from App** | Opens device dialer via `tel:` link |
+| **Outreach / Call Status** | Dropdown to set call status per candidate (e.g. Called, Interested, Not Answered) |
+| **Comments** | Expandable comment panel per candidate; supports multiple comments with author name and timestamp; Ctrl+Enter to submit |
+| **Not Viewed Tracking** | `handleMarkAsViewed()` updates `isViewed` on backend silently when contact is revealed |
+| **NVite Insights Bar** | Header shows sent count, view rate, and response rate from the last 90 days |
 | **Download Resume** | Preview and download candidate resume from within dashboard |
-| **Notes on Candidates** | Add internal notes per application |
-| **Filter Applications** | By job, status, date |
-| **Bulk Actions** | Shortlist/reject multiple candidates |
 
 ### ResDex — Resume Database (`/resdex`)
 | Feature | Description |

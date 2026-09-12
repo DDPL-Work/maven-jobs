@@ -35,6 +35,7 @@ const {
 const { esAvailable } = require("../config/elasticsearch");
 const esService = require("../services/elasticsearch.service");
 const { scheduleIndex, scheduleDelete } = esService;
+const jobReportService = require("../services/job-posting-report.service");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -812,6 +813,16 @@ exports.createJob = asyncHandler(async (req, res) => {
     },
   });
 
+  // Log JOB_POST to JobPostingReportLog for report generation
+  jobReportService.fireAndForgetJobEvent({
+    companyId: company._id,
+    user,
+    job,
+    actionType: "JOB_POST",
+    expense: 0,
+    metadata: { approvalStatus: job.approvalStatus },
+  });
+
   res.status(201).json({
     success: true,
     message: hasAvailablePackageSlot
@@ -873,6 +884,15 @@ exports.updateJob = asyncHandler(async (req, res) => {
   }
 
   await job.save();
+
+  // Log JOB_EDIT to JobPostingReportLog for report generation
+  jobReportService.fireAndForgetJobEvent({
+    companyId: req.company?._id || job.companyId,
+    user: req.user,
+    job,
+    actionType: "JOB_EDIT",
+    expense: 0,
+  });
 
   // Async incremental ES sync — fires after response is sent
   if (job.approvalStatus === "APPROVED" && job.isActive) {

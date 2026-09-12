@@ -5,52 +5,29 @@ import {
   FiMail,
   FiPhone,
   FiBriefcase,
-  FiCalendar,
   FiGlobe,
   FiDownload,
-  FiExternalLink,
-  FiBookOpen,
-  FiCode,
-  FiAward,
   FiClock,
-  FiArrowLeft,
   FiUser,
+  FiPrinter,
+  FiFlag,
+  FiChevronLeft,
+  FiChevronRight,
+  FiPlus,
+  FiSend,
+  FiShare2,
+  FiVideo,
+  FiBookmark,
+  FiCheckCircle,
+  FiPaperclip,
+  FiEye,
+  FiDollarSign,
 } from "react-icons/fi";
-import { FaLinkedinIn, FaGraduationCap } from "react-icons/fa";
+import { FaWhatsapp, FaLinkedinIn } from "react-icons/fa";
+import { HiSparkles } from "react-icons/hi2";
 import authService from "../../../../services/authService";
-import LandingFooter from "../../../../components/LandingFooter";
-
-
-const safeUrl = (v) => {
-  const u = String(v || "").trim();
-  return u.startsWith("http://") || u.startsWith("https://") ? u : "";
-};
-
-const formatDate = (d) =>
-  d
-    ? new Date(d).toLocaleDateString("en-IN", {
-        month: "short",
-        year: "numeric",
-      })
-    : "";
-
-const diffMonths = (start, end) => {
-  const s = new Date(start),
-    e = end ? new Date(end) : new Date();
-  return (
-    (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
-  );
-};
-
-const formatDuration = (start, end) => {
-  const m = diffMonths(start, end);
-  const yrs = Math.floor(m / 12);
-  const mos = m % 12;
-  const parts = [];
-  if (yrs > 0) parts.push(`${yrs} yr${yrs > 1 ? "s" : ""}`);
-  if (mos > 0) parts.push(`${mos} mo${mos > 1 ? "s" : ""}`);
-  return parts.length ? parts.join(" ") : "0 mos";
-};
+import EmployerHeader from "../../../../components/employer/EmployerHeader";
+import "./PublicCandidateProfile.css";
 
 const parseJSON = (str) => {
   if (!str) return [];
@@ -63,28 +40,31 @@ const parseJSON = (str) => {
   }
 };
 
-const SkeletonBlock = ({ h = 20, w = "100%", mb = 12, br = 8 }) => (
-  <div
-    style={{
-      height: h,
-      width: w,
-      borderRadius: br,
-      background: "linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%)",
-      backgroundSize: "200% 100%",
-      marginBottom: mb,
-      animation: "ppShimmer 1.4s ease-in-out infinite",
-    }}
-  />
-);
-
 export default function PublicCandidateProfile() {
   const { candidateId } = useParams();
   const navigate = useNavigate();
+
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("profile_detail"); // 'profile_detail' | 'attached_cv'
+  const [similarTab, setSimilarTab] = useState("profile_details"); // 'profile_details' | 'recruiters_viewed'
+  const [similarCandidates, setSimilarCandidates] = useState([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [showFullPhone, setShowFullPhone] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [commentInput, setCommentInput] = useState("");
+  const [showCommentBox, setShowCommentBox] = useState(false);
 
+  // List Context State
+  const [listIds, setListIds] = useState([]);
+  const [searchText, setSearchText] = useState("");
+  const [totalSearchCount, setTotalSearchCount] = useState(1);
+  const [currentIndex, setCurrentIndex] = useState(-1);
+
+  // Load Profile & AI Similar Profiles
   useEffect(() => {
     let active = true;
     (async () => {
@@ -95,6 +75,7 @@ export default function PublicCandidateProfile() {
           setError("Invalid candidate ID");
           return;
         }
+
         const res = await authService.getPublicCandidateById(candidateId);
         if (!active) return;
         const p = res?.data?.profile;
@@ -103,27 +84,54 @@ export default function PublicCandidateProfile() {
           return;
         }
         setProfile(p);
+
+        // Fetch List Context from Session
+        const storedList = sessionStorage.getItem("maven_candidate_list");
+        const storedSearch = sessionStorage.getItem("maven_search_text");
+        const storedTotal = sessionStorage.getItem("maven_search_total");
+        let activeSearch = "";
+        
+        if (storedList) {
+          try {
+            const parsed = JSON.parse(storedList);
+            setListIds(parsed);
+            setCurrentIndex(parsed.indexOf(candidateId));
+          } catch (e) { }
+        }
+        if (storedSearch) {
+          activeSearch = storedSearch;
+          setSearchText(storedSearch);
+        }
+        if (storedTotal) {
+          setTotalSearchCount(parseInt(storedTotal, 10));
+        }
+
+        // Fetch AI matched similar profiles
+        setSimilarLoading(true);
+        try {
+          const simRes = await authService.getSimilarCandidates(candidateId, activeSearch);
+          if (active && simRes?.data) {
+            setSimilarCandidates(simRes.data);
+          }
+        } catch (simErr) {
+          console.error("Failed to load similar candidates:", simErr);
+        } finally {
+          if (active) setSimilarLoading(false);
+        }
       } catch (e) {
         if (!active) return;
-        if (
-          e?.statusCode === 404 ||
-          e?.message?.includes("404") ||
-          e?.message?.includes("not found")
-        ) {
-          setError("Candidate not found");
-        } else {
-          setError("Failed to load profile. Please try again.");
-        }
+        setError("Failed to load profile. Please try again.");
       } finally {
         if (active) setLoading(false);
       }
     })();
+
     return () => {
       active = false;
     };
   }, [candidateId]);
 
-  const handleResume = useCallback(async () => {
+  const handleDownloadResume = useCallback(async () => {
     if (!candidateId || !profile?.resume?.url) return;
     setResumeLoading(true);
     try {
@@ -134,875 +142,896 @@ export default function PublicCandidateProfile() {
         window.open(profile.resume.url, "_blank", "noopener,noreferrer");
       }
     } catch {
-      if (profile?.resume?.url)
+      if (profile?.resume?.url) {
         window.open(profile.resume.url, "_blank", "noopener,noreferrer");
+      }
     }
     setResumeLoading(false);
   }, [candidateId, profile]);
 
+  const handleAddComment = () => {
+    if (!commentInput.trim()) return;
+    setComments((prev) => [
+      ...prev,
+      {
+        text: commentInput.trim(),
+        date: new Date().toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+        }),
+      },
+    ]);
+    setCommentInput("");
+    setShowCommentBox(false);
+  };
+
   if (loading) return <ProfileSkeleton />;
-  if (error) return <ErrorState message={error} />;
-  if (!profile) return <ErrorState message="Candidate not found" />;
+  if (error || !profile) return <ErrorState message={error || "Candidate not found"} />;
 
   const workExperiences = parseJSON(profile.workExperiences);
   const educations = parseJSON(profile.educations);
-  const projects = parseJSON(profile.projects);
-  const skills = profile.skills || [];
-  const picUrl = profile.profilePic?.url || "";
-  const coverUrl = profile.coverPic?.url || "";
-  const hasResume = !!profile.resume?.url;
+  const skills = Array.isArray(profile.skills) ? profile.skills : [];
+  const candidateName = profile.user?.name || "Candidate";
+  const avatarUrl = profile.profilePic?.url || profile.user?.avatar || "";
+
+  // Dynamic counts
+  const totalCount = totalSearchCount > 1 
+    ? totalSearchCount.toLocaleString() 
+    : (listIds.length > 0 ? listIds.length.toLocaleString() : "1");
+
+  const searchKeywords = searchText.toLowerCase().split(/\s+/).filter(Boolean);
+  const displayedSimilar = similarCandidates;
+
+  const HighlightMatch = ({ text }) => {
+    if (!text) return null;
+    if (!searchKeywords.length) return <span>{text}</span>;
+    // escape regex characters
+    const escapedKeywords = searchKeywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`(${escapedKeywords.join("|")})`, "gi");
+    const parts = text.split(regex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          searchKeywords.some((k) => k.toLowerCase() === part.toLowerCase()) ? (
+            <span key={i} className="pcp-highlight-text">
+              {part}
+            </span>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </span>
+    );
+  };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f8fafc",
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-        color: "#1e293b",
-      }}
-    >
-      <style>{`
-        @keyframes ppShimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        .pcp-container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
-        .pcp-section { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 28px 32px; margin-bottom: 20px; transition: box-shadow 0.2s; }
-        .pcp-section:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-        .pcp-section-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1rem; font-weight: 800; color: #0f172a; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-        .pcp-exp-item { padding: 16px 0; border-bottom: 1px solid #f1f5f9; }
-        .pcp-exp-item:last-child { border-bottom: none; padding-bottom: 0; }
-        .pcp-skill-pill { display: inline-flex; padding: 5px 14px; border-radius: 100px; font-size: 0.78rem; font-weight: 600; background: #eef2ff; color: #4338ca; }
-        .pcp-edu-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-        .pcp-edu-item:last-child { border-bottom: none; }
-        .pcp-project-card { background: #f8fafc; border-radius: 12px; padding: 18px; border: 1px solid #f1f5f9; margin-bottom: 12px; transition: all 0.2s; }
-        .pcp-project-card:hover { border-color: #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        @media (max-width: 768px) {
-          .pcp-container { padding: 0 12px; }
-          .pcp-section { padding: 20px 16px; }
-          .pcp-hero { flex-direction: column; align-items: center; text-align: center; }
-          .pcp-hero-info { align-items: center; }
-        }
-      `}</style>
+    <>
+      {/* 0. Employer Navigation Header */}
+      <EmployerHeader activeTab="resdex" />
 
-      {/* Navigation */}
-      <div
-        style={{
-          background: "#fff",
-          borderBottom: "1px solid #e2e8f0",
-          padding: "14px 0",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <div
-          className="pcp-container"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              onClick={() => navigate(-1)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 14px",
-                borderRadius: 8,
-                border: "none",
-                background: "#f1f5f9",
-                color: "#475569",
-                fontSize: "0.8125rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "#e2e8f0")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "#f1f5f9")
-              }
-            >
-              <FiArrowLeft size={14} /> Back
-            </button>
-            <span
-              style={{
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "#64748b",
-              }}
-            >
-              Candidate Profile
-            </span>
-          </div>
-          <a
-            href="/employer-dashboard"
-            style={{
-              fontSize: "0.8125rem",
-              fontWeight: 600,
-              color: "#002366",
-              textDecoration: "none",
-            }}
+      <div className="pcp-page-wrapper">
+        {/* 1. Top Breadcrumb & Profile Navigation Bar */}
+        <div className="pcp-topbar">
+          <div className="pcp-topbar-left">
+            <Link to="/resdex" className="pcp-crumb-link">
+              <FiUser size={14} />
+              <span>View more</span>
+            </Link>
+            <span className="pcp-crumb-sep">&gt;</span>
+          <span className="pcp-crumb-name">{candidateName}</span>
+        </div>
+
+        <div className="pcp-topbar-right">
+          <button
+            type="button"
+            className="pcp-topbar-action-btn"
+            onClick={() => window.print()}
           >
-            Employer Dashboard
-          </a>
+            <FiPrinter size={14} /> Print
+          </button>
+          <button
+            type="button"
+            className="pcp-topbar-action-btn"
+            onClick={() => alert("Profile reported for review.")}
+          >
+            <FiFlag size={14} /> Report profile
+          </button>
+          <div className="pcp-nav-arrows">
+            <button
+              type="button"
+              className="pcp-nav-btn"
+              onClick={() => {
+                if (currentIndex > 0) {
+                  navigate(`/candidates/${listIds[currentIndex - 1]}`);
+                } else {
+                  navigate(-1);
+                }
+              }}
+              disabled={currentIndex === 0}
+              title="Previous Profile"
+            >
+              <FiChevronLeft size={16} /> Prev
+            </button>
+            <button
+              type="button"
+              className="pcp-nav-btn"
+              onClick={() => {
+                if (currentIndex !== -1 && currentIndex < listIds.length - 1) {
+                  navigate(`/candidates/${listIds[currentIndex + 1]}`);
+                } else if (similarCandidates.length > 0) {
+                  navigate(`/candidates/${similarCandidates[0].id}`);
+                }
+              }}
+              disabled={currentIndex === listIds.length - 1 && similarCandidates.length === 0}
+              title="Next Profile"
+            >
+              Next <FiChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div
-        className="pcp-container"
-        style={{ paddingTop: 24, paddingBottom: 60 }}
-      >
-        {/* Hero Section */}
-        <div className="pcp-section" style={{ padding: 0, overflow: "hidden" }}>
-          <div
-            style={{
-              height: 140,
-              background: coverUrl
-                ? `url(${coverUrl}) center/cover`
-                : "linear-gradient(135deg, #002366, #1a3a6e)",
-              position: "relative",
-            }}
-          />
-          <div
-            className="pcp-hero"
-            style={{
-              display: "flex",
-              gap: 24,
-              padding: "0 32px 28px",
-              marginTop: -40,
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                width: 100,
-                height: 100,
-                borderRadius: 20,
-                overflow: "hidden",
-                flexShrink: 0,
-                border: "4px solid #fff",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                background: picUrl
-                  ? "transparent"
-                  : "linear-gradient(135deg, #e0e7ff, #c7d2fe)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {picUrl ? (
+      {/* 2. Secondary Action Toolbar (Add to, NVite, Reminder, Forward, etc.) */}
+      <div className="pcp-action-bar">
+        <button
+          type="button"
+          className="pcp-act-btn"
+          onClick={() => alert("Added to candidate folder.")}
+        >
+          <FiPlus size={14} /> Add to
+        </button>
+
+        <button
+          type="button"
+          className="pcp-act-btn"
+          onClick={() => navigate("/resdex?tab=mivites", { state: { preSelectedCandidate: profile, startAtJobStep: true } })}
+        >
+          <FiSend size={14} /> Send MIvites
+        </button>
+
+        <button
+          type="button"
+          className="pcp-act-btn"
+          onClick={() => alert("Reminder scheduled.")}
+        >
+          <FiClock size={14} /> Set reminder
+        </button>
+
+        <button
+          type="button"
+          className="pcp-act-btn"
+          onClick={() => {
+            navigator.clipboard?.writeText(window.location.href);
+            alert("Profile link copied to clipboard!");
+          }}
+        >
+          <FiShare2 size={14} /> Forward
+        </button>
+
+        <button
+          type="button"
+          className="pcp-act-btn"
+          onClick={() => alert("Video interview link generated.")}
+        >
+          <FiVideo size={14} /> Schedule video call
+        </button>
+      </div>
+
+      {/* 3. Main Grid Body */}
+      <div className="pcp-main-content">
+        {/* Left Column: Candidate Main Profile Data */}
+        <div className="pcp-left-col">
+          {/* Hero Header Card */}
+          <div className="pcp-card pcp-hero-card">
+            <div className="pcp-avatar-wrap">
+              {avatarUrl ? (
                 <img
-                  src={picUrl}
-                  alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  src={avatarUrl}
+                  alt={candidateName}
+                  className="pcp-avatar-img"
                   onError={(e) => {
-                    e.target.style.display = "none";
-                    e.target.parentElement.style.background =
-                      "linear-gradient(135deg, #e0e7ff, #c7d2fe)";
+                    e.target.onerror = null;
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(candidateName)}&background=e2e8f0&color=475569`;
                   }}
                 />
               ) : (
-                <span
-                  style={{
-                    fontSize: "2rem",
-                    fontWeight: 800,
-                    color: "#4338ca",
-                  }}
-                >
-                  {(profile.user?.name || "C")[0]}
-                </span>
+                <div className="pcp-avatar-placeholder">
+                  {candidateName.charAt(0).toUpperCase()}
+                </div>
               )}
             </div>
-            <div
-              className="pcp-hero-info"
-              style={{
-                flex: 1,
-                paddingTop: 16,
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-              }}
-            >
-              <h1
-                style={{
-                  fontFamily: "'Bricolage Grotesque', sans-serif",
-                  fontSize: "1.5rem",
-                  fontWeight: 800,
-                  color: "#0f172a",
-                  margin: 0,
-                }}
-              >
-                {profile.user?.name || "Candidate"}
-              </h1>
-              <p style={{ fontSize: "0.95rem", color: "#475569", margin: 0 }}>
-                {profile.currentTitle || profile.headline || "Professional"}
-                {profile.currentCompany ? ` at ${profile.currentCompany}` : ""}
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "8px 20px",
-                  marginTop: 4,
-                  fontSize: "0.82rem",
-                  color: "#64748b",
-                }}
-              >
+
+            <div className="pcp-hero-details">
+              <div className="pcp-name-row">
+                <div>
+                  <h1 className="pcp-candidate-name" style={{ margin: 0 }}>{candidateName}</h1>
+                  {profile.headline && (
+                    <div style={{ fontSize: 14, color: "#475569", marginTop: 4, fontWeight: 500 }}>
+                      {profile.headline}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="pcp-save-btn"
+                  onClick={() => setIsSaved(!isSaved)}
+                >
+                  <FiBookmark
+                    size={14}
+                    fill={isSaved ? "#0073e6" : "transparent"}
+                  />
+                  <span>{isSaved ? "Saved" : "Save"}</span>
+                </button>
+              </div>
+
+              <div className="pcp-meta-inline-row">
+                {(profile.totalExperience || profile.experienceMonths) ? (
+                  <span className="pcp-meta-inline-item">
+                    <FiBriefcase size={14} />
+                    <strong>
+                      {profile.totalExperience ? `${profile.totalExperience}y ` : ""}
+                      {profile.experienceMonths ? `${profile.experienceMonths}m` : ""}
+                    </strong>
+                  </span>
+                ) : null}
+
+                {(profile.currentSalary || profile.expectedSalary) && (
+                  <span className="pcp-meta-inline-item">
+                    ₹ {profile.currentSalary || "N/A"} {profile.expectedSalary && `(expects: ₹ ${profile.expectedSalary})`}
+                  </span>
+                )}
+
                 {profile.currentCity && (
-                  <span
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
-                  >
-                    <FiMapPin size={13} /> {profile.currentCity}
-                    {profile.currentCountry
-                      ? `, ${profile.currentCountry}`
-                      : ""}
-                  </span>
-                )}
-                {profile.totalExperience && (
-                  <span
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
-                  >
-                    <FiBriefcase size={13} /> {profile.totalExperience}
-                    {isNaN(profile.totalExperience) ? "" : " yrs"}
-                  </span>
-                )}
-                {profile.expectedSalary && (
-                  <span
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
-                  >
-                    <FiClock size={13} /> {profile.expectedSalary}
+                  <span className="pcp-meta-inline-item">
+                    <FiMapPin size={14} />
+                    {profile.currentCity}
                   </span>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                {profile.email && (
-                  <a
-                    href={`mailto:${profile.email}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      fontSize: "0.8125rem",
-                      fontWeight: 700,
-                      border: "1px solid #e2e8f0",
-                      color: "#475569",
-                      textDecoration: "none",
-                      transition: "all 0.15s",
-                      background: "#fff",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f8fafc";
-                      e.currentTarget.style.borderColor = "#002366";
-                      e.currentTarget.style.color = "#002366";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "#fff";
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.color = "#475569";
-                    }}
-                  >
-                    <FiMail size={14} /> Email
-                  </a>
+
+              <div className="pcp-info-grid">
+                {(profile.currentTitle || profile.currentCompany) && (
+                  <div className="pcp-info-row">
+                    <span className="pcp-info-label">Previous</span>
+                    <span className="pcp-info-val">
+                      {profile.currentTitle && <HighlightMatch text={profile.currentTitle} />}
+                      {profile.currentTitle && profile.currentCompany && " at "}
+                      {profile.currentCompany && profile.currentCompany}
+                      {profile.noticePeriod ? ` • Notice: ${profile.noticePeriod}` : ""}
+                    </span>
+                  </div>
                 )}
+
+                {(educations?.[0] || profile.education) && (
+                  <div className="pcp-info-row">
+                    <span className="pcp-info-label">Highest degree</span>
+                    <span className="pcp-info-val">
+                      {educations?.[0]?.degree || profile.education}
+                      {educations?.[0]?.school ? `, ${educations[0].school}` : (educations?.[0]?.institution ? `, ${educations[0].institution}` : "")}
+                    </span>
+                  </div>
+                )}
+
+                {profile.preferredLocations?.length > 0 && (
+                  <div className="pcp-info-row">
+                    <span className="pcp-info-label">Pref. locations</span>
+                    <span className="pcp-info-val">
+                      {profile.preferredLocations.join(", ")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Contact Buttons */}
+              <div className="pcp-contact-cta-row">
+                <button
+                  type="button"
+                  className="pcp-btn-view-phone"
+                  onClick={() => setShowFullPhone(!showFullPhone)}
+                >
+                  <FiPhone size={14} />
+                  <span>
+                    {showFullPhone && profile.phone
+                      ? `${profile.phone}${profile.altPhone ? ` / ${profile.altPhone}` : ""}`
+                      : "View phone number"}
+                  </span>
+                </button>
+
                 {profile.phone && (
                   <a
                     href={`tel:${profile.phone}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      fontSize: "0.8125rem",
-                      fontWeight: 700,
-                      border: "1px solid #e2e8f0",
-                      color: "#475569",
-                      textDecoration: "none",
-                      transition: "all 0.15s",
-                      background: "#fff",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f8fafc";
-                      e.currentTarget.style.borderColor = "#002366";
-                      e.currentTarget.style.color = "#002366";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "#fff";
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.color = "#475569";
-                    }}
+                    className="pcp-btn-call"
+                    style={{ textDecoration: "none" }}
                   >
-                    <FiPhone size={14} /> Call
+                    <FiPhone size={14} /> Call candidate
                   </a>
                 )}
-                {hasResume && (
-                  <button
-                    onClick={handleResume}
-                    disabled={resumeLoading}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      fontSize: "0.8125rem",
-                      fontWeight: 700,
-                      border: "none",
-                      color: "#fff",
-                      cursor: resumeLoading ? "wait" : "pointer",
-                      transition: "all 0.15s",
-                      background: resumeLoading ? "#6366f1" : "#002366",
-                      opacity: resumeLoading ? 0.8 : 1,
-                    }}
+
+                {profile.phone && (
+                  <a
+                    href={`https://wa.me/${profile.phone.replace(/[^0-9]/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pcp-btn-whatsapp"
+                    style={{ textDecoration: "none" }}
                   >
-                    {resumeLoading ? (
-                      "Opening..."
-                    ) : (
-                      <>
-                        <FiDownload size={14} /> Resume
-                      </>
-                    )}
-                  </button>
+                    <FaWhatsapp size={15} /> WhatsApp
+                  </a>
                 )}
-                {safeUrl(profile.linkedInUrl) && (
+
+                {profile.linkedInUrl && (
                   <a
                     href={profile.linkedInUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      fontSize: "0.8125rem",
-                      fontWeight: 700,
-                      border: "1px solid #e2e8f0",
-                      color: "#0a66c2",
-                      textDecoration: "none",
-                      transition: "all 0.15s",
-                      background: "#fff",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "#f0f7ff")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "#fff")
-                    }
+                    className="pcp-icon-link"
+                    title="LinkedIn profile"
                   >
-                    <FaLinkedinIn size={14} /> LinkedIn
+                    <FaLinkedinIn size={15} />
                   </a>
                 )}
-                {safeUrl(profile.portfolioUrl) && (
+
+                {profile.portfolioUrl && (
                   <a
                     href={profile.portfolioUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      fontSize: "0.8125rem",
-                      fontWeight: 700,
-                      border: "1px solid #e2e8f0",
-                      color: "#475569",
-                      textDecoration: "none",
-                      transition: "all 0.15s",
-                      background: "#fff",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f8fafc";
-                      e.currentTarget.style.borderColor = "#002366";
-                      e.currentTarget.style.color = "#002366";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "#fff";
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.color = "#475569";
-                    }}
+                    className="pcp-icon-link"
+                    title="Portfolio website"
                   >
-                    <FiGlobe size={14} /> Portfolio
+                    <FiGlobe size={15} />
                   </a>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Summary */}
-        {profile.summary && (
-          <div className="pcp-section">
-            <div className="pcp-section-title">
-              <FiBookOpen size={16} /> About
-            </div>
-            <p
-              style={{
-                fontSize: "0.9rem",
-                lineHeight: 1.7,
-                color: "#475569",
-                margin: 0,
-              }}
-            >
-              {profile.summary}
-            </p>
-          </div>
-        )}
+              {/* Email & Verified status */}
+              <div className="pcp-email-row">
+                <FiMail size={14} color="#64748b" />
+                <span>{profile.user?.email || "N/A"}</span>
+                <span className="pcp-verified-badge">
+                  <FiCheckCircle size={13} /> Verified
+                </span>
+              </div>
 
-        {/* Work Experience */}
-        {workExperiences.length > 0 && (
-          <div className="pcp-section">
-            <div className="pcp-section-title">
-              <FiBriefcase size={16} /> Experience
-            </div>
-            {workExperiences.map((exp, i) => (
-              <div key={i} className="pcp-exp-item">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: 12,
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <h4
-                      style={{
-                        fontSize: "0.95rem",
-                        fontWeight: 700,
-                        color: "#0f172a",
-                        margin: 0,
-                      }}
-                    >
-                      {exp.title || exp.role || "Role"}
-                    </h4>
-                    <p
-                      style={{
-                        fontSize: "0.85rem",
-                        color: "#475569",
-                        margin: "3px 0",
-                      }}
-                    >
-                      {exp.company || exp.organization || ""}
-                      {exp.location ? ` - ${exp.location}` : ""}
-                    </p>
-                  </div>
-                  {exp.startDate && (
-                    <span
-                      style={{
-                        fontSize: "0.78rem",
-                        color: "#64748b",
-                        whiteSpace: "nowrap",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {formatDate(exp.startDate)} -{" "}
-                      {formatDate(exp.endDate) || "Present"}
-                      <span style={{ color: "#94a3b8", marginLeft: 6 }}>
-                        ({formatDuration(exp.startDate, exp.endDate)})
-                      </span>
+              {/* Timeline bar */}
+              <div className="pcp-exp-bar-wrap">
+                <div className="pcp-exp-bar-track">
+                  <div className="pcp-exp-bar-fill" style={{ width: "85%" }} />
+                </div>
+                <div className="pcp-exp-bar-labels">
+                  <span>Start</span>
+                  <span></span>
+                  <span>Present</span>
+                </div>
+              </div>
+
+              {/* Footer Meta Row (Views, Downloads, Activity) */}
+              <div className="pcp-hero-foot-row">
+                <div className="pcp-hero-foot-left">
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <FiEye size={13} /> {profile.profileViews || 0}
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <FiDownload size={13} /> {profile.recruiterActions || 0}
+                  </span>
+                </div>
+
+                <div className="pcp-hero-foot-right">
+                  {profile.resume?.url && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <FiPaperclip size={13} /> CV Attached
                     </span>
                   )}
-                </div>
-                {exp.description && (
-                  <p
-                    style={{
-                      fontSize: "0.82rem",
-                      color: "#64748b",
-                      lineHeight: 1.6,
-                      margin: "8px 0 0",
-                    }}
-                  >
-                    {exp.description}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Education */}
-        {educations.length > 0 && (
-          <div className="pcp-section">
-            <div className="pcp-section-title">
-              <FaGraduationCap size={16} /> Education
-            </div>
-            {educations.map((edu, i) => (
-              <div key={i} className="pcp-edu-item">
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
-                    background: "#eef2ff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#4338ca",
-                    flexShrink: 0,
-                  }}
-                >
-                  <FaGraduationCap size={18} />
-                </div>
-                <div>
-                  <h4
-                    style={{
-                      fontSize: "0.9rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      margin: 0,
-                    }}
-                  >
-                    {edu.degree || edu.course || "Education"}
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: "0.82rem",
-                      color: "#475569",
-                      margin: "2px 0",
-                    }}
-                  >
-                    {edu.institution || edu.college || edu.school || ""}
-                    {edu.field ? ` - ${edu.field}` : ""}
-                  </p>
-                  {edu.startDate && (
-                    <p
-                      style={{
-                        fontSize: "0.78rem",
-                        color: "#64748b",
-                        margin: "2px 0 0",
-                      }}
-                    >
-                      {formatDate(edu.startDate)} -{" "}
-                      {formatDate(edu.endDate) || "Present"}
-                    </p>
-                  )}
-                  {edu.percentage && (
-                    <p
-                      style={{
-                        fontSize: "0.78rem",
-                        color: "#64748b",
-                        margin: "2px 0 0",
-                      }}
-                    >
-                      {edu.percentage}%
-                    </p>
-                  )}
+                  {profile.lastUpdated && <span>Modified {profile.lastUpdated}</span>}
+                  <span style={{ color: "#10b981", fontWeight: 600 }}>Active status: {profile.activeStatus || "Unknown"}</span>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
 
-        {/* Skills */}
-        {skills.length > 0 && (
-          <div className="pcp-section">
-            <div className="pcp-section-title">
-              <FiCode size={16} /> Skills
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {skills.map((skill, i) => (
-                <span key={i} className="pcp-skill-pill">
-                  {skill}
-                </span>
-              ))}
-            </div>
-            {profile.itSkills && (
-              <div
-                style={{
-                  marginTop: 16,
-                  fontSize: "0.82rem",
-                  color: "#64748b",
-                  lineHeight: 1.6,
-                }}
+          {/* Tab Navigation: Profile detail vs Attached CV */}
+          <div className="pcp-card" style={{ padding: "18px 24px 28px" }}>
+            <div className="pcp-tab-nav">
+              <button
+                type="button"
+                className={`pcp-tab-btn ${activeTab === "profile_detail" ? "active" : ""}`}
+                onClick={() => setActiveTab("profile_detail")}
               >
-                {profile.itSkills}
+                Profile detail
+              </button>
+              <button
+                type="button"
+                className={`pcp-tab-btn ${activeTab === "attached_cv" ? "active" : ""}`}
+                onClick={() => setActiveTab("attached_cv")}
+              >
+                Attached CV
+              </button>
+            </div>
+
+            {activeTab === "profile_detail" ? (
+              <>
+                {/* Summary / Headline Quote Box */}
+                {profile.summary && (
+                  <div className="pcp-quote-box">
+                    {profile.summary}
+                  </div>
+                )}
+
+                {/* Key Skills Section */}
+                <div className="pcp-detail-section">
+                  <h3 className="pcp-detail-title">Key skills</h3>
+                  <div className="pcp-skills-cloud">
+                    {skills.map((s, i) => {
+                      const isMatch = searchKeywords.length > 0 && searchKeywords.some((k) => s.toLowerCase().includes(k));
+                      return (
+                        <span key={i} className={`pcp-skill-tag ${isMatch ? "highlight" : ""}`}>
+                          {s}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {profile.itSkills && (
+                    <>
+                      <div className="pcp-detail-subtitle">May also know</div>
+                      <div className="pcp-skills-cloud">
+                        {profile.itSkills.split(/[,|]/).map((item, idx) => {
+                          const s = item.trim();
+                          const isMatch = searchKeywords.length > 0 && searchKeywords.some((k) => s.toLowerCase().includes(k));
+                          return (
+                            <span key={idx} className={`pcp-skill-tag ${isMatch ? "highlight" : ""}`}>
+                              {s}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Work Summary */}
+                <div className="pcp-detail-section">
+                  <h3 className="pcp-detail-title">Work summary</h3>
+                  {profile.summary && (
+                    <p style={{ fontSize: 13, lineHeight: 1.6, color: "#475569", margin: "0 0 16px 0" }}>
+                      {profile.summary}
+                    </p>
+                  )}
+
+                  <div className="pcp-spec-grid">
+                    {profile.industry && (
+                      <div className="pcp-spec-item">
+                        <label>Industry</label>
+                        <span>{profile.industry}</span>
+                      </div>
+                    )}
+                    {profile.department && (
+                      <div className="pcp-spec-item">
+                        <label>Department</label>
+                        <span>{profile.department}</span>
+                      </div>
+                    )}
+                    {profile.currentTitle && (
+                      <div className="pcp-spec-item">
+                        <label>Role</label>
+                        <span>{profile.currentTitle}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Work Experience */}
+                {workExperiences.length > 0 && (
+                  <div className="pcp-detail-section">
+                    <h3 className="pcp-detail-title">Work experience</h3>
+                    {workExperiences.map((exp, i) => (
+                      <div key={i} className="pcp-work-exp-item">
+                        <div className="pcp-work-exp-title">
+                          {exp.title || exp.designation || exp.role}
+                        </div>
+                        <div className="pcp-work-exp-company">
+                          {exp.company || exp.organization}
+                          {exp.location ? ` - ${exp.location}` : ""}
+                        </div>
+                        <div className="pcp-work-exp-date">
+                          {exp.startDate ? exp.startDate : "N/A"} to {exp.currentlyWorking ? "Present" : (exp.endDate ? exp.endDate : "N/A")}
+                        </div>
+                        {exp.description && (
+                          <p style={{ fontSize: 13, color: "#475569", margin: 0 }}>
+                            {exp.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Educations */}
+                {educations.length > 0 && (
+                  <div className="pcp-detail-section">
+                    <h3 className="pcp-detail-title">Education</h3>
+                    {educations.map((edu, i) => (
+                      <div key={i} className="pcp-work-exp-item">
+                        <div className="pcp-work-exp-title">
+                          {edu.degree} {edu.field ? `in ${edu.field}` : ""}
+                        </div>
+                        <div className="pcp-work-exp-company">
+                          {edu.school || edu.institution}
+                        </div>
+                        <div className="pcp-work-exp-date">
+                          {edu.startYear ? edu.startYear : "N/A"} to {edu.currentlyStudying ? "Present" : (edu.endYear ? edu.endYear : "N/A")}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Projects */}
+                {(profile.projects?.length > 0 || profile.projectTitle) && (
+                  <div className="pcp-detail-section">
+                    <h3 className="pcp-detail-title">Projects</h3>
+                    {profile.projects?.map((proj, i) => (
+                      <div key={i} className="pcp-work-exp-item">
+                        <div className="pcp-work-exp-title">
+                          {proj.title}
+                        </div>
+                        {proj.link && (
+                          <div className="pcp-work-exp-company">
+                            <a href={proj.link} target="_blank" rel="noopener noreferrer">{proj.link}</a>
+                          </div>
+                        )}
+                        {proj.description && (
+                          <p style={{ fontSize: 13, color: "#475569", margin: "4px 0 0" }}>
+                            {proj.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {profile.projectTitle && (
+                      <div className="pcp-work-exp-item">
+                        <div className="pcp-work-exp-title">
+                          {profile.projectTitle}
+                        </div>
+                        {profile.projectLink && (
+                          <div className="pcp-work-exp-company">
+                            <a href={profile.projectLink} target="_blank" rel="noopener noreferrer">{profile.projectLink}</a>
+                          </div>
+                        )}
+                        {profile.projectDescription && (
+                          <p style={{ fontSize: 13, color: "#475569", margin: "4px 0 0" }}>
+                            {profile.projectDescription}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Other details (Languages, Personal details, Desired job, Work authorization) */}
+                <div className="pcp-detail-section">
+                  <h3 className="pcp-detail-title">Other details</h3>
+
+                  {/* Preferred Roles */}
+                  {profile.preferredRoles?.length > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div className="pcp-detail-subtitle">Preferred Roles</div>
+                      <div style={{ fontSize: 13, color: "#334155" }}>
+                        {profile.preferredRoles.join(", ")}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Languages known */}
+                  {profile.languages && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div className="pcp-detail-subtitle">Languages known</div>
+                      <div style={{ fontSize: 13, color: "#334155" }}>
+                        {profile.languages}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Personal details */}
+                  <div style={{ marginBottom: 18 }}>
+                    <div className="pcp-detail-subtitle">Personal details</div>
+                    <div className="pcp-spec-grid">
+                      {profile.dateOfBirth && (
+                        <div className="pcp-spec-item">
+                          <label>Date of Birth</label>
+                          <span>{profile.dateOfBirth}</span>
+                        </div>
+                      )}
+                      {profile.gender && (
+                        <div className="pcp-spec-item">
+                          <label>Gender</label>
+                          <span>{profile.gender}</span>
+                        </div>
+                      )}
+                      {profile.maritalStatus && (
+                        <div className="pcp-spec-item">
+                          <label>Marital status</label>
+                          <span>{profile.maritalStatus}</span>
+                        </div>
+                      )}
+                      {profile.category && (
+                        <div className="pcp-spec-item">
+                          <label>Category</label>
+                          <span>{profile.category}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Desired job detail */}
+                  {(profile.desiredJobType || profile.employmentStatus) && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div className="pcp-detail-subtitle">Desired job detail</div>
+                      <div className="pcp-spec-grid">
+                        {profile.desiredJobType && (
+                          <div className="pcp-spec-item">
+                            <label>Job Type</label>
+                            <span>{profile.desiredJobType}</span>
+                          </div>
+                        )}
+                        {profile.employmentStatus && (
+                          <div className="pcp-spec-item">
+                            <label>Employment status</label>
+                            <span>{profile.employmentStatus}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Attached CV preview row */}
+                <div className="pcp-detail-section" style={{ borderTop: "1px solid #f1f5f9", paddingTop: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                        Attached CV
+                      </h4>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                        Last updated {profile.lastUpdated || "recently"}
+                      </p>
+                    </div>
+
+                    {profile.resume?.url && (
+                      <button
+                        type="button"
+                        className="pcp-btn-view-phone"
+                        onClick={handleDownloadResume}
+                        disabled={resumeLoading}
+                      >
+                        <FiDownload size={14} />
+                        <span>{resumeLoading ? "Downloading..." : "Download CV"}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Attached CV tab content */
+              <div style={{ padding: "20px 0" }}>
+                {profile.resume?.url ? (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#334155" }}>
+                        {profile.resume.fileName || "Resume.pdf"}
+                      </span>
+                      <button
+                        type="button"
+                        className="pcp-btn-view-phone"
+                        onClick={handleDownloadResume}
+                        disabled={resumeLoading}
+                      >
+                        <FiDownload size={14} /> Download CV
+                      </button>
+                    </div>
+                    <iframe
+                      src={profile.resume.url}
+                      title="Candidate CV"
+                      style={{ width: "100%", height: 700, border: "1px solid #e2e8f0", borderRadius: 8 }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8" }}>
+                    No CV attached by the candidate.
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Projects */}
-        {projects.length > 0 && (
-          <div className="pcp-section">
-            <div className="pcp-section-title">
-              <FiCode size={16} /> Projects
-            </div>
-            {projects.map((proj, i) => (
-              <div key={i} className="pcp-project-card">
-                <h4
-                  style={{
-                    fontSize: "0.9rem",
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    margin: 0,
-                  }}
-                >
-                  {proj.title || proj.name || `Project ${i + 1}`}
-                </h4>
-                {(proj.link || proj.url) && (
-                  <a
-                    href={proj.link || proj.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: "0.78rem",
-                      color: "#6366f1",
-                      fontWeight: 600,
-                      textDecoration: "none",
-                      marginTop: 4,
-                    }}
-                  >
-                    <FiExternalLink size={12} /> {proj.link || proj.url}
-                  </a>
-                )}
-                {proj.description && (
-                  <p
-                    style={{
-                      fontSize: "0.82rem",
-                      color: "#64748b",
-                      lineHeight: 1.6,
-                      margin: "8px 0 0",
-                    }}
-                  >
-                    {proj.description}
-                  </p>
-                )}
-                {proj.techStack &&
-                  Array.isArray(proj.techStack) &&
-                  proj.techStack.length > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 4,
-                        marginTop: 10,
-                      }}
-                    >
-                      {proj.techStack.map((tech, j) => (
-                        <span
-                          key={j}
-                          className="pcp-skill-pill"
-                          style={{ fontSize: "0.7rem", padding: "3px 10px" }}
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Certifications / Additional Info */}
-        {(profile.certifications ||
-          profile.languages ||
-          profile.preferredLocations?.length > 0) && (
-          <div className="pcp-section">
-            <div className="pcp-section-title">
-              <FiAward size={16} /> Additional Information
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
-                fontSize: "0.85rem",
-              }}
+        {/* Right Column: Comments & AI Matched Similar Profiles */}
+        <div className="pcp-right-col">
+          {/* Comments Card */}
+          <div className="pcp-card pcp-comments-card">
+            <h4 className="pcp-comments-title">
+              {comments.length ? `${comments.length} Comments` : "No comments"}
+            </h4>
+            <button
+              type="button"
+              className="pcp-add-comments-link"
+              onClick={() => setShowCommentBox(!showCommentBox)}
             >
-              {profile.certifications && (
-                <div>
-                  <span style={{ fontWeight: 600, color: "#475569" }}>
-                    Certifications:
-                  </span>
-                  <span style={{ color: "#64748b", marginLeft: 6 }}>
-                    {profile.certifications}
-                  </span>
-                </div>
-              )}
-              {profile.languages && (
-                <div>
-                  <span style={{ fontWeight: 600, color: "#475569" }}>
-                    Languages:
-                  </span>
-                  <span style={{ color: "#64748b", marginLeft: 6 }}>
-                    {profile.languages}
-                  </span>
-                </div>
-              )}
-              {profile.preferredLocations?.length > 0 && (
-                <div>
-                  <span style={{ fontWeight: 600, color: "#475569" }}>
-                    Preferred Locations:
-                  </span>
-                  <span style={{ color: "#64748b", marginLeft: 6 }}>
-                    {profile.preferredLocations.join(", ")}
-                  </span>
-                </div>
-              )}
-              {profile.noticePeriod && (
-                <div>
-                  <span style={{ fontWeight: 600, color: "#475569" }}>
-                    Notice Period:
-                  </span>
-                  <span style={{ color: "#64748b", marginLeft: 6 }}>
-                    {profile.noticePeriod}
-                  </span>
-                </div>
-              )}
-            </div>
+              Add comments
+            </button>
           </div>
-        )}
 
-        {/* Contact Card */}
-        <div
-          className="pcp-section"
-          style={{
-            background: "linear-gradient(135deg, #0f172a, #1e293b)",
-            border: "none",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 16,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h3
-                style={{
-                  fontFamily: "'Bricolage Grotesque', sans-serif",
-                  fontSize: "1.1rem",
-                  fontWeight: 800,
-                  color: "#fff",
-                  margin: 0,
-                }}
-              >
-                Interested in this candidate?
-              </h3>
-              <p
-                style={{
-                  fontSize: "0.85rem",
-                  color: "#94a3b8",
-                  margin: "6px 0 0",
-                }}
-              >
-                Connect with them directly through your employer dashboard.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {profile.email && (
-                <a
-                  href={`mailto:${profile.email}`}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "10px 20px",
-                    borderRadius: 10,
-                    fontSize: "0.8125rem",
-                    fontWeight: 700,
-                    border: "none",
-                    color: "#fff",
-                    background: "#002366",
-                    textDecoration: "none",
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "#003080")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "#002366")
-                  }
+          {/* Expandable Comment Input */}
+          {showCommentBox && (
+            <div className="pcp-card" style={{ padding: 14 }}>
+              <textarea
+                rows={3}
+                className="rxr-date-input"
+                style={{ width: "100%", resize: "vertical", boxSizing: "border-box", fontSize: 13 }}
+                placeholder="Write your recruiter notes/comments..."
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="rxr-btn-outline"
+                  onClick={() => setShowCommentBox(false)}
                 >
-                  <FiMail size={14} /> Send Email
-                </a>
-              )}
-              <Link
-                to="/employer-dashboard"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "10px 20px",
-                  borderRadius: 10,
-                  fontSize: "0.8125rem",
-                  fontWeight: 700,
-                  border: "none",
-                  color: "#0f172a",
-                  background: "#fff",
-                  textDecoration: "none",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "#f1f5f9")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "#fff")
-                }
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rxr-btn-primary"
+                  onClick={handleAddComment}
+                >
+                  Save Comment
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Render comments if any */}
+          {comments.map((c, i) => (
+            <div key={i} className="pcp-card" style={{ padding: 12, fontSize: 13, color: "#334155" }}>
+              <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 4 }}>Recruiter Note:</div>
+              <p style={{ margin: "0 0 6px" }}>{c.text}</p>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>{c.date}</span>
+            </div>
+          ))}
+
+          {/* AI Matched Similar Profiles Card */}
+          <div className="pcp-card pcp-similar-card">
+            <div className="pcp-similar-header">
+              <h3 className="pcp-ai-title">
+                <HiSparkles className="pcp-ai-sparkle" size={16} />
+                <span>AI matched</span> similar profiles
+              </h3>
+              
+            </div>
+
+            {/* Tabs for similar profiles */}
+            <div className="pcp-similar-tabs">
+              <button
+                type="button"
+                className={`pcp-similar-tab ${similarTab === "profile_details" ? "active" : ""}`}
+                onClick={() => setSimilarTab("profile_details")}
               >
-                <FiUser size={14} /> Dashboard
-              </Link>
+                Profile details ({similarCandidates.length})
+              </button>
+
+              <button
+                type="button"
+                className={`pcp-similar-tab ${similarTab === "recruiters_viewed" ? "active" : ""}`}
+                onClick={() => setSimilarTab("recruiters_viewed")}
+              >
+                Recruiters also viewed (0)
+              </button>
+            </div>
+
+            {/* List of Similar Candidate Profiles */}
+            <div className="pcp-similar-list-container">
+              {similarLoading ? (
+                <div style={{ textAlign: "center", padding: "24px 0", color: "#64748b", fontSize: 13 }}>
+                  <FiSparkles size={18} style={{ animation: "spin 1s linear infinite" }} />
+                  <div style={{ marginTop: 8 }}>AI matching similar profiles...</div>
+                </div>
+              ) : similarTab === "recruiters_viewed" ? (
+                <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 13 }}>
+                  No recent team views found for this candidate.
+                </div>
+              ) : displayedSimilar.length > 0 ? (
+                displayedSimilar.map((c) => (
+                  <Link
+                    key={c.id}
+                    to={`/candidate/${c.id}`}
+                    className="pcp-similar-item"
+                  >
+                    <div className="pcp-sim-head">
+                      <div className="pcp-sim-avatar">
+                        {(c.avatar || c.profilePic?.url) ? (
+                          <img
+                            src={c.avatar || c.profilePic?.url}
+                            alt={c.name || c.user?.name || "Candidate"}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name || c.user?.name || "Candidate")}&background=e2e8f0&color=475569`;
+                            }}
+                          />
+                        ) : (
+                          (c.name || c.user?.name || "C").charAt(0).toUpperCase()
+                        )}
+                      </div>
+
+                      <div className="pcp-sim-info">
+                        <div className="pcp-sim-name">{c.name || c.user?.name || "Candidate"}</div>
+                        <div className="pcp-sim-role">
+                          <HighlightMatch text={c.title || c.currentTitle || c.headline || "Professional"} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pcp-sim-meta">
+                      <span>
+                        <FiBriefcase size={12} /> {c.experience || (c.totalExperience ? `${c.totalExperience}y` : "Exp N/A")}
+                      </span>
+                      <span>
+                        <FiDollarSign size={12} /> {c.salary || c.currentSalary || c.expectedSalary || "Salary N/A"}
+                      </span>
+                    </div>
+
+                    <div className="pcp-sim-loc">
+                      <FiMapPin size={12} /> {c.location || c.currentCity || "Location N/A"} {c.preferredLocations?.length > 0 ? `(${Array.isArray(c.preferredLocations) ? c.preferredLocations.slice(0, 2).join(", ") : c.preferredLocations})` : ""}
+                    </div>
+
+                    {/* Skills tags */}
+                    {c.skills?.length > 0 && (
+                      <div className="pcp-sim-skills">
+                        {c.skills.slice(0, 5).map((sk, idx) => {
+                          const isMatch = searchKeywords.length > 0 && searchKeywords.some((k) => sk.toLowerCase().includes(k));
+                          return (
+                            <span
+                              key={idx}
+                              className={`pcp-sim-skill ${isMatch ? "highlight" : ""}`}
+                            >
+                              {sk}
+                            </span>
+                          );
+                        })}
+                        
+                      </div>
+                    )}
+
+                    <div className="pcp-sim-footer">
+                      <span>
+                        <FiPaperclip size={11} /> {c.hasCv ? "CV" : "Profile"}
+                      </span>
+                      <span>{c.activeStatus || "Active recently"}</span>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 13 }}>
+                  No similar candidates found.
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* <LandingFooter /> */}
     </div>
+    </>
   );
 }
 
 function ProfileSkeleton() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f8fafc",
-        padding: "24px 20px",
-      }}
-    >
-      <style>{`@keyframes ppShimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }`}</style>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <SkeletonBlock h={50} mb={20} />
-        <SkeletonBlock h={140} mb={20} br={16} />
-        <div
-          style={{
-            display: "flex",
-            gap: 24,
-            marginTop: -60,
-            paddingLeft: 32,
-            marginBottom: 20,
-          }}
-        >
-          <SkeletonBlock h={100} w={100} br={20} />
-          <div style={{ flex: 1, paddingTop: 50 }}>
-            <SkeletonBlock h={28} w="40%" />
-            <SkeletonBlock h={18} w="60%" />
-            <SkeletonBlock h={16} w="30%" />
-          </div>
-        </div>
-        <SkeletonBlock h={120} br={16} />
-        <div style={{ marginTop: 20 }}>
-          <SkeletonBlock h={200} br={16} />
-        </div>
-        <div style={{ marginTop: 20 }}>
-          <SkeletonBlock h={160} br={16} />
+    <div style={{ minHeight: "100vh", background: "#f1f5f9", padding: "24px 20px" }}>
+      <div style={{ maxWidth: 1440, margin: "0 auto" }}>
+        <div style={{ height: 40, background: "#e2e8f0", borderRadius: 8, marginBottom: 20 }} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20 }}>
+          <div style={{ height: 360, background: "#ffffff", borderRadius: 12 }} />
+          <div style={{ height: 360, background: "#ffffff", borderRadius: 12 }} />
         </div>
       </div>
     </div>
@@ -1010,6 +1039,7 @@ function ProfileSkeleton() {
 }
 
 function ErrorState({ message }) {
+  const navigate = useNavigate();
   return (
     <div
       style={{
@@ -1019,65 +1049,44 @@ function ErrorState({ message }) {
         alignItems: "center",
         justifyContent: "center",
         background: "#f8fafc",
-        fontFamily: "'DM Sans', system-ui, sans-serif",
         padding: 40,
       }}
     >
       <div
         style={{
-          width: 80,
-          height: 80,
-          borderRadius: 20,
+          width: 70,
+          height: 70,
+          borderRadius: 16,
           background: "#fef2f2",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: 24,
+          marginBottom: 20,
         }}
       >
-        <FiUser size={32} color="#ef4444" />
+        <FiUser size={30} color="#ef4444" />
       </div>
-      <h2
-        style={{
-          fontFamily: "'Bricolage Grotesque', sans-serif",
-          fontSize: "1.5rem",
-          fontWeight: 800,
-          color: "#0f172a",
-          margin: 0,
-        }}
-      >
+      <h2 style={{ fontSize: "1.4rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
         Candidate Not Found
       </h2>
-      <p
+      <p style={{ fontSize: "0.9rem", color: "#64748b", marginTop: 8 }}>{message}</p>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
         style={{
-          fontSize: "0.9rem",
-          color: "#64748b",
-          marginTop: 8,
-          textAlign: "center",
-        }}
-      >
-        {message}
-      </p>
-      <a
-        href="/employer-dashboard"
-        style={{
-          marginTop: 24,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "10px 24px",
-          borderRadius: 10,
-          fontSize: "0.875rem",
-          fontWeight: 700,
+          marginTop: 20,
+          padding: "10px 20px",
+          borderRadius: 8,
           border: "none",
-          color: "#fff",
           background: "#002366",
-          textDecoration: "none",
+          color: "#fff",
+          fontWeight: 600,
           cursor: "pointer",
         }}
       >
-        <FiArrowLeft size={14} /> Back to Dashboard
-      </a>
+        Go Back
+      </button>
     </div>
   );
 }
+
