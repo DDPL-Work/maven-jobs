@@ -61,8 +61,6 @@ const sendAuthResponse = async (req, res, { user, source, profile = null }) => {
 
   return res.status(200).json({
     success: true,
-    token: tokenPair.accessToken,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: tokenPair.user,
     ...(profile ? { profile } : {}),
@@ -113,7 +111,6 @@ exports.registerCandidate = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: tokenPair.user,
   });
@@ -178,7 +175,6 @@ exports.refresh = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: tokenPair.user,
   });

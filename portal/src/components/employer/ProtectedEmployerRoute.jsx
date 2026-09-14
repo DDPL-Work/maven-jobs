@@ -1,10 +1,9 @@
 import { Navigate } from 'react-router-dom';
 
 export default function ProtectedEmployerRoute({ children, fallback = '/employer-login' }) {
-  const token =
-    localStorage.getItem('employerToken');
+  const userStored = localStorage.getItem('employerUser');
 
-  if (!token || token === 'undefined') {
+  if (!userStored || userStored === 'undefined') {
     return <Navigate to={fallback} replace />;
   }
 

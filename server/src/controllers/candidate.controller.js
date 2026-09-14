@@ -272,9 +272,15 @@ const formatProfile = (profile = {}, user = null) => {
       try { const parsed = JSON.parse(profile?.projects || "[]"); return Array.isArray(parsed) ? parsed : []; }
       catch { return []; }
     })(),
+    accomplishments: (() => {
+      try { const parsed = JSON.parse(profile?.accomplishments || "[]"); return Array.isArray(parsed) ? parsed : []; }
+      catch { return []; }
+    })(),
     projectTitle: profile?.projectTitle || "",
     projectLink: profile?.projectLink || "",
     projectDescription: profile?.projectDescription || "",
+    profileViews: profile?.profileViews || 0,
+    recruiterActions: profile?.recruiterActions || 0,
     lastScannedQrToken: profile?.lastScannedQrToken || "",
     savedJobIds: (profile?.savedJobIds || []).map((id) => String(id)),
     followedCompanyIds: (profile?.followedCompanyIds || []).map((id) => String(id)),
@@ -1057,8 +1063,6 @@ exports.register = asyncHandler(async (req, res) => {
     res.status(201).json({
       success: true,
       referenceId: `MVN-${String(user._id).slice(-8).toUpperCase()}`,
-      token: tokenPair.accessToken,
-      accessToken: tokenPair.accessToken,
       expiresInSeconds: tokenPair.expiresInSeconds,
       user: formatCandidateUser(user),
       profile: formatProfile(profile, user),
@@ -1114,8 +1118,6 @@ exports.login = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    token: tokenPair.accessToken,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: formatCandidateUser(user),
     profile: formatProfile(profile, user),

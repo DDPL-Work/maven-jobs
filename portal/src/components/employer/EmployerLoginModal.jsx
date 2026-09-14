@@ -31,8 +31,7 @@ export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) 
     setLoading(true); setError('');
     try {
       const response = await authService.employerLogin(email, password);
-      if (response?.token) {
-        localStorage.setItem('employerToken', response.token);
+      if (response?.success || response?.user || response?.company) {
         const employerUser = {
           ...(response.user || {}),
           companyName: response?.company?.name || response?.user?.companyName || '',

@@ -51,8 +51,8 @@ export default function EmployerHeader({
   const profileBtnRef = useRef(null);
   const profileSidebarRef = useRef(null);
   const dropdownRefs = useRef({});
-  const employerToken = localStorage.getItem("employerToken");
-  const isEmployerLoggedIn = !!employerToken && employerToken !== "undefined";
+  const userStored = localStorage.getItem("employerUser");
+  const isEmployerLoggedIn = !!userStored && userStored !== "undefined";
 
   const [sessionUser, setSessionUser] = useState(() => {
     try {
@@ -186,7 +186,7 @@ export default function EmployerHeader({
 
   useEffect(() => {
     if (!requireAuth) return;
-    if (!localStorage.getItem("employerToken")) navigate("/employer-login");
+    if (!localStorage.getItem("employerUser")) navigate("/employer-login");
   }, [navigate, requireAuth]);
 
   const refreshCredits = useCallback(async () => {
@@ -276,7 +276,7 @@ export default function EmployerHeader({
       onNavigate(tabId);
     } else {
       if (tabId === "home") {
-        navigate(localStorage.getItem("employerToken") ? "/employer-dashboard" : "/employer-login");
+        navigate(localStorage.getItem("employerUser") ? "/employer-dashboard" : "/employer-login");
       } else if (tabId === "analysis") {
         navigate("/employer-dashboard/analytics");
       } else if (tabId === "jobs") {
@@ -285,10 +285,11 @@ export default function EmployerHeader({
     }
   }, [onNavigate, navigate]);
 
-  const handleLogoutAction = useCallback(() => {
+  const handleLogoutAction = useCallback(async () => {
     if (onLogout) {
       onLogout();
     } else {
+      try { await authService.logoutEmployer(); } catch {}
       localStorage.removeItem("employerToken");
       localStorage.removeItem("candidateToken");
       localStorage.removeItem("token");
@@ -404,7 +405,7 @@ export default function EmployerHeader({
           maxWidth: 1160, margin: "0 auto", padding: "0 20px",
           display: "flex", alignItems: "center", gap: 0, height: 58
         }}>
-          <button type="button" onClick={() => navigate(localStorage.getItem("employerToken") ? "/employer-dashboard" : "/employer-login")}
+          <button type="button" onClick={() => navigate(localStorage.getItem("employerUser") ? "/employer-dashboard" : "/employer-login")}
             aria-label="Go to employer dashboard"
             style={{
               display: "flex", alignItems: "center", marginRight: 28, flexShrink: 0,

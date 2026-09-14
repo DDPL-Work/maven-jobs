@@ -105,10 +105,6 @@ const mergeLoginResponse = (data) => {
   };
 };
 
-const AUTH_TOKEN_KEY = 'candidateToken';
-
-const getAuthToken = (data) => data.accessToken || data.token || '';
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("user");
@@ -129,39 +125,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!token || token === 'undefined') {
-      const oldToken = localStorage.getItem("token");
-      if (oldToken && oldToken !== 'undefined') {
-        try {
-          const payload = JSON.parse(atob(oldToken.split('.')[1]));
-          if (payload.role === 'CANDIDATE') {
-            localStorage.setItem(AUTH_TOKEN_KEY, oldToken);
-            localStorage.removeItem("token");
-            token = oldToken;
-          }
-        } catch {}
-      }
-    }
-    if (!token || token === 'undefined') return;
-
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      if (payload.role === 'CLIENT' || payload.role === 'ADMIN') {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem("user");
-        setUser(null);
-        return;
-      }
-    } catch {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      localStorage.removeItem("user");
-      setUser(null);
-      return;
-    }
-
+    // Rely solely on HTTP-only cookies to validate the session
     authService.getMe().then((data) => {
       if (data?.user) {
+        // Ensure that the role is appropriate for this portal
+        if (data.user.role === 'CLIENT' || data.user.role === 'ADMIN') {
+          localStorage.removeItem("user");
+          setUser(null);
+          return;
+        }
+
         setUser((prev) => {
           const fresh = mergeUserFromMe(data, prev);
           localStorage.setItem("user", JSON.stringify(fresh));
@@ -169,7 +142,6 @@ export const AuthProvider = ({ children }) => {
         });
       }
     }).catch(() => {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem("user");
       setUser(null);
     });
@@ -197,7 +169,6 @@ export const AuthProvider = ({ children }) => {
       const userData = mergeLoginResponse(data);
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem(AUTH_TOKEN_KEY, getAuthToken(data));
       closeModals();
       window.dispatchEvent(new Event("candidate-logged-in"));
       return { success: true };
@@ -216,7 +187,6 @@ export const AuthProvider = ({ children }) => {
       const userObj = mergeLoginResponse(data);
       setUser(userObj);
       localStorage.setItem("user", JSON.stringify(userObj));
-      localStorage.setItem(AUTH_TOKEN_KEY, getAuthToken(data));
       closeModals();
       window.dispatchEvent(new Event("candidate-logged-in"));
       return { success: true };
@@ -235,7 +205,6 @@ export const AuthProvider = ({ children }) => {
       const userData = mergeLoginResponse(data);
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem(AUTH_TOKEN_KEY, getAuthToken(data));
       closeModals();
       window.dispatchEvent(new Event("candidate-logged-in"));
       return { success: true };
@@ -250,8 +219,6 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem("token");
     sessionStorage.removeItem("dailyQuizShown");
     window.dispatchEvent(new Event("candidate-session-expired"));
   };

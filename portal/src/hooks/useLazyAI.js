@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { aiService } from '../services/aiService';
 
 export function useVisibility(options = {}) {
   const {
@@ -100,19 +101,11 @@ export function useAIMatchScore(jobId, profile) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/ai/match-score`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ jobId, profileId: profile._id || profile.id }),
+      const data = await aiService.request('/match-score', {
+        jobId,
+        profileId: profile._id || profile.id
       });
-
-      if (!response.ok) throw new Error("Failed to fetch match score");
-
-      const data = await response.json();
-      if (data.success) {
-        setScore(data.data);
-      }
+      setScore(data);
     } catch (err) {
       setError(err.message);
     } finally {

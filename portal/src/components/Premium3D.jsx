@@ -48,7 +48,7 @@ function clearThread() {
 }
 
 function isLoggedIn() {
-  try { return !!localStorage.getItem("candidateToken"); } catch { return false; }
+  try { return !!localStorage.getItem("user") || !!localStorage.getItem("employerUser"); } catch { return false; }
 }
 
 function getUserRole() {

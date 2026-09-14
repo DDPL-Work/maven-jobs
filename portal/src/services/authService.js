@@ -494,6 +494,15 @@ const authService = {
     }
   },
 
+  logoutEmployer: async () => {
+    try {
+      const response = await api.post('/company-panel/auth/logout');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Employer logout failed' };
+    }
+  },
+
   getQuizNotification: async () => {
     try {
       const response = await api.get('/candidate/dashboard');

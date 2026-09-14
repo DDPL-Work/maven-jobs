@@ -46,12 +46,10 @@ const EmployerLandingPage = () => {
   const navigate = useNavigate();
   useAuth();
   const [employerSession, setEmployerSession] = useState(() => {
-    const token = localStorage.getItem("employerToken");
-    if (!token || token === "undefined") return null;
+    const userStr = localStorage.getItem("employerUser");
+    if (!userStr || userStr === "undefined") return null;
     try {
-      const savedUser = JSON.parse(
-        localStorage.getItem("employerUser") || "null",
-      );
+      const savedUser = JSON.parse(userStr);
       return savedUser
         ? {
             ...savedUser,
@@ -112,7 +110,7 @@ const EmployerLandingPage = () => {
   }, [location.hash]);
 
   useEffect(() => {
-    if (!localStorage.getItem("employerToken")) return;
+    if (!localStorage.getItem("employerUser")) return;
 
     let active = true;
     authService
@@ -137,7 +135,6 @@ const EmployerLandingPage = () => {
       })
       .catch(() => {
         if (!active) return;
-        localStorage.removeItem("employerToken");
         localStorage.removeItem("employerUser");
         setEmployerSession(null);
       });
@@ -377,7 +374,6 @@ const EmployerLandingPage = () => {
           "",
       };
 
-      localStorage.setItem("employerToken", response.token);
       localStorage.setItem("employerUser", JSON.stringify(employerUser));
       setEmployerSession(employerUser);
 
@@ -487,8 +483,7 @@ const EmployerLandingPage = () => {
         loginEmail,
         loginPassword,
       );
-      if (response?.token) {
-        localStorage.setItem("employerToken", response.token);
+      if (response?.success || response?.user) {
         const employerUser = {
           ...(response.user || {}),
           companyName:
@@ -572,7 +567,7 @@ const EmployerLandingPage = () => {
               className="elp-callback-card"
               style={employerSession ? { padding: 0, overflow: "hidden" } : {}}
             >
-              {!employerSession && (
+              {/* {!employerSession && (
                 <div className="elp-callback-tabs">
                   <button
                     type="button"
@@ -589,7 +584,7 @@ const EmployerLandingPage = () => {
                     Login
                   </button>
                 </div>
-              )}
+              )} */}
 
               {employerSession ? (
                 <div className="elp-profile-modal">

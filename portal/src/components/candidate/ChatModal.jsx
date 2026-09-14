@@ -104,11 +104,9 @@ export default function ChatModal({ isOpen, onClose, followedCompanyIds = [] }) 
 
   useEffect(() => {
     if (!user || !isOpen) return;
-    const token = localStorage.getItem("candidateToken") || localStorage.getItem("token");
-    if (!token || socketRef.current) return;
+    if (socketRef.current) return;
 
     const socket = io(getSocketUrl(), {
-      auth: { token },
       transports: ["websocket", "polling"],
       withCredentials: true,
       reconnection: true,

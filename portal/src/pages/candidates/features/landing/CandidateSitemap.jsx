@@ -112,7 +112,7 @@ export default function SiteMap() {
   const [isScrolled, setIsScrolled] = useState(false);
 
   const isCandidateLoggedIn = !!user;
-  const isEmployerLoggedIn = !!localStorage.getItem('employerToken');
+  const isEmployerLoggedIn = !!localStorage.getItem('employerUser');
 
   useEffect(() => {
     const fn = () => setIsScrolled(window.scrollY > 20);

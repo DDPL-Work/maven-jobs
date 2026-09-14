@@ -40,6 +40,19 @@ const parseJSON = (str) => {
   }
 };
 
+const parseSalary = (str) => {
+  if (!str) return null;
+  try {
+    const p = JSON.parse(str);
+    if (p.amount) {
+      return `₹ ${parseInt(p.amount).toLocaleString('en-IN')}${p.period ? ` / ${p.period}` : ''}`;
+    }
+    return str;
+  } catch {
+    return str;
+  }
+};
+
 export default function PublicCandidateProfile() {
   const { candidateId } = useParams();
   const navigate = useNavigate();
@@ -377,7 +390,7 @@ export default function PublicCandidateProfile() {
 
                 {(profile.currentSalary || profile.expectedSalary) && (
                   <span className="pcp-meta-inline-item">
-                    ₹ {profile.currentSalary || "N/A"} {profile.expectedSalary && `(expects: ₹ ${profile.expectedSalary})`}
+                    ₹ {profile.currentSalary || "N/A"} {profile.expectedSalary && `(expects: ${parseSalary(profile.expectedSalary)})`}
                   </span>
                 )}
 
@@ -599,16 +612,16 @@ export default function PublicCandidateProfile() {
                   )}
 
                   <div className="pcp-spec-grid">
-                    {profile.industry && (
+                    {profile.careerProfileObj?.currentIndustry && (
                       <div className="pcp-spec-item">
                         <label>Industry</label>
-                        <span>{profile.industry}</span>
+                        <span>{profile.careerProfileObj.currentIndustry}</span>
                       </div>
                     )}
-                    {profile.department && (
+                    {profile.careerProfileObj?.department && (
                       <div className="pcp-spec-item">
                         <label>Department</label>
-                        <span>{profile.department}</span>
+                        <span>{profile.careerProfileObj.department}</span>
                       </div>
                     )}
                     {profile.currentTitle && (
@@ -636,8 +649,15 @@ export default function PublicCandidateProfile() {
                         <div className="pcp-work-exp-date">
                           {exp.startDate ? exp.startDate : "N/A"} to {exp.currentlyWorking ? "Present" : (exp.endDate ? exp.endDate : "N/A")}
                         </div>
+                        {(exp.employmentType || exp.noticePeriod || exp.currentSalary) && (
+                          <div style={{ fontSize: 12, color: "#64748b", margin: "4px 0" }}>
+                            {exp.employmentType && <span>{exp.employmentType} &bull; </span>}
+                            {exp.noticePeriod && <span>Notice: {exp.noticePeriod} &bull; </span>}
+                            {exp.currentSalary && <span>Salary: ₹{exp.currentSalary}</span>}
+                          </div>
+                        )}
                         {exp.description && (
-                          <p style={{ fontSize: 13, color: "#475569", margin: 0 }}>
+                          <p style={{ fontSize: 13, color: "#475569", margin: "4px 0 0" }}>
                             {exp.description}
                           </p>
                         )}
@@ -707,6 +727,28 @@ export default function PublicCandidateProfile() {
                   </div>
                 )}
 
+                {/* Accomplishments */}
+                {profile.accomplishments?.length > 0 && (
+                  <div className="pcp-detail-section">
+                    <h3 className="pcp-detail-title">Accomplishments</h3>
+                    {profile.accomplishments.map((acc, i) => (
+                      <div key={i} className="pcp-work-exp-item">
+                        <div className="pcp-work-exp-title">
+                          {acc.title || acc.name}
+                        </div>
+                        <div className="pcp-work-exp-date">
+                          {acc.year || acc.date || ""}
+                        </div>
+                        {acc.description && (
+                          <p style={{ fontSize: 13, color: "#475569", margin: "4px 0 0" }}>
+                            {acc.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Other details (Languages, Personal details, Desired job, Work authorization) */}
                 <div className="pcp-detail-section">
                   <h3 className="pcp-detail-title">Other details</h3>
@@ -722,61 +764,116 @@ export default function PublicCandidateProfile() {
                   )}
 
                   {/* Languages known */}
-                  {profile.languages && (
+                  {profile.languages?.length > 0 && (
                     <div style={{ marginBottom: 18 }}>
                       <div className="pcp-detail-subtitle">Languages known</div>
-                      <div style={{ fontSize: 13, color: "#334155" }}>
-                        {profile.languages}
+                      <div className="pcp-spec-grid">
+                        {profile.languages.map((lang, idx) => (
+                          <div key={idx} className="pcp-spec-item" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontWeight: 600 }}>{lang.name}</span>
+                            <span style={{ color: "#64748b", fontSize: 12 }}>({lang.proficiency})</span>
+                            <span style={{ color: "#94a3b8", fontSize: 11 }}>
+                              {[lang.read && "Read", lang.write && "Write", lang.speak && "Speak"].filter(Boolean).join(", ")}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
 
                   {/* Personal details */}
-                  <div style={{ marginBottom: 18 }}>
-                    <div className="pcp-detail-subtitle">Personal details</div>
-                    <div className="pcp-spec-grid">
-                      {profile.dateOfBirth && (
-                        <div className="pcp-spec-item">
-                          <label>Date of Birth</label>
-                          <span>{profile.dateOfBirth}</span>
-                        </div>
-                      )}
-                      {profile.gender && (
-                        <div className="pcp-spec-item">
-                          <label>Gender</label>
-                          <span>{profile.gender}</span>
-                        </div>
-                      )}
-                      {profile.maritalStatus && (
-                        <div className="pcp-spec-item">
-                          <label>Marital status</label>
-                          <span>{profile.maritalStatus}</span>
-                        </div>
-                      )}
-                      {profile.category && (
-                        <div className="pcp-spec-item">
-                          <label>Category</label>
-                          <span>{profile.category}</span>
-                        </div>
-                      )}
+                  {Object.keys(profile.personalDetailsObj || {}).length > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div className="pcp-detail-subtitle">Personal details</div>
+                      <div className="pcp-spec-grid">
+                        {profile.personalDetailsObj?.dobYear && (
+                          <div className="pcp-spec-item">
+                            <label>Date of Birth</label>
+                            <span>{`${profile.personalDetailsObj.dobDay || ""} ${profile.personalDetailsObj.dobMonth || ""} ${profile.personalDetailsObj.dobYear}`.trim()}</span>
+                          </div>
+                        )}
+                        {profile.personalDetailsObj?.gender && (
+                          <div className="pcp-spec-item">
+                            <label>Gender</label>
+                            <span>{profile.personalDetailsObj.gender}</span>
+                          </div>
+                        )}
+                        {profile.personalDetailsObj?.maritalStatus && (
+                          <div className="pcp-spec-item">
+                            <label>Marital status</label>
+                            <span>{profile.personalDetailsObj.maritalStatus}</span>
+                          </div>
+                        )}
+                        {profile.personalDetailsObj?.category && (
+                          <div className="pcp-spec-item">
+                            <label>Category</label>
+                            <span>{profile.personalDetailsObj.category}</span>
+                          </div>
+                        )}
+                        {profile.personalDetailsObj?.workPermitOther?.length > 0 && (
+                          <div className="pcp-spec-item">
+                            <label>Work Permit</label>
+                            <span>{profile.personalDetailsObj.workPermitOther.join(", ")}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Desired job detail */}
-                  {(profile.desiredJobType || profile.employmentStatus) && (
+                  {/* Career Profile / Desired job detail */}
+                  {Object.keys(profile.careerProfileObj || {}).length > 0 && (
                     <div style={{ marginBottom: 18 }}>
                       <div className="pcp-detail-subtitle">Desired job detail</div>
                       <div className="pcp-spec-grid">
-                        {profile.desiredJobType && (
+                        {profile.careerProfileObj?.desiredJobType?.length > 0 && (
                           <div className="pcp-spec-item">
                             <label>Job Type</label>
-                            <span>{profile.desiredJobType}</span>
+                            <span>{profile.careerProfileObj.desiredJobType.join(", ")}</span>
                           </div>
                         )}
-                        {profile.employmentStatus && (
+                        {profile.careerProfileObj?.desiredEmploymentType?.length > 0 && (
                           <div className="pcp-spec-item">
                             <label>Employment status</label>
-                            <span>{profile.employmentStatus}</span>
+                            <span>{profile.careerProfileObj.desiredEmploymentType.join(", ")}</span>
+                          </div>
+                        )}
+                        {profile.careerProfileObj?.preferredShift && (
+                          <div className="pcp-spec-item">
+                            <label>Preferred Shift</label>
+                            <span>{profile.careerProfileObj.preferredShift}</span>
+                          </div>
+                        )}
+                        {profile.careerProfileObj?.preferredAnnualSalary && (
+                          <div className="pcp-spec-item">
+                            <label>Preferred Salary</label>
+                            <span>₹ {profile.careerProfileObj.preferredAnnualSalary}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Diversity Info */}
+                  {Object.keys(profile.diversityInfo || {}).length > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div className="pcp-detail-subtitle">Diversity Information</div>
+                      <div className="pcp-spec-grid">
+                        {profile.diversityInfo?.disability && (
+                          <div className="pcp-spec-item">
+                            <label>Disability</label>
+                            <span>{profile.diversityInfo.disability}</span>
+                          </div>
+                        )}
+                        {profile.diversityInfo?.military && (
+                          <div className="pcp-spec-item">
+                            <label>Military Service</label>
+                            <span>{profile.diversityInfo.military}</span>
+                          </div>
+                        )}
+                        {profile.diversityInfo?.careerBreak && (
+                          <div className="pcp-spec-item">
+                            <label>Career Break</label>
+                            <span>{profile.diversityInfo.careerBreak}</span>
                           </div>
                         )}
                       </div>

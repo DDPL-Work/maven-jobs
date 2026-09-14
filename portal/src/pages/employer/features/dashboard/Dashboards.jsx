@@ -931,7 +931,7 @@ export default function EmployerProfile() {
 
             employerSession.current = savedSession;
 
-            if (!localStorage.getItem("employerToken")) {
+            if (!localStorage.getItem("employerUser")) {
                 if (active) setDashboardLoading(false);
                 return;
             }
@@ -978,9 +978,6 @@ export default function EmployerProfile() {
                     });
                 }
                 if ((error?.statusCode || error?.response?.status) === 401) {
-                    localStorage.removeItem("employerToken");
-                    localStorage.removeItem("candidateToken");
-                    localStorage.removeItem("token");
                     localStorage.removeItem("employerUser");
                 }
             } finally {
@@ -1058,8 +1055,8 @@ export default function EmployerProfile() {
             return;
         }
 
-        const token = localStorage.getItem("employerToken");
-        if (!token) {
+        const userStored = localStorage.getItem("employerUser");
+        if (!userStored) {
             return;
         }
 
@@ -1071,7 +1068,6 @@ export default function EmployerProfile() {
         }
 
         const socket = io(socketUrl, {
-            auth: { token },
             transports: ["websocket", "polling"],
             withCredentials: true,
             reconnection: true,
@@ -1756,10 +1752,12 @@ export default function EmployerProfile() {
         setShowHeaderMenu(false);
     }, [company.id, company.name]);
 
-    const handleLogout = useCallback(() => {
-        localStorage.removeItem("employerToken");
-        localStorage.removeItem("candidateToken");
-        localStorage.removeItem("token");
+    const handleLogout = useCallback(async () => {
+        try {
+            await authService.logoutEmployer();
+        } catch {
+            // ignore
+        }
         localStorage.removeItem("employerUser");
         navigate("/employer-login");
     }, [navigate]);
@@ -1798,9 +1796,6 @@ export default function EmployerProfile() {
             setDeleting(true);
             try {
                 await authService.employerDeleteAccount({ password: deletePassword });
-                localStorage.removeItem("employerToken");
-                localStorage.removeItem("candidateToken");
-                localStorage.removeItem("token");
                 localStorage.removeItem("employerUser");
                 navigate("/employer-login");
             } catch (err) {

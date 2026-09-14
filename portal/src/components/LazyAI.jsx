@@ -1,19 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useLazyAI } from "../hooks/useLazyAI";
+import { aiService } from "../services/aiService";
 
 export function LazyAIMatchScore({ jobId, profile, children, fallback }) {
   const { ref, result, loading, error, isVisible } = useLazyAI(
     ref => ref,
     async () => {
-      const response = await fetch(`/api/ai/match-score`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ jobId, profileId: profile._id || profile.id }),
+      const data = await aiService.request('/match-score', {
+        jobId,
+        profileId: profile._id || profile.id
       });
-      if (!response.ok) throw new Error("Failed to fetch match score");
-      const data = await response.json();
-      return data.data;
+      return data;
     },
     [jobId, profile],
     { rootMargin: "200px", triggerOnce: true }

@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import ResumeModal from './ResumeModal';
 import { useVisibility } from '../../hooks/useLazyAI';
+import { aiService } from '../../services/aiService';
 
 const C = {
   navy: "#002366", navyD: "#001540", navyM: "#1a3a6e",
@@ -143,19 +144,13 @@ const CandidateCard = memo(function CandidateCard({
       return;
     }
     setMatchLoading(true);
-    fetch(`/api/v1/ai/match-score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        profileId: candidate.userId || candidate.id,
-        source: context,
-      }),
+    aiService.request('/match-score', {
+      profileId: candidate.userId || candidate.id,
+      source: context,
     })
-      .then((r) => r.json())
       .then((data) => {
-        if (data?.success && data?.data?.overallScore != null) {
-          setLazyMatchScore(data.data.overallScore);
+        if (data?.overallScore != null) {
+          setLazyMatchScore(data.overallScore);
         } else if (data?.matchScore != null) {
           setLazyMatchScore(data.matchScore);
         }

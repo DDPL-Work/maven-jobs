@@ -31,6 +31,7 @@ const { uploadResumeFile } = require("../services/resume-storage.service");
 const {
   issueTokenPair,
   setRefreshCookie,
+  setAccessCookie,
 } = require("../services/auth.service");
 const { esAvailable } = require("../config/elasticsearch");
 const esService = require("../services/elasticsearch.service");
@@ -364,11 +365,10 @@ exports.login = asyncHandler(async (req, res) => {
   });
 
   setRefreshCookie(res, tokenPair.refreshToken);
+  setAccessCookie(res, tokenPair.accessToken);
 
   res.status(200).json({
     success: true,
-    token: tokenPair.accessToken,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: {
       id: String(user._id),
@@ -461,6 +461,7 @@ exports.register = asyncHandler(async (req, res) => {
   });
 
   setRefreshCookie(res, tokenPair.refreshToken);
+  setAccessCookie(res, tokenPair.accessToken);
 
   EventBus.emit(EVENTS.RECRUITER_REGISTERED, {
     recruiterId: user._id,
@@ -472,8 +473,6 @@ exports.register = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    token: tokenPair.accessToken,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: {
       id: String(user._id),

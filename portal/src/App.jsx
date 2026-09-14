@@ -95,10 +95,8 @@ import ResumeSamples from "./pages/candidates/features/services/ResumeSamples";
 import JobLetterSamples from "./pages/candidates/features/services/JobLetterSamples";
 
 const ProtectedRoute = ({ children }) => {
-  const hasToken =
-    localStorage.getItem("candidateToken") ||
-    localStorage.getItem("token");
-  if (!hasToken) {
+  const { user } = useAuth();
+  if (!user && !localStorage.getItem("user")) {
     return <Navigate to="/" replace />;
   }
   return children;
