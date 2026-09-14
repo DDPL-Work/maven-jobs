@@ -113,8 +113,8 @@ function ChipInput({ value, onChange, placeholder }) {
 }
 
 /* ── main component ── */
-export default function SendMivite({ company, user, initialResults, initialSelectedIds, onClearSelection }) {
-  const [step, setStep] = useState(0);
+export default function SendMivite({ company, user, initialResults, initialSelectedIds, onClearSelection, startStep = 0 }) {
+  const [step, setStep] = useState(startStep);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);

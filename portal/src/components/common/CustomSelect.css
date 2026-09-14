@@ -1,0 +1,104 @@
+.custom-select-container {
+  position: relative;
+  width: 100%;
+  font-family: var(--font, "Sora", sans-serif);
+}
+
+.custom-select-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--slate-4, #cbd5e1);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background-color: var(--card-bg, #ffffff);
+  color: var(--text-1, #0a1628);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  height: 40px; /* Match height of native inputs */
+}
+
+.custom-select-header:hover {
+  border-color: var(--slate-5, #94a3b8);
+}
+
+.custom-select-header input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+}
+
+.custom-select-header input:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.custom-select-header.open {
+  border-color: var(--blue, #1e5eff);
+  box-shadow: 0 0 0 2px var(--blue-lt, #eef4ff);
+}
+
+.custom-select-header .placeholder {
+  color: var(--text-4, #94a3b8);
+}
+
+.custom-select-icon {
+  color: var(--text-3, #64748b);
+  transition: transform 0.2s;
+}
+
+.custom-select-icon.open {
+  transform: rotate(180deg);
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-height: 250px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--slate-3, #e2e8f0);
+  z-index: 10000;
+  overflow-y: auto;
+}
+
+.custom-select-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+
+.custom-select-option {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  color: var(--text-1, #0a1628);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.custom-select-option:hover {
+  background-color: var(--blue, #1e5eff);
+  color: white;
+}
+
+.custom-select-option.selected {
+  background-color: var(--blue-lt, #eef4ff);
+  color: var(--blue, #1e5eff);
+  font-weight: 500;
+}
+
+.custom-select-option.selected:hover {
+  background-color: var(--blue, #1e5eff);
+  color: white;
+}

@@ -133,6 +133,25 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: sticky;
+  top: 85px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+/* Optional: Subtle custom scrollbar for the sidebar */
+.jrd-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.jrd-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.jrd-sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+.jrd-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .jrd-inbox-nav {
@@ -1416,30 +1435,56 @@
   background: #ffffff;
   cursor: pointer;
   transition: all 0.15s;
+  position: relative;
+}
+
+.jrd-action-active-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  z-index: 2;
+  color: #ffffff;
 }
 
 .jrd-btn-action.shortlist {
   border: 1px solid #10b981;
   color: #059669;
 }
-.jrd-btn-action.shortlist:hover {
+.jrd-btn-action.shortlist:hover, .jrd-btn-action.shortlist.active {
   background: #ecfdf5;
+}
+.jrd-btn-action.shortlist.active .jrd-action-active-badge {
+  background: #10b981;
 }
 
 .jrd-btn-action.maybe {
   border: 1px solid #94a3b8;
   color: #475569;
 }
-.jrd-btn-action.maybe:hover {
+.jrd-btn-action.maybe:hover, .jrd-btn-action.maybe.active {
   background: #f8fafc;
+}
+.jrd-btn-action.maybe.active .jrd-action-active-badge {
+  background: #64748b;
 }
 
 .jrd-btn-action.reject {
   border: 1px solid #ef4444;
   color: #dc2626;
 }
-.jrd-btn-action.reject:hover {
+.jrd-btn-action.reject:hover, .jrd-btn-action.reject.active {
   background: #fef2f2;
+}
+.jrd-btn-action.reject.active .jrd-action-active-badge {
+  background: #ef4444;
 }
 
 .jrd-btn-delete-card {

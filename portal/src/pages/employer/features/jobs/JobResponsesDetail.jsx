@@ -425,6 +425,14 @@ export default function JobResponsesDetail() {
     salaryNotMentionedChecked,
   ]);
 
+  useEffect(() => {
+    if (filteredCandidates.length > 0) {
+      sessionStorage.setItem('maven_candidate_list', JSON.stringify(filteredCandidates.map(c => c.candidateId)));
+      sessionStorage.setItem('maven_search_text', keywordSearch || '');
+      sessionStorage.setItem('maven_search_total', filteredCandidates.length);
+    }
+  }, [filteredCandidates, keywordSearch]);
+
   // Bulk Selection
   const handleSelectAll = () => {
     if (selectedIds.length === filteredCandidates.length) {
@@ -1537,26 +1545,41 @@ export default function JobResponsesDetail() {
                         <div className="jrd-card-actions-right">
                           <button
                             type="button"
-                            className="jrd-btn-action shortlist"
+                            className={`jrd-btn-action shortlist ${candidate.status === 'SHORTLISTED' ? 'active' : ''}`}
                             onClick={() => handleUpdateStatus(candidate.applicationId, 'SHORTLISTED')}
                           >
+                            {candidate.status === 'SHORTLISTED' && (
+                              <div className="jrd-action-active-badge">
+                                <FiCheck size={10} strokeWidth={4} />
+                              </div>
+                            )}
                             <FiCheck size={14} />
                             <span>Shortlist</span>
                           </button>
 
                           <button
                             type="button"
-                            className="jrd-btn-action maybe"
+                            className={`jrd-btn-action maybe ${candidate.status === 'MAYBE' ? 'active' : ''}`}
                             onClick={() => handleUpdateStatus(candidate.applicationId, 'MAYBE')}
                           >
+                            {candidate.status === 'MAYBE' && (
+                              <div className="jrd-action-active-badge">
+                                <FiCheck size={10} strokeWidth={4} />
+                              </div>
+                            )}
                             <span>Maybe</span>
                           </button>
 
                           <button
                             type="button"
-                            className="jrd-btn-action reject"
+                            className={`jrd-btn-action reject ${candidate.status === 'REJECTED' ? 'active' : ''}`}
                             onClick={() => handleUpdateStatus(candidate.applicationId, 'REJECTED')}
                           >
+                            {candidate.status === 'REJECTED' && (
+                              <div className="jrd-action-active-badge">
+                                <FiCheck size={10} strokeWidth={4} />
+                              </div>
+                            )}
                             <FiX size={14} />
                             <span>Reject</span>
                           </button>

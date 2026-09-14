@@ -1080,6 +1080,8 @@ const Premium3D = React.memo(() => {
         }
 
         body.employer-sidebar-open .mvn-wrap,
+        body:has(.bdm-overlay) .mvn-wrap,
+        body:has(.acc-sidebar-overlay) .mvn-wrap,
         .mvn-wrap.mvn-wrap-hidden {
           display: none !important;
           visibility: hidden !important;

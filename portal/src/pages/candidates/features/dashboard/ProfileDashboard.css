@@ -7705,3 +7705,24 @@
     margin-top: 24px;
   }
 }
+.pd-basic-info-grid {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: 12px 64px;
+  margin-top: 12px;
+  margin-bottom: 20px;
+}
+.pd-big-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-2);
+  font-size: 0.95rem;
+}
+.pd-big-item svg {
+  color: var(--text-3);
+}
+.pd-verified-icon {
+  color: var(--green) !important;
+  margin-left: 4px;
+}

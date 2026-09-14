@@ -635,6 +635,14 @@ const authService = {
       throw error.response?.data || { message: 'Failed to fetch candidate profile' };
     }
   },
+  getSimilarCandidates: async (id, searchText = '') => {
+    try {
+      const response = await api.get(`/candidate/${id}/similar`, { params: { searchText } });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch similar candidates' };
+    }
+  },
   getCandidateResume: async (id) => {
     try {
       const response = await api.get(`/candidate/${id}/resume`);
@@ -914,7 +922,94 @@ const authService = {
     const response = await api.post('/company-panel/credits/search');
     return response.data;
   },
+
+  // ── Job Posting Report ──────────────────────────────────────────────────
+  // mode = 'one_click' | 'customised'
+  // For one_click: { mode, period }              period = yesterday|week|month
+  // For customised: { mode, from, to, type }     type = user_wise|job_wise
+  getJobPostingReport: async (params = {}) => {
+    try {
+      const response = await api.get('/company-panel/reports/job-posting', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch job posting report' };
+    }
+  },
+
+  getJobPostingReportSubscription: async () => {
+    try {
+      const response = await api.get('/company-panel/reports/job-posting/subscription');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch report subscription' };
+    }
+  },
+
+  saveJobPostingReportSubscription: async (data) => {
+    try {
+      const response = await api.post('/company-panel/reports/job-posting/subscription', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to save report subscription' };
+    }
+  },
+
+  sendJobPostingReportEmail: async (data) => {
+    try {
+      const response = await api.post('/company-panel/reports/job-posting/send-email', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send report email' };
+    }
+  },
+
+  // ── Resdex Report ────────────────────────────────────────────────────────
+  getResdexReport: async (params = {}) => {
+    try {
+      const response = await api.get('/company-panel/reports/resdex', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch Resdex report' };
+    }
+  },
+
+  getResdexReportSubscription: async () => {
+    try {
+      const response = await api.get('/company-panel/reports/resdex/subscription');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch Resdex subscription' };
+    }
+  },
+
+  saveResdexReportSubscription: async (data) => {
+    try {
+      const response = await api.post('/company-panel/reports/resdex/subscription', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to save Resdex subscription' };
+    }
+  },
+
+  sendResdexReportEmail: async (data) => {
+    try {
+      const response = await api.post('/company-panel/reports/resdex/send-email', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send Resdex report email' };
+    }
+  },
+
+  getSimilarCandidates: async (candidateId) => {
+    try {
+      const response = await api.get(`/candidate/${candidateId}/similar`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch similar candidates' };
+    }
+  },
 };
+
 
 export default authService;
 

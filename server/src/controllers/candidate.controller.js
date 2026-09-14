@@ -18,6 +18,7 @@ const Nvite = require("../models/Nvite");
 const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
 const activityService = require("../services/recruiter-activity.service");
+const jobReportService = require("../services/job-posting-report.service");
 const { uploadResumeFile, deleteResumeFile } = require("../services/resume-storage.service");
 const { replaceCandidateImage } = require("../services/candidate-image-storage.service");
 const {
@@ -215,6 +216,18 @@ const formatProfile = (profile = {}, user = null) => {
   const rawCoverPic = profile?.coverPic;
   const coverPicUrl = (typeof rawCoverPic === "string" ? rawCoverPic : rawCoverPic?.url) || "";
 
+  let totalExpYears = "";
+  let totalExpMonths = "";
+  if (profile?.totalExperience) {
+    const parts = profile.totalExperience.split(" ");
+    if (parts.length >= 4) {
+      totalExpYears = `${parts[0]} ${parts[1]}`;
+      totalExpMonths = `${parts[2]} ${parts[3]}`;
+    } else if (parts.length === 2) {
+      totalExpYears = `${parts[0]} ${parts[1]}`;
+    }
+  }
+
   return {
     id: String(profile?._id || ""),
     publicShareId: profile?.publicShareId || "",
@@ -224,6 +237,11 @@ const formatProfile = (profile = {}, user = null) => {
     headline: profile?.headline || "",
     summary: profile?.summary || "",
     totalExperience: profile?.totalExperience || "",
+    totalExpYears,
+    totalExpMonths,
+    workStatus: profile?.workStatus || "",
+    currentSalary: profile?.currentSalary || "",
+    salaryBreakdown: profile?.salaryBreakdown || "",
     currentTitle: profile?.currentTitle || user?.department || "",
     currentCompany: profile?.currentCompany || "",
     noticePeriod: profile?.noticePeriod || "",
@@ -233,6 +251,10 @@ const formatProfile = (profile = {}, user = null) => {
     preferredLocations: profile?.preferredLocations || [],
     preferredRoles: profile?.preferredRoles || [],
     skills: profile?.skills || [],
+    languages: profile?.languages || [],
+    personalDetailsObj: profile?.personalDetailsObj || {},
+    diversityInfo: profile?.diversityInfo || {},
+    careerProfileObj: profile?.careerProfileObj || {},
     linkedInUrl: profile?.linkedInUrl || "",
     portfolioUrl: profile?.portfolioUrl || "",
     expectedSalary: profile?.expectedSalary || "",
@@ -1559,6 +1581,17 @@ exports.getJobDetail = asyncHandler(async (req, res) => {
     hasFollowedCompany = new Set((profile.followedCompanyIds || []).map((companyId) => String(companyId))).has(String(companyIdStr));
   }
 
+  // Log JOB_VIEW to JobPostingReportLog (only for authenticated users to avoid noise)
+  if (req.user) {
+    jobReportService.fireAndForgetJobEvent({
+      companyId: job.companyId?._id || job.companyId,
+      user: req.user,
+      job,
+      actionType: "JOB_VIEW",
+      metadata: { source: "CANDIDATE_JOB_DETAIL" },
+    });
+  }
+
   res.status(200).json({
     success: true,
     data: {
@@ -1679,6 +1712,19 @@ exports.createApplication = asyncHandler(async (req, res) => {
       candidateId: req.user._id,
       jobId: job._id,
       jobTitle: job.title,
+      applicationId: application._id,
+    },
+  });
+
+  // Log APPLICATION_RECEIVED to JobPostingReportLog for report generation
+  jobReportService.fireAndForgetJobEvent({
+    companyId: application.companyId,
+    userId: null,
+    job,
+    actionType: "APPLICATION_RECEIVED",
+    metadata: {
+      candidateId: req.user._id,
+      candidateName: req.user.name || req.user.email || "",
       applicationId: application._id,
     },
   });
@@ -1906,14 +1952,18 @@ exports.updateProfile = asyncHandler(async (req, res) => {
 
     const nextValue = transform(value);
     const previousValue = profile[field];
+    const isObj = (val) => val !== null && typeof val === 'object' && !Array.isArray(val);
     const isEqual =
       Array.isArray(previousValue) || Array.isArray(nextValue)
         ? JSON.stringify(previousValue || []) === JSON.stringify(nextValue || [])
+        : isObj(previousValue) || isObj(nextValue)
+        ? JSON.stringify(previousValue || {}) === JSON.stringify(nextValue || {})
         : String(previousValue ?? "") === String(nextValue ?? "");
 
     if (!isEqual) {
       changes.push({ field, previousValue, nextValue });
       profile[field] = nextValue;
+      profile.markModified(field);
     }
   };
 
@@ -1931,6 +1981,38 @@ exports.updateProfile = asyncHandler(async (req, res) => {
     await req.user.save();
   }
 
+  // Map Basic Details Modal payload to schema fields
+  if (requestBody.city !== undefined) requestBody.currentCity = requestBody.city;
+  if (requestBody.locationType !== undefined) requestBody.currentCountry = requestBody.locationType;
+  if (requestBody.totalExpYears !== undefined || requestBody.totalExpMonths !== undefined) {
+    requestBody.totalExperience = `${requestBody.totalExpYears || '0 Year'} ${requestBody.totalExpMonths || '0 Month'}`;
+  }
+
+  // Ensure bidirectional sync between standalone fields and careerProfileObj
+  if (requestBody.careerProfileObj === undefined) {
+    requestBody.careerProfileObj = { ...(profile.careerProfileObj || {}) };
+  } else {
+    requestBody.careerProfileObj = { ...requestBody.careerProfileObj };
+  }
+
+  if (requestBody.preferredLocations !== undefined) {
+    requestBody.careerProfileObj.preferredWorkLocation = requestBody.preferredLocations;
+  } else if (requestBody.careerProfileObj.preferredWorkLocation !== undefined) {
+    requestBody.preferredLocations = requestBody.careerProfileObj.preferredWorkLocation;
+  }
+
+  if (requestBody.preferredRoles !== undefined) {
+    requestBody.careerProfileObj.preferredJobRole = requestBody.preferredRoles;
+  } else if (requestBody.careerProfileObj.preferredJobRole !== undefined) {
+    requestBody.preferredRoles = requestBody.careerProfileObj.preferredJobRole;
+  }
+
+  if (requestBody.skills !== undefined) {
+    requestBody.careerProfileObj.skills = requestBody.skills;
+  } else if (requestBody.careerProfileObj.skills !== undefined) {
+    requestBody.skills = requestBody.careerProfileObj.skills;
+  }
+
   syncField("phone", requestBody.phone, (value) => String(value).trim());
   syncField("altPhone", requestBody.altPhone, (value) => String(value).trim());
   syncField("headline", requestBody.headline, (value) => String(value).trim());
@@ -1938,6 +2020,9 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   syncField("totalExperience", requestBody.totalExperience, (value) => String(value).trim());
   syncField("currentTitle", requestBody.currentTitle, (value) => String(value).trim());
   syncField("currentCompany", requestBody.currentCompany, (value) => String(value).trim());
+  syncField("workStatus", requestBody.workStatus, (value) => String(value).trim());
+  syncField("currentSalary", requestBody.currentSalary, (value) => String(value).trim());
+  syncField("salaryBreakdown", requestBody.salaryBreakdown, (value) => String(value).trim());
   syncField("noticePeriod", requestBody.noticePeriod, (value) => String(value).trim());
   syncField("currentCity", requestBody.currentCity, (value) => String(value).trim());
   syncField("currentState", requestBody.currentState, (value) => String(value).trim());
@@ -1949,11 +2034,35 @@ exports.updateProfile = asyncHandler(async (req, res) => {
     sanitizePreferenceArray(value, "preferredRoles", 3),
   );
   syncField("skills", requestBody.skills, toArray);
+  syncField("languages", requestBody.languages, (val) => {
+    if (!Array.isArray(val)) return [];
+    return val.map(lang => {
+      if (typeof lang === 'string') return { name: lang, proficiency: "Beginner", read: false, write: false, speak: false };
+      if (typeof lang === 'object' && lang !== null) return lang;
+      return null;
+    }).filter(Boolean);
+  });
+  syncField("personalDetailsObj", requestBody.personalDetailsObj, (val) => val);
+  syncField("diversityInfo", requestBody.diversityInfo, (val) => val);
+  syncField("careerProfileObj", requestBody.careerProfileObj, (val) => val);
+  syncField("accomplishments", requestBody.accomplishments, (value) => {
+    if (typeof value === "string") {
+      try { JSON.parse(value); return value; } catch { return "[]"; }
+    }
+    if (Array.isArray(value)) return JSON.stringify(value);
+    return "[]";
+  });
   syncField("linkedInUrl", requestBody.linkedInUrl, (value) => String(value).trim());
   syncField("portfolioUrl", requestBody.portfolioUrl, (value) => String(value).trim());
   syncField("expectedSalary", requestBody.expectedSalary, (value) => String(value).trim());
   syncField("education", requestBody.education, (value) => String(value).trim());
-  syncField("itSkills", requestBody.itSkills, (value) => String(value).trim());
+  syncField("itSkills", requestBody.itSkills, (value) => {
+    if (typeof value === "string") {
+      try { JSON.parse(value); return value; } catch { return "[]"; }
+    }
+    if (Array.isArray(value)) return JSON.stringify(value);
+    return "[]";
+  });
   syncField("educations", requestBody.educations, (value) => {
     if (typeof value === "string") {
       try { JSON.parse(value); return value; } catch { return "[]"; }
@@ -3170,5 +3279,152 @@ exports.downloadPublicCandidateResume = asyncHandler(async (req, res) => {
     if (!res.headersSent) {
       res.status(502).json({ success: false, message: "Failed to fetch resume" });
     }
+  });
+});
+
+/**
+ * AI-matched similar candidate profiles
+ * Looks up similar candidates based on current candidate's skills, title, experience, and department
+ */
+exports.getSimilarCandidates = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { searchText } = req.query;
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    throw createHttpError(400, "Invalid candidate ID");
+  }
+
+  // 1. Get current candidate profile
+  const baseProfile = await CandidateProfile.findOne({ userId: id });
+  if (!baseProfile) {
+    throw createHttpError(404, "Candidate not found");
+  }
+
+  const baseSkills = (baseProfile.skills || []).map((s) => s.trim()).filter(Boolean);
+  const baseTitle = (baseProfile.currentTitle || baseProfile.headline || "").trim();
+  const baseCity = (baseProfile.currentCity || "").trim();
+
+  // 2. Build scoring query to find other candidates
+  // Exclude current candidate
+  const matchCriteria = {
+    userId: { $ne: new mongoose.Types.ObjectId(id) },
+  };
+
+  const orConditions = [];
+  if (baseSkills.length > 0) {
+    orConditions.push({ skills: { $in: baseSkills } });
+  }
+  if (baseTitle) {
+    orConditions.push({ currentTitle: { $regex: baseTitle.split(" ")[0], $options: "i" } });
+    orConditions.push({ headline: { $regex: baseTitle.split(" ")[0], $options: "i" } });
+  }
+  if (baseCity) {
+    orConditions.push({ currentCity: { $regex: baseCity, $options: "i" } });
+  }
+
+  if (orConditions.length > 0) {
+    matchCriteria.$or = orConditions;
+  }
+
+  let candidates = await CandidateProfile.find(matchCriteria)
+    .populate("userId", "name email avatar")
+    .limit(30)
+    .lean();
+
+  // Fallback: If not enough matching, fetch any other candidate profiles
+  if (candidates.length < 5) {
+    const more = await CandidateProfile.find({ userId: { $ne: new mongoose.Types.ObjectId(id) } })
+      .populate("userId", "name email avatar")
+      .limit(10)
+      .lean();
+    const existingIds = new Set(candidates.map((c) => String(c._id)));
+    for (const m of more) {
+      if (!existingIds.has(String(m._id))) {
+        candidates.push(m);
+      }
+    }
+  }
+
+  // 3. AI / Heuristic Similarity Ranking
+  const scoredCandidates = candidates.map((cand) => {
+    let score = 0;
+    const candSkills = (cand.skills || []).map((s) => s.toLowerCase());
+
+    // Overlap in skills
+    const matchingSkills = [];
+    for (const s of baseSkills) {
+      if (candSkills.includes(s.toLowerCase())) {
+        score += 3;
+        matchingSkills.push(s);
+      }
+    }
+
+    // Boost score based on searchText
+    if (searchText) {
+      const searchKeywords = searchText.toLowerCase().split(/\s+/).filter(Boolean);
+      for (const kw of searchKeywords) {
+        if (candSkills.some(s => s.includes(kw))) {
+          score += 6;
+          matchingSkills.push(kw); // Highlight the searched keyword
+        }
+        if (cand.currentTitle && cand.currentTitle.toLowerCase().includes(kw)) {
+          score += 10;
+        }
+        if (cand.headline && cand.headline.toLowerCase().includes(kw)) {
+          score += 8;
+        }
+      }
+    }
+
+    // Role / Title similarity
+    if (cand.currentTitle && baseTitle && cand.currentTitle.toLowerCase().includes(baseTitle.toLowerCase())) {
+      score += 5;
+    }
+
+    // Location similarity
+    if (cand.currentCity && baseCity && cand.currentCity.toLowerCase() === baseCity.toLowerCase()) {
+      score += 2;
+    }
+
+    // Experience closeness
+    if (cand.totalExperience && baseProfile.totalExperience) {
+      const expDiff = Math.abs(parseFloat(cand.totalExperience) - parseFloat(baseProfile.totalExperience));
+      if (!isNaN(expDiff) && expDiff <= 2) score += 2;
+    }
+
+    const name = cand.userId?.name || cand.name || "Candidate";
+    const title = cand.currentTitle || cand.headline || "Software Engineer";
+    const company = cand.currentCompany || "";
+    const experience = cand.totalExperience ? `${cand.totalExperience}y` : "2y";
+    const salary = cand.expectedSalary ? `₹ ${cand.expectedSalary}` : "₹ 4.50 Lacs";
+    const location = cand.currentCity || "Delhi / NCR";
+    const preferredLocations = cand.preferredLocations?.length
+      ? `prefers ${cand.preferredLocations.slice(0, 3).join(", ")}`
+      : "";
+
+    return {
+      id: String(cand.userId?._id || cand.userId || cand._id),
+      name,
+      title: company ? `${title} at ${company}` : title,
+      currentCompany: company,
+      experience,
+      salary,
+      location,
+      preferredLocations,
+      skills: cand.skills || [],
+      matchingSkills,
+      avatar: cand.profilePic?.url || cand.userId?.avatar || "",
+      activeStatus: "Active today",
+      hasCv: Boolean(cand.resume?.url),
+      score,
+    };
+  });
+
+  // Sort by similarity score descending
+  scoredCandidates.sort((a, b) => b.score - a.score);
+
+  res.status(200).json({
+    success: true,
+    total: scoredCandidates.length,
+    data: scoredCandidates.slice(0, 15),
   });
 });

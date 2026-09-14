@@ -151,9 +151,14 @@ process.on("exit", (code) => {
   logger.info(`Process exiting with code: ${code}`);
 });
 
+const { initJobPostingReportScheduler } = require("./src/scheduler/jobPostingReport.scheduler");
+const { initResdexReportScheduler } = require("./src/scheduler/resdexReport.scheduler");
+
 connectDB()
   .then(() => {
     startServer(PORT);
+    initJobPostingReportScheduler();
+    initResdexReportScheduler();
   })
   .catch((error) => {
     console.error("[server] Failed to connect to database:", error);

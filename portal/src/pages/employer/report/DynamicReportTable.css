@@ -1,0 +1,180 @@
+/* ==========================================================================
+   Dynamic Report Table Styles — Matching Resdex & Job Posting UI Reference
+   ========================================================================== */
+
+.drt-wrapper {
+  width: 100%;
+  margin-top: 8px;
+  margin-bottom: 32px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Top Control Bar (Report Type, Duration, Action Buttons)
+   ───────────────────────────────────────────────────────────── */
+.drt-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 4px 0;
+}
+
+.drt-info-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 28px;
+  font-size: 15px;
+  color: #334155;
+}
+
+.drt-info-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.drt-info-label {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.drt-info-value {
+  font-weight: 400;
+  color: #334155;
+}
+
+.drt-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.drt-btn-download {
+  background-color: #0073e6;
+  color: #ffffff;
+  border: 1px solid #0073e6;
+  border-radius: 5px;
+  padding: 8px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.drt-btn-download:hover {
+  background-color: #005bb5;
+  border-color: #005bb5;
+  box-shadow: 0 2px 6px rgba(0, 115, 230, 0.25);
+}
+
+.drt-btn-new {
+  background-color: #ffffff;
+  color: #0073e6;
+  border: 1px solid #0073e6;
+  border-radius: 5px;
+  padding: 8px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.drt-btn-new:hover {
+  background-color: #f0f7ff;
+  border-color: #005bb5;
+  color: #005bb5;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Table Container & Table Styling
+   ───────────────────────────────────────────────────────────── */
+.drt-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.drt-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+  line-height: 1.4;
+}
+
+/* Themes: Blue (Resdex) vs Gray (Job Posting) */
+.drt-table.theme-blue thead th {
+  background-color: #e0f2fe;
+  color: #0f172a;
+  border-bottom: 1px solid #bae6fd;
+}
+
+.drt-table.theme-gray thead th {
+  background-color: #f8fafc;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.drt-table th {
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 12.5px;
+  white-space: normal;
+  vertical-align: top;
+}
+
+.drt-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.drt-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Subuser / primary cell formatting */
+.drt-cell-primary {
+  font-weight: 500;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+/* Total row styling per reference */
+.drt-total-row td {
+  background-color: #e0f2fe !important;
+  color: #0f172a;
+  font-weight: 700;
+  border-top: 1px solid #bae6fd;
+  border-bottom: 1px solid #bae6fd;
+}
+
+.drt-total-label {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Note Section */
+.drt-note-box {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+}

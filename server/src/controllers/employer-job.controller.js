@@ -6,6 +6,7 @@ const User = require("../models/User");
 const Company = require("../models/Company");
 const CandidateProfile = require("../models/CandidateProfile");
 const Nvite = require("../models/Nvite");
+const jobReportService = require("../services/job-posting-report.service");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -941,6 +942,15 @@ exports.closeEmployerJob = asyncHandler(async (req, res) => {
   job.isActive = false;
   await job.save();
 
+  // Log JOB_CLOSE to JobPostingReportLog
+  jobReportService.fireAndForgetJobEvent({
+    companyId: company._id,
+    user: req.user,
+    job,
+    actionType: "JOB_CLOSE",
+    status: "Closed",
+  });
+
   try {
     const { scheduleDelete } = require("../services/elasticsearch.service");
     scheduleDelete(String(job._id));
@@ -975,6 +985,24 @@ exports.bulkCloseJobs = asyncHandler(async (req, res) => {
     jobIds.forEach((id) => scheduleDelete(String(id)));
   } catch (_) {}
 
+  // Log JOB_CLOSE for each job in bulk to JobPostingReportLog
+  (async () => {
+    try {
+      const jobs = await Job.find({ _id: { $in: jobIds }, companyId: company._id })
+        .select("_id title department location")
+        .lean();
+      jobs.forEach((j) => {
+        jobReportService.fireAndForgetJobEvent({
+          companyId: company._id,
+          user: req.user,
+          job: j,
+          actionType: "JOB_CLOSE",
+          status: "Closed",
+        });
+      });
+    } catch (_) {}
+  })();
+
   res.status(200).json({
     success: true,
     message: `Successfully closed ${result.modifiedCount || 0} job(s).`,
@@ -998,6 +1026,23 @@ exports.bulkRefreshJobs = asyncHandler(async (req, res) => {
     { _id: { $in: jobIds }, companyId: company._id },
     { $set: { updatedAt: new Date() } }
   );
+
+  // Log JOB_REFRESH for each refreshed job to JobPostingReportLog
+  (async () => {
+    try {
+      const jobs = await Job.find({ _id: { $in: jobIds }, companyId: company._id })
+        .select("_id title department location isActive")
+        .lean();
+      jobs.forEach((j) => {
+        jobReportService.fireAndForgetJobEvent({
+          companyId: company._id,
+          user: req.user,
+          job: j,
+          actionType: "JOB_REFRESH",
+        });
+      });
+    } catch (_) {}
+  })();
 
   res.status(200).json({
     success: true,

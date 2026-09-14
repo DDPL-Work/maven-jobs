@@ -1,69 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { FiEdit2, FiDollarSign, FiClock, FiMapPin, FiBriefcase, FiTarget, FiCheck, FiX, FiPlus, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { FiEdit2, FiCheck, FiX, FiPlus } from 'react-icons/fi';
 import { searchCities } from '../../utils/citySearch.jsx';
+import '../../pages/candidates/features/dashboard/Components/ProfileDashboard/BasicDetailsModal.css';
+import CustomSelect from '../common/CustomSelect';
 
-const CURRENCIES = [
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
-  { code: 'USD', symbol: '$', name: 'US Dollar' },
-];
+import { COMMON_ROLES, INDUSTRIES, DEPARTMENTS, ROLE_CATEGORIES, JOB_ROLES } from '../../data/careerProfileOptions';
 
-const SALARY_PERIODS = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
-];
-
-const NOTICE_OPTIONS = [
-  'Immediate', '<7 Days', '<15 Days', '<30 Days', '<60 Days',
-];
-
-const COMMON_ROLES = [
-  'Software Engineer', 'Senior Software Engineer', 'Lead Engineer', 'Tech Lead',
-  'Full Stack Developer', 'Frontend Developer', 'Backend Developer', 'DevOps Engineer',
-  'SDE', 'SDE 2', 'SDE 3', 'Staff Engineer', 'Principal Engineer',
-  'Engineering Manager', 'Technical Architect', 'Solution Architect',
-  'Product Manager', 'Senior Product Manager', 'Product Owner',
-  'Project Manager', 'Technical Project Manager', 'Scrum Master',
-  'Data Scientist', 'Data Engineer', 'Data Analyst', 'Machine Learning Engineer',
-  'AI Engineer', 'Research Scientist', 'Business Analyst',
-  'UI/UX Designer', 'UX Researcher', 'Product Designer',
-  'QA Engineer', 'SDET', 'Automation Engineer',
-  'System Administrator', 'Network Engineer', 'Security Engineer',
-  'Cloud Engineer', 'Site Reliability Engineer', 'Platform Engineer',
-  'Consultant', 'Senior Consultant', 'Manager', 'Senior Manager',
-  'Director', 'Vice President', 'CTO', 'CEO',
-  'Intern', 'Trainee', 'Associate', 'Analyst',
-];
-
-const formatIndian = (num) => {
-  if (!num) return '';
-  const n = Number(num);
-  if (isNaN(n)) return '';
-  const abs = Math.abs(n);
-  if (abs >= 10000000) return (n / 10000000).toFixed(1) + ' Cr';
-  if (abs >= 100000) return (n / 100000).toFixed(1) + ' Lakhs';
-  if (abs >= 1000) return (n / 1000).toFixed(1) + ' K';
-  return String(n);
-};
-
-const formatUSD = (num) => {
-  if (!num) return '';
-  const n = Number(num);
-  if (isNaN(n)) return '';
-  if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'K';
-  return '$' + n;
-};
-
-const parseSalary = (val) => {
-  if (!val) return { amount: '', currency: 'INR', period: 'monthly' };
-  try {
-    const p = JSON.parse(val);
-    if (p && typeof p === 'object' && p.amount !== undefined) return p;
-  } catch {}
-  return { amount: '', currency: 'INR', period: 'monthly' };
-};
-
-const ChipsAutocomplete = React.memo(({ items, setItems, placeholder, searchFn, allItems, icon }) => {
+const ChipsAutocomplete = React.memo(({ items, setItems, placeholder, searchFn, allItems, maxItems }) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -86,6 +29,7 @@ const ChipsAutocomplete = React.memo(({ items, setItems, placeholder, searchFn, 
   };
 
   const addItem = (name) => {
+    if (maxItems && items.length >= maxItems) return;
     const s = name.trim();
     if (!s || items.includes(s)) return;
     setItems(prev => [...prev, s]);
@@ -124,49 +68,39 @@ const ChipsAutocomplete = React.memo(({ items, setItems, placeholder, searchFn, 
     }
   };
 
-  useEffect(() => {
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, []);
-
   return (
-    <div className="cp-autocomplete-wrap">
-      {items.length > 0 && (
-        <div className="cp-chips-grid">
-          {items.map(s => (
-            <span key={s} className="cp-chip">
-              {s}
-              <button className="cp-chip-remove" onClick={() => removeItem(s)}><FiX size={12} /></button>
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="cp-autocomplete-row">
-        <div className="cp-autocomplete-input-wrap">
-          {icon}
+    <div className="cp-autocomplete-wrap" style={{ position: 'relative' }}>
+      <div className="cp-autocomplete-input-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '8px', border: '1px solid var(--slate-3)', borderRadius: '8px' }}>
+        {items.map(s => (
+          <span key={s} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--slate-1)', padding: '4px 12px', borderRadius: '16px', fontSize: '0.85rem', color: 'var(--navy)' }}>
+            {s}
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: 'var(--text-3)' }} onClick={() => removeItem(s)}><FiX size={12} /></button>
+          </span>
+        ))}
+        {(!maxItems || items.length < maxItems) && (
           <input
             ref={inputRef}
-            className="cp-autocomplete-input"
+            type="text"
             value={query}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onFocus={() => { if (suggestions.length) setShowDropdown(true); }}
             onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-            placeholder={placeholder}
+            placeholder={items.length === 0 ? placeholder : 'Add another...'}
+            style={{ flex: 1, border: '1px solid var(--slate-4)', borderRadius: '4px', padding: '4px 8px', outline: 'none', background: 'white', minWidth: '120px', fontSize: '0.9rem' }}
           />
-        </div>
-        <button className="cp-btn-add" onClick={() => addItem(query)}><FiPlus size={14} /></button>
+        )}
       </div>
       {showDropdown && suggestions.length > 0 && (
-        <ul className="cp-autocomplete-dropdown">
+        <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--slate-3)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, listStyle: 'none', margin: '4px 0 0 0', padding: '8px 0', maxHeight: '200px', overflowY: 'auto' }}>
           {suggestions.map((s, i) => (
             <li
               key={s}
-              className={`cp-autocomplete-item ${highlightIdx === i ? 'cp-autocomplete-item-active' : ''}`}
+              style={{ padding: '8px 16px', cursor: 'pointer', background: highlightIdx === i ? 'var(--blue-lt)' : 'transparent', color: highlightIdx === i ? 'var(--blue)' : 'var(--navy)', fontSize: '0.9rem' }}
               onMouseDown={(e) => { e.preventDefault(); addItem(s); }}
               onMouseEnter={() => setHighlightIdx(i)}
             >
-              <FiPlus size={12} />
-              <span>{s}</span>
+              {s}
             </li>
           ))}
         </ul>
@@ -179,270 +113,334 @@ const CareerProfileSection = React.memo(({ user, onEdit, onSave }) => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [currentIndustry, setCurrentIndustry] = useState('');
+  const [department, setDepartment] = useState('');
+  const [roleCategory, setRoleCategory] = useState('');
+  const [jobRole, setJobRole] = useState('');
+  
+  const [desiredJobType, setDesiredJobType] = useState([]);
+  const [desiredEmploymentType, setDesiredEmploymentType] = useState([]);
+  
+  const [preferredRoles, setPreferredRoles] = useState([]);
+  const [preferredLocations, setPreferredLocations] = useState([]);
+  
   const [salaryAmount, setSalaryAmount] = useState('');
   const [salaryCurrency, setSalaryCurrency] = useState('INR');
-  const [salaryPeriod, setSalaryPeriod] = useState('monthly');
-  const [noticePeriod, setNoticePeriod] = useState('');
-  const [locations, setLocations] = useState([]);
-  const [roles, setRoles] = useState([]);
-  const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
-  const [showNoticeDropdown, setShowNoticeDropdown] = useState(false);
+  
+  const [preferredShift, setPreferredShift] = useState('');
 
   useEffect(() => {
     if (!editing) return;
-    const salary = parseSalary(user?.expectedSalary);
-    setSalaryAmount(salary.amount || '');
-    setSalaryCurrency(salary.currency || 'INR');
-    setSalaryPeriod(salary.period || 'monthly');
-    setNoticePeriod(user?.noticePeriod || '');
-    setLocations(prev => { const raw = user?.preferredLocations; return (Array.isArray(raw) ? raw : []) || []; });
-    setRoles(prev => { const raw = user?.preferredRoles; return (Array.isArray(raw) ? raw : []) || []; });
-  }, [editing]);
-
-  const annualAmount = useMemo(() => {
-    const amt = Number(salaryAmount);
-    if (isNaN(amt) || !amt) return '';
-    return salaryPeriod === 'monthly' ? amt * 12 : amt;
-  }, [salaryAmount, salaryPeriod]);
-
-  const annualLabel = useMemo(() => {
-    if (!annualAmount) return '';
-    if (salaryCurrency === 'INR') return `₹${Number(annualAmount).toLocaleString('en-IN')} per Annum (${formatIndian(annualAmount)})`;
-    return `$${Number(annualAmount).toLocaleString('en-US')} per Annum (${formatUSD(annualAmount)})`;
-  }, [annualAmount, salaryCurrency]);
-
-  const monthlyLabel = useMemo(() => {
-    if (salaryPeriod === 'monthly' && salaryAmount && !isNaN(Number(salaryAmount))) {
-      if (salaryCurrency === 'INR') return `₹${Number(salaryAmount).toLocaleString('en-IN')}/month`;
-      return `$${Number(salaryAmount).toLocaleString('en-US')}/month`;
+    
+    const cpo = user?.careerProfileObj || {};
+    
+    setCurrentIndustry(cpo.currentIndustry || '');
+    setDepartment(cpo.department || '');
+    setRoleCategory(cpo.roleCategory || '');
+    setJobRole(cpo.jobRole || '');
+    
+    setDesiredJobType(cpo.desiredJobType || []);
+    setDesiredEmploymentType(cpo.desiredEmploymentType || []);
+    
+    setPreferredShift(cpo.preferredShift || '');
+    
+    setPreferredRoles(cpo.preferredJobRole !== undefined ? cpo.preferredJobRole : (user?.preferredRoles || []));
+    setPreferredLocations(cpo.preferredWorkLocation !== undefined ? cpo.preferredWorkLocation : (user?.preferredLocations || []));
+    
+    let amt = '';
+    let curr = 'INR';
+    try {
+      if (user?.expectedSalary) {
+        const p = JSON.parse(user.expectedSalary);
+        if (p.amount) amt = p.amount;
+        if (p.currency) curr = p.currency;
+      }
+    } catch {
+      amt = user?.expectedSalary || '';
     }
-    return '';
-  }, [salaryAmount, salaryCurrency, salaryPeriod]);
+    setSalaryAmount(cpo.preferredAnnualSalary || amt);
+    
+  }, [editing, user]);
+
+  const handleCancel = () => {
+    setEditing(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
-    const data = {
-      expectedSalary: salaryAmount ? JSON.stringify({ amount: salaryAmount, currency: salaryCurrency, period: salaryPeriod }) : '',
-      noticePeriod,
-      preferredLocations: locations,
-      preferredRoles: roles,
+    
+    const careerProfileObj = {
+      currentIndustry,
+      department,
+      roleCategory,
+      jobRole,
+      desiredJobType,
+      desiredEmploymentType,
+      preferredJobRole: preferredRoles,
+      preferredWorkLocation: preferredLocations,
+      preferredAnnualSalary: salaryAmount,
+      preferredShift,
     };
+    
+    const expectedSalary = JSON.stringify({
+      amount: salaryAmount,
+      currency: salaryCurrency,
+      period: 'yearly'
+    });
+
+    const data = {
+      careerProfileObj,
+      preferredLocations,
+      preferredRoles,
+      expectedSalary
+    };
+
     const r = await onSave(data);
     if (r?.success) setEditing(false);
     setSaving(false);
   };
 
-  const displaySalary = user?.expectedSalary;
-  const salaryParsed = useMemo(() => {
-    if (!displaySalary) return '';
-    try {
-      const p = JSON.parse(displaySalary);
-      if (p && p.amount) {
-        const amt = Number(p.amount);
-        if (isNaN(amt)) return displaySalary;
-        if (p.currency === 'INR') {
-          const perMonth = p.period === 'yearly' ? `₹${amt.toLocaleString('en-IN')}/yr` : `₹${amt.toLocaleString('en-IN')}/mo`;
-          const annual = p.period === 'yearly' ? amt : amt * 12;
-          return `${perMonth} (${formatIndian(annual)} per Annum)`;
-        }
-        const perMonth = p.period === 'yearly' ? `$${amt.toLocaleString('en-US')}/yr` : `$${amt.toLocaleString('en-US')}/mo`;
-        const annual = p.period === 'yearly' ? amt : amt * 12;
-        return `${perMonth} (${formatUSD(annual)} per Annum)`;
-      }
-    } catch {}
-    return displaySalary;
-  }, [displaySalary]);
-
-  const calcTotalExp = (exps) => {
-    if (!Array.isArray(exps) || !exps.length) return null;
-    let totalMonths = 0;
-    exps.forEach(e => {
-      if (!e.startDate) return;
-      const s = new Date(e.startDate);
-      if (isNaN(s.getTime())) return;
-      const end = e.currentlyWorking ? new Date() : (e.endDate ? new Date(e.endDate) : null);
-      if (!end || isNaN(end.getTime())) return;
-      totalMonths += (end.getFullYear() - s.getFullYear()) * 12 + (end.getMonth() - s.getMonth());
-    });
-    if (totalMonths <= 0) return null;
-    const years = Math.floor(totalMonths / 12);
-    const months = totalMonths % 12;
-    const parts = [];
-    if (years > 0) parts.push(`${years} ${years === 1 ? 'Year' : 'Years'}`);
-    if (months > 0) parts.push(`${months} ${months === 1 ? 'Month' : 'Months'}`);
-    return parts.join(' ');
+  const toggleCheckbox = (arr, setArr, val) => {
+    if (arr.includes(val)) {
+      setArr(arr.filter(item => item !== val));
+    } else {
+      setArr([...arr, val]);
+    }
   };
-
-  const notice = user?.noticePeriod;
-  const locationsArr = user?.preferredLocations;
-  const rolesArr = user?.preferredRoles;
-  const totalExpDisp = calcTotalExp(user?.workExperiences) || user?.totalExperience;
-  const hasData = displaySalary || notice || locationsArr?.length || rolesArr?.length || totalExpDisp;
-
-  if (!hasData && !editing) {
-    return (
-      <div className="ps-card ps-add-card" onClick={() => setEditing(true)} style={{ cursor: 'pointer' }}>
-        <div className="ps-card-header">
-          <h3 className="ps-section-title">Career Profile</h3>
-        </div>
-        <div className="ps-add-placeholder">
-          <FiTarget size={14} />
-          <span>Set your career preferences</span>
-        </div>
-      </div>
-    );
-  }
+  
+  const cpo = user?.careerProfileObj || {};
+  const currentIndustryDisp = cpo.currentIndustry;
+  const departmentDisp = cpo.department;
+  const roleCategoryDisp = cpo.roleCategory;
+  const jobRoleDisp = cpo.jobRole;
+  const desiredJobTypeDisp = cpo.desiredJobType?.join(', ');
+  const desiredEmploymentTypeDisp = cpo.desiredEmploymentType?.join(', ');
+  const preferredRolesDisp = (cpo.preferredJobRole !== undefined ? cpo.preferredJobRole : (user?.preferredRoles || [])).join(', ');
+  const preferredLocationsDisp = (cpo.preferredWorkLocation !== undefined ? cpo.preferredWorkLocation : (user?.preferredLocations || [])).join(', ');
+  const salaryDisp = cpo.preferredAnnualSalary || (() => {
+    try {
+      const p = JSON.parse(user?.expectedSalary || '{}');
+      return p.amount;
+    } catch { return user?.expectedSalary; }
+  })();
+  const shiftDisp = cpo.preferredShift;
+  
+  const hasData = currentIndustryDisp || departmentDisp || preferredRolesDisp || preferredLocationsDisp || salaryDisp;
 
   return (
     <div className="ps-card">
       <div className="ps-card-header">
-        <h3 className="ps-section-title">Career Profile</h3>
-        {!editing && (
-          <button className="ps-edit-btn" onClick={() => setEditing(true)} aria-label="Edit career profile">
-            <FiEdit2 size={14} />
-          </button>
+        <h3 className="ps-section-title">Career profile</h3>
+        <button className="ps-edit-btn" onClick={() => setEditing(true)} aria-label="Edit career profile" style={{ background: 'none', border: 'none', color: 'var(--blue)', cursor: 'pointer' }}>
+          <FiEdit2 size={16} />
+        </button>
+      </div>
+      
+      <div className="ps-about-body">
+        {!hasData && !editing ? (
+          <div className="ps-add-placeholder" onClick={() => setEditing(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--blue)', fontWeight: 500 }}>
+            <FiPlus size={16} />
+            <span>Add details about your current and preferred job profile</span>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 16px', fontSize: '0.95rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Current industry</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{currentIndustryDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Department</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{departmentDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Role category</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{roleCategoryDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Job role</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{jobRoleDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Desired job type</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{desiredJobTypeDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Desired employment type</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{desiredEmploymentTypeDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Preferred job role</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{preferredRolesDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Preferred work location</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{preferredLocationsDisp || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Preferred annual salary</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{salaryDisp ? `₹${Number(salaryDisp).toLocaleString('en-IN')}` : '-'}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Preferred shift</span>
+              <span style={{ color: 'var(--navy)', fontWeight: 500 }}>{shiftDisp || '-'}</span>
+            </div>
+          </div>
         )}
       </div>
-      {editing ? (
-        <div className="ps-edit-wrap">
-          {/* Salary */}
-          <div className="cp-field">
-            <label className="ps-label">Expected Salary</label>
-            <div className="cp-salary-row">
-              <div className="cp-currency-toggle">
-                {CURRENCIES.map(c => (
-                  <button
-                    key={c.code}
-                    className={`cp-currency-btn ${salaryCurrency === c.code ? 'cp-currency-btn-active' : ''}`}
-                    onClick={() => setSalaryCurrency(c.code)}
-                    title={c.name}
-                  >{c.symbol}</button>
-                ))}
-              </div>
-              <input
-                className="cp-salary-input"
-                type="text"
-                inputMode="numeric"
-                value={salaryAmount}
-                onChange={e => setSalaryAmount(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="e.g. 30000"
-              />
-              <div className="cp-period-select">
-                <button
-                  className={`cp-period-btn ${showPeriodDropdown ? 'cp-period-btn-open' : ''}`}
-                  onClick={() => setShowPeriodDropdown(prev => !prev)}
-                  onBlur={() => setTimeout(() => setShowPeriodDropdown(false), 200)}
-                >
-                  {SALARY_PERIODS.find(p => p.value === salaryPeriod)?.label}
-                  <FiChevronDown size={12} className={`cp-chevron ${showPeriodDropdown ? 'cp-chevron-open' : ''}`} />
+
+      {editing && (
+        <div className="bdm-overlay" onClick={handleCancel}>
+          <div className="bdm-container" onClick={(e) => e.stopPropagation()}>
+            <div className="bdm-header">
+              <div className="bdm-title-row">
+                <h2 className="bdm-title">Career profile</h2>
+                <button className="bdm-close" onClick={handleCancel}>
+                  <FiX size={20} />
                 </button>
-                {showPeriodDropdown && (
-                  <ul className="cp-period-dropdown-menu">
-                    {SALARY_PERIODS.map(p => (
-                      <li
-                        key={p.value}
-                        className={`cp-period-dropdown-item ${salaryPeriod === p.value ? 'cp-period-dropdown-item-active' : ''}`}
-                        onMouseDown={(e) => { e.preventDefault(); setSalaryPeriod(p.value); setShowPeriodDropdown(false); }}
-                      >{p.label}</li>
+              </div>
+              <p className="bdm-sub-label">
+                Add details about your current and preferred job profile. This helps us personalise your job recommendations.
+              </p>
+            </div>
+            
+            <div className="bdm-body">
+              <div className="bdm-form">
+                
+                <div className="bdm-field">
+                  <label>Current industry <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <CustomSelect value={currentIndustry} onChange={(e) => setCurrentIndustry(e.target.value)} options={INDUSTRIES} placeholder="Select Industry" />
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Department <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <CustomSelect value={department} onChange={(e) => setDepartment(e.target.value)} options={DEPARTMENTS} placeholder="Select Department" />
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Role category <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <CustomSelect value={roleCategory} onChange={(e) => setRoleCategory(e.target.value)} options={ROLE_CATEGORIES} placeholder="Select Role Category" />
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Job role <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <CustomSelect value={jobRole} onChange={(e) => setJobRole(e.target.value)} options={JOB_ROLES} placeholder="Select Job Role" />
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Desired job type</label>
+                  <div style={{ display: 'flex', gap: '32px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>
+                      <input type="checkbox" checked={desiredJobType.includes('Permanent')} onChange={() => toggleCheckbox(desiredJobType, setDesiredJobType, 'Permanent')} style={{ width: '18px', height: '18px', accentColor: 'var(--navy)' }} />
+                      Permanent
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>
+                      <input type="checkbox" checked={desiredJobType.includes('Contractual')} onChange={() => toggleCheckbox(desiredJobType, setDesiredJobType, 'Contractual')} style={{ width: '18px', height: '18px', accentColor: 'var(--navy)' }} />
+                      Contractual
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Desired employment type</label>
+                  <div style={{ display: 'flex', gap: '32px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>
+                      <input type="checkbox" checked={desiredEmploymentType.includes('Full time')} onChange={() => toggleCheckbox(desiredEmploymentType, setDesiredEmploymentType, 'Full time')} style={{ width: '18px', height: '18px', accentColor: 'var(--navy)' }} />
+                      Full time
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}>
+                      <input type="checkbox" checked={desiredEmploymentType.includes('Part time')} onChange={() => toggleCheckbox(desiredEmploymentType, setDesiredEmploymentType, 'Part time')} style={{ width: '18px', height: '18px', accentColor: 'var(--navy)' }} />
+                      Part time
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Preferred job role (Max 3)</label>
+                  <ChipsAutocomplete
+                    items={preferredRoles}
+                    setItems={setPreferredRoles}
+                    placeholder="Enter your preferred job role"
+                    searchFn={(q, all) => COMMON_ROLES.filter(r => r.toLowerCase().includes(q.toLowerCase()))}
+                    allItems={COMMON_ROLES}
+                    maxItems={3}
+                  />
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Preferred work location (Max 10)</label>
+                  <ChipsAutocomplete
+                    items={preferredLocations}
+                    setItems={setPreferredLocations}
+                    placeholder="Tell us your location preferences to work"
+                    searchFn={(q) => searchCities(q).map(x => x.label || x.city)}
+                    allItems={[]}
+                    maxItems={10}
+                  />
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Preferred annual salary</label>
+                  <div className="cp-salary-wrap" style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--slate-3)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '0 12px', background: 'var(--slate-1)', borderRight: '1px solid var(--slate-3)', display: 'flex', alignItems: 'center', height: '42px', color: 'var(--text-3)' }}>
+                      ₹ <svg style={{ marginLeft: 4 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={salaryAmount} 
+                      onChange={(e) => setSalaryAmount(e.target.value.replace(/[^0-9]/g, ''))} 
+                      placeholder="e.g. 5,00,000" 
+                      style={{ border: 'none', padding: '0 16px', flex: 1, outline: 'none', height: '42px', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="bdm-field">
+                  <label>Preferred shift</label>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                    {['Day', 'Night', 'Flexible'].map(shift => (
+                      <button
+                        key={shift}
+                        onClick={(e) => { e.preventDefault(); setPreferredShift(shift); }}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '24px',
+                          border: `1px solid ${preferredShift === shift ? 'var(--navy)' : 'var(--slate-3)'}`,
+                          background: 'white',
+                          color: preferredShift === shift ? 'var(--navy)' : 'var(--text-3)',
+                          fontWeight: preferredShift === shift ? 600 : 400,
+                          cursor: 'pointer',
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        {shift}
+                      </button>
                     ))}
-                  </ul>
-                )}
+                  </div>
+                </div>
+
               </div>
             </div>
-            {annualLabel && (
-              <div className="cp-annual-label">
-                {monthlyLabel && <span className="cp-monthly-badge">{monthlyLabel}</span>}
-                <span className="cp-annual-text">≈ {annualLabel}</span>
-              </div>
-            )}
-          </div>
 
-          {/* Notice Period */}
-          <div className="cp-field">
-            <label className="ps-label">Notice Period</label>
-            <div className="cp-notice-dropdown-wrap">
-              <button
-                className="cp-notice-btn"
-                onClick={() => setShowNoticeDropdown(prev => !prev)}
-                onBlur={() => setTimeout(() => setShowNoticeDropdown(false), 200)}
+            <div className="bdm-footer">
+              <button 
+                className="bdm-btn-cancel" 
+                onClick={handleCancel}
               >
-                {noticePeriod || 'Select notice period'}
-                <FiChevronDown size={14} className={`cp-chevron ${showNoticeDropdown ? 'cp-chevron-open' : ''}`} />
+                Cancel
               </button>
-              {showNoticeDropdown && (
-                <ul className="cp-notice-dropdown">
-                  {NOTICE_OPTIONS.map(o => (
-                    <li
-                      key={o}
-                      className={`cp-notice-option ${noticePeriod === o ? 'cp-notice-option-active' : ''}`}
-                      onMouseDown={(e) => { e.preventDefault(); setNoticePeriod(o); setShowNoticeDropdown(false); }}
-                    >{o}</li>
-                  ))}
-                </ul>
-              )}
+              <button 
+                className="bdm-btn-save" 
+                onClick={handleSave} 
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
             </div>
           </div>
-
-          {/* Preferred Locations */}
-          <div className="cp-field">
-            <label className="ps-label">Preferred Locations</label>
-            <ChipsAutocomplete
-              items={locations}
-              setItems={setLocations}
-              placeholder="Search cities..."
-              searchFn={(q) => searchCities(q).map(x => x.label || x.city)}
-              allItems={[]}
-              icon={<FiMapPin size={14} className="cp-autocomplete-icon" />}
-            />
-          </div>
-
-          {/* Preferred Roles */}
-          <div className="cp-field">
-            <label className="ps-label">Preferred Roles</label>
-            <ChipsAutocomplete
-              items={roles}
-              setItems={setRoles}
-              placeholder="Search roles..."
-              searchFn={(q, all) => COMMON_ROLES.filter(r => r.toLowerCase().includes(q.toLowerCase()))}
-              allItems={COMMON_ROLES}
-              icon={<FiBriefcase size={14} className="cp-autocomplete-icon" />}
-            />
-          </div>
-
-          <div className="ps-edit-actions">
-            <button className="ps-btn ps-btn-primary" onClick={handleSave} disabled={saving}>
-              <FiCheck size={14} /> {saving ? 'Saving...' : 'Save'}
-            </button>
-            <button className="ps-btn ps-btn-ghost" onClick={() => setEditing(false)}><FiX size={14} /> Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <div className="ps-career-grid">
-          {displaySalary && <MetaItem icon={<FiDollarSign size={15} />} label="Expected Salary" value={salaryParsed} />}
-          {notice && <MetaItem icon={<FiClock size={15} />} label="Notice Period" value={notice} />}
-          {locationsArr?.length > 0 && <MetaItem icon={<FiMapPin size={15} />} label="Preferred Locations" value={locationsArr.join(', ')} />}
-          {rolesArr?.length > 0 && <MetaItem icon={<FiBriefcase size={15} />} label="Preferred Roles" value={rolesArr.join(', ')} />}
-          {totalExpDisp && <MetaItem icon={<FiClock size={15} />} label="Total Experience" value={totalExpDisp} />}
         </div>
       )}
     </div>
   );
 });
-
-const MetaItem = React.memo(({ icon, label, value }) => (
-  <div className="ps-career-item">
-    <span className="ps-career-icon">{icon}</span>
-    <div>
-      <p className="ps-career-label">{label}</p>
-      <p className="ps-career-value">{value || 'Not set'}</p>
-    </div>
-  </div>
-));
-
-const FiChevronDown = ({ size, className }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
 
 export default CareerProfileSection;

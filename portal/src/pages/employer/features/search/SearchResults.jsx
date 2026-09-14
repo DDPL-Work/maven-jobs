@@ -67,6 +67,14 @@ export default function SearchResults() {
   }, [searchParams, sort]);
 
   useEffect(() => {
+    if (candidates.length > 0) {
+      sessionStorage.setItem('maven_candidate_list', JSON.stringify(candidates.map(c => c.userId || c.id)));
+      sessionStorage.setItem('maven_search_text', searchParams.get('keywords') || searchParams.get('query') || '');
+      sessionStorage.setItem('maven_search_total', pagination?.total || candidates.length);
+    }
+  }, [candidates, searchParams, pagination]);
+
+  useEffect(() => {
     const token = localStorage.getItem("employerToken");
     if (!token) { setSessionExpired(true); setLoading(false); return; }
     const load = async () => {

@@ -114,6 +114,91 @@ const FALLBACK_JOBS = [
   },
 ];
 
+const generateFiltersFromData = (dataList) => {
+  const statusesMap = {};
+  const categoriesMap = {};
+  const postersMap = {};
+
+  dataList.forEach(job => {
+    // Status
+    const status = job.status || 'unknown';
+    statusesMap[status] = (statusesMap[status] || 0) + 1;
+
+    // Category
+    const category = job.category || 'unknown';
+    categoriesMap[category] = (categoriesMap[category] || 0) + 1;
+
+    // Posted By
+    const postedBy = job.postedBy || 'unknown';
+    if (!postersMap[postedBy]) {
+      postersMap[postedBy] = { count: 0, label: postedBy };
+    }
+    postersMap[postedBy].count += 1;
+  });
+
+  return {
+    totalJobs: dataList.length,
+    statuses: Object.entries(statusesMap).map(([id, count]) => ({
+      id, label: id.charAt(0).toUpperCase() + id.slice(1) + ' Jobs', count
+    })),
+    categories: Object.entries(categoriesMap).map(([id, count]) => ({
+      id, label: id, count
+    })),
+    posters: Object.entries(postersMap).map(([id, data]) => ({
+      id, label: data.label, email: id, count: data.count
+    }))
+  };
+};
+
+const queryLocalJobs = (jobsList, params) => {
+  let filtered = [...jobsList];
+
+  // Search
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    filtered = filtered.filter(job => 
+      (job.title && job.title.toLowerCase().includes(q)) || 
+      (job.location && job.location.toLowerCase().includes(q))
+    );
+  }
+
+  // Status
+  if (params.status) {
+    const statuses = params.status.split(',');
+    filtered = filtered.filter(job => statuses.includes(job.status));
+  }
+
+  // Category
+  if (params.category) {
+    const categories = params.category.split(',');
+    filtered = filtered.filter(job => categories.includes(job.category));
+  }
+
+  // Posted By
+  if (params.postedBy) {
+    const posters = params.postedBy.split(',');
+    filtered = filtered.filter(job => posters.includes(job.postedBy));
+  }
+
+  // Sorting
+  if (params.sortBy === 'date-desc') {
+    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+  } else if (params.sortBy === 'responses-desc') {
+    filtered.sort((a, b) => (b.totalResponses || 0) - (a.totalResponses || 0));
+  } else if (params.sortBy === 'title-asc') {
+    filtered.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  const totalCount = filtered.length;
+  const totalPages = Math.ceil(totalCount / params.limit) || 1;
+  const page = Math.max(1, Math.min(params.page, totalPages));
+  const startIndex = (page - 1) * params.limit;
+  
+  const items = filtered.slice(startIndex, startIndex + params.limit);
+
+  return { items, pagination: { totalCount, totalPages, page, limit: params.limit } };
+};
+
 export default function ManageJobsResponses() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -170,25 +255,15 @@ export default function ManageJobsResponses() {
   // -------------------------------------------------------------
   // Dynamic API State for Jobs & Filters
   // -------------------------------------------------------------
+  const [allJobs, setAllJobs] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [jobs, setJobs] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [filtersData, setFiltersData] = useState({
     totalJobs: 0,
-    statuses: [
-      { id: 'active', label: 'Active Jobs', count: 0 },
-      { id: 'closed', label: 'Closed Jobs', count: 0 },
-      { id: 'expired', label: 'Expired Jobs', count: 0 },
-    ],
-    categories: [
-      { id: 'NVite', label: 'NVite', count: 0 },
-      { id: 'Private', label: 'Private', count: 0 },
-      { id: 'Hot Vacancy', label: 'Hot Vacancy', count: 0 },
-      { id: 'SMB Job', label: 'SMB Job', count: 0 },
-      { id: 'Internship', label: 'Internship', count: 0 },
-    ],
-    posters: [
-      { id: 'me', label: 'Me', email: '', count: 0 },
-    ],
+    statuses: [],
+    categories: [],
+    posters: [],
   });
 
   // Search & Filter state
@@ -261,26 +336,39 @@ export default function ManageJobsResponses() {
     return () => document.removeEventListener('pointerdown', handleOutsideClick);
   }, []);
 
-  // Fetch dynamic filter metadata from backend
-  const loadFilterCounts = useCallback(async () => {
+  // Fetch all data once to derive dynamic filters and use client-side filtering
+  const fetchAllData = useCallback(async () => {
+    setLoadingJobs(true);
     try {
-      const data = await employerJobService.getEmployerJobFilters();
-      if (data && data.statuses) {
-        setFiltersData(data);
+      // Fetch without any specific filters, with a high limit to get all for client-side filtering/facets
+      const data = await employerJobService.getEmployerJobs({ limit: 1000 });
+      if (data && Array.isArray(data.items) && data.items.length > 0) {
+        setAllJobs(data.items);
+        setFiltersData(generateFiltersFromData(data.items));
+      } else {
+        setAllJobs(FALLBACK_JOBS);
+        setFiltersData(generateFiltersFromData(FALLBACK_JOBS));
       }
     } catch (err) {
-      console.warn('Using local filter counts due to API error:', err);
+      console.warn("API failed, using fallback jobs", err);
+      setAllJobs(FALLBACK_JOBS);
+      setFiltersData(generateFiltersFromData(FALLBACK_JOBS));
+    } finally {
+      setIsDataLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    loadFilterCounts();
-  }, [loadFilterCounts]);
+    fetchAllData();
+  }, [fetchAllData]);
 
-  // Fetch jobs dynamically based on filters & pagination
-  const fetchJobs = useCallback(async () => {
+  // Handle local filtering whenever filters or page change
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    
     setLoadingJobs(true);
-    try {
+    // Slight delay to simulate loading or just debounce filter changes slightly
+    const timer = setTimeout(() => {
       const params = {
         page: currentPage,
         limit: pageSize,
@@ -291,43 +379,15 @@ export default function ManageJobsResponses() {
         postedBy: selectedPosters.join(','),
       };
 
-      const data = await employerJobService.getEmployerJobs(params);
-      if (data && Array.isArray(data.items)) {
-        if (data.items.length === 0 && !debouncedSearch && selectedStatuses.length === 1 && selectedStatuses[0] === 'active' && selectedCategories.length === 0 && selectedPosters.length === 0 && (!data.pagination || data.pagination.totalCount === 0)) {
-          // Fallback to sample jobs for demo when no backend jobs exist yet
-          setJobs(FALLBACK_JOBS);
-          setTotalCount(FALLBACK_JOBS.length);
-          setTotalPages(1);
-        } else {
-          setJobs(data.items);
-          setTotalCount(data.pagination?.totalCount ?? data.items.length);
-          setTotalPages(data.pagination?.totalPages ?? 1);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching jobs:', err);
-      // On network error or offline fallback, use local fallback
-      const filtered = FALLBACK_JOBS.filter((job) => {
-        if (debouncedSearch) {
-          const q = debouncedSearch.toLowerCase();
-          const matches = job.title.toLowerCase().includes(q) || job.location.toLowerCase().includes(q);
-          if (!matches) return false;
-        }
-        if (selectedStatuses.length > 0 && !selectedStatuses.includes(job.status)) return false;
-        if (selectedCategories.length > 0 && !selectedCategories.includes(job.category)) return false;
-        return true;
-      });
-      setJobs(filtered);
-      setTotalCount(filtered.length);
-      setTotalPages(1);
-    } finally {
+      const localData = queryLocalJobs(allJobs, params);
+      setJobs(localData.items);
+      setTotalCount(localData.pagination.totalCount);
+      setTotalPages(localData.pagination.totalPages);
       setLoadingJobs(false);
-    }
-  }, [currentPage, pageSize, debouncedSearch, sortBy, selectedStatuses, selectedCategories, selectedPosters]);
+    }, 150);
 
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+    return () => clearTimeout(timer);
+  }, [allJobs, isDataLoaded, currentPage, pageSize, debouncedSearch, sortBy, selectedStatuses, selectedCategories, selectedPosters]);
 
   // Open job details and candidate responses into a new tab
   const handleOpenResponses = (job) => {
@@ -341,8 +401,7 @@ export default function ManageJobsResponses() {
       await employerJobService.closeEmployerJob(job.id || job._id);
       showToast(`Closed job "${job.title}".`);
       setOpenRowMenuId(null);
-      fetchJobs();
-      loadFilterCounts();
+      fetchAllData();
     } catch (err) {
       showToast(err?.message || `Failed to close job.`);
     }
@@ -366,15 +425,14 @@ export default function ManageJobsResponses() {
   // Bulk Actions
   const handleBulkRefresh = async () => {
     if (selectedJobIds.length === 0) {
-      fetchJobs();
-      loadFilterCounts();
+      fetchAllData();
       showToast('Refreshed job responses list.');
       return;
     }
     try {
       await employerJobService.bulkRefreshJobs(selectedJobIds);
       showToast(`Refreshed ${selectedJobIds.length} job(s).`);
-      fetchJobs();
+      fetchAllData();
     } catch (err) {
       showToast(err?.message || 'Failed to refresh jobs.');
     }
@@ -397,8 +455,7 @@ export default function ManageJobsResponses() {
       await employerJobService.bulkCloseJobs(selectedJobIds);
       showToast(`Successfully closed ${selectedJobIds.length} job(s).`);
       setSelectedJobIds([]);
-      fetchJobs();
-      loadFilterCounts();
+      fetchAllData();
     } catch (err) {
       showToast(err?.message || 'Failed to close jobs.');
     }

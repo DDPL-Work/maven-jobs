@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { FiBookOpen, FiEdit2, FiPlus, FiTrash2, FiCheck, FiX, FiCalendar } from 'react-icons/fi';
+import { FiBookOpen, FiEdit2, FiTrash2, FiCalendar, FiPlus, FiX } from 'react-icons/fi';
+import '../../pages/candidates/features/dashboard/Components/ProfileDashboard/BasicDetailsModal.css';
+import CustomSelect from '../common/CustomSelect';
 
 const emptyEdu = () => ({
   id: Date.now() + Math.random(),
+  isNew: true,
   school: '',
   degree: '',
   field: '',
   startYear: '',
   endYear: '',
   currentlyStudying: false,
+  educationLevel: '',
+  courseType: 'Full time',
+  gradingSystem: '',
+  marks: '',
 });
 
 const formatEduYears = (e) => {
@@ -19,48 +26,155 @@ const formatEduYears = (e) => {
 };
 
 const EduCard = React.memo(({ edu, palette, onEdit, onDelete, editing, onSaveItem, onCancel }) => {
-  const [f, setF] = useState({ ...edu });
+  const [f, setF] = useState({ 
+    ...edu,
+    educationLevel: edu.educationLevel || '',
+    courseType: edu.courseType || 'Full time',
+    gradingSystem: edu.gradingSystem || '',
+    marks: edu.marks || '',
+  });
 
   useEffect(() => {
-    if (editing) setF({ ...edu });
+    if (editing) setF({ 
+      ...edu,
+      educationLevel: edu.educationLevel || '',
+      courseType: edu.courseType || 'Full time',
+      gradingSystem: edu.gradingSystem || '',
+      marks: edu.marks || '',
+    });
   }, [editing, edu]);
 
   if (editing) {
     return (
-      <div className="ps-edu-edit-card">
-        <div className="ps-field">
-          <label className="ps-label">School / University *</label>
-          <input className="ps-input" value={f.school} onChange={e => setF(p => ({ ...p, school: e.target.value }))} placeholder="e.g. Stanford University" />
-        </div>
-        <div className="ps-field-row">
-          <div className="ps-field">
-            <label className="ps-label">Degree</label>
-            <input className="ps-input" value={f.degree} onChange={e => setF(p => ({ ...p, degree: e.target.value }))} placeholder="e.g. Bachelor of Science" />
+      <div className="bdm-overlay" onClick={onCancel} style={{ zIndex: 9999 }}>
+        <div className="bdm-container" onClick={e => e.stopPropagation()} style={{ width: '700px' }}>
+          <div className="bdm-header">
+            <div className="bdm-title-row">
+              <h2 className="bdm-title">Education</h2>
+              <button className="bdm-close" onClick={onCancel}><FiX size={20} /></button>
+            </div>
           </div>
-          <div className="ps-field">
-            <label className="ps-label">Field of Study</label>
-            <input className="ps-input" value={f.field} onChange={e => setF(p => ({ ...p, field: e.target.value }))} placeholder="e.g. Computer Science" />
+          <div className="bdm-body">
+            <p className="bdm-sub-label" style={{ marginTop: '-12px', marginBottom: '24px' }}>Details like course, university, and more, help recruiters identify your educational background</p>
+            
+            <div className="bdm-form">
+              <div className="bdm-field">
+                <label>Education <span>*</span></label>
+                <CustomSelect 
+                  value={f.educationLevel} 
+                  onChange={e => setF(p => ({ ...p, educationLevel: e.target.value }))}
+                  placeholder="Select education"
+                  options={[
+                    { label: 'Doctorate/Ph.D', value: 'Doctorate/Ph.D' },
+                    { label: 'Masters/Post-Graduation', value: 'Masters/Post-Graduation' },
+                    { label: 'Graduation/Diploma', value: 'Graduation/Diploma' },
+                    { label: '12th', value: '12th' },
+                    { label: '10th', value: '10th' }
+                  ]}
+                />
+              </div>
+
+              <div className="bdm-field">
+                <label>University/Institute <span>*</span></label>
+                <input value={f.school} onChange={e => setF(p => ({ ...p, school: e.target.value }))} placeholder="Select university/institute" />
+              </div>
+
+              <div className="bdm-field">
+                <label>Course <span>*</span></label>
+                <CustomSelect 
+                  value={f.degree} 
+                  onChange={e => setF(p => ({ ...p, degree: e.target.value }))}
+                  placeholder="Select course"
+                  options={[
+                    { label: 'B.Tech/B.E.', value: 'B.Tech/B.E.' },
+                    { label: 'B.Sc', value: 'B.Sc' },
+                    { label: 'B.A', value: 'B.A' },
+                    { label: 'B.Com', value: 'B.Com' },
+                    { label: 'BCA', value: 'BCA' },
+                    { label: 'M.Tech', value: 'M.Tech' },
+                    { label: 'MBA/PGDM', value: 'MBA/PGDM' },
+                    { label: 'MCA', value: 'MCA' }
+                  ]}
+                />
+              </div>
+
+              <div className="bdm-field">
+                <label>Specialization <span>*</span></label>
+                <CustomSelect 
+                  value={f.field} 
+                  onChange={e => setF(p => ({ ...p, field: e.target.value }))}
+                  placeholder="Select specialization"
+                  options={[
+                    { label: 'Computers', value: 'Computers' },
+                    { label: 'Electrical', value: 'Electrical' },
+                    { label: 'Electronics', value: 'Electronics' },
+                    { label: 'Mechanical', value: 'Mechanical' },
+                    { label: 'Civil', value: 'Civil' },
+                    { label: 'Information Technology', value: 'Information Technology' }
+                  ]}
+                />
+              </div>
+
+              <div className="bdm-field">
+                <label>Course Type <span>*</span></label>
+                <div className="bdm-radio-group">
+                  <label>
+                    <input type="radio" name="courseType" checked={f.courseType === 'Full time'} onChange={() => setF(p => ({ ...p, courseType: 'Full time' }))} /> Full time
+                  </label>
+                  <label>
+                    <input type="radio" name="courseType" checked={f.courseType === 'Part time'} onChange={() => setF(p => ({ ...p, courseType: 'Part time' }))} /> Part time
+                  </label>
+                  <label>
+                    <input type="radio" name="courseType" checked={f.courseType === 'Correspondence/Distance learning'} onChange={() => setF(p => ({ ...p, courseType: 'Correspondence/Distance learning' }))} /> Correspondence/Distance learning
+                  </label>
+                </div>
+              </div>
+
+              <div className="bdm-field">
+                <label>Course duration <span>*</span></label>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <CustomSelect 
+                    value={f.startYear} 
+                    onChange={e => setF(p => ({ ...p, startYear: e.target.value }))}
+                    placeholder="Starting Year"
+                    options={[...Array(30)].map((_, i) => ({ label: String(new Date().getFullYear() - i), value: String(new Date().getFullYear() - i) }))}
+                  />
+                  <CustomSelect 
+                    value={f.endYear} 
+                    onChange={e => setF(p => ({ ...p, endYear: e.target.value }))}
+                    placeholder="Ending Year"
+                    options={[...Array(35)].map((_, i) => ({ label: String(new Date().getFullYear() + 5 - i), value: String(new Date().getFullYear() + 5 - i) }))}
+                  />
+                </div>
+              </div>
+
+              <div className="bdm-field">
+                <label>Grading System</label>
+                <CustomSelect 
+                  value={f.gradingSystem} 
+                  onChange={e => setF(p => ({ ...p, gradingSystem: e.target.value }))}
+                  placeholder="Select grading system"
+                  options={[
+                    { label: 'Scale 10 Grading System', value: 'Scale 10 Grading System' },
+                    { label: 'Scale 4 Grading System', value: 'Scale 4 Grading System' },
+                    { label: 'Marks', value: 'Marks' },
+                    { label: 'Percentage', value: 'Percentage' }
+                  ]}
+                />
+              </div>
+              
+              {f.gradingSystem && (
+                <div className="bdm-field">
+                  <label>{f.gradingSystem}</label>
+                  <input value={f.marks} onChange={e => setF(p => ({ ...p, marks: e.target.value }))} placeholder="Eg. 8.5" />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="ps-field-row">
-          <div className="ps-field">
-            <label className="ps-label">Start Year</label>
-            <input className="ps-input" type="month" value={f.startYear} onChange={e => setF(p => ({ ...p, startYear: e.target.value }))} />
+          <div className="bdm-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', padding: '24px 32px' }}>
+            <button className="bdm-btn-cancel" onClick={onCancel} style={{ border: 'none', color: 'var(--blue)', fontWeight: 600, fontSize: '0.95rem', background: 'none' }}>Cancel</button>
+            <button className="bdm-btn-save" onClick={() => f.school.trim() && onSaveItem(f)} disabled={!f.school.trim()} style={{ background: f.school.trim() ? 'var(--blue)' : 'var(--slate-3)', color: 'white', border: 'none', padding: '8px 24px', borderRadius: '24px', fontWeight: 600, fontSize: '0.95rem', cursor: f.school.trim() ? 'pointer' : 'not-allowed' }}>Save</button>
           </div>
-          <div className="ps-field" style={{ opacity: f.currentlyStudying ? 0.35 : 1, pointerEvents: f.currentlyStudying ? 'none' : 'auto' }}>
-            <label className="ps-label">End Year</label>
-            <input className="ps-input" type="month" value={f.endYear} onChange={e => setF(p => ({ ...p, endYear: e.target.value }))} disabled={f.currentlyStudying} />
-          </div>
-        </div>
-        <label className="ps-checkbox-label">
-          <input type="checkbox" checked={f.currentlyStudying} onChange={e => setF(p => ({ ...p, currentlyStudying: e.target.checked, endYear: e.target.checked ? '' : p.endYear }))} />
-          <span>Currently studying here</span>
-        </label>
-        <div className="ps-edit-actions">
-          <button className="ps-btn ps-btn-primary" onClick={() => f.school.trim() && onSaveItem(f)} disabled={!f.school.trim()}>
-            <FiCheck size={14} /> Save
-          </button>
-          <button className="ps-btn ps-btn-ghost" onClick={onCancel}><FiX size={14} /> Cancel</button>
         </div>
       </div>
     );
@@ -124,9 +238,19 @@ const EducationSection = React.memo(({ user, onEdit, onSave }) => {
   const handleSaveItem = (data) => {
     if (!data.school.trim()) return;
     const next = [...educations];
-    if (editIdx !== null) next[editIdx] = { ...data, id: next[editIdx]?.id || Date.now() + Math.random() };
-    else next.push({ ...data, id: Date.now() + Math.random() });
+    const dataToSave = { ...data };
+    delete dataToSave.isNew;
+    if (editIdx !== null && editIdx < next.length) {
+      next[editIdx] = { ...dataToSave, id: next[editIdx]?.id || Date.now() + Math.random() };
+    } else {
+      next.push({ ...dataToSave, id: Date.now() + Math.random() });
+    }
     persist(next);
+  };
+
+  const handleCancel = () => {
+    setEducations(prev => prev.filter(e => !e.isNew));
+    setEditIdx(null);
   };
 
   const handleDelete = (idx) => {
@@ -170,7 +294,7 @@ const EducationSection = React.memo(({ user, onEdit, onSave }) => {
             onEdit={() => setEditIdx(i)}
             onDelete={() => handleDelete(i)}
             onSaveItem={handleSaveItem}
-            onCancel={() => setEditIdx(null)}
+            onCancel={handleCancel}
           />
         ))}
         {editIdx === null && display.length > 0 && (

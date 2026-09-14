@@ -7,6 +7,7 @@ const resdexController = require("../controllers/resdex.controller");
 const nviteController = require("../controllers/nvite.controller");
 const folderController = require("../controllers/folder.controller");
 const creditController = require("../controllers/credit.controller");
+const employerReportController = require("../controllers/employer-report.controller");
 const { protectUser } = require("../middleware/auth.middleware");
 const role = require("../middleware/role.middleware");
 const { resolveCompanyContext } = require("../middleware/company-context.middleware");
@@ -122,5 +123,16 @@ router.post("/credits/verify", creditController.verifyTopup);
 router.post("/credits/use", creditController.useCredits);
 router.post("/credits/search", creditController.searchCredits);
 router.get("/credits/check/:candidateId", creditController.checkResumeAccess);
+
+// Reports — Job Posting & Resdex usage reports
+router.get("/reports/job-posting", employerReportController.getJobPostingReport);
+router.get("/reports/job-posting/subscription", employerReportController.getJobPostingReportSubscription);
+router.post("/reports/job-posting/subscription", employerReportController.saveJobPostingReportSubscription);
+router.post("/reports/job-posting/send-email", employerReportController.sendJobPostingReportEmail);
+
+router.get("/reports/resdex", employerReportController.getResdexReport);
+router.get("/reports/resdex/subscription", employerReportController.getResdexReportSubscription);
+router.post("/reports/resdex/subscription", employerReportController.saveResdexReportSubscription);
+router.post("/reports/resdex/send-email", employerReportController.sendResdexReportEmail);
 
 module.exports = router;

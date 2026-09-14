@@ -109,20 +109,20 @@ export default function SearchResume() {
   });
 
   const [filters, setFilters] = useState({
-    keyword: "", skills: [], booleanQuery: "", currentCompany: "",
-    previousCompany: "", designation: "", excludeKeywords: "",
-    minExperience: "", maxExperience: "",
-    currentCity: [], preferredCity: [], remote: false, hybrid: false, relocation: false,
-    currency: "INR", currentSalaryMin: "", currentSalaryMax: "",
-    expectedSalaryMin: "", expectedSalaryMax: "",
-    noticePeriod: [],
-    department: "", role: "", industry: "", employmentType: "", employmentStatus: "",
-    ug: "", pg: "", doctorate: "", institute: "", graduationYear: "", minPercentage: "",
-    certifications: [],
-    diversityGender: [], careerBreak: false, veterans: false, disabilities: false,
-    returnship: false, womenHiring: false, campusHiring: false, freshers: false,
-    languages: [], workPermit: [], passport: false, visa: "",
-    github: "", linkedIn: "", portfolio: "",
+      keyword: "", skills: [], booleanQuery: "", currentCompany: "",
+      previousCompany: "", designation: "", excludeKeywords: "",
+      minExperience: "", maxExperience: "",
+      currentCity: [], preferredCity: [], remote: false, hybrid: false, relocation: false,
+      currency: "INR", currentSalaryMin: "", currentSalaryMax: "",
+      expectedSalaryMin: "", expectedSalaryMax: "",
+      noticePeriod: [],
+      department: "", role: "", industry: "", employmentType: "", employmentStatus: "",
+      ug: "", pg: "", doctorate: "", institute: "", graduationYear: "", minPercentage: "",
+      certifications: [],
+      diversityGender: [], careerBreak: false, veterans: false, disabilities: false,
+      returnship: false, womenHiring: false, campusHiring: false, freshers: false,
+      languages: [], workPermit: [], passport: false, visa: "",
+      github: "", linkedIn: "", portfolio: "",
   });
 
   const [savedSearches, setSavedSearches] = useState([]);
@@ -172,15 +172,32 @@ export default function SearchResume() {
   }, []);
 
   useEffect(() => {
-    if (location.state?.savedFilters && !locationStateProcessed.current) {
-      locationStateProcessed.current = true;
-      setFilters(prev => ({ ...prev, ...location.state.savedFilters }));
-      if (location.state.searchName) {
-        setSearchName(location.state.searchName);
+    if (!locationStateProcessed.current) {
+      let handled = false;
+      if (location.state?.preSelectedCandidate) {
+        handled = true;
+        const c = location.state.preSelectedCandidate;
+        const id = c.id || c.userId || c._id;
+        setSelectedCandidates(new Map([[id, c]]));
+        setCachedResults(prev => prev.some(p => (p.id || p.userId || p._id) === id) ? prev : [c, ...prev]);
+        const searchParams = new URLSearchParams(location.search);
+        if (searchParams.get('tab') === 'mivites') {
+          setActiveTab('mivites');
+        }
       }
-      setTimeout(() => fetchCandidates(1), 100);
+      if (location.state?.savedFilters) {
+        handled = true;
+        setFilters(prev => ({ ...prev, ...location.state.savedFilters }));
+        if (location.state.searchName) {
+          setSearchName(location.state.searchName);
+        }
+        setTimeout(() => fetchCandidates(1), 100);
+      }
+      if (handled) {
+        locationStateProcessed.current = true;
+      }
     }
-  }, [location.state]);
+  }, [location.state, location.search]);
 
   const toggleSection = (id) => {
     setActiveSections(prev =>
@@ -656,6 +673,7 @@ export default function SearchResume() {
             initialResults={cachedResults}
             initialSelectedIds={Array.from(selectedCandidates.keys())}
             onClearSelection={() => setSelectedCandidates(new Map())}
+            startStep={location.state?.startAtJobStep ? 1 : 0}
           />
         )}
 
