@@ -8,6 +8,7 @@ const nviteController = require("../controllers/nvite.controller");
 const folderController = require("../controllers/folder.controller");
 const creditController = require("../controllers/credit.controller");
 const employerReportController = require("../controllers/employer-report.controller");
+const userManagementController = require("../controllers/user-management.controller");
 const { protectUser } = require("../middleware/auth.middleware");
 const role = require("../middleware/role.middleware");
 const { resolveCompanyContext } = require("../middleware/company-context.middleware");
@@ -33,6 +34,11 @@ router.post("/auth/register", controller.register);
 router.post("/auth/login", controller.login);
 router.post("/auth/refresh", authController.refresh);
 router.post("/auth/logout", authController.logout);
+
+router.post("/auth/send-mobile-otp", controller.sendMobileOtp);
+router.post("/auth/verify-mobile-otp", controller.verifyMobileOtp);
+router.post("/auth/send-email-otp", controller.sendEmailOtp);
+router.post("/auth/verify-email-otp", controller.verifyEmailOtp);
 
 router.use(protectUser);
 router.use(role("CLIENT"));
@@ -134,5 +140,22 @@ router.get("/reports/resdex", employerReportController.getResdexReport);
 router.get("/reports/resdex/subscription", employerReportController.getResdexReportSubscription);
 router.post("/reports/resdex/subscription", employerReportController.saveResdexReportSubscription);
 router.post("/reports/resdex/send-email", employerReportController.sendResdexReportEmail);
+
+// User Management (Sub-users & recruiters)
+router.get("/user-management/users", userManagementController.getUsers);
+router.post("/user-management/users", userManagementController.createUser);
+router.put("/user-management/users/:id", userManagementController.updateUser);
+router.post("/user-management/users/bulk-delete", userManagementController.deleteUsers);
+router.put("/user-management/users/:id/password", userManagementController.changeUserPassword);
+router.put("/user-management/users/time-restrictions", userManagementController.updateTimeRestrictions);
+
+// Allowed Domains
+router.get("/user-management/domains", userManagementController.getCompanyDomains);
+router.post("/user-management/domains", userManagementController.addCompanyDomain);
+router.post("/user-management/domains/otp", userManagementController.sendDomainOtp);
+router.post("/user-management/domains/verify-otp", userManagementController.verifyDomainOtp);
+// Security Settings
+router.get("/user-management/security-settings", userManagementController.getSecuritySettings);
+router.put("/user-management/security-settings", userManagementController.updateSecuritySettings);
 
 module.exports = router;

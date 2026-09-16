@@ -33,10 +33,13 @@ const {
   setRefreshCookie,
   setAccessCookie,
 } = require("../services/auth.service");
-const { esAvailable } = require("../config/elasticsearch");
-const esService = require("../services/elasticsearch.service");
+const { esAvailable } = require("../config/opensearch");
+const esService = require("../services/opensearch.service");
 const { scheduleIndex, scheduleDelete } = esService;
 const jobReportService = require("../services/job-posting-report.service");
+const smsService = require("../services/sms.service");
+const emailService = require("../services/email.service");
+const RegistrationOTP = require("../models/RegistrationOTP");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -382,18 +385,106 @@ exports.login = asyncHandler(async (req, res) => {
   });
 });
 
+exports.sendMobileOtp = asyncHandler(async (req, res) => {
+  const { phone, countryCode } = req.body;
+  if (!phone) throw createHttpError(400, "Phone number is required");
+  
+  const fullPhone = countryCode ? `${countryCode}${phone}` : phone;
+  const sessionId = await smsService.sendOTP(fullPhone);
+  res.status(200).json({ success: true, data: { sessionId } });
+});
+
+exports.verifyMobileOtp = asyncHandler(async (req, res) => {
+  const { phone, countryCode, sessionId, otp } = req.body;
+  if (!phone || !sessionId || !otp) throw createHttpError(400, "Phone, sessionId, and OTP are required");
+
+  const isValid = await smsService.verifyOTP(sessionId, otp);
+  if (!isValid) throw createHttpError(400, "Invalid OTP");
+
+  const mobileToken = jwt.sign({ phone, countryCode, verified: true }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  res.status(200).json({ success: true, data: { mobileToken } });
+});
+
+exports.sendEmailOtp = asyncHandler(async (req, res) => {
+  const email = toTrimmedString(req.body.email).toLowerCase();
+  if (!email) throw createHttpError(400, "Email is required");
+
+  const existingUser = await User.findOne({ email }).select("_id");
+  if (existingUser) throw createHttpError(409, "An account already exists for this email");
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpHash = await bcrypt.hash(otp, 10);
+
+  await RegistrationOTP.deleteMany({ email });
+  await RegistrationOTP.create({
+    email,
+    otpHash,
+    expiresAt: new Date(Date.now() + 3 * 60 * 1000),
+  });
+
+  const html = `<p>Your verification code for MavenJobs is: <b>${otp}</b></p><p>This code will expire in 3 minutes.</p>`;
+  await emailService.sendEmail({ to: email, subject: "Verify your email - MavenJobs", html });
+
+  res.status(200).json({ success: true, message: "OTP sent" });
+});
+
+exports.verifyEmailOtp = asyncHandler(async (req, res) => {
+  const email = toTrimmedString(req.body.email).toLowerCase();
+  const { otp } = req.body;
+  if (!email || !otp) throw createHttpError(400, "Email and OTP are required");
+
+  const record = await RegistrationOTP.findOne({ email });
+  if (!record || record.expiresAt < new Date()) {
+    throw createHttpError(400, "OTP expired or not found");
+  }
+
+  const isValid = await bcrypt.compare(otp, record.otpHash);
+  if (!isValid) {
+    record.attempts += 1;
+    await record.save();
+    throw createHttpError(400, "Invalid OTP");
+  }
+
+  const emailToken = jwt.sign({ email, verified: true }, process.env.JWT_SECRET, { expiresIn: "1h" });
+  await RegistrationOTP.deleteOne({ _id: record._id });
+
+  res.status(200).json({ success: true, data: { emailToken } });
+});
+
 exports.register = asyncHandler(async (req, res) => {
   const fullName = toTrimmedString(req.body.fullName || req.body.name);
   const companyName = toTrimmedString(req.body.companyName);
   const email = toTrimmedString(req.body.email).toLowerCase();
   const password = toTrimmedString(req.body.password);
   const phone = toTrimmedString(req.body.phone);
+  const countryCode = toTrimmedString(req.body.countryCode);
   const hiringFor = toTrimmedString(req.body.hiringFor || "company");
   const designation = toTrimmedString(req.body.designation);
   const city = toTrimmedString(req.body.city);
+  const country = toTrimmedString(req.body.country) || "India";
+  const state = toTrimmedString(req.body.state);
+  const address = toTrimmedString(req.body.address);
+  const pincode = toTrimmedString(req.body.pincode);
+  const employees = toTrimmedString(req.body.employees);
+
+  const { mobileToken, emailToken } = req.body;
 
   if (!fullName || !companyName || !email || !password || !phone) {
     throw createHttpError(400, "Full name, company name, email, phone, and password are required");
+  }
+
+  if (!mobileToken || !emailToken) {
+    throw createHttpError(400, "Mobile and Email verification tokens are required. Please verify OTPs first.");
+  }
+
+  try {
+    const mobileDecoded = jwt.verify(mobileToken, process.env.JWT_SECRET);
+    if (mobileDecoded.phone !== phone) throw new Error("Phone mismatch");
+    
+    const emailDecoded = jwt.verify(emailToken, process.env.JWT_SECRET);
+    if (emailDecoded.email !== email) throw new Error("Email mismatch");
+  } catch (err) {
+    throw createHttpError(400, "Invalid or expired verification tokens. Please verify again.");
   }
 
   if (!/^\d{10}$/.test(phone)) {
@@ -423,25 +514,49 @@ exports.register = asyncHandler(async (req, res) => {
       isActive: true,
     });
 
+    const primaryDomain = `@${email.split('@')[1]?.toLowerCase()}`;
+
     company = await Company.create({
       name: companyName,
       tagline: designation || (hiringFor === "consultancy" ? "Consultancy hiring partner" : "Employer account"),
       industry: hiringFor === "consultancy" ? "Consultancy" : "Company",
       email,
       phone,
+      countryCode,
+      hiringFor,
       location: {
+        country,
+        region: state,
         city,
+        address,
+        pincode,
       },
+      employeesCount: employees,
       createdByCRM: user._id,
       clientUserId: user._id,
       packageType: "STANDARD",
       jobLimit: 2,
       status: "ACTIVE",
       configurationNotes: designation ? `Primary contact title: ${designation}` : "",
+      allowedDomains: [primaryDomain],
     });
 
     user.companyId = company._id;
     await user.save();
+
+    // Create the super user record in CompanySubUser
+    const CompanySubUser = require("../models/CompanySubUser");
+    await CompanySubUser.create({
+      userId: user._id,
+      companyId: company._id,
+      createdBy: user._id,
+      isSuperUser: true,
+      permissions: {
+        jobPosting: true,
+        jobBooster: true,
+        resdex: true,
+      },
+    });
   } catch (error) {
     if (company?._id) {
       await Company.deleteOne({ _id: company._id });

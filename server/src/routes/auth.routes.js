@@ -12,6 +12,8 @@ const {
   session,
   googleLogin,
   googleStatus,
+  sendMobileOtp,
+  verifyMobileOtp,
 } = require("../controllers/auth.controller");
 
 router.post("/register", authLimiter, registerCandidate);
@@ -23,5 +25,9 @@ router.post("/logout", logout);
 router.post("/revoke", authLimiter, revoke);
 router.get("/me", me);
 router.get("/session", session);
+
+// Mobile OTP login (candidates only)
+router.post("/mobile/send-otp", authLimiter, sendMobileOtp);
+router.post("/mobile/verify-otp", authLimiter, verifyMobileOtp);
 
 module.exports = router;

@@ -9,14 +9,16 @@ import {
   FiEyeOff,
   FiArrowRight,
   FiSmartphone,
+  FiAlertCircle,
 } from "react-icons/fi";
 import mavenLogo from "../../assets/maven-logo-BdiSsfJk.svg";
 import { useAuth } from "../AuthContext";
+import authService from "../services/authService";
 import ForgotPassword from "./ForgotPassword";
 import "./AuthModals.css";
 
 export default function Login({ isOpen, onClose, openSignUp }) {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, loginWithMobileOtp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +69,7 @@ export default function Login({ isOpen, onClose, openSignUp }) {
     setError("");
   };
 
-  const handleGetOTP = (e) => {
+  const handleGetOTP = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!/^[6-9]\d{9}$/.test(mobileNumber)) {
       setError("Please enter a valid 10-digit mobile number.");
@@ -75,15 +77,20 @@ export default function Login({ isOpen, onClose, openSignUp }) {
     }
     setError("");
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    
+    try {
+      await authService.candidateSendMobileOtp(mobileNumber);
       setOtpSent(true);
       setOtp("");
-      setResendTimer(30);
-    }, 1200);
+      setResendTimer(180);
+    } catch (err) {
+      setError(err.message || "Failed to send OTP.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleVerifyOTP = (e) => {
+  const handleVerifyOTP = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (otp.length !== 6) {
       setError("Please enter the 6-digit OTP.");
@@ -91,10 +98,15 @@ export default function Login({ isOpen, onClose, openSignUp }) {
     }
     setError("");
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    
+    const result = await loginWithMobileOtp(mobileNumber, otp);
+    if (result.success) {
+      // loginWithMobileOtp handles onClose internally if needed, or we do it here:
       onClose();
-    }, 1200);
+    } else {
+      setError(result.message || "Invalid OTP. Please try again.");
+    }
+    setIsLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -334,30 +346,56 @@ export default function Login({ isOpen, onClose, openSignUp }) {
                       Edit
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="Enter 6-digit OTP"
-                    className="auth-otp-input"
-                    value={otp}
-                    onChange={(e) =>
-                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-                    }
-                  />
+                  <div className="auth-otp-input-container">
+                    {[0, 1, 2, 3, 4, 5].map((index) => (
+                      <input
+                        key={index}
+                        id={`otp-${index}`}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        className="auth-otp-box"
+                        value={otp[index] || ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          if (!val && e.target.value !== "") return;
+                          
+                          let newOtp = otp.split("");
+                          while (newOtp.length < 6) newOtp.push("");
+                          newOtp[index] = val;
+                          setOtp(newOtp.join("").substring(0, 6));
+                          
+                          if (val && index < 5) {
+                            const nextInput = document.getElementById(`otp-${index + 1}`);
+                            if (nextInput) nextInput.focus();
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Backspace" && !otp[index] && index > 0) {
+                            const prevInput = document.getElementById(`otp-${index - 1}`);
+                            if (prevInput) prevInput.focus();
+                          }
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pasteData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                          if (pasteData) {
+                            setOtp(pasteData);
+                            const nextIndex = Math.min(pasteData.length, 5);
+                            const nextInput = document.getElementById(`otp-${nextIndex}`);
+                            if (nextInput) nextInput.focus();
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 
               {error && (
-                <div
-                  style={{
-                    color: "red",
-                    marginBottom: "16px",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                  }}
-                >
-                  {error}
+                <div className="auth-alert error">
+                  <FiAlertCircle className="auth-alert-icon" />
+                  <span>{error}</span>
                 </div>
               )}
 
@@ -426,8 +464,7 @@ export default function Login({ isOpen, onClose, openSignUp }) {
                   <div className="auth-resend-area">
                     {resendTimer > 0 ? (
                       <span className="auth-resend-timer">
-                        Resend OTP in 00:
-                        {String(resendTimer).padStart(2, "0")}
+                        Resend OTP in {String(Math.floor(resendTimer / 60)).padStart(2, "0")}:{String(resendTimer % 60).padStart(2, "0")}
                       </span>
                     ) : (
                       <button

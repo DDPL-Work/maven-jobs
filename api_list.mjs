@@ -207,7 +207,7 @@ export const apiList = [
     fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/register",
     description: "This endpoint is used to create/submit employer register via the portal application.",
     internalFunction: "employerRegister",
-    usedInPortalPages: ["EmployerLandingPage.jsx"]
+    usedInPortalPages: ["EmployerLandingPage.jsx", "ClientRegistrationForm.jsx"]
   },
   {
     method: "GET",
@@ -937,4 +937,116 @@ export const apiList = [
     internalFunction: "getPlans",
     usedInPortalPages: []
   },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/send-mobile-otp",
+    description: "This endpoint is used to create/submit send mobile otp via the portal application.",
+    internalFunction: "sendMobileOtp",
+    usedInPortalPages: ["ClientRegistrationForm.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/verify-mobile-otp",
+    description: "This endpoint is used to create/submit verify mobile otp via the portal application.",
+    internalFunction: "verifyMobileOtp",
+    usedInPortalPages: ["ClientRegistrationForm.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/send-email-otp",
+    description: "This endpoint is used to create/submit send email otp via the portal application.",
+    internalFunction: "sendEmailOtp",
+    usedInPortalPages: ["ClientRegistrationForm.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/verify-email-otp",
+    description: "This endpoint is used to create/submit verify email otp via the portal application.",
+    internalFunction: "verifyEmailOtp",
+    usedInPortalPages: ["ClientRegistrationForm.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/users",
+    description: "This endpoint is used to get users via the portal application.",
+    internalFunction: "getUsers",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/users",
+    description: "This endpoint is used to create user via the portal application.",
+    internalFunction: "createUser",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "PUT",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/users/:id",
+    description: "This endpoint is used to update user via the portal application.",
+    internalFunction: "updateUser",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/users/bulk-delete",
+    description: "This endpoint is used to delete users via the portal application.",
+    internalFunction: "deleteUsers",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "PUT",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/users/:id/password",
+    description: "This endpoint is used to change user password via the portal application.",
+    internalFunction: "changeUserPassword",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "PUT",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/users/time-restrictions",
+    description: "This endpoint is used to update time restrictions via the portal application.",
+    internalFunction: "updateTimeRestrictions",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/domains",
+    description: "This endpoint is used to get company domains via the portal application.",
+    internalFunction: "getCompanyDomains",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/domains",
+    description: "This endpoint is used to add company domain via the portal application.",
+    internalFunction: "addCompanyDomain",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/domains/otp",
+    description: "This endpoint is used to send domain otp via the portal application.",
+    internalFunction: "sendDomainOtp",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/domains/verify-otp",
+    description: "This endpoint is used to verify domain otp via the portal application.",
+    internalFunction: "verifyDomainOtp",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/security-settings",
+    description: "This endpoint is used to get security settings via the portal application.",
+    internalFunction: "getSecuritySettings",
+    usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "PUT",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/user-management/security-settings",
+    description: "This endpoint is used to update security settings via the portal application.",
+    internalFunction: "updateSecuritySettings",
+    usedInPortalPages: ["UserManagement.jsx"]
+  }
 ];

@@ -952,7 +952,7 @@ exports.closeEmployerJob = asyncHandler(async (req, res) => {
   });
 
   try {
-    const { scheduleDelete } = require("../services/elasticsearch.service");
+    const { scheduleDelete } = require("../services/opensearch.service");
     scheduleDelete(String(job._id));
   } catch (_) {}
 
@@ -981,7 +981,7 @@ exports.bulkCloseJobs = asyncHandler(async (req, res) => {
   );
 
   try {
-    const { scheduleDelete } = require("../services/elasticsearch.service");
+    const { scheduleDelete } = require("../services/opensearch.service");
     jobIds.forEach((id) => scheduleDelete(String(id)));
   } catch (_) {}
 

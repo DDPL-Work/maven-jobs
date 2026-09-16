@@ -6,6 +6,8 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { INDIAN_STATES_AND_UT_ARRAY, STATE_WISE_CITIES } from "indian-states-cities-list";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
+import authService from "../../../../services/authService";
+import { useAuth } from "../../../../AuthContext";
 import "./ClientRegistrationForm.css";
 
 // Step definitions for the top stepper
@@ -70,21 +72,21 @@ const CustomDropdown = ({ value, options, onChange, placeholder, disabled }) => 
 
 const ClientRegistrationForm = () => {
   const navigate = useNavigate();
-  // Steps: 1 (Mobile), 2 (Mobile OTP), 3 (Basic Details), 4 (Company Details & Email OTP)
+  const { setUser } = useAuth() || { setUser: () => {} };
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Step 1
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("91");
   const [agreeWhatsApp, setAgreeWhatsApp] = useState(true);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
-  // Step 2
   const [mobileOtp, setMobileOtp] = useState(["", "", "", "", "", ""]);
-  const [timer, setTimer] = useState(57);
+  const [timer, setTimer] = useState(180);
+  const [sessionId, setSessionId] = useState("");
+  const [mobileToken, setMobileToken] = useState("");
 
-  // Step 3 (Basic Details)
   const [hiringFor, setHiringFor] = useState("your company");
   const [companyName, setCompanyName] = useState("");
   const [employees, setEmployees] = useState("");
@@ -104,6 +106,8 @@ const ClientRegistrationForm = () => {
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailOtpVerified, setEmailOtpVerified] = useState(false);
   const [emailOtp, setEmailOtp] = useState(["", "", "", "", "", ""]);
+  const [emailToken, setEmailToken] = useState("");
+  const [emailTimer, setEmailTimer] = useState(180);
 
   const otpInputRefs = useRef([]);
   const emailOtpRefs = useRef([]);
@@ -115,6 +119,14 @@ const ClientRegistrationForm = () => {
     }
     return () => clearInterval(interval);
   }, [step, timer]);
+
+  useEffect(() => {
+    let interval = null;
+    if (emailOtpSent && !emailOtpVerified && emailTimer > 0) {
+      interval = setInterval(() => setEmailTimer((t) => t - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [emailOtpSent, emailOtpVerified, emailTimer]);
 
   useEffect(() => {
     if (pincode.length === 6 && !manualAddress) {
@@ -161,7 +173,7 @@ const ClientRegistrationForm = () => {
     }
   }, [city, manualAddress, country]);
 
-  const handleSendMobileOtp = () => {
+  const handleSendMobileOtp = async () => {
     if (!phone || phone.length < 10) {
       setError("Please enter a valid 10-digit mobile number.");
       return;
@@ -172,14 +184,20 @@ const ClientRegistrationForm = () => {
     }
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const formattedPhone = phone.replace(/\D/g, "");
+      const res = await authService.sendMobileOtp(formattedPhone, countryCode);
+      setSessionId(res.data.sessionId);
       setStep(2);
-      setTimer(57);
-    }, 800);
+      setTimer(180);
+    } catch (err) {
+      setError(err.message || "Failed to send OTP.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerifyMobileOtp = () => {
+  const handleVerifyMobileOtp = async () => {
     const code = mobileOtp.join("");
     if (code.length < 6) {
       setError("Please enter the complete OTP.");
@@ -187,10 +205,16 @@ const ClientRegistrationForm = () => {
     }
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const formattedPhone = phone.replace(/\D/g, "");
+      const res = await authService.verifyMobileOtp(formattedPhone, countryCode, sessionId, code);
+      setMobileToken(res.data.mobileToken);
       setStep(3);
-    }, 800);
+    } catch (err) {
+      setError(err.message || "Invalid OTP.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBasicDetailsNext = () => {
@@ -202,20 +226,25 @@ const ClientRegistrationForm = () => {
     setStep(4);
   };
 
-  const handleSendEmailOtp = () => {
+  const handleSendEmailOtp = async () => {
     if (!email) {
       setError("Please enter your company email.");
       return;
     }
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authService.sendEmailOtp(email.trim());
       setEmailOtpSent(true);
-    }, 800);
+      setEmailTimer(180);
+    } catch (err) {
+      setError(err.message || "Failed to send email OTP.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerifyEmailOtp = () => {
+  const handleVerifyEmailOtp = async () => {
     const eOtp = emailOtp.join("");
     if (eOtp.length < 6) {
       setError("Please enter the email OTP.");
@@ -223,10 +252,15 @@ const ClientRegistrationForm = () => {
     }
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await authService.verifyEmailOtp(email.trim(), eOtp);
+      setEmailToken(res.data.emailToken);
       setEmailOtpVerified(true);
-    }, 800);
+    } catch (err) {
+      setError(err.message || "Invalid OTP.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFinalRegister = async () => {
@@ -237,21 +271,37 @@ const ClientRegistrationForm = () => {
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      console.log("Mock Registration Complete with data:", {
+    try {
+      const payload = {
         fullName: fullName.trim(),
         companyName: companyName.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: phone.replace(/\D/g, "").trim(),
+        countryCode,
         password: password.trim(),
         designation: designation.trim(),
         pincode: pincode.trim(),
-        country, state, city, address,
-        hiringFor, employees
-      });
+        country,
+        state,
+        city,
+        address,
+        hiringFor,
+        employees,
+        mobileToken,
+        emailToken,
+      };
+
+      const data = await authService.employerRegister(payload);
+      if (data?.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setUser(data.user);
+      }
       navigate("/employer-dashboard");
-    }, 1000);
+    } catch (err) {
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpChange = (index, value, isEmail = false) => {
@@ -360,8 +410,11 @@ const ClientRegistrationForm = () => {
                   <label>Mobile number</label>
                   <PhoneInput
                     country={"in"}
-                    value={phone}
-                    onChange={setPhone}
+                    value={countryCode + phone}
+                    onChange={(val, countryObj) => {
+                      setCountryCode(countryObj.dialCode);
+                      setPhone(val.slice(countryObj.dialCode.length));
+                    }}
                     placeholder="Enter mobile number"
                     containerClass="crf2-phone-container"
                     inputClass="crf2-phone-input"
@@ -423,9 +476,12 @@ const ClientRegistrationForm = () => {
                 <div className="crf2-resend">
                   Didn't receive it?{" "}
                   {timer > 0 ? (
-                    <span>Resend in <b>00:{timer < 10 ? `0${timer}` : timer}</b></span>
+                    <span>Resend in <b>{String(Math.floor(timer / 60)).padStart(2, "0")}:{String(timer % 60).padStart(2, "0")}</b></span>
                   ) : (
-                    <button onClick={() => setTimer(57)}>Resend OTP</button>
+                    <button onClick={() => {
+                      setMobileOtp(["", "", "", "", "", ""]);
+                      handleSendMobileOtp();
+                    }}>Resend OTP</button>
                   )}
                 </div>
 
@@ -642,7 +698,12 @@ const ClientRegistrationForm = () => {
                 ) : !emailOtpVerified ? (
                   <>
                     <div className="crf2-field">
-                      <label>Enter OTP sent to {email}</label>
+                      <label>
+                        Enter OTP sent to {email}
+                        <button type="button" className="crf2-edit-btn" onClick={() => { setEmailOtpSent(false); setEmailOtp(["", "", "", "", "", ""]); }} style={{ marginLeft: "8px" }}>
+                          <FiEdit2 size={12} /> Edit
+                        </button>
+                      </label>
                       <div className="crf2-otp-row">
                         {emailOtp.map((digit, index) => (
                           <input
@@ -657,6 +718,18 @@ const ClientRegistrationForm = () => {
                           />
                         ))}
                       </div>
+                    </div>
+
+                    <div className="crf2-resend" style={{ marginBottom: "20px", fontSize: "14px", color: "#6b7280" }}>
+                      Didn't receive it?{" "}
+                      {emailTimer > 0 ? (
+                        <span>Resend in <b>{String(Math.floor(emailTimer / 60)).padStart(2, "0")}:{String(emailTimer % 60).padStart(2, "0")}</b></span>
+                      ) : (
+                        <button type="button" onClick={() => {
+                          setEmailOtp(["", "", "", "", "", ""]);
+                          handleSendEmailOtp();
+                        }} style={{ background: "none", border: "none", color: "#143f86", fontWeight: "600", cursor: "pointer", padding: 0 }}>Resend OTP</button>
+                      )}
                     </div>
 
                     <button

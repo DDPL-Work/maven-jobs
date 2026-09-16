@@ -7,8 +7,8 @@ const {
   loadPackageCatalog,
   applyCompanyPackageSnapshot,
 } = require("../services/package-limit.service");
-const { esAvailable } = require("../config/elasticsearch");
-const esService = require("../services/elasticsearch.service");
+const { esAvailable } = require("../config/opensearch");
+const esService = require("../services/opensearch.service");
 const { scheduleIndex, scheduleDelete } = esService;
 
 // Create job (CLIENT or CRM)

@@ -9,7 +9,7 @@ const {
   optionalAuthCandidate,
 } = require("../middleware/candidate.middleware");
 const { cacheRoute, invalidateCache } = require("../middleware/cache.middleware");
-const { aiResumeLimiter } = require("../middleware/rateLimit.middleware");
+const { aiResumeLimiter, authLimiter } = require("../middleware/rateLimit.middleware");
 
 const router = express.Router();
 
@@ -20,11 +20,14 @@ const upload = multer({
   },
 });
 
-router.post("/auth/register", upload.single("resume"), candidateController.register);
-router.post("/auth/login", candidateController.login);
-router.post("/auth/google", authController.googleLogin);
-router.post("/auth/refresh", authController.refresh);
+router.post("/auth/register", upload.single("resume"), authLimiter, candidateController.register);
+router.post("/auth/login", authLimiter, candidateController.login);
+router.post("/auth/google", authLimiter, authController.googleLogin);
+router.post("/auth/refresh", authLimiter, authController.refresh);
 router.post("/auth/logout", authController.logout);
+
+router.post("/auth/mobile/send-otp", authLimiter, candidateController.sendMobileOtp);
+router.post("/auth/mobile/verify-otp", authLimiter, candidateController.verifyMobileOtp);
 
 router.get("/landing/home", cacheRoute({ key: "cache:landing:candidate-home", ttl: 120 }), candidateController.getLandingHome);
 router.get("/landing/:token", candidateController.getLandingByToken);

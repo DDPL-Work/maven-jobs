@@ -35,8 +35,8 @@ const {
   issueTokenPair,
   setRefreshCookie,
 } = require("../services/auth.service");
-const { esAvailable } = require("../config/elasticsearch");
-const esService = require("../services/elasticsearch.service");
+const { esAvailable } = require("../config/opensearch");
+const esService = require("../services/opensearch.service");
 const { scheduleIndex, scheduleDelete } = esService;
 
 const defaultPackages = DEFAULT_PACKAGE_CATALOG;

@@ -1,149 +1,17 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FiPlus, FiMoreVertical, FiChevronDown, FiInfo,
   FiSearch, FiCheck, FiX, FiLock, FiShield,
   FiClock, FiGlobe, FiTrash2, FiEdit3, FiCheckCircle,
-  FiPhone, FiArrowLeft, FiRefreshCw, FiEye, FiEyeOff
+  FiPhone, FiArrowLeft, FiRefreshCw, FiEye, FiEyeOff, FiLoader
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
+import userManagementService from '../../../../services/userManagementService';
 import './UserManagement.css';
 
-// Initial pre-loaded users matching the screenshot
-const INITIAL_USERS = [
-  {
-    id: 'u-1',
-    name: 'admin',
-    email: 'admin@mavenjobs.in',
-    isSuperUser: true,
-    isRestricted: false,
-    avatar: 'A',
-    avatarBg: '#fef3c7',
-    avatarColor: '#b45309',
-    resdex: true,
-    jobPosting: true,
-    jobBooster: true,
-  },
-  {
-    id: 'u-2',
-    name: 'muskan',
-    email: 'recruit@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: true,
-    avatar: 'M',
-    avatarBg: '#fef3c7',
-    avatarColor: '#b45309',
-    resdex: false,
-    jobPosting: false,
-    jobBooster: false,
-  },
-  {
-    id: 'u-3',
-    name: 'Nikita',
-    email: 'hr@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: true,
-    avatar: 'N',
-    avatarBg: '#e2e8f0',
-    avatarColor: '#475569',
-    resdex: true,
-    jobPosting: false,
-    jobBooster: false,
-  },
-  {
-    id: 'u-4',
-    name: 'Khushi',
-    email: 'bd3@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: false,
-    avatar: 'K',
-    avatarBg: '#fef3c7',
-    avatarColor: '#b45309',
-    resdex: true,
-    jobPosting: true,
-    jobBooster: true,
-  },
-  {
-    id: 'u-5',
-    name: 'Rahul Sharma',
-    email: 'rahul.s@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: false,
-    avatar: 'R',
-    avatarBg: '#dbeafe',
-    avatarColor: '#1d4ed8',
-    resdex: true,
-    jobPosting: true,
-    jobBooster: false,
-  },
-  {
-    id: 'u-6',
-    name: 'Priya Verma',
-    email: 'priya.v@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: true,
-    avatar: 'P',
-    avatarBg: '#fce7f3',
-    avatarColor: '#be185d',
-    resdex: true,
-    jobPosting: false,
-    jobBooster: false,
-  },
-  {
-    id: 'u-7',
-    name: 'Amit Patel',
-    email: 'amit.p@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: false,
-    avatar: 'A',
-    avatarBg: '#ede9fe',
-    avatarColor: '#6d28d9',
-    resdex: true,
-    jobPosting: false,
-    jobBooster: false,
-  },
-  {
-    id: 'u-8',
-    name: 'Sneha Kulkarni',
-    email: 'sneha.k@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: false,
-    avatar: 'S',
-    avatarBg: '#ccfbf1',
-    avatarColor: '#0f766e',
-    resdex: true,
-    jobPosting: true,
-    jobBooster: false,
-  },
-  {
-    id: 'u-9',
-    name: 'Vikram Malhotra',
-    email: 'vikram.m@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: true,
-    avatar: 'V',
-    avatarBg: '#fee2e2',
-    avatarColor: '#b91c1c',
-    resdex: true,
-    jobPosting: false,
-    jobBooster: false,
-  },
-  {
-    id: 'u-10',
-    name: 'Ananya Roy',
-    email: 'ananya.r@mavenjobs.in',
-    isSuperUser: false,
-    isRestricted: true,
-    avatar: 'A',
-    avatarBg: '#e0e7ff',
-    avatarColor: '#3730a3',
-    resdex: false,
-    jobPosting: false,
-    jobBooster: false,
-  },
-];
-
+// Avatar palette for auto-generating user avatar colors
 const AVATAR_PALETTE = [
   { bg: '#fef3c7', color: '#b45309' },
   { bg: '#dbeafe', color: '#1d4ed8' },
@@ -153,6 +21,8 @@ const AVATAR_PALETTE = [
   { bg: '#ede9fe', color: '#6d28d9' },
   { bg: '#e2e8f0', color: '#475569' },
 ];
+
+
 
 const TIME_SLOTS = [
   '12:00 AM', '12:30 AM', '01:00 AM', '01:30 AM', '02:00 AM', '02:30 AM',
@@ -165,27 +35,107 @@ const TIME_SLOTS = [
   '09:00 PM', '09:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM'
 ];
 
+// Separate controlled modal component for Change Restrictions
+function ChangeRestrictionsModal({ isOpen, onClose, selectedIds, onSaved }) {
+  const [policy, setPolicy] = useState('all-day');
+  const [ipRestriction, setIpRestriction] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleApply = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await userManagementService.updateRestrictions({
+        ids: selectedIds,
+        policy,
+        ipRestriction,
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Failed to update restrictions');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="um-modal-overlay" onClick={onClose}>
+      <div className="um-modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="um-modal-header">
+          <h2 className="um-modal-title">Change Restrictions</h2>
+          <button type="button" className="um-modal-close-btn" onClick={onClose}>
+            <FiX size={20} />
+          </button>
+        </div>
+        <div className="um-modal-body">
+          {selectedIds?.length > 0 && (
+            <div style={{ padding: '8px 12px', background: '#f0f7ff', borderRadius: 8, fontSize: 13, color: '#0369a1', marginBottom: 12 }}>
+              Applying to <strong>{selectedIds.length}</strong> selected user(s).
+            </div>
+          )}
+          <div className="um-form-group">
+            <label className="um-form-label">Time Restriction Policy</label>
+            <select className="um-input-text" value={policy} onChange={(e) => setPolicy(e.target.value)}>
+              <option value="all-day">Allow access 24/7 (No restriction)</option>
+              <option value="office-hours">Office hours only (9:00 AM – 7:00 PM IST)</option>
+              <option value="custom">Custom schedule (Weekdays only)</option>
+            </select>
+          </div>
+          <div className="um-form-group">
+            <label className="um-form-label">IP Address Restriction</label>
+            <input
+              type="text"
+              className="um-input-text"
+              placeholder="e.g. 192.168.1.0/24 (Leave blank for unrestricted)"
+              value={ipRestriction}
+              onChange={(e) => setIpRestriction(e.target.value)}
+            />
+          </div>
+          {error && <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>{error}</div>}
+        </div>
+        <div className="um-modal-footer">
+          <button type="button" className="um-btn-link-action" onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className="um-btn-modal-save"
+            disabled={saving}
+            onClick={handleApply}
+          >
+            {saving ? 'Saving…' : 'Apply Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function UserManagement() {
   const navigate = useNavigate();
 
-  // Users state with localStorage fallback
-  const [users, setUsers] = useState(() => {
-    try {
-      const saved = localStorage.getItem('maven_sub_users');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return INITIAL_USERS;
-  });
+  // Users state — loaded from API
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
 
-  // Sync users to localStorage
-  useEffect(() => {
+  // Fetch users from API on mount
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setApiError(null);
     try {
-      localStorage.setItem('maven_sub_users', JSON.stringify(users));
-    } catch {}
-  }, [users]);
+      const result = await userManagementService.getUsers();
+      setUsers(result.data || []);
+    } catch (err) {
+      setApiError(err?.message || 'Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   // Selected Users
   const [selectedUserIds, setSelectedUserIds] = useState([]);
@@ -204,20 +154,68 @@ export default function UserManagement() {
   const [showRestrictionsModal, setShowRestrictionsModal] = useState(false);
 
   // Allowed Domains & OTP Verification state
-  const [allowedDomains, setAllowedDomains] = useState(['@mavenjobs.in', '@mycompany.com']);
+  const [allowedDomains, setAllowedDomains] = useState([]);
+
+  // Fetch domains from API on mount
+  const fetchDomains = useCallback(async () => {
+    try {
+      const result = await userManagementService.getDomains();
+      setAllowedDomains(result.data || []);
+    } catch {
+      // silently fail — domains will just be empty
+    }
+  }, []);
+
+  useEffect(() => { fetchDomains(); }, [fetchDomains]);
   const [newDomainInput, setNewDomainInput] = useState('');
-  const [domainStep, setDomainStep] = useState('input'); // 'input' | 'otp'
+  const [domainStep, setDomainStep] = useState('otp'); // 'otp' | 'domain'
   const [domainOtp, setDomainOtp] = useState(['', '', '', '', '', '']);
   const [domainError, setDomainError] = useState('');
   const [otpTimer, setOtpTimer] = useState(30);
   const [otpLoading, setOtpLoading] = useState(false);
   const domainOtpRefs = useRef([]);
-  const maskedPhone = '+91 98******10';
+  const [otpSessionId, setOtpSessionId] = useState(null);
+  const [domainToken, setDomainToken] = useState(null);
+  const [maskedPhone, setMaskedPhone] = useState('');
 
   // Account Security settings state (matching Screenshot 1)
   const [notifyPasswordChange, setNotifyPasswordChange] = useState(true);
   const [receiveOtpOnlyOnMobile, setReceiveOtpOnlyOnMobile] = useState(false);
   const [useOtpOnPatternChange, setUseOtpOnPatternChange] = useState(false);
+
+  const fetchSecuritySettings = useCallback(async () => {
+    try {
+      const result = await userManagementService.getSecuritySettings();
+      if (result.data) {
+        setNotifyPasswordChange(result.data.notifyPasswordChange);
+        setReceiveOtpOnlyOnMobile(result.data.receiveOtpOnlyOnMobile);
+        setUseOtpOnPatternChange(result.data.useOtpOnPatternChange);
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  useEffect(() => { fetchSecuritySettings(); }, [fetchSecuritySettings]);
+
+  const handleToggleSecuritySetting = async (key, currentValue) => {
+    const newValue = !currentValue;
+    // Optimistic update
+    if (key === 'notifyPasswordChange') setNotifyPasswordChange(newValue);
+    if (key === 'receiveOtpOnlyOnMobile') setReceiveOtpOnlyOnMobile(newValue);
+    if (key === 'useOtpOnPatternChange') setUseOtpOnPatternChange(newValue);
+
+    try {
+      await userManagementService.updateSecuritySettings({ [key]: newValue });
+      showToast('Security settings updated');
+    } catch (err) {
+      // Revert on failure
+      if (key === 'notifyPasswordChange') setNotifyPasswordChange(currentValue);
+      if (key === 'receiveOtpOnlyOnMobile') setReceiveOtpOnlyOnMobile(currentValue);
+      if (key === 'useOtpOnPatternChange') setUseOtpOnPatternChange(currentValue);
+      showToast(err?.message || 'Failed to update security settings');
+    }
+  };
 
   // Time Restrictions settings state (matching Screenshot 2)
   const [weekendRestrictions, setWeekendRestrictions] = useState([]); // ['Saturday', 'Sunday']
@@ -292,7 +290,7 @@ export default function UserManagement() {
     setPasswordError('');
   };
 
-  const handleChangePasswordSubmit = (e) => {
+  const handleChangePasswordSubmit = async (e) => {
     e.preventDefault();
     if (!newPassword.trim()) {
       setPasswordError('Please enter a new password');
@@ -306,8 +304,13 @@ export default function UserManagement() {
       setPasswordError('Passwords do not match');
       return;
     }
-    showToast(`Password changed successfully for ${changePasswordUser?.name || changePasswordUser?.email}!`);
-    handleCloseChangePassword();
+    try {
+      await userManagementService.changePassword(changePasswordUser.id, newPassword);
+      showToast(`Password changed successfully for ${changePasswordUser?.name || changePasswordUser?.email}!`);
+      handleCloseChangePassword();
+    } catch (err) {
+      setPasswordError(err?.message || 'Failed to change password');
+    }
   };
 
   const handleCloseAddModal = () => {
@@ -379,26 +382,39 @@ export default function UserManagement() {
     );
   };
 
-  // Toggle single permission for user
-  const handleTogglePermission = (userId, field) => {
+  // Toggle single permission for user — optimistically update then call API
+  const handleTogglePermission = async (userId, field) => {
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    const newValue = !target[field];
+    const updatedPermissions = {
+      jobPosting: target.jobPosting,
+      jobBooster: target.jobBooster,
+      resdex: target.resdex,
+      [field]: newValue,
+    };
+    // Enforce dependency rules
+    if (field === 'jobBooster' && newValue) updatedPermissions.jobPosting = true;
+    if (field === 'jobPosting' && !newValue) updatedPermissions.jobBooster = false;
+
+    // Optimistic update
     setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === userId) {
-          const updated = { ...u, [field]: !u[field] };
-          // If Job Booster enabled, ensure Job Posting is also enabled
-          if (field === 'jobBooster' && updated.jobBooster) {
-            updated.jobPosting = true;
-          }
-          // If Job Posting disabled, disable Job Booster too
-          if (field === 'jobPosting' && !updated.jobPosting) {
-            updated.jobBooster = false;
-          }
-          return updated;
-        }
-        return u;
-      })
+      prev.map((u) =>
+        u.id === userId ? { ...u, ...updatedPermissions } : u
+      )
     );
-    showToast(`Updated ${field === 'jobPosting' ? 'Job Posting' : field === 'jobBooster' ? 'Job Booster' : 'Resdex'} permission`);
+
+    try {
+      await userManagementService.updateUser(userId, updatedPermissions);
+      showToast(`Updated ${field === 'jobPosting' ? 'Job Posting' : field === 'jobBooster' ? 'Job Booster' : 'Resdex'} permission`);
+    } catch (err) {
+      // Roll back on failure
+      setUsers((prev) =>
+        prev.map((u) => u.id === userId ? target : u)
+      );
+      showToast(err?.message || 'Failed to update permission');
+    }
   };
 
   // Validate Add User Form
@@ -421,7 +437,7 @@ export default function UserManagement() {
   };
 
   // Handle Save User (Create or Edit)
-  const handleSaveUser = (keepOpen = false) => {
+  const handleSaveUser = async (keepOpen = false) => {
     if (!validateForm()) return;
 
     const trimmedName = formName.trim();
@@ -429,64 +445,62 @@ export default function UserManagement() {
 
     // If in Edit mode
     if (editingUser) {
-      if (users.some((u) => u.id !== editingUser.id && u.email.toLowerCase() === trimmedEmail)) {
-        setFormErrors({ email: 'A user with this email already exists' });
-        return;
+      try {
+        await userManagementService.updateUser(editingUser.id, {
+          name: trimmedName,
+          email: trimmedEmail,
+          jobPosting: formJobPosting,
+          jobBooster: formJobBooster,
+          resdex: formResdex,
+        });
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === editingUser.id
+              ? { ...u, name: trimmedName, email: trimmedEmail, jobPosting: formJobPosting, jobBooster: formJobBooster, resdex: formResdex }
+              : u
+          )
+        );
+        showToast(`User "${trimmedName}" updated successfully!`);
+        handleCloseAddModal();
+      } catch (err) {
+        if (err?.message?.toLowerCase().includes('email')) {
+          setFormErrors({ email: err.message });
+        } else {
+          showToast(err?.message || 'Failed to update user');
+        }
       }
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingUser.id
-            ? {
-                ...u,
-                name: trimmedName,
-                email: trimmedEmail,
-                jobPosting: formJobPosting,
-                jobBooster: formJobBooster,
-                resdex: formResdex,
-              }
-            : u
-        )
-      );
-      showToast(`User "${trimmedName}" updated successfully!`);
-      handleCloseAddModal();
       return;
     }
 
-    // Check if email already exists
-    if (users.some((u) => u.email.toLowerCase() === trimmedEmail)) {
-      setFormErrors({ email: 'A user with this email already exists' });
-      return;
-    }
+    // Create new user
+    try {
+      const result = await userManagementService.createUser({
+        name: trimmedName,
+        email: trimmedEmail,
+        jobPosting: formJobPosting,
+        jobBooster: formJobBooster,
+        resdex: formResdex,
+      });
+      setUsers((prev) => [...prev, result.data]);
+      showToast(`User "${trimmedName}" added successfully!`);
 
-    const firstChar = trimmedName[0]?.toUpperCase() || 'U';
-    const palette = AVATAR_PALETTE[Math.floor(Math.random() * AVATAR_PALETTE.length)];
+      // Reset inputs
+      setFormName('');
+      setFormEmail('');
+      setFormJobPosting(true);
+      setFormJobBooster(true);
+      setFormResdex(false);
+      setFormErrors({});
 
-    const newUser = {
-      id: `u-${Date.now()}`,
-      name: trimmedName,
-      email: trimmedEmail,
-      isSuperUser: false,
-      avatar: firstChar,
-      avatarBg: palette.bg,
-      avatarColor: palette.color,
-      resdex: formResdex,
-      jobPosting: formJobPosting,
-      jobBooster: formJobBooster,
-    };
-
-    setUsers((prev) => [newUser, ...prev]);
-    showToast(`User "${trimmedName}" added successfully!`);
-
-    // Reset inputs
-    setFormName('');
-    setFormEmail('');
-    setFormJobPosting(true);
-    setFormJobBooster(true);
-    setFormResdex(false);
-    setFormErrors({});
-
-    if (!keepOpen) {
-      handleCloseAddModal();
+      if (!keepOpen) {
+        handleCloseAddModal();
+      }
+    } catch (err) {
+      if (err?.message?.toLowerCase().includes('email') || err?.message?.toLowerCase().includes('domain')) {
+        setFormErrors({ email: err.message });
+      } else {
+        showToast(err?.message || 'Failed to create user');
+      }
     }
   };
 
@@ -503,41 +517,80 @@ export default function UserManagement() {
   };
 
   // Delete individual user action
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = async (userId) => {
     const target = users.find((u) => u.id === userId);
     if (target?.isSuperUser) {
       showToast('Super-user cannot be deleted');
       return;
     }
     if (window.confirm(`Are you sure you want to delete sub-user "${target?.name || 'this user'}"?`)) {
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-      setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
-      showToast(`Sub-user "${target?.name || ''}" deleted successfully.`);
+      try {
+        await userManagementService.deleteUsers([userId]);
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
+        showToast(`Sub-user "${target?.name || ''}" deleted successfully.`);
+      } catch (err) {
+        showToast(err?.message || 'Failed to delete user');
+      }
     }
   };
 
   // Delete Selected Users
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (selectedUserIds.length === 0) return;
     if (window.confirm(`Are you sure you want to remove ${selectedUserIds.length} sub-user(s)?`)) {
-      setUsers((prev) => prev.filter((u) => !selectedUserIds.includes(u.id)));
-      setSelectedUserIds([]);
-      showToast('Selected user(s) removed successfully.');
+      try {
+        await userManagementService.deleteUsers(selectedUserIds);
+        setUsers((prev) => prev.filter((u) => !selectedUserIds.includes(u.id)));
+        setSelectedUserIds([]);
+        showToast('Selected user(s) removed successfully.');
+      } catch (err) {
+        showToast(err?.message || 'Failed to delete users');
+      }
     }
   };
 
   // --- Allowed Domain Flow: First verify OTP -> then enter new domain ---
-  const handleOpenDomainModal = () => {
-    setDomainStep('otp'); // First step: verify OTP!
+  // --- Allowed Domain Flow: First verify OTP -> then enter new domain ---
+  const handleOpenDomainModal = async () => {
     setNewDomainInput('');
     setDomainOtp(['', '', '', '', '', '']);
     setDomainError('');
     setOtpTimer(30);
-    setShowDomainModal(true);
-    showToast(`Verification OTP sent to Super-user's phone (${maskedPhone})`);
+    setOtpSessionId(null);
+    setDomainToken(null);
+    setMaskedPhone('');
+    
+    if (receiveOtpOnlyOnMobile) {
+      setDomainStep('otp');
+      setShowDomainModal(true);
+      await triggerSendOtp('mobile');
+    } else {
+      setDomainStep('select_method');
+      setShowDomainModal(true);
+    }
+  };
+
+  const triggerSendOtp = async (method) => {
+    try {
+      const res = await userManagementService.sendDomainOtp(method);
+      if (res.data) {
+        setOtpSessionId(res.data.sessionId);
+        setMaskedPhone(res.data.maskedPhone); // can be masked email or phone
+        showToast(`Verification OTP sent to Super-user's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
+      }
+    } catch (err) {
+      setDomainError(err?.message || 'Failed to send OTP');
+    }
+    
     setTimeout(() => {
       domainOtpRefs.current[0]?.focus();
     }, 150);
+  };
+
+  const handleSelectOtpMethod = async (method) => {
+    setDomainStep('otp');
+    await triggerSendOtp(method);
   };
 
   const handleDomainOtpChange = (index, value) => {
@@ -572,24 +625,33 @@ export default function UserManagement() {
     }
   };
 
-  const handleVerifyOtpFirst = (e) => {
+  const handleVerifyOtpFirst = async (e) => {
     e?.preventDefault?.();
     const enteredCode = domainOtp.join('');
     if (enteredCode.length < 6) {
       setDomainError('Please enter the complete 6-digit OTP');
       return;
     }
-
+    if (!otpSessionId) {
+      setDomainError('Session expired. Please resend OTP.');
+      return;
+    }
+    
     setOtpLoading(true);
-    setTimeout(() => {
-      setOtpLoading(false);
+    try {
+      const result = await userManagementService.verifyDomainOtp(otpSessionId, enteredCode);
+      setDomainToken(result.data?.domainToken);
       setDomainError('');
-      setDomainStep('domain'); // Step 2: Now give option to enter new domain!
-      showToast('Super-user phone verified! Please enter the new domain.');
-    }, 350);
+      setDomainStep('domain');
+      showToast('OTP verified! Please enter the new domain.');
+    } catch (err) {
+      setDomainError(err?.message || 'Invalid OTP');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
-  const handleSaveDomainAfterOtp = (e) => {
+  const handleSaveDomainAfterOtp = async (e) => {
     e?.preventDefault?.();
     let dom = newDomainInput.trim().toLowerCase();
     if (!dom) {
@@ -605,29 +667,41 @@ export default function UserManagement() {
       setDomainError(`Domain ${dom} is already in the allowed domains list`);
       return;
     }
-
-    setAllowedDomains((prev) => [...prev, dom]);
-    showToast(`Domain ${dom} added successfully!`);
-    setShowDomainModal(false);
-    setDomainStep('otp');
-    setNewDomainInput('');
-    setDomainOtp(['', '', '', '', '', '']);
-    setDomainError('');
+    
+    setOtpLoading(true);
+    try {
+      const result = await userManagementService.addDomain(dom, domainToken);
+      setAllowedDomains(result.data || [...allowedDomains, dom]);
+      showToast(`Domain ${dom} added successfully!`);
+      setShowDomainModal(false);
+      setDomainStep('otp');
+      setNewDomainInput('');
+      setDomainOtp(['', '', '', '', '', '']);
+      setDomainError('');
+    } catch (err) {
+      setDomainError(err?.message || 'Failed to add domain');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     setDomainOtp(['', '', '', '', '', '']);
     setOtpTimer(30);
     setDomainError('');
-    showToast(`New OTP sent to Super-user's phone (${maskedPhone})`);
     domainOtpRefs.current[0]?.focus();
+    
+    // Determine the method based on sessionId if possible, or just default to mobile if not possible.
+    // Assuming the backend handles regenerating OTP for the same sessionId or we issue a new one.
+    // For simplicity, we can trigger the last used method. We'll extract method from sessionId (email_ prefix) or fallback to mobile.
+    const method = otpSessionId?.startsWith('email_') ? 'email' : 'mobile';
+    await triggerSendOtp(method);
   };
 
-  const handleFillDemoOtp = () => {
-    setDomainOtp(['1', '2', '3', '4', '5', '6']);
-    setDomainError('');
-    domainOtpRefs.current[5]?.focus();
-  };
+  // Calculate dynamic permission counts
+  const resdexCount = users.filter(u => u.resdex).length;
+  const jobPostingCount = users.filter(u => u.jobPosting).length;
+  const jobBoosterCount = users.filter(u => u.jobBooster).length;
 
   return (
     <EmployerLayout activeTab="home">
@@ -639,6 +713,25 @@ export default function UserManagement() {
             { label: 'Manage users & permissions' },
           ]}
         />
+
+        {/* Loading State */}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240, flexDirection: 'column', gap: 12 }}>
+            <div style={{ width: 36, height: 36, border: '3px solid #e2e8f0', borderTopColor: '#002366', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ color: '#64748b', fontSize: 14 }}>Loading users…</span>
+          </div>
+        )}
+
+        {/* API Error */}
+        {!loading && apiError && (
+          <div style={{ textAlign: 'center', padding: '48px 20px', color: '#b91c1c' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Failed to load users</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>{apiError}</div>
+            <button type="button" className="um-btn-primary" onClick={fetchUsers}>Retry</button>
+          </div>
+        )}
+
+        {!loading && !apiError && (<>
 
         {/* Floating Feedback Toast */}
         {toast && (
@@ -799,10 +892,7 @@ export default function UserManagement() {
                         <input
                           type="checkbox"
                           checked={notifyPasswordChange}
-                          onChange={(e) => {
-                            setNotifyPasswordChange(e.target.checked);
-                            showToast('Security setting updated');
-                          }}
+                          onChange={() => handleToggleSecuritySetting('notifyPasswordChange', notifyPasswordChange)}
                         />
                         <span className="um-switch-slider"></span>
                       </span>
@@ -817,10 +907,7 @@ export default function UserManagement() {
                         <input
                           type="checkbox"
                           checked={receiveOtpOnlyOnMobile}
-                          onChange={(e) => {
-                            setReceiveOtpOnlyOnMobile(e.target.checked);
-                            showToast('Security setting updated');
-                          }}
+                          onChange={() => handleToggleSecuritySetting('receiveOtpOnlyOnMobile', receiveOtpOnlyOnMobile)}
                         />
                         <span className="um-switch-slider"></span>
                       </span>
@@ -845,10 +932,7 @@ export default function UserManagement() {
                         <input
                           type="checkbox"
                           checked={useOtpOnPatternChange}
-                          onChange={(e) => {
-                            setUseOtpOnPatternChange(e.target.checked);
-                            showToast('Security setting updated');
-                          }}
+                          onChange={() => handleToggleSecuritySetting('useOtpOnPatternChange', useOtpOnPatternChange)}
                         />
                         <span className="um-switch-slider"></span>
                       </span>
@@ -1167,17 +1251,17 @@ export default function UserManagement() {
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Resdex</div>
-                  <div className="um-th-metric-sub">8 (8 licenses)</div>
+                  <div className="um-th-metric-sub">{resdexCount} ({resdexCount} licenses)</div>
                 </th>
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Job Posting</div>
-                  <div className="um-th-metric-sub">3</div>
+                  <div className="um-th-metric-sub">{jobPostingCount}</div>
                 </th>
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Job Booster</div>
-                  <div className="um-th-metric-sub">3</div>
+                  <div className="um-th-metric-sub">{jobBoosterCount}</div>
                 </th>
 
                 <th className="um-th um-th-actions" style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
@@ -1614,16 +1698,14 @@ export default function UserManagement() {
           </div>
         )}
 
-        {/* --- ADD ALLOWED DOMAIN MODAL: STEP 1 = OTP VERIFICATION -> STEP 2 = ENTER DOMAIN --- */}
+        {/* --- ADD ALLOWED DOMAIN MODAL: STEP 1 = SELECT METHOD -> STEP 2 = OTP VERIFICATION -> STEP 3 = ENTER DOMAIN --- */}
         {showDomainModal && (
           <div className="um-modal-overlay" onClick={() => setShowDomainModal(false)}>
             <div className="um-modal-box" onClick={(e) => e.stopPropagation()}>
               <div className="um-modal-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <h2 className="um-modal-title">
-                    {domainStep === 'otp' ? 'Security Verification' : 'Add Allowed Domain'}
-                  </h2>
-                </div>
+                <h2 className="um-modal-title">
+                  {domainStep === 'select_method' ? 'Choose Verification Method' : domainStep === 'otp' ? 'Security Verification' : 'Add Allowed Domain'}
+                </h2>
                 <button
                   type="button"
                   className="um-modal-close-btn"
@@ -1633,27 +1715,42 @@ export default function UserManagement() {
                 </button>
               </div>
 
-              {domainStep === 'otp' ? (
-                /* STEP 1: VERIFY OTP FIRST */
+              {domainStep === 'select_method' ? (
+                <div className="um-modal-body">
+                  <div style={{ textAlign: 'center', marginBottom: 24, color: '#334155', fontSize: 14 }}>
+                    Please select where you would like to receive your security verification OTP:
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 12 }}>
+                    <button
+                      type="button"
+                      className="um-btn-primary"
+                      onClick={() => handleSelectOtpMethod('email')}
+                      style={{ textAlign: 'center', flex: 1 }}
+                    >
+                      Send OTP to Registered Email
+                    </button>
+                    <button
+                      type="button"
+                      className="um-btn-outline"
+                      onClick={() => handleSelectOtpMethod('mobile')}
+                      style={{ textAlign: 'center', flex: 1 }}
+                    >
+                      Send OTP to Registered Mobile
+                    </button>
+                  </div>
+                </div>
+              ) : domainStep === 'otp' ? (
+                /* STEP 2: ENTER OTP */
                 <form onSubmit={handleVerifyOtpFirst}>
                   <div className="um-modal-body">
                     {/* Security Info Card */}
-                    <div
-                      style={{
-                        background: '#f0f7ff',
-                        border: '1px solid #bae6fd',
-                        borderRadius: 10,
-                        padding: '14px 16px',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 12,
-                      }}
-                    >
-                      <FiShield size={20} color="#0284c7" style={{ flexShrink: 0, marginTop: 2 }} />
-                      <div style={{ fontSize: 13, color: '#0369a1', lineHeight: 1.5 }}>
-                        <strong>Super-user Mobile Verification:</strong>
-                        <div style={{ marginTop: 3 }}>
-                          To authorize adding a new domain, enter the 6-digit OTP sent to the Super-user's registered phone number:{' '}
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ width: 40, height: 40, background: '#f0f9ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <FiShield size={20} color="#0ea5e9" />
+                        </div>
+                        <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
+                          To authorize adding a new domain, enter the 6-digit OTP sent to the Super-user's registered contact:{' '}
                           <strong style={{ color: '#002366' }}>{maskedPhone}</strong>
                         </div>
                       </div>
@@ -1674,18 +1771,6 @@ export default function UserManagement() {
                           onKeyDown={(e) => handleDomainOtpKeyDown(index, e)}
                         />
                       ))}
-                    </div>
-
-                    {/* Demo OTP Helper Pill */}
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <button
-                        type="button"
-                        className="um-demo-otp-pill"
-                        onClick={handleFillDemoOtp}
-                        title="Click to automatically fill dummy OTP"
-                      >
-                        <span>💡 Demo OTP: <strong>123456</strong> (Click to fill)</span>
-                      </button>
                     </div>
 
                     {domainError && (
@@ -1807,58 +1892,17 @@ export default function UserManagement() {
 
         {/* --- CHANGE RESTRICTIONS MODAL --- */}
         {showRestrictionsModal && (
-          <div className="um-modal-overlay" onClick={() => setShowRestrictionsModal(false)}>
-            <div className="um-modal-box" onClick={(e) => e.stopPropagation()}>
-              <div className="um-modal-header">
-                <h2 className="um-modal-title">Change Restrictions</h2>
-                <button
-                  type="button"
-                  className="um-modal-close-btn"
-                  onClick={() => setShowRestrictionsModal(false)}
-                >
-                  <FiX size={20} />
-                </button>
-              </div>
-              <div className="um-modal-body">
-                <div className="um-form-group">
-                  <label className="um-form-label">Time Restriction Policy</label>
-                  <select className="um-input-text" defaultValue="all-day">
-                    <option value="all-day">Allow access 24/7 (No restriction)</option>
-                    <option value="office-hours">Office hours only (9:00 AM - 7:00 PM IST)</option>
-                    <option value="custom">Custom schedule (Weekdays only)</option>
-                  </select>
-                </div>
-                <div className="um-form-group">
-                  <label className="um-form-label">IP Address Restriction</label>
-                  <input
-                    type="text"
-                    className="um-input-text"
-                    placeholder="e.g. 192.168.1.0/24 (Leave blank for unrestricted)"
-                  />
-                </div>
-              </div>
-              <div className="um-modal-footer">
-                <button
-                  type="button"
-                  className="um-btn-link-action"
-                  onClick={() => setShowRestrictionsModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="um-btn-modal-save"
-                  onClick={() => {
-                    setShowRestrictionsModal(false);
-                    showToast('Restrictions updated successfully.');
-                  }}
-                >
-                  Apply Changes
-                </button>
-              </div>
-            </div>
-          </div>
+          <ChangeRestrictionsModal
+            isOpen={showRestrictionsModal}
+            onClose={() => setShowRestrictionsModal(false)}
+            selectedIds={selectedUserIds}
+            onSaved={() => {
+              showToast('Restrictions updated successfully.');
+              fetchUsers();
+            }}
+          />
         )}
+        </>)}
       </div>
     </EmployerLayout>
   );

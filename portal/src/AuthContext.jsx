@@ -216,9 +216,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const loginWithMobileOtp = async (phone, otp) => {
+    setLoading(true);
+    try {
+      const data = await authService.candidateVerifyMobileOtp(phone, otp);
+      const userData = mergeLoginResponse(data);
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      closeModals();
+      window.dispatchEvent(new Event("candidate-logged-in"));
+      return { success: true };
+    } catch (error) {
+      console.error("Mobile OTP verify failed:", error);
+      return { success: false, message: error.message || "OTP verification failed" };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("candidateToken");
     sessionStorage.removeItem("dailyQuizShown");
     window.dispatchEvent(new Event("candidate-session-expired"));
   };
@@ -277,7 +302,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, loginWithGoogle, logout, updateUser, updateProfile, openLogin, openRegister, closeModals, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, register, loginWithGoogle, loginWithMobileOtp, logout, updateUser, updateProfile, openLogin, openRegister, closeModals, loading }}>
+
       {children}
       {isLoginModalOpen && <Login isOpen={isLoginModalOpen} onClose={closeModals} openSignUp={openRegister} />}
       {isRegisterModalOpen && <SignUp isOpen={isRegisterModalOpen} onClose={closeModals} openLogin={openLogin} />}

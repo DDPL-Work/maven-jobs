@@ -30,6 +30,7 @@ const companySchema = new mongoose.Schema(
 
     email: { type: String, required: true },
     phone: String,
+    countryCode: String,
     altPhone: String,
 
     location: {
@@ -39,6 +40,15 @@ const companySchema = new mongoose.Schema(
       zone: String,
       address: String,
       pincode: String,
+    },
+    
+    allowedDomains: [{ type: String }],
+
+    // Security settings for the company (e.g. OTP and passwords)
+    securitySettings: {
+      notifyPasswordChange: { type: Boolean, default: true },
+      receiveOtpOnlyOnMobile: { type: Boolean, default: false },
+      useOtpOnPatternChange: { type: Boolean, default: false },
     },
 
     // ✅ NEW CONTENT FIELDS
