@@ -6,7 +6,7 @@ export function useAuthGate() {
 
   const isAuthenticated = useMemo(() => !!user, [user]);
   const isCandidate = useMemo(() => user?.role === 'CANDIDATE', [user]);
-  const isEmployer = useMemo(() => user?.role === 'CLIENT', [user]);
+  const isEmployer = useMemo(() => ['CLIENT', 'RECRUITER'].includes(user?.role), [user]);
   const isGuest = useMemo(() => !user, [user]);
 
   const requireAuth = (callback) => {

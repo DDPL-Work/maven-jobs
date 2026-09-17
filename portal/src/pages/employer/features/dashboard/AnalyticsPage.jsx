@@ -38,6 +38,11 @@ export default function AnalyticsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
+  const sessionUser = (() => {
+    try { return JSON.parse(localStorage.getItem('employerUser') || 'null'); } catch { return null; }
+  })();
+  const isRecruiter = (sessionUser?.role || '').toUpperCase() === 'RECRUITER';
+
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
@@ -127,7 +132,9 @@ export default function AnalyticsPage() {
             Analytics Center
           </motion.h1>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1, duration: 0.3 }}>
-            Recruitment performance, recruiter productivity, candidate pipeline and Resdex insights.
+            {isRecruiter
+              ? 'Your personal recruitment performance, candidate pipeline and Resdex insights.'
+              : 'Recruitment performance, recruiter productivity, candidate pipeline and Resdex insights.'}
           </motion.p>
         </div>
         <div className="ap-header-right">
@@ -158,12 +165,13 @@ export default function AnalyticsPage() {
 
         <Suspense fallback={<TabSkeleton />}>
           <motion.div key={tab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            {tab === 'resdex' ? <ResdexTab /> : (
+            {tab === 'resdex' ? <ResdexTab isRecruiter={isRecruiter} overview={data?.overview} /> : (
               <AnalyticsTab
                 data={data}
                 loading={loading}
                 error={error}
                 range={range}
+                isRecruiter={isRecruiter}
                 onRangeChange={handleRangeChange}
                 onRefresh={handleRefresh}
               />

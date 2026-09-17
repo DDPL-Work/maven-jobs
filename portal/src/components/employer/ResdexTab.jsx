@@ -10,6 +10,7 @@ import {
 import { FaUserTie, FaGraduationCap, FaDollarSign } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import authService from '../../services/authService';
+import api from '../../services/api';
 
 const HERO_SLIDES = [
   {
@@ -37,37 +38,8 @@ const HERO_SLIDES = [
 
 const HERO_ICONS = { search: FiSearch, trending: FiTrendingUp, zap: FiZap };
 
-const QUOTA_ITEMS = [
-  { label: 'CV Access', used: 145, total: 200, icon: FiDownload, color: '#1E5EFF', bg: '#EEF4FF' },
-  { label: 'Invites Remaining', used: 38, total: 100, icon: FiMail, color: '#0DBF7B', bg: '#ECFDF5' },
-  { label: 'Hot Vacancies', used: 12, total: 25, icon: FiBriefcase, color: '#F59E0B', bg: '#FFFBEB' },
-  { label: 'Resume Unlocks', used: 67, total: 150, icon: FiEye, color: '#8B5CF6', bg: '#F5F3FF' },
-  { label: 'Database Credits', used: 890, total: 1200, icon: FiStar, color: '#EC4899', bg: '#FDF2F8' },
-  { label: 'AI Searches', used: 23, total: 50, icon: FiZap, color: '#0EA5E9', bg: '#F0F9FF' },
-];
 
-const SAVED_SEARCHES = [
-  { name: 'Senior React Developers', created: '12 Jan 2026', profiles: 48, lastUsed: '2h ago' },
-  { name: 'DevOps Engineers - Remote', created: '05 Jan 2026', profiles: 32, lastUsed: '1d ago' },
-  { name: 'Product Managers B2B SaaS', created: '28 Dec 2025', profiles: 24, lastUsed: '3d ago' },
-  { name: 'UX Designers - Bangalore', created: '15 Dec 2025', profiles: 19, lastUsed: '1w ago' },
-  { name: 'Data Scientists - NLP', created: '01 Dec 2025', profiles: 15, lastUsed: '2w ago' },
-];
 
-const FOLDERS = [
-  { name: 'Shortlisted - Q1 2026', profiles: 24, owner: 'Neha K.', created: '10 Jan 2026', updated: '2d ago' },
-  { name: 'Backend Engineers', profiles: 18, owner: 'Rajesh T.', created: '28 Dec 2025', updated: '5d ago' },
-  { name: 'Product Team Prospects', profiles: 12, owner: 'Priya M.', created: '15 Dec 2025', updated: '1w ago' },
-  { name: 'Internship Applicants', profiles: 34, owner: 'Amit J.', created: '01 Dec 2025', updated: '2w ago' },
-];
-
-const RECENTLY_VIEWED = [
-  { name: 'Aarav Khanna', role: 'Senior React Developer', exp: '6 yrs', skills: ['React','Node.js','TypeScript'], viewed: '10 min ago', avatar: 'AK' },
-  { name: 'Sneha Reddy', role: 'DevOps Engineer', exp: '4 yrs', skills: ['AWS','Docker','Kubernetes'], viewed: '1h ago', avatar: 'SR' },
-  { name: 'Kabir Singh', role: 'Product Manager', exp: '7 yrs', skills: ['SaaS','Agile','Analytics'], viewed: '3h ago', avatar: 'KS' },
-  { name: 'Isha Patel', role: 'UI/UX Designer', exp: '3 yrs', skills: ['Figma','Design Systems','Prototyping'], viewed: '1d ago', avatar: 'IP' },
-  { name: 'Rohan Gupta', role: 'Full Stack Developer', exp: '5 yrs', skills: ['MERN','Python','GraphQL'], viewed: '2d ago', avatar: 'RG' },
-];
 
 const ACTIVITY_META = {
   SEARCH: { color: '#1E5EFF', icon: FiSearch },
@@ -112,15 +84,19 @@ const formatCompact = (n) => {
   return String(n);
 };
 
-export default function ResdexTab() {
+export default function ResdexTab({ isRecruiter = false, overview = null }) {
   const navigate = useNavigate();
   const [heroIdx, setHeroIdx] = useState(0);
   const [searchPage, setSearchPage] = useState(1);
   const [folderPage, setFolderPage] = useState(1);
-  const [recentPage, setRecentPage] = useState(1);
   const searchPerPage = 3;
   const folderPerPage = 3;
   const recentPerPage = 4;
+
+  // Real data states
+  const [quotaUsage, setQuotaUsage] = useState(null);
+  const [savedSearches, setSavedSearches] = useState([]);
+  const [folders, setFolders] = useState([]);
 
   const [activities, setActivities] = useState([]);
   const [activityPage, setActivityPage] = useState(1);
@@ -151,9 +127,55 @@ export default function ResdexTab() {
     }
   }, []);
 
+  // Fetch quota data
+  const fetchQuota = useCallback(async () => {
+    try {
+      const res = await authService.getQuotaUsage();
+      if (res?.success) setQuotaUsage(res.data);
+    } catch {}
+  }, []);
+
+  // Fetch saved searches
+  const fetchSavedSearches = useCallback(async () => {
+    try {
+      const res = await api.get('/company-panel/resdex/searches/recent');
+      const items = res?.data?.data || res?.data?.searches || [];
+      setSavedSearches(Array.isArray(items) ? items : []);
+    } catch {}
+  }, []);
+
+  // Fetch folders
+  const fetchFolders = useCallback(async () => {
+    try {
+      const res = await api.get('/company-panel/folders');
+      const items = res?.data?.data || res?.data?.folders || [];
+      setFolders(Array.isArray(items) ? items : []);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchActivities(1);
-  }, [fetchActivities]);
+    fetchQuota();
+    fetchSavedSearches();
+    fetchFolders();
+  }, [fetchActivities, fetchQuota, fetchSavedSearches, fetchFolders]);
+
+  // Derive recently viewed from activity feed (RESUME_VIEW events)
+  const recentlyViewed = useMemo(() => {
+    return activities
+      .filter((a) => a.action === 'RESUME_VIEW')
+      .slice(0, recentPerPage)
+      .map((a) => ({
+        name: a.candidateName || a.meta?.candidateName || 'Candidate',
+        role: a.meta?.role || a.meta?.title || '',
+        exp: a.meta?.experience || '',
+        skills: a.meta?.skills || [],
+        viewed: timeAgo(a.createdAt),
+        avatar: (a.candidateName || 'CA').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2),
+      }));
+  }, [activities, recentPerPage]);
+
+
 
   useEffect(() => {
     const t = setInterval(() => setHeroIdx(i => (i + 1) % HERO_SLIDES.length), 5000);
@@ -204,39 +226,84 @@ export default function ResdexTab() {
               Welcome back, {(JSON.parse(localStorage.getItem('employerUser') || '{}')?.companyName || JSON.parse(localStorage.getItem('employerUser') || '{}')?.name || 'User').split(' ')[0]} <span style={{ color: '#1E5EFF' }}>👋</span>
             </h2>
             <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
-              You searched <strong style={{ color: '#0a1628' }}>421</strong> profiles this week.{' '}
-              <strong style={{ color: '#0DBF7B' }}>127</strong> shortlisted candidates.{' '}
-              <strong style={{ color: '#1E5EFF' }}>19</strong> active jobs.
+              {overview ? (
+                <>{overview.activeJobs ?? 0} active jobs.{' '}
+                  <strong style={{ color: '#0DBF7B' }}>{overview.shortlisted ?? 0}</strong> shortlisted.{' '}
+                  <strong style={{ color: '#1E5EFF' }}>{overview.totalApplications ?? 0}</strong> total applications.
+                </>
+              ) : 'Loading your stats...'}
             </p>
           </div>
         </div>
       </div>
 
       {/* Quota */}
-      <h3 className="ap-section-title">Quota Usage</h3>
-      <div className="ap-quota-grid">
-        {QUOTA_ITEMS.map((q, i) => {
-          const pct = Math.min(100, Math.round((q.used / q.total) * 100));
-          return (
-            <motion.div key={q.label} className="ap-quota-card"
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, duration: 0.3 }}
-            >
-              <div className="ap-quota-icon" style={{ background: q.bg, color: q.color }}><q.icon size={17} /></div>
-              <div className="ap-quota-label">{q.label}</div>
-              <div className="ap-quota-numbers">
-                <span>{formatCompact(q.total - q.used)} left</span>
-                <span>{formatCompact(q.used)} used</span>
-              </div>
-              <div className="ap-quota-bar">
-                <motion.div className="ap-quota-bar-fill" style={{ background: q.color }}
-                  initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.2 + i * 0.04, duration: 0.8, ease: 'easeOut' }}
-                />
-              </div>
-              <div className="ap-quota-pct">{pct}% utilized</div>
-            </motion.div>
-          );
-        })}
-      </div>
+      <h3 className="ap-section-title" style={{ marginBottom: 4 }}>Quota usage</h3>
+      <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20 }}>Track your and your company's quota</p>
+      
+      {!quotaUsage ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading quota...</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
+          {[
+            {
+              type: 'RESDEX',
+              label: 'CV Access',
+              data: quotaUsage?.cvAccess,
+              icon: FiDownload,
+              color: '#1E5EFF'
+            },
+            {
+              type: 'RESDEX',
+              label: 'NVite',
+              data: quotaUsage?.nvite,
+              icon: FiDownload,
+              color: '#1E5EFF'
+            },
+            {
+              type: 'JOB POSTING',
+              label: '',
+              data: quotaUsage?.jobPosting,
+              icon: FiBriefcase,
+              color: '#1E5EFF'
+            }
+          ].map((q, i) => {
+            const data = q.data || { total: 0, usedByAll: 0, left: 0, usedByYou: null };
+            const pct = data.total > 0 ? Math.min(100, (data.usedByAll / data.total) * 100) : 0;
+            return (
+              <motion.div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <span style={{ color: q.color, fontWeight: 700, fontSize: '0.85rem' }}>{q.type}</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', border: '1px solid #e2e8f0', padding: '2px 6px', borderRadius: 4 }}>WEEKLY</span>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+                  <q.icon size={20} color="#64748b" />
+                  <span style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a' }}>
+                    {data.total.toLocaleString('en-IN')} {q.label}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 8 }}>
+                  <span style={{ color: '#475569' }}>{data.usedByAll.toLocaleString('en-IN')} used by all</span>
+                  <span style={{ color: '#64748b' }}>{data.left.toLocaleString('en-IN')} left</span>
+                </div>
+
+                <div style={{ height: 6, background: '#e2e8f0', borderRadius: 3, marginBottom: 16, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#38bdf8', width: `${pct}%`, borderRadius: 3 }} />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#475569' }}>
+                  <FaUserTie size={13} color="#94a3b8" />
+                  <span>{data.usedByYou === null ? 'None used by you' : data.usedByYou === 0 ? 'None used by you' : `${data.usedByYou.toLocaleString('en-IN')} used by you`}</span>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Saved Searches */}
       <h3 className="ap-section-title">Saved Searches</h3>
@@ -254,24 +321,28 @@ export default function ResdexTab() {
               </tr>
             </thead>
             <tbody>
-              {SAVED_SEARCHES.slice(0, searchPerPage).map((s, i) => (
-                <motion.tr key={s.name} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
-                  <td style={{ fontWeight: 700, color: '#0a1628' }}>{s.name}</td>
-                  <td style={{ color: '#64748b' }}>{s.created}</td>
-                  <td><span className="ap-pill ap-pill-blue">{s.profiles} profiles</span></td>
-                  <td style={{ color: '#94a3b8' }}>{s.lastUsed}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      {[FiEye, FiEdit2, FiCopy, FiTrash2].map((Icon, j) => (
-                        <button key={j} className="ap-btn" style={{ padding: '5px 7px', border: 'none', background: '#f8fafc' }}
-                          title={['Open','Edit','Duplicate','Delete'][j]}>
-                          <Icon size={13} />
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
+              {savedSearches.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontWeight: 600 }}>No saved searches yet</td></tr>
+              ) : (
+                savedSearches.slice((searchPage - 1) * searchPerPage, searchPage * searchPerPage).map((s, i) => (
+                  <motion.tr key={s._id || s.id || i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
+                    <td style={{ fontWeight: 700, color: '#0a1628' }}>{s.name || s.searchName || 'Search'}</td>
+                    <td style={{ color: '#64748b' }}>{s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td><span className="ap-pill ap-pill-blue">{s.profileCount ?? s.profiles ?? '—'} profiles</span></td>
+                    <td style={{ color: '#94a3b8' }}>{s.updatedAt ? timeAgo(s.updatedAt) : '—'}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        {[FiEye, FiEdit2, FiCopy, FiTrash2].map((Icon, j) => (
+                          <button key={j} className="ap-btn" style={{ padding: '5px 7px', border: 'none', background: '#f8fafc' }}
+                            title={['Open','Edit','Duplicate','Delete'][j]}>
+                            <Icon size={13} />
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -286,7 +357,7 @@ export default function ResdexTab() {
       <div className="ap-grid-2" style={{ marginBottom: 20 }}>
         <div className="ap-card">
           <div className="ap-card-header">
-            <span className="ap-card-title">Recruiter Folders</span>
+            <span className="ap-card-title">{isRecruiter ? 'My Folders' : 'Recruiter Folders'}</span>
           </div>
           <div className="ap-table-wrap" style={{ border: 'none' }}>
             <table className="ap-table">
@@ -299,14 +370,18 @@ export default function ResdexTab() {
                 </tr>
               </thead>
               <tbody>
-                {FOLDERS.slice(0, folderPerPage).map((f, i) => (
-                  <tr key={f.name}>
-                    <td style={{ fontWeight: 700, color: '#0a1628' }}>{f.name}</td>
-                    <td><span className="ap-pill ap-pill-blue">{f.profiles}</span></td>
-                    <td style={{ color: '#64748b' }}>{f.owner}</td>
-                    <td style={{ color: '#94a3b8' }}>{f.updated}</td>
-                  </tr>
-                ))}
+                {folders.length === 0 ? (
+                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontWeight: 600 }}>No folders yet</td></tr>
+                ) : (
+                  folders.slice((folderPage - 1) * folderPerPage, folderPage * folderPerPage).map((f, i) => (
+                    <tr key={f._id || f.id || i}>
+                      <td style={{ fontWeight: 700, color: '#0a1628' }}>{f.name}</td>
+                      <td><span className="ap-pill ap-pill-blue">{f.candidateCount ?? f.candidates?.length ?? 0}</span></td>
+                      <td style={{ color: '#64748b' }}>{f.ownerName || f.owner || '—'}</td>
+                      <td style={{ color: '#94a3b8' }}>{f.updatedAt ? timeAgo(f.updatedAt) : '—'}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -317,7 +392,12 @@ export default function ResdexTab() {
             <span className="ap-card-title">Recently Viewed Profiles</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {RECENTLY_VIEWED.slice(0, recentPerPage).map((p, i) => (
+            {recentlyViewed.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 12px', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600 }}>
+                No recent profile views yet
+              </div>
+            ) : (
+              recentlyViewed.map((p, i) => (
               <motion.div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: '#f8fafc', border: '1px solid #f1f5f9', cursor: 'pointer' }}
                 initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 whileHover={{ background: '#f1f5f9', x: 2 }}
@@ -336,7 +416,8 @@ export default function ResdexTab() {
                 </div>
                 <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>{p.viewed}</span>
               </motion.div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </div>

@@ -29,7 +29,7 @@ class ChatBotService {
 
     const created = await ChatBotThread.create({
       userId,
-      userRole: userRole || "CLIENT",
+      userRole: userRole || "RECRUITER",
       title: "ChatBot",
       userTier: tier,
       profileSnapshot: profileSnapshot || null,
@@ -326,7 +326,7 @@ class ChatBotService {
     const capabilities = await TierManager.getCapabilities(user);
     const tierName = capabilities.name;
 
-    if (user.role !== "CLIENT" || !user.companyId) {
+    if (!["CLIENT", "RECRUITER"].includes(user.role) || !user.companyId) {
       return {
         success: false,
         message: "Candidate recommendations are available for employer accounts only.",
@@ -840,7 +840,7 @@ Return ONLY valid JSON, no other text.`;
       if (user.role === "CANDIDATE") {
         return await UserContextBuilder.buildCandidateContext(user.id, capabilities);
       }
-      if (user.role === "CLIENT" && user.companyId) {
+      if (["CLIENT", "RECRUITER"].includes(user.role) && user.companyId) {
         return await UserContextBuilder.buildEmployerContext(user.id, user.companyId, capabilities);
       }
     } catch (e) {

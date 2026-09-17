@@ -502,7 +502,7 @@ export default function ManageSearch() {
       <EmployerLayout company={company} activeTab="resdex"
         onNavigate={(tid) => { if (tid === 'home') navigate('/employer-dashboard'); else if (tid === 'analysis') navigate('/employer-dashboard/analytics'); }}
         onMessagesClick={() => {}} onNotificationsClick={() => {}}
-        onLogout={async () => { try { await authService.logoutEmployer(); } catch {} localStorage.removeItem('employerUser'); navigate('/employer-login'); }}>
+        onLogout={async () => { try { await authService.logoutEmployer(); } catch {} localStorage.clear(); sessionStorage.clear(); navigate('/employer-login'); }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 20px' }}>
           <div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTopColor: '#002366', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
         </div>
@@ -522,7 +522,7 @@ export default function ManageSearch() {
         }}
         onMessagesClick={() => {}}
         onNotificationsClick={() => {}}
-        onLogout={async () => { try { await authService.logoutEmployer(); } catch {} localStorage.removeItem('employerUser'); navigate('/employer-login'); }}
+        onLogout={async () => { try { await authService.logoutEmployer(); } catch {} localStorage.clear(); sessionStorage.clear(); navigate('/employer-login'); }}
       >
         <div className="ms-root">
           <EmployerBreadcrumb items={[
@@ -893,3 +893,4 @@ export default function ManageSearch() {
     </>
   );
 }
+

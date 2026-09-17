@@ -81,6 +81,10 @@ const companySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    nviteLimit: {
+      type: Number,
+      default: 200000,
+    },
     activeJobCount: { type: Number, default: 0 },
     packageExpiresAt: { type: Date, default: null },
     configurationNotes: { type: String, default: "" },

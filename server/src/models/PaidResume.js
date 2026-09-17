@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const paidResumeSchema = new mongoose.Schema({
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true, index: true },
+  recruiterId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null, index: true },
   candidateId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   firstViewedAt: { type: Date, default: Date.now },
   lastViewedAt: { type: Date, default: Date.now },

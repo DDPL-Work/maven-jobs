@@ -27,7 +27,7 @@ export function useEmployerAuth() {
     } catch {
       // ignore
     }
-    localStorage.removeItem('employerUser');
+    localStorage.clear(); sessionStorage.clear();
     setSession(null);
     navigate('/employer-login');
   }, [navigate]);

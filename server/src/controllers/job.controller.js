@@ -17,7 +17,7 @@ exports.createJob = async (req, res) => {
 
   let companyId;
 
-  if (req.user.role === "CLIENT") {
+  if (["CLIENT", "RECRUITER"].includes(req.user.role)) {
     companyId = req.user.companyId;
   } else if (req.user.role === "CRM") {
     companyId = req.body.companyId;

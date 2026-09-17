@@ -386,7 +386,7 @@ export default function SearchResume() {
       onNotificationsClick={() => {}}
       onLogout={async () => { 
           try { await authService.logoutEmployer(); } catch {} 
-          localStorage.removeItem("employerUser"); 
+          localStorage.clear(); sessionStorage.clear(); 
           navigate("/employer-login"); 
       }}
     >
@@ -1145,3 +1145,4 @@ function SearchResumeSkeleton() {
     </div>
   );
 }
+

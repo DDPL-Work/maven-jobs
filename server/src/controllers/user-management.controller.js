@@ -83,6 +83,7 @@ exports.createUser = asyncHandler(async (req, res) => {
     jobPosting,
     jobBooster,
     resdex,
+    role,
   } = req.body;
 
   const companyId = req.user.companyId;
@@ -113,7 +114,7 @@ exports.createUser = asyncHandler(async (req, res) => {
     name,
     email: email.toLowerCase(),
     password: hashedPassword,
-    role: "CLIENT",
+    role: role || "RECRUITER",
     companyId: companyId,
     isActive: true,
   });

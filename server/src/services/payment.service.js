@@ -128,7 +128,7 @@ async function confirmPayment({ razorpayOrderId, razorpayPaymentId, razorpaySign
       "membership.startedAt": now,
       "membership.expiresAt": expiresAt,
     });
-  } else if (transaction.role === "CLIENT") {
+  } else if (["CLIENT", "RECRUITER"].includes(transaction.role)) {
     const planType = transaction.planType;
     let jobLimit = 2;
 

@@ -17,7 +17,7 @@ export default function LandingFooter() {
   const { user } = useAuth();
   // This footer is rendered inside the candidate portal.
   // Candidates (logged-in or not) should never see "Post a Job".
-  const isEmployer = user?.role === 'CLIENT' || user?.role === 'ADMIN';
+  const isEmployer = ['CLIENT', 'RECRUITER', 'ADMIN'].includes(user?.role);
   return (
     <footer className="lp-footer">
       <div className="lp-footer__inner">

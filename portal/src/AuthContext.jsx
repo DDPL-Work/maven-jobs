@@ -111,8 +111,8 @@ export const AuthProvider = ({ children }) => {
     if (!saved) return null;
     try {
       const parsed = JSON.parse(saved);
-      if (parsed.role === 'CLIENT' || parsed.role === 'ADMIN') {
-        localStorage.removeItem("user");
+      if (['CLIENT', 'RECRUITER', 'ADMIN'].includes(parsed.role)) {
+        localStorage.clear(); sessionStorage.clear();
         return null;
       }
       return parsed;
@@ -129,8 +129,8 @@ export const AuthProvider = ({ children }) => {
     authService.getMe().then((data) => {
       if (data?.user) {
         // Ensure that the role is appropriate for this portal
-        if (data.user.role === 'CLIENT' || data.user.role === 'ADMIN') {
-          localStorage.removeItem("user");
+        if (['CLIENT', 'RECRUITER', 'ADMIN'].includes(data.user.role)) {
+          localStorage.clear(); sessionStorage.clear();
           setUser(null);
           return;
         }
@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }) => {
         });
       }
     }).catch(() => {
-      localStorage.removeItem("user");
+      localStorage.clear(); sessionStorage.clear();
       setUser(null);
     });
   }, []);
@@ -241,10 +241,8 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout error:", err);
     }
     setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    localStorage.removeItem("candidateToken");
-    sessionStorage.removeItem("dailyQuizShown");
+    localStorage.clear();
+    sessionStorage.clear();
     window.dispatchEvent(new Event("candidate-session-expired"));
   };
 
@@ -312,3 +310,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+

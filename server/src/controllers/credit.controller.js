@@ -182,7 +182,7 @@ exports.useCredits = asyncHandler(async (req, res) => {
   credit.lifetimeUsed += RESUME_CREDIT_COST;
   await credit.save();
 
-  await PaidResume.create({ companyId, candidateId });
+  await PaidResume.create({ companyId, candidateId, recruiterId: req.user._id });
 
   await CreditTransaction.create({
     companyId,

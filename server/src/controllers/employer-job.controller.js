@@ -22,7 +22,7 @@ const toPositiveInteger = (val, fallback = 1, min = 1, max = 100) => {
 
 const resolveClientUserAndCompany = async (userId) => {
   const user = await User.findById(userId).select("-password");
-  if (!user || user.role !== "CLIENT") {
+  if (!user || !["CLIENT", "RECRUITER"].includes(user.role)) {
     throw createHttpError(403, "Client access required");
   }
   if (!user.companyId) {

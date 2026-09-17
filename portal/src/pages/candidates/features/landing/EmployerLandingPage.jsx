@@ -135,7 +135,7 @@ const EmployerLandingPage = () => {
       })
       .catch(() => {
         if (!active) return;
-        localStorage.removeItem("employerUser");
+        localStorage.clear(); sessionStorage.clear();
         setEmployerSession(null);
       });
 
@@ -1218,3 +1218,4 @@ const EmployerLandingPage = () => {
 };
 
 export default EmployerLandingPage;
+

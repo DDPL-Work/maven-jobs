@@ -41,7 +41,7 @@ router.post("/auth/send-email-otp", controller.sendEmailOtp);
 router.post("/auth/verify-email-otp", controller.verifyEmailOtp);
 
 router.use(protectUser);
-router.use(role("CLIENT"));
+router.use(role("CLIENT", "RECRUITER"));
 router.use(resolveCompanyContext);
 
 router.get("/dashboard", controller.getDashboard);
@@ -69,6 +69,7 @@ router.patch("/applications/:applicationId/status", controller.updateApplication
 router.get("/applications/:applicationId/resume/preview", controller.previewApplicationResume);
 router.post("/applications/:applicationId/resume/upload", uploadPdf, controller.uploadApplicationResume);
 router.get("/analytics", controller.getAnalytics);
+router.get("/quota-usage", controller.getQuotaUsage);
 router.get("/activity", controller.getRecentActivity);
 router.get("/chats", chatController.getCompanyThreads);
 router.get("/chats/:threadId/messages", chatController.getCompanyThreadMessages);

@@ -19,7 +19,7 @@ let refreshPromise = null;
 
 const clearStoredSession = () => {
   if (typeof window !== "undefined") {
-    localStorage.removeItem(STORAGE_USER_KEY);
+    localStorage.clear(); sessionStorage.clear();
   }
 };
 
@@ -107,7 +107,7 @@ api.interceptors.response.use(
       } catch {
         const isEmployer = originalRequest.url?.includes("company-panel");
         if (isEmployer) {
-          localStorage.removeItem("employerUser");
+          localStorage.clear(); sessionStorage.clear();
         } else {
           clearStoredSession();
         }
@@ -129,7 +129,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const isEmployer = originalRequest?.url?.includes("company-panel");
       if (isEmployer) {
-        localStorage.removeItem("employerUser");
+        localStorage.clear(); sessionStorage.clear();
       } else {
         clearStoredSession();
       }
@@ -143,3 +143,5 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+

@@ -210,7 +210,7 @@ async function resetPassword({ resetToken, newPassword }) {
 async function getAccountProvider(email, entityType = "candidate") {
   const query = { email: email.toLowerCase() };
   if (entityType === "employer") {
-    query.role = "CLIENT";
+    query.role = { $in: ["CLIENT", "RECRUITER"] };
   }
 
   const user = await User.findOne(query).select(

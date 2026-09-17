@@ -609,7 +609,7 @@ const Premium3D = React.memo(() => {
 
   const greetingText = !loggedIn
     ? "Hi! I'm **MavenAI** 👋\n\nPlease log in to your account to get personalised career guidance based on your profile, skills, and experience."
-    : userRole === "CLIENT"
+    : ["CLIENT", "RECRUITER"].includes(userRole)
       ? "Hi! I'm **MavenAI** 👋\n\nYour AI hiring assistant, powered by MavenJobs — India's #1 hiring platform.\n\nHow can I help you find the right talent today?"
       : "Hi! I'm **MavenAI** 👋\n\nYour personal career acceleration specialist, powered by MavenJobs — India's #1 hiring platform.\n\nHow can I help you land your dream role today?";
 
@@ -685,7 +685,7 @@ const Premium3D = React.memo(() => {
               .finally(() => setMatchedJobsLoading(false));
           }
 
-          if (userRole === "CLIENT" && chatOpen && topApplicants.length === 0 && !topApplicantsLoading) {
+          if (["CLIENT", "RECRUITER"].includes(userRole) && chatOpen && topApplicants.length === 0 && !topApplicantsLoading) {
             setTopApplicantsLoading(true);
             getTopApplicants()
               .then(apps => { if (apps.length > 0) setTopApplicants(apps); })
@@ -711,7 +711,7 @@ const Premium3D = React.memo(() => {
     if (!loggedIn) {
       return ["Review my resume", "Interview tips", "Improve my profile"];
     }
-    if (userRole === "CLIENT") {
+    if (["CLIENT", "RECRUITER"].includes(userRole)) {
       const replies = ["Post a job", "Hiring tips", "Pricing & plans"];
       if (userTier === "ELITE") {
         replies.unshift("Get Candidate Recommendations");
@@ -1446,7 +1446,7 @@ const Premium3D = React.memo(() => {
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                       <div className="mvn-online" />
                       <span style={{ fontSize: 10, fontWeight: 700, color: "#6EE7B7", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                        {loggedIn ? `${userRole === "CLIENT" ? "Employer" : "Career"} Specialist` : "AI Assistant"}
+                        {loggedIn ? `${["CLIENT", "RECRUITER"].includes(userRole) ? "Employer" : "Career"} Specialist` : "AI Assistant"}
                       </span>
                     </div>
                   </div>
@@ -1642,7 +1642,7 @@ const Premium3D = React.memo(() => {
                     ))}
                   </div>
                 </div>
-              ) : history.length === 0 && userRole === "CLIENT" && topApplicants.length > 0 ? (
+              ) : history.length === 0 && ["CLIENT", "RECRUITER"].includes(userRole) && topApplicants.length > 0 ? (
                 <div style={{ padding: "0 12px 8px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, paddingLeft: 4 }}>
                     <div style={{

@@ -123,7 +123,7 @@ class TierManager {
   async getCapabilities(user) {
     if (!user || !user.role) return EMPLOYER_TIERS.STANDARD;
     if (user.role === "CANDIDATE") return this.resolveCandidateTier(user);
-    if (user.role === "CLIENT") return await this.resolveEmployerTier(user);
+    if (["CLIENT", "RECRUITER"].includes(user.role)) return await this.resolveEmployerTier(user);
     return EMPLOYER_TIERS.STANDARD;
   }
 

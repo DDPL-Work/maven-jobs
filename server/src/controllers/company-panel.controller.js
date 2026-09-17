@@ -40,6 +40,7 @@ const jobReportService = require("../services/job-posting-report.service");
 const smsService = require("../services/sms.service");
 const emailService = require("../services/email.service");
 const RegistrationOTP = require("../models/RegistrationOTP");
+const CompanySubUser = require("../models/CompanySubUser");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -122,7 +123,7 @@ const formatRelativeTime = (value) => {
 
 const resolveClientUserAndCompany = async (userId) => {
   const user = await User.findById(userId).select("-password");
-  if (!user || user.role !== "CLIENT") {
+  if (!user || !["CLIENT", "RECRUITER"].includes(user.role)) {
     throw createHttpError(403, "Client access required");
   }
 
@@ -144,11 +145,13 @@ const formatCompanyForClient = (company, options = {}) => {
   );
   const activeJobCount = Number(company.activeJobCount || 0);
 
+  const isRecruiter = options?.user?.role === "RECRUITER";
+
   return {
     id: String(company._id),
     name: company.name,
-    logoUrl: company.logoUrl || "",
-    coverImageUrl: company.coverImageUrl || "",
+    logoUrl: isRecruiter ? (options?.user?.avatar || "") : (company.logoUrl || ""),
+    coverImageUrl: isRecruiter ? (options?.user?.coverImageUrl || "") : (company.coverImageUrl || ""),
     industry: company.industry || "",
     about: company.about || "",
     companySize: company.companySize || "",
@@ -336,7 +339,7 @@ exports.login = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Email and password are required");
   }
 
-  const user = await User.findOne({ email, role: "CLIENT" }).select("+password");
+  const user = await User.findOne({ email, role: { $in: ["CLIENT", "RECRUITER"] } }).select("+password");
   if (!user) {
     throw createHttpError(401, "Invalid credentials");
   }
@@ -370,6 +373,19 @@ exports.login = asyncHandler(async (req, res) => {
   setRefreshCookie(res, tokenPair.refreshToken);
   setAccessCookie(res, tokenPair.accessToken);
 
+  let recruiterPermissions = null;
+  let superUserEmail = null;
+  if (user.role === "RECRUITER") {
+    const subUser = await CompanySubUser.findOne({ userId: user._id }).lean();
+    if (subUser && subUser.permissions) {
+      recruiterPermissions = subUser.permissions;
+    }
+    const clientUser = await User.findOne({ companyId: company._id, role: "CLIENT" }).lean();
+    if (clientUser && clientUser.email) {
+      superUserEmail = clientUser.email;
+    }
+  }
+
   res.status(200).json({
     success: true,
     expiresInSeconds: tokenPair.expiresInSeconds,
@@ -380,8 +396,10 @@ exports.login = asyncHandler(async (req, res) => {
       role: user.role || "CLIENT",
       companyId: String(company._id),
       companyName: company.name || "",
+      permissions: recruiterPermissions,
+      superUserEmail: superUserEmail,
     },
-    company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit }),
+    company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
   });
 });
 
@@ -597,7 +615,7 @@ exports.register = asyncHandler(async (req, res) => {
       companyId: String(company._id),
       companyName: company.name || "",
     },
-    company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit }),
+    company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
   });
 });
 
@@ -605,9 +623,26 @@ exports.getDashboard = asyncHandler(async (req, res) => {
   const { company } = await resolveClientUserAndCompany(req.user._id);
   const { packageCatalog, packageSnapshot, appliedPackageChange } = await syncCompanyPackageContext(company);
 
-  const [jobs, applications, activePackageRequest, recentPackageRequests, reviews, followers] = await Promise.all([
-    Job.find({ companyId: company._id }).sort({ updatedAt: -1 }),
-    Application.find({ companyId: company._id })
+  let jobFilter = { companyId: company._id };
+  let reviewFilter = { companyId: company._id, status: "PUBLISHED" };
+  let followerFilter = { followedCompanyIds: company._id };
+
+  if (req.user.role === "RECRUITER") {
+    jobFilter.createdByClient = req.user._id;
+    reviewFilter = { _id: null }; // Return empty array for recruiters
+    followerFilter = { _id: null }; // Return empty array for recruiters
+  }
+
+  const jobs = await Job.find(jobFilter).sort({ updatedAt: -1 });
+  const jobIds = jobs.map((j) => j._id);
+
+  let appFilter = { companyId: company._id };
+  if (req.user.role === "RECRUITER") {
+    appFilter.jobId = { $in: jobIds };
+  }
+
+  const [applications, activePackageRequest, recentPackageRequests, reviews, followers] = await Promise.all([
+    Application.find(appFilter)
       .sort({ updatedAt: -1 })
       .populate("jobId", "title")
       .populate("candidateId", "name email avatar"),
@@ -625,13 +660,13 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       .select(
         "currentPackageType requestedPackageType currentJobLimit requestedJobLimit status isUpgrade reason decisionNote effectiveAt appliedAt reviewedAt createdAt updatedAt",
       ),
-    CompanyReview.find({ companyId: company._id, status: "PUBLISHED" })
+    CompanyReview.find(reviewFilter)
       .sort({ createdAt: -1 })
       .limit(20)
       .populate("candidateId", "name email")
       .select("candidateName candidateTitle candidateCity rating headline review isAnonymous createdAt updatedAt reactions candidateId"),
 
-    CandidateProfile.find({ followedCompanyIds: company._id })
+    CandidateProfile.find(followerFilter)
       .sort({ updatedAt: -1 })
       .limit(20)
       .populate("userId", "name email")
@@ -722,7 +757,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: {
-      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit }),
+      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user: req.user }),
       packageCatalog,
       packageChange: {
         activeRequest: activePackageRequest
@@ -816,7 +851,7 @@ exports.updateAbout = asyncHandler(async (req, res) => {
     success: true,
     message: "About section updated successfully",
     data: {
-      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit }),
+      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
     },
   });
 });
@@ -1432,7 +1467,7 @@ exports.getProfile = asyncHandler(async (req, res) => {
         username: user.name || "",
         email: user.email || "",
       },
-      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit }),
+      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
     },
   });
 });
@@ -1532,31 +1567,46 @@ exports.updateProfile = asyncHandler(async (req, res) => {
         username: user.name || "",
         email: user.email || "",
       },
-      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit }),
+      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
     },
   });
 });
 
 exports.updateCompanyMedia = asyncHandler(async (req, res) => {
-  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const { user, company } = await resolveClientUserAndCompany(req.user._id);
   const kind = String(req.body.kind || "").trim().toLowerCase() === "cover" ? "cover" : "logo";
 
   if (!req.file) {
     throw createHttpError(400, "Please upload an image file");
   }
 
-  const previousPublicId = kind === "cover" ? company.coverImagePublicId : company.logoPublicId;
-  const uploaded = await uploadCompanyMedia(req.file, { ownerId: company._id, kind });
+  const isRecruiter = user.role === "RECRUITER";
 
-  if (kind === "cover") {
-    company.coverImageUrl = uploaded.url;
-    company.coverImagePublicId = uploaded.publicId;
+  const previousPublicId = isRecruiter
+    ? (kind === "cover" ? user.coverImagePublicId : user.avatarPublicId)
+    : (kind === "cover" ? company.coverImagePublicId : company.logoPublicId);
+    
+  const uploaded = await uploadCompanyMedia(req.file, { ownerId: isRecruiter ? user._id : company._id, kind });
+
+  if (isRecruiter) {
+    if (kind === "cover") {
+      user.coverImageUrl = uploaded.url;
+      user.coverImagePublicId = uploaded.publicId;
+    } else {
+      user.avatar = uploaded.url;
+      user.avatarPublicId = uploaded.publicId;
+    }
+    await user.save();
   } else {
-    company.logoUrl = uploaded.url;
-    company.logoPublicId = uploaded.publicId;
+    if (kind === "cover") {
+      company.coverImageUrl = uploaded.url;
+      company.coverImagePublicId = uploaded.publicId;
+    } else {
+      company.logoUrl = uploaded.url;
+      company.logoPublicId = uploaded.publicId;
+    }
+    await company.save();
   }
-
-  await company.save();
 
   if (previousPublicId && previousPublicId !== uploaded.publicId) {
     await destroyCompanyMedia(previousPublicId);
@@ -1568,7 +1618,7 @@ exports.updateCompanyMedia = asyncHandler(async (req, res) => {
     success: true,
     message: `${kind === "cover" ? "Cover" : "Profile"} image updated successfully`,
     data: {
-      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit }),
+      company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
     },
   });
 });
@@ -1927,19 +1977,41 @@ exports.getAnalytics = asyncHandler(async (req, res) => {
       break;
   }
 
+  const isRecruiter = req.user.role === "RECRUITER";
   const jobQuery = { companyId: company._id };
   const appQuery = { companyId: company._id };
+  const deptMatch = { companyId: company._id };
   if (cutoffDate) {
     jobQuery.createdAt = { $gte: cutoffDate };
     appQuery.createdAt = { $gte: cutoffDate };
+    deptMatch.createdAt = { $gte: cutoffDate };
   }
 
-  const [jobs, applications] = await Promise.all([
-    Job.find(jobQuery).select("createdAt updatedAt isActive").lean(),
-    Application.find(appQuery)
-      .select("status sourceQrToken sourceJobId createdAt updatedAt")
-      .lean(),
+  // For recruiters, scope to only their own jobs
+  let recruiterJobIds = [];
+  if (isRecruiter) {
+    jobQuery.createdByClient = req.user._id;
+  }
+
+  const [allCompanyJobs] = await Promise.all([
+    Job.find(jobQuery).select("_id createdAt updatedAt isActive createdByClient").lean(),
+    // Applications scoped after jobs are fetched
+    Promise.resolve(null),
   ]);
+
+  recruiterJobIds = allCompanyJobs.map((j) => j._id);
+  if (isRecruiter && recruiterJobIds.length > 0) {
+    appQuery.jobId = { $in: recruiterJobIds };
+    deptMatch.jobId = { $in: recruiterJobIds };
+  } else if (isRecruiter) {
+    // Recruiter has no jobs yet — return empty results
+    appQuery._id = null;
+    deptMatch._id = null;
+  }
+  const jobs = allCompanyJobs;
+  const applications = await Application.find(appQuery)
+    .select("status sourceQrToken sourceJobId jobId createdAt updatedAt")
+    .lean();
 
   const jobSeries = buildMonthlySeries(jobs, (j) => j.createdAt || j.updatedAt, trailingMonths);
   const applicationSeries = buildMonthlySeries(applications, (a) => a.createdAt || a.updatedAt, trailingMonths);
@@ -1970,8 +2042,6 @@ exports.getAnalytics = asyncHandler(async (req, res) => {
   const timeToHire = hired > 0 ? Math.round(18 + (Math.random() * 6 - 3)) : 0;
   const acceptance = offersSent > 0 ? Math.round((hired / offersSent) * 100) : 0;
 
-  const deptMatch = { companyId: company._id };
-  if (cutoffDate) deptMatch.createdAt = { $gte: cutoffDate };
   const deptApplications = await Application.aggregate([
     { $match: deptMatch },
     { $lookup: { from: "jobs", localField: "jobId", foreignField: "_id", as: "job" } },
@@ -1980,6 +2050,48 @@ exports.getAnalytics = asyncHandler(async (req, res) => {
     { $sort: { applications: -1 } },
     { $limit: 6 },
   ]);
+
+  // For CLIENT: build recruiter performance leaderboard
+  let recruiterPerformance = [];
+  if (!isRecruiter) {
+    try {
+      const User = require("../models/User");
+      const recruiters = await User.find({ companyId: company._id, role: "RECRUITER" })
+        .select("_id name email")
+        .lean();
+      if (recruiters.length > 0) {
+        const recruiterIds = recruiters.map((r) => r._id);
+        const recruiterJobCounts = await Job.aggregate([
+          { $match: { companyId: company._id, createdByClient: { $in: recruiterIds } } },
+          { $group: { _id: "$createdByClient", jobs: { $sum: 1 }, activeJobs: { $sum: { $cond: ["$isActive", 1, 0] } } } },
+        ]);
+        const recruiterAppCounts = await Application.aggregate([
+          { $lookup: { from: "jobs", localField: "jobId", foreignField: "_id", as: "job" } },
+          { $unwind: { path: "$job", preserveNullAndEmptyArrays: true } },
+          { $match: { "job.companyId": company._id, "job.createdByClient": { $in: recruiterIds } } },
+          { $group: { _id: "$job.createdByClient", applications: { $sum: 1 }, hired: { $sum: { $cond: [{ $eq: ["$status", "HIRED"] }, 1, 0] } } } },
+        ]);
+        const jobCountMap = new Map(recruiterJobCounts.map((r) => [String(r._id), r]));
+        const appCountMap = new Map(recruiterAppCounts.map((r) => [String(r._id), r]));
+        recruiterPerformance = recruiters.map((r) => {
+          const jobData = jobCountMap.get(String(r._id)) || { jobs: 0, activeJobs: 0 };
+          const appData = appCountMap.get(String(r._id)) || { applications: 0, hired: 0 };
+          const efficiency = appData.applications > 0 ? Math.round((appData.hired / appData.applications) * 100) : 0;
+          return {
+            id: String(r._id),
+            name: r.name || r.email || "Recruiter",
+            jobs: jobData.jobs,
+            activeJobs: jobData.activeJobs,
+            responses: appData.applications,
+            hires: appData.hired,
+            efficiency: `${efficiency}%`,
+          };
+        }).sort((a, b) => b.hires - a.hires || b.responses - a.responses);
+      }
+    } catch (e) {
+      console.warn("[getAnalytics] recruiterPerformance aggregation error:", e.message);
+    }
+  }
 
   const recentApplications = await Application.find(appQuery)
     .sort({ createdAt: -1 })
@@ -1998,6 +2110,7 @@ exports.getAnalytics = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: {
+      scope: isRecruiter ? "recruiter" : "company",
       company: {
         name: company.name,
         logoUrl: company.logoUrl || "",
@@ -2029,6 +2142,7 @@ exports.getAnalytics = asyncHandler(async (req, res) => {
         hired: d.hired,
       })),
       recentApplications,
+      recruiterPerformance,
       kpis: [
         { label: "Live Jobs", val: activeJobs, change: `${activeJobs} live`, up: true, color: "#1E5EFF" },
         { label: "Applications", val: totalApplications, change: `${totalApplications} total`, up: totalApplications > 0, color: "#0DBF7B" },
@@ -2223,5 +2337,79 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
         region: "INDIA",
       },
     },
+  });
+});
+
+// GET /company-panel/quota-usage
+exports.getQuotaUsage = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const isRecruiter = req.user.role === "RECRUITER";
+  
+  const Credit = require("../models/Credit");
+  const PaidResume = require("../models/PaidResume");
+  const Nvite = require("../models/Nvite");
+
+  // CV Access (Resdex Credits)
+  const credit = await Credit.findOne({ companyId: company._id }).lean() || { balance: 0, lifetimePurchased: 200, lifetimeUsed: 0 };
+  const cvTotal = credit.lifetimePurchased;
+  const cvLeft = credit.balance;
+  const cvUsedByAll = Math.max(0, cvTotal - cvLeft);
+  
+  let cvUsedByYou = 0;
+  if (isRecruiter) {
+    cvUsedByYou = await PaidResume.countDocuments({ companyId: company._id, recruiterId: req.user._id });
+  }
+
+  // NVites
+  const nviteTotal = company.nviteLimit || 200000;
+  
+  const nviteAllAgg = await Nvite.aggregate([
+    { $match: { companyId: company._id } },
+    { $group: { _id: null, sum: { $sum: "$totalCount" } } }
+  ]);
+  const nviteUsedByAll = nviteAllAgg[0]?.sum || 0;
+  const nviteLeft = Math.max(0, nviteTotal - nviteUsedByAll);
+  
+  let nviteUsedByYou = 0;
+  if (isRecruiter) {
+    const nviteYouAgg = await Nvite.aggregate([
+      { $match: { companyId: company._id, recruiterId: req.user._id } },
+      { $group: { _id: null, sum: { $sum: "$totalCount" } } }
+    ]);
+    nviteUsedByYou = nviteYouAgg[0]?.sum || 0;
+  }
+
+  // Job Postings
+  const jobTotal = (company.jobLimit || 2) + (company.grandfatheredJobLimit || 0);
+  const jobUsedByAll = company.activeJobCount || await Job.countDocuments({ companyId: company._id, isActive: true });
+  const jobLeft = Math.max(0, jobTotal - jobUsedByAll);
+
+  let jobUsedByYou = 0;
+  if (isRecruiter) {
+    jobUsedByYou = await Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      cvAccess: {
+        total: cvTotal,
+        left: cvLeft,
+        usedByAll: cvUsedByAll,
+        usedByYou: isRecruiter ? cvUsedByYou : null
+      },
+      nvite: {
+        total: nviteTotal,
+        left: nviteLeft,
+        usedByAll: nviteUsedByAll,
+        usedByYou: isRecruiter ? nviteUsedByYou : null
+      },
+      jobPosting: {
+        total: jobTotal,
+        left: jobLeft,
+        usedByAll: jobUsedByAll,
+        usedByYou: isRecruiter ? jobUsedByYou : null
+      }
+    }
   });
 });

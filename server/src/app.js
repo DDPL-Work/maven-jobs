@@ -7,6 +7,7 @@ const errorMiddleware = require("./middleware/error.middleware");
 
 const authRoutes = require("./routes/auth.routes");
 const companyRoutes = require("./routes/company.routes");
+const feedbackRoutes = require("./routes/feedback.routes");
 const jobRoutes = require("./routes/job.routes");
 const qrRoutes = require("./routes/qr.routes");
 const crmRoutes = require("./routes/crm.routes");
@@ -108,6 +109,7 @@ const BASE_ROUTE = `/api/v${API_VERSION}`;
 app.use(`${BASE_ROUTE}/auth`, authRoutes);
 app.use(`${BASE_ROUTE}/auth`, passwordResetRoutes);
 app.use(`${BASE_ROUTE}/company`, companyRoutes);
+app.use(`${BASE_ROUTE}/feedback`, feedbackRoutes);
 app.use(`${BASE_ROUTE}/job`, jobRoutes);
 app.use(`${BASE_ROUTE}/qr`, qrRoutes);
 app.use(`${BASE_ROUTE}/crm`, crmRoutes);

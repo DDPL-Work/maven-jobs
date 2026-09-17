@@ -141,7 +141,7 @@ export default function SearchResults() {
       onNotificationsClick={() => {}}
       onLogout={async () => { 
           try { await authService.logoutEmployer(); } catch {} 
-          localStorage.removeItem("employerUser"); 
+          localStorage.clear(); sessionStorage.clear(); 
           navigate("/employer-login"); 
       }}
     >

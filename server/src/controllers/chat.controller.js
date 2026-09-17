@@ -36,7 +36,7 @@ const getInitials = (name = "Candidate") =>
 
 const resolveCompanyContext = async (userId) => {
   const user = await User.findById(userId).select("-password");
-  if (!user || user.role !== "CLIENT") {
+  if (!user || !["CLIENT", "RECRUITER"].includes(user.role)) {
     throw createHttpError(403, "Client access required");
   }
 

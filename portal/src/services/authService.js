@@ -112,6 +112,24 @@ const authService = {
     }
   },
 
+  getCredits: async () => {
+    try {
+      const response = await api.get('/company-panel/credits');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch credits' };
+    }
+  },
+
+  getQuotaUsage: async () => {
+    try {
+      const response = await api.get('/company-panel/quota-usage');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch quota usage' };
+    }
+  },
+
   getJobs: async (params) => {
     try {
       const response = await api.get('/candidate/jobs', { params });

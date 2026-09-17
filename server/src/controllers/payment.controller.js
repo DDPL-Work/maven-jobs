@@ -48,7 +48,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: `Invalid plan for role ${req.user.role}` });
   }
 
-  const companyId = req.user.role === "CLIENT" ? req.user.companyId : undefined;
+  const companyId = ["CLIENT", "RECRUITER"].includes(req.user.role) ? req.user.companyId : undefined;
 
   const result = await paymentService.createOrder({
     userId: req.user._id,

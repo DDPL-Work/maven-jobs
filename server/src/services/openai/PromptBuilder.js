@@ -6,7 +6,7 @@ class PromptBuilder {
     if (role === "CANDIDATE") {
       return this._candidateSystemPrompt(tierName, context, currentYear);
     }
-    if (role === "CLIENT") {
+    if (["CLIENT", "RECRUITER"].includes(role)) {
       return this._employerSystemPrompt(tierName, context, currentYear);
     }
     return this._defaultSystemPrompt(currentYear);

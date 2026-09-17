@@ -177,6 +177,7 @@ export default function UserManagement() {
   const [otpSessionId, setOtpSessionId] = useState(null);
   const [domainToken, setDomainToken] = useState(null);
   const [maskedPhone, setMaskedPhone] = useState('');
+  const [otpMethod, setOtpMethod] = useState('mobile');
 
   // Account Security settings state (matching Screenshot 1)
   const [notifyPasswordChange, setNotifyPasswordChange] = useState(true);
@@ -223,6 +224,7 @@ export default function UserManagement() {
   const weekendMsqRef = useRef(null);
   const [accessStartTime, setAccessStartTime] = useState('12:00 AM');
   const [accessEndTime, setAccessEndTime] = useState('12:30 AM');
+  const [savingTimeRestrictions, setSavingTimeRestrictions] = useState(false);
 
   const toggleWeekendDay = (day) => {
     setWeekendRestrictions((prev) =>
@@ -358,7 +360,7 @@ export default function UserManagement() {
     });
   }, [users, activeTab, userFilter, searchQuery]);
 
-  // Master Checkbox - Only sub-users can be selected (super-users cannot be selected)
+  // Master Checkbox - Only RECRUITERs can be selected (CLIENTs cannot be selected)
   const selectableUsers = useMemo(() => {
     return filteredUsers.filter((u) => !u.isSuperUser);
   }, [filteredUsers]);
@@ -376,7 +378,7 @@ export default function UserManagement() {
 
   const handleSelectUser = (id) => {
     const target = users.find((u) => u.id === id);
-    if (target?.isSuperUser) return; // Super-user cannot be selected
+    if (target?.isSuperUser) return; // CLIENT cannot be selected
     setSelectedUserIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -480,6 +482,7 @@ export default function UserManagement() {
         jobPosting: formJobPosting,
         jobBooster: formJobBooster,
         resdex: formResdex,
+        role: 'RECRUITER',
       });
       setUsers((prev) => [...prev, result.data]);
       showToast(`User "${trimmedName}" added successfully!`);
@@ -520,15 +523,15 @@ export default function UserManagement() {
   const handleDeleteUser = async (userId) => {
     const target = users.find((u) => u.id === userId);
     if (target?.isSuperUser) {
-      showToast('Super-user cannot be deleted');
+      showToast('CLIENT cannot be deleted');
       return;
     }
-    if (window.confirm(`Are you sure you want to delete sub-user "${target?.name || 'this user'}"?`)) {
+    if (window.confirm(`Are you sure you want to delete RECRUITER "${target?.name || 'this user'}"?`)) {
       try {
         await userManagementService.deleteUsers([userId]);
         setUsers((prev) => prev.filter((u) => u.id !== userId));
         setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
-        showToast(`Sub-user "${target?.name || ''}" deleted successfully.`);
+        showToast(`RECRUITER "${target?.name || ''}" deleted successfully.`);
       } catch (err) {
         showToast(err?.message || 'Failed to delete user');
       }
@@ -538,7 +541,7 @@ export default function UserManagement() {
   // Delete Selected Users
   const handleDeleteSelected = async () => {
     if (selectedUserIds.length === 0) return;
-    if (window.confirm(`Are you sure you want to remove ${selectedUserIds.length} sub-user(s)?`)) {
+    if (window.confirm(`Are you sure you want to remove ${selectedUserIds.length} RECRUITER(s)?`)) {
       try {
         await userManagementService.deleteUsers(selectedUserIds);
         setUsers((prev) => prev.filter((u) => !selectedUserIds.includes(u.id)));
@@ -572,12 +575,13 @@ export default function UserManagement() {
   };
 
   const triggerSendOtp = async (method) => {
+    setOtpMethod(method);
     try {
       const res = await userManagementService.sendDomainOtp(method);
       if (res.data) {
         setOtpSessionId(res.data.sessionId);
         setMaskedPhone(res.data.maskedPhone); // can be masked email or phone
-        showToast(`Verification OTP sent to Super-user's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
+        showToast(`Verification OTP sent to CLIENT's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
       }
     } catch (err) {
       setDomainError(err?.message || 'Failed to send OTP');
@@ -691,11 +695,59 @@ export default function UserManagement() {
     setDomainError('');
     domainOtpRefs.current[0]?.focus();
     
-    // Determine the method based on sessionId if possible, or just default to mobile if not possible.
-    // Assuming the backend handles regenerating OTP for the same sessionId or we issue a new one.
-    // For simplicity, we can trigger the last used method. We'll extract method from sessionId (email_ prefix) or fallback to mobile.
-    const method = otpSessionId?.startsWith('email_') ? 'email' : 'mobile';
-    await triggerSendOtp(method);
+    await triggerSendOtp(otpMethod);
+  };
+
+  const handleExportCSV = () => {
+    const domainsRow = ['Allowed Domains', ...allowedDomains].join(',');
+    const securityRows = [
+      ['Notify Password Change', notifyPasswordChange ? 'Yes' : 'No'].join(','),
+      ['Receive OTP Only On Mobile', receiveOtpOnlyOnMobile ? 'Yes' : 'No'].join(','),
+      ['Use OTP On Pattern Change', useOtpOnPatternChange ? 'Yes' : 'No'].join(',')
+    ].join('\n');
+    
+    const restrictionRows = [
+      ['Blocked Weekend Days', weekendRestrictions.length ? weekendRestrictions.join(' and ') : 'None'].join(','),
+      ['Access Start Time', accessStartTime].join(','),
+      ['Access End Time', accessEndTime].join(',')
+    ].join('\n');
+
+    const userHeaders = ['ID', 'Name', 'Email', 'Role', 'Restricted', 'Resdex', 'Job Posting', 'Job Booster'];
+    const userRows = users.map(u => [
+      u.id,
+      `"${u.name}"`,
+      `"${u.email}"`,
+      u.isSuperUser ? 'CLIENT' : 'RECRUITER',
+      u.isRestricted ? 'Yes' : 'No',
+      u.resdex ? 'Yes' : 'No',
+      u.jobPosting ? 'Yes' : 'No',
+      u.jobBooster ? 'Yes' : 'No'
+    ].join(',')).join('\n');
+
+    const csvContent = [
+      '--- GENERAL SETTINGS ---',
+      domainsRow,
+      securityRows,
+      '',
+      '--- TIME RESTRICTIONS ---',
+      restrictionRows,
+      '',
+      '--- USERS ---',
+      userHeaders.join(','),
+      userRows
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `user_management_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setOpenDropdown(null);
+    showToast('Data exported to CSV successfully.');
   };
 
   // Calculate dynamic permission counts
@@ -797,10 +849,7 @@ export default function UserManagement() {
                   <button
                     type="button"
                     className="um-popover-item"
-                    onClick={() => {
-                      setOpenDropdown(null);
-                      showToast('User list exported to CSV.');
-                    }}
+                    onClick={handleExportCSV}
                   >
                     Export users CSV
                   </button>
@@ -960,9 +1009,9 @@ export default function UserManagement() {
                 <div className="um-time-popover" onClick={(e) => e.stopPropagation()}>
                   <h3 className="um-popover-heading">Time Restrictions</h3>
 
-                  {/* Block access for sub-user on (MSQ Multi-select) */}
+                  {/* Block access for RECRUITER on (MSQ Multi-select) */}
                   <div className="um-restriction-field">
-                    <span className="um-restriction-label">Block access for sub-user on</span>
+                    <span className="um-restriction-label">Block access for RECRUITER on</span>
                     <div className="um-select-wrapper">
                       <div className="um-msq-container" ref={weekendMsqRef}>
                         <button
@@ -1003,7 +1052,7 @@ export default function UserManagement() {
                           </div>
                         )}
                       </div>
-                      <FiInfo size={16} color="#94a3b8" title="Restrict sub-user access on specified weekend days" />
+                      <FiInfo size={16} color="#94a3b8" title="Restrict RECRUITER access on specified weekend days" />
                     </div>
                   </div>
 
@@ -1032,7 +1081,7 @@ export default function UserManagement() {
                           ))}
                         </select>
                       </div>
-                      <FiInfo size={16} color="#94a3b8" title="Set daily working hour limits for sub-users" />
+                      <FiInfo size={16} color="#94a3b8" title="Set daily working hour limits for RECRUITERs" />
                     </div>
                   </div>
 
@@ -1040,13 +1089,34 @@ export default function UserManagement() {
                   <button
                     type="button"
                     className="um-btn-save-blue"
-                    onClick={() => {
-                      setOpenDropdown(null);
-                      setShowWeekendMsq(false);
-                      showToast('Time restrictions saved successfully!');
+                    disabled={savingTimeRestrictions}
+                    onClick={async () => {
+                      const subUserIds = users.filter(u => !u.isSuperUser).map(u => u.id);
+                      if (subUserIds.length === 0) {
+                        showToast('No RECRUITERs found to apply restrictions.');
+                        return;
+                      }
+
+                      setSavingTimeRestrictions(true);
+                      try {
+                        await userManagementService.updateRestrictions({
+                          ids: subUserIds,
+                          weekendRestrictions,
+                          accessStartTime,
+                          accessEndTime
+                        });
+                        setOpenDropdown(null);
+                        setShowWeekendMsq(false);
+                        showToast('Time restrictions applied to RECRUITERs successfully!');
+                        fetchUsers();
+                      } catch (err) {
+                        showToast(err?.message || 'Failed to update time restrictions');
+                      } finally {
+                        setSavingTimeRestrictions(false);
+                      }
                     }}
                   >
-                    Save
+                    {savingTimeRestrictions ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               )}
@@ -1072,7 +1142,7 @@ export default function UserManagement() {
               </span>
             </div>
             <div>
-              If allowed domain is @mycompany.com, then only account ending with @mycompany.com can be added as subuser.
+              If allowed domain is @mycompany.com, then only account ending with @mycompany.com can be added as RECRUITER.
             </div>
             <div className="um-info-note">
               <strong>Note:</strong> Response manager access is available to all recruiters who post a job, send an NVite, or are added as collaborators.
@@ -1170,7 +1240,7 @@ export default function UserManagement() {
           </div>
         )}
 
-        {/* Sub-Users Table */}
+        {/* RECRUITERs Table */}
         <div className="um-table-card">
           <table className="um-table">
             <thead>
@@ -1299,8 +1369,8 @@ export default function UserManagement() {
                               cursor: 'not-allowed',
                               opacity: 0.35,
                             }}
-                            title="Super-user cannot be selected"
-                            aria-label="Super-user cannot be selected"
+                            title="CLIENT cannot be selected"
+                            aria-label="CLIENT cannot be selected"
                           />
                         ) : (
                           <input
@@ -1336,7 +1406,7 @@ export default function UserManagement() {
                             <div className="um-user-name-row" style={{ cursor: 'pointer' }}>
                               <span className="um-user-name" style={{ cursor: 'pointer' }}>{u.name}</span>
                               {u.isSuperUser && (
-                                <span className="um-badge-superuser" style={{ cursor: 'pointer' }}>Super-user</span>
+                                <span className="um-badge-superuser" style={{ cursor: 'pointer' }}>CLIENT</span>
                               )}
                             </div>
                             <span className="um-user-email" style={{ cursor: 'pointer' }}>{u.email}</span>
@@ -1392,7 +1462,7 @@ export default function UserManagement() {
                         </button>
                       </td>
 
-                      {/* Row Actions on Hover: Super-user shows ONLY Edit; Sub-users show Edit & Delete */}
+                      {/* Row Actions on Hover: CLIENT shows ONLY Edit; RECRUITERs show Edit & Delete */}
                       <td className="um-td um-td-actions" style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
                         <div className="um-row-actions">
                           <button
@@ -1750,7 +1820,7 @@ export default function UserManagement() {
                           <FiShield size={20} color="#0ea5e9" />
                         </div>
                         <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                          To authorize adding a new domain, enter the 6-digit OTP sent to the Super-user's registered contact:{' '}
+                          To authorize adding a new domain, enter the 6-digit OTP sent to the CLIENT's registered {otpMethod === 'email' ? 'email' : 'mobile number'}:{' '}
                           <strong style={{ color: '#002366' }}>{maskedPhone}</strong>
                         </div>
                       </div>
@@ -1844,7 +1914,7 @@ export default function UserManagement() {
                       }}
                     >
                       <FiCheckCircle size={17} color="#10b981" />
-                      Super-user Phone Verified ({maskedPhone})
+                      CLIENT {otpMethod === 'email' ? 'Email' : 'Phone'} Verified ({maskedPhone})
                     </div>
 
                     <div className="um-form-group">
@@ -1866,7 +1936,7 @@ export default function UserManagement() {
                         </span>
                       ) : (
                         <span style={{ fontSize: 12, color: '#64748b' }}>
-                          Only accounts ending with this domain can be added as sub-users.
+                          Only accounts ending with this domain can be added as RECRUITERs.
                         </span>
                       )}
                     </div>
