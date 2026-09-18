@@ -16,6 +16,7 @@ import {
 export const crmMenu = [
   { title: "Dashboard", path: "/crm/dashboard", icon: LuLayoutDashboard },
   { title: "Client Accounts", path: "/crm/clients", icon: LuBuilding2 },
+  { title: "Assigned Clients", path: "/crm/assigned-clients", icon: LuUser },
   { title: "Job Postings", path: "/crm/jobs", icon: LuBriefcaseBusiness },
   { title: "Approval Queue", path: "/crm/approvals", icon: LuShieldCheck },
   { title: "Packages", path: "/crm/packages", icon: LuBadgePercent },

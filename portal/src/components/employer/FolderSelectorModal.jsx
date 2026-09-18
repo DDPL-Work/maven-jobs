@@ -5,7 +5,8 @@ import { useFolders, useCreateFolder, useAddCandidateToFolder } from '../../hook
 const KEY = 'fsm-sel-spin';
 
 export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
-  const { data: folders = [], isLoading, isError, error: fetchError } = useFolders({ limit: 100 });
+  const [activeTab, setActiveTab] = useState('REQUIREMENT');
+  const { data: folders = [], isLoading, isError, error: fetchError } = useFolders({ limit: 100, folderType: activeTab });
   const createFolder = useCreateFolder();
   const addCandidate = useAddCandidateToFolder();
 
@@ -49,7 +50,7 @@ export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
     if (!trimmed) return;
     setErrorMsg('');
     try {
-      const res = await createFolder.mutateAsync({ name: trimmed });
+      const res = await createFolder.mutateAsync({ name: trimmed, folderType: activeTab });
       if (res?.success && res?.data?._id) {
         await handleSelect(res.data._id);
       }
@@ -87,7 +88,7 @@ export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '20px 22px 0',
+          padding: '20px 22px 15px',
         }}>
           <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
             Save to Folder
@@ -101,7 +102,28 @@ export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
           </button>
         </div>
 
-        <div style={{ padding: '12px 22px 20px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 12px' }}>
+          <button
+            onClick={() => { setActiveTab('REQUIREMENT'); setShowCreate(false); setErrorMsg(''); setNewName(''); }}
+            style={{
+              flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: activeTab === 'REQUIREMENT' ? '2px solid #002366' : '2px solid transparent',
+              color: activeTab === 'REQUIREMENT' ? '#002366' : '#64748b', fontWeight: activeTab === 'REQUIREMENT' ? 600 : 500, cursor: 'pointer', fontSize: 13, transition: 'all 0.15s'
+            }}
+          >
+            Resdex Requirement
+          </button>
+          <button
+            onClick={() => { setActiveTab('FOLDER'); setShowCreate(false); setErrorMsg(''); setNewName(''); }}
+            style={{
+              flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: activeTab === 'FOLDER' ? '2px solid #002366' : '2px solid transparent',
+              color: activeTab === 'FOLDER' ? '#002366' : '#64748b', fontWeight: activeTab === 'FOLDER' ? 600 : 500, cursor: 'pointer', fontSize: 13, transition: 'all 0.15s'
+            }}
+          >
+            Resdex Folder
+          </button>
+        </div>
+
+        <div style={{ padding: '16px 22px 20px', overflowY: 'auto', flex: 1 }}>
           {errorMsg && (
             <div style={{
               padding: '10px 14px', background: '#fef2f2', borderRadius: 10,
@@ -184,7 +206,7 @@ export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
           ) : (
             <div style={{ textAlign: 'center', padding: '28px 0', color: '#94a3b8', fontSize: 13 }}>
               <FiFolder size={28} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
-              No folders yet. Create one to get started.
+              No {activeTab === 'REQUIREMENT' ? 'requirements' : 'folders'} yet. Create one to get started.
             </div>
           )}
 
@@ -233,7 +255,7 @@ export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = '#002366'; e.currentTarget.style.color = '#002366'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#64748b'; }}
               >
-                <FiPlus size={14} /> Create New Folder
+                <FiPlus size={14} /> Create New {activeTab === 'REQUIREMENT' ? 'Requirement' : 'Folder'}
               </button>
             )}
           </div>

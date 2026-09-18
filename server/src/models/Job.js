@@ -12,7 +12,12 @@ const jobSchema = new mongoose.Schema(
     title: { type: String, required: true },
     summary: { type: String, default: "" },
     department: String,
-    jobType: String,
+    jobType: String, // Full-time, Part-time, etc.
+    jobCategory: {
+      type: String,
+      enum: ["standard", "management", "hot", "internship"],
+      default: "standard"
+    },
     workplaceType: String,
 
     location: String,
@@ -98,11 +103,11 @@ const jobSchema = new mongoose.Schema(
 
 jobSchema.index({ companyId: 1, isActive: 1 });
 
-// Automatically sync deletions to Elasticsearch and trigger debounced reindex
+// Automatically sync deletions to OpenSearch and trigger debounced reindex
 jobSchema.post("findOneAndDelete", function (doc) {
   if (doc?._id) {
     try {
-      const { scheduleDelete, scheduleReindex } = require("../services/elasticsearch.service");
+      const { scheduleDelete, scheduleReindex } = require("../services/opensearch.service");
       scheduleDelete(String(doc._id));
       scheduleReindex(1500);
     } catch (_) {}
@@ -112,7 +117,7 @@ jobSchema.post("findOneAndDelete", function (doc) {
 jobSchema.post("deleteOne", { document: true, query: false }, function () {
   if (this?._id) {
     try {
-      const { scheduleDelete, scheduleReindex } = require("../services/elasticsearch.service");
+      const { scheduleDelete, scheduleReindex } = require("../services/opensearch.service");
       scheduleDelete(String(this._id));
       scheduleReindex(1500);
     } catch (_) {}
@@ -122,7 +127,7 @@ jobSchema.post("deleteOne", { document: true, query: false }, function () {
 jobSchema.post("deleteOne", { document: false, query: true }, function () {
   try {
     const filter = this.getFilter();
-    const { scheduleDelete, scheduleReindex } = require("../services/elasticsearch.service");
+    const { scheduleDelete, scheduleReindex } = require("../services/opensearch.service");
     if (filter?._id) {
       scheduleDelete(String(filter._id));
     }
@@ -132,7 +137,7 @@ jobSchema.post("deleteOne", { document: false, query: true }, function () {
 
 jobSchema.post("deleteMany", function () {
   try {
-    const { scheduleReindex } = require("../services/elasticsearch.service");
+    const { scheduleReindex } = require("../services/opensearch.service");
     scheduleReindex(1500);
   } catch (_) {}
 });

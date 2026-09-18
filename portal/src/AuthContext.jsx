@@ -105,18 +105,14 @@ const mergeLoginResponse = (data) => {
   };
 };
 
-const AUTH_TOKEN_KEY = 'candidateToken';
-
-const getAuthToken = (data) => data.accessToken || data.token || '';
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("user");
     if (!saved) return null;
     try {
       const parsed = JSON.parse(saved);
-      if (parsed.role === 'CLIENT' || parsed.role === 'ADMIN') {
-        localStorage.removeItem("user");
+      if (['CLIENT', 'RECRUITER', 'ADMIN'].includes(parsed.role)) {
+        localStorage.removeItem("user"); sessionStorage.clear();
         return null;
       }
       return parsed;
@@ -129,39 +125,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!token || token === 'undefined') {
-      const oldToken = localStorage.getItem("token");
-      if (oldToken && oldToken !== 'undefined') {
-        try {
-          const payload = JSON.parse(atob(oldToken.split('.')[1]));
-          if (payload.role === 'CANDIDATE') {
-            localStorage.setItem(AUTH_TOKEN_KEY, oldToken);
-            localStorage.removeItem("token");
-            token = oldToken;
-          }
-        } catch {}
-      }
-    }
-    if (!token || token === 'undefined') return;
-
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      if (payload.role === 'CLIENT' || payload.role === 'ADMIN') {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem("user");
-        setUser(null);
-        return;
-      }
-    } catch {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      localStorage.removeItem("user");
-      setUser(null);
-      return;
-    }
-
+    // Rely solely on HTTP-only cookies to validate the session
     authService.getMe().then((data) => {
       if (data?.user) {
+        // Ensure that the role is appropriate for this portal
+        if (['CLIENT', 'RECRUITER', 'ADMIN'].includes(data.user.role)) {
+          localStorage.removeItem("user"); sessionStorage.clear();
+          setUser(null);
+          return;
+        }
+
         setUser((prev) => {
           const fresh = mergeUserFromMe(data, prev);
           localStorage.setItem("user", JSON.stringify(fresh));
@@ -169,8 +142,7 @@ export const AuthProvider = ({ children }) => {
         });
       }
     }).catch(() => {
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      localStorage.removeItem("user");
+      localStorage.removeItem("user"); sessionStorage.clear();
       setUser(null);
     });
   }, []);
@@ -197,7 +169,6 @@ export const AuthProvider = ({ children }) => {
       const userData = mergeLoginResponse(data);
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem(AUTH_TOKEN_KEY, getAuthToken(data));
       closeModals();
       window.dispatchEvent(new Event("candidate-logged-in"));
       return { success: true };
@@ -216,7 +187,6 @@ export const AuthProvider = ({ children }) => {
       const userObj = mergeLoginResponse(data);
       setUser(userObj);
       localStorage.setItem("user", JSON.stringify(userObj));
-      localStorage.setItem(AUTH_TOKEN_KEY, getAuthToken(data));
       closeModals();
       window.dispatchEvent(new Event("candidate-logged-in"));
       return { success: true };
@@ -235,7 +205,6 @@ export const AuthProvider = ({ children }) => {
       const userData = mergeLoginResponse(data);
       setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem(AUTH_TOKEN_KEY, getAuthToken(data));
       closeModals();
       window.dispatchEvent(new Event("candidate-logged-in"));
       return { success: true };
@@ -247,12 +216,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const loginWithMobileOtp = async (phone, otp) => {
+    setLoading(true);
+    try {
+      const data = await authService.candidateVerifyMobileOtp(phone, otp);
+      const userData = mergeLoginResponse(data);
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      closeModals();
+      window.dispatchEvent(new Event("candidate-logged-in"));
+      return { success: true };
+    } catch (error) {
+      console.error("Mobile OTP verify failed:", error);
+      return { success: false, message: error.message || "OTP verification failed" };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
     setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem("token");
-    sessionStorage.removeItem("dailyQuizShown");
+    localStorage.clear();
+    sessionStorage.clear();
     window.dispatchEvent(new Event("candidate-session-expired"));
   };
 
@@ -310,7 +300,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, loginWithGoogle, logout, updateUser, updateProfile, openLogin, openRegister, closeModals, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, register, loginWithGoogle, loginWithMobileOtp, logout, updateUser, updateProfile, openLogin, openRegister, closeModals, loading }}>
+
       {children}
       {isLoginModalOpen && <Login isOpen={isLoginModalOpen} onClose={closeModals} openSignUp={openRegister} />}
       {isRegisterModalOpen && <SignUp isOpen={isRegisterModalOpen} onClose={closeModals} openLogin={openLogin} />}
@@ -319,3 +310,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+

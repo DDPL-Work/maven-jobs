@@ -6,8 +6,8 @@ const ResdexSearch = require("../models/ResdexSearch");
 const Application = require("../models/Application");
 const OpenAIService = require("../services/openai/OpenAIService");
 const activityService = require("../services/recruiter-activity.service");
-const { esAvailable } = require("../config/elasticsearch");
-const esService = require("../services/elasticsearch.service");
+const { esAvailable } = require("../config/opensearch");
+const esService = require("../services/opensearch.service");
 
 const SEARCH_DEFAULTS = { page: 1, limit: 20, sort: "relevance" };
 const MAX_LIMIT = 100;
@@ -226,7 +226,7 @@ async function esSearchCandidates(req, res) {
   }
 
   const duration = Date.now() - searchStartTime;
-  console.log(`[ES:CandidateSearch] ⚡ Served via Elasticsearch in ${duration}ms (ES took: ${esResult.took}ms) | Total matches: ${total} | Page ${currentPage}/${totalPages} (${formattedCandidates.length} candidates returned)`);
+  console.log(`[OS:CandidateSearch] ⚡ Served via OpenSearch in ${duration}ms (OS took: ${esResult.took}ms) | Total matches: ${total} | Page ${currentPage}/${totalPages} (${formattedCandidates.length} candidates returned)`);
 
   return res.status(200).json({
     success: true,
@@ -238,13 +238,13 @@ async function esSearchCandidates(req, res) {
         total,
         totalPages,
       },
-      _source: "elasticsearch",
+      _source: "opensearch",
     },
   });
 }
 
 exports.searchCandidates = asyncHandler(async (req, res) => {
-  // ── Elasticsearch path ──────────────────────────────────────────
+  // ── OpenSearch path ──────────────────────────────────────────
   if (await esAvailable()) {
     try {
       return await esSearchCandidates(req, res);

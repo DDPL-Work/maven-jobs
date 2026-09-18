@@ -30,6 +30,7 @@ const companySchema = new mongoose.Schema(
 
     email: { type: String, required: true },
     phone: String,
+    countryCode: String,
     altPhone: String,
 
     location: {
@@ -39,6 +40,15 @@ const companySchema = new mongoose.Schema(
       zone: String,
       address: String,
       pincode: String,
+    },
+    
+    allowedDomains: [{ type: String }],
+
+    // Security settings for the company (e.g. OTP and passwords)
+    securitySettings: {
+      notifyPasswordChange: { type: Boolean, default: true },
+      receiveOtpOnlyOnMobile: { type: Boolean, default: false },
+      useOtpOnPatternChange: { type: Boolean, default: false },
     },
 
     // ✅ NEW CONTENT FIELDS
@@ -65,9 +75,13 @@ const companySchema = new mongoose.Schema(
     },
     jobLimit: {
       type: Number,
-      default: 2,
+      default: 0,
     },
     grandfatheredJobLimit: {
+      type: Number,
+      default: 0,
+    },
+    nviteLimit: {
       type: Number,
       default: 0,
     },
@@ -76,10 +90,27 @@ const companySchema = new mongoose.Schema(
     configurationNotes: { type: String, default: "" },
     accountManager: { type: String, default: "" },
 
+    quotaConfig: {
+      allocationPolicy: { type: String, enum: ['weekly', 'monthly', 'full'], default: 'full' },
+      weekly: {
+        cvAccess: { type: Number, default: 0 },
+        nvite: { type: Number, default: 0 }
+      },
+      monthly: {
+        cvAccess: { type: Number, default: 0 },
+        nvite: { type: Number, default: 0 }
+      }
+    },
+
     status: {
       type: String,
-      enum: ["ACTIVE", "INACTIVE"],
+      enum: ["ACTIVE", "INACTIVE", "PENDING_VERIFICATION", "REJECTED"],
       default: "ACTIVE",
+    },
+    assignedFSE: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CrmUser",
+      default: null,
     },
   },
   { timestamps: true }

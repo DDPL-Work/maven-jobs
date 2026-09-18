@@ -1,9 +1,13 @@
-const { getClient, esAvailable, esAvailableSync } = require("../config/elasticsearch");
+const { getClient, osAvailable, osAvailableSync } = require("../config/opensearch");
 const Job = require("../models/Job");
 require("../models/Company");
 
-const JOBS_INDEX = process.env.ES_JOBS_INDEX || "jobs";
-const CANDIDATES_INDEX = process.env.ES_CANDIDATES_INDEX || process.env.ES_INDEX || "candidates";
+// Keep backward-compatible aliases so existing callers still work
+const esAvailable = osAvailable;
+const esAvailableSync = osAvailableSync;
+
+const JOBS_INDEX = process.env.OS_JOBS_INDEX || process.env.ES_JOBS_INDEX || "jobs";
+const CANDIDATES_INDEX = process.env.OS_CANDIDATES_INDEX || process.env.ES_CANDIDATES_INDEX || process.env.ES_INDEX || "candidates";
 
 // ─────────────────────────────────────────────────────────
 // Index Mappings
@@ -138,13 +142,13 @@ async function createJobsIndex() {
   try {
     const exists = await client.indices.exists({ index: JOBS_INDEX });
     if (exists) {
-      console.log(`[ES] Index "${JOBS_INDEX}" already exists.`);
+      console.log(`[OS] Index "${JOBS_INDEX}" already exists.`);
       return;
     }
     await client.indices.create({ index: JOBS_INDEX, body: JOB_MAPPING });
-    console.log(`[ES] Index "${JOBS_INDEX}" created ✓`);
+    console.log(`[OS] Index "${JOBS_INDEX}" created ✓`);
   } catch (err) {
-    console.error("[ES] createJobsIndex error:", err.message);
+    console.error("[OS] createJobsIndex error:", err.message);
     throw err;
   }
 }
@@ -168,7 +172,7 @@ async function indexJob(job) {
       document: toEsDoc(jobDoc),
     });
   } catch (err) {
-    console.error(`[ES] indexJob error for ${job._id}:`, err.message);
+    console.error(`[OS] indexJob error for ${job._id}:`, err.message);
   }
 }
 
@@ -183,7 +187,7 @@ async function deleteJob(jobId) {
   } catch (err) {
     // Ignore 404 (doc already absent)
     if (err?.meta?.statusCode !== 404) {
-      console.error(`[ES] deleteJob error for ${jobId}:`, err.message);
+      console.error(`[OS] deleteJob error for ${jobId}:`, err.message);
     }
   }
 }
@@ -458,10 +462,10 @@ async function bulkReindex() {
 
   const errors = bulkResponse.items?.filter((item) => item.index?.error);
   if (errors?.length) {
-    console.error(`[ES] Bulk index had ${errors.length} errors`);
+    console.error(`[OS] Bulk index had ${errors.length} errors`);
   }
 
-  console.log(`[ES] Bulk indexed ${jobs.length} jobs (${errors?.length || 0} errors) ✓`);
+  console.log(`[OS] Bulk indexed ${jobs.length} jobs (${errors?.length || 0} errors) ✓`);
   return jobs.length;
 }
 
@@ -491,7 +495,7 @@ function scheduleIndex(jobOrId) {
       }
       await indexJob(jobOrId);
     } catch (err) {
-      console.error("[ES:async] scheduleIndex error:", err.message);
+      console.error("[OS:async] scheduleIndex error:", err.message);
     }
   });
 }
@@ -513,7 +517,7 @@ function scheduleDelete(jobId) {
       }
       await deleteJob(jobId);
     } catch (err) {
-      console.error("[ES:async] scheduleDelete error:", err.message);
+      console.error("[OS:async] scheduleDelete error:", err.message);
     }
   });
 }
@@ -538,11 +542,11 @@ function scheduleReindex(delayMs = 1500) {
         const available = await esAvailable();
         if (!available) return;
       }
-      console.log("[ES:sync] Automatically re-indexing jobs in background...");
+      console.log("[OS:sync] Automatically re-indexing jobs in background...");
       const count = await bulkReindex();
-      console.log(`[ES:sync] Automatic re-index complete (${count} jobs synced) ✓`);
+      console.log(`[OS:sync] Automatic re-index complete (${count} jobs synced) ✓`);
     } catch (err) {
-      console.error("[ES:sync] Automatic re-index error:", err.message);
+      console.error("[OS:sync] Automatic re-index error:", err.message);
     } finally {
       _isReindexing = false;
     }
@@ -557,7 +561,7 @@ let _changeStream = null;
 
 /**
  * Watch MongoDB Job collection for live changes (including external Compass/Atlas deletes).
- * Automatically removes deleted jobs from Elasticsearch and triggers background reindex.
+ * Automatically removes deleted jobs from OpenSearch and triggers background reindex.
  */
 function initJobChangeStream() {
   if (_changeStream) return;
@@ -572,7 +576,7 @@ function initJobChangeStream() {
         const id = change.documentKey?._id ? String(change.documentKey._id) : null;
 
         if (op === "delete") {
-          console.log(`[ES:watch] Job ${id} removed from DB → removing from ES`);
+          console.log(`[OS:watch] Job ${id} removed from DB → removing from OS`);
           if (id) {
             await deleteJob(id).catch(() => {});
           }
@@ -591,16 +595,16 @@ function initJobChangeStream() {
           }
         }
       } catch (err) {
-        console.error("[ES:watch] Change handler error:", err.message);
+        console.error("[OS:watch] Change handler error:", err.message);
       }
     });
 
     _changeStream.on("error", (err) => {
-      console.warn("[ES:watch] Change stream closed or encountered error:", err.message);
+      console.warn("[OS:watch] Change stream closed or encountered error:", err.message);
       _changeStream = null;
     });
 
-    console.log("[ES:watch] MongoDB Job change stream active — live DB changes auto-sync to ES ✓");
+    console.log("[OS:watch] MongoDB Job change stream active — live DB changes auto-sync to OS ✓");
 
     const CandidateProfile = require("../models/CandidateProfile");
     const candidateStream = CandidateProfile.watch([], { fullDocument: "updateLookup" });
@@ -611,7 +615,7 @@ function initJobChangeStream() {
         const id = change.documentKey?._id ? String(change.documentKey._id) : null;
 
         if (op === "delete") {
-          console.log(`[ES:watch] Candidate ${id} removed from DB → removing from ES`);
+          console.log(`[OS:watch] Candidate ${id} removed from DB → removing from OS`);
           if (id) {
             await deleteCandidate(id).catch(() => {});
           }
@@ -622,17 +626,17 @@ function initJobChangeStream() {
           }
         }
       } catch (err) {
-        console.error("[ES:watch] Candidate change handler error:", err.message);
+        console.error("[OS:watch] Candidate change handler error:", err.message);
       }
     });
 
     candidateStream.on("error", (err) => {
-      console.warn("[ES:watch] Candidate change stream error:", err.message);
+      console.warn("[OS:watch] Candidate change stream error:", err.message);
     });
 
-    console.log("[ES:watch] MongoDB Candidate change stream active — live DB changes auto-sync to ES ✓");
+    console.log("[OS:watch] MongoDB Candidate change stream active — live DB changes auto-sync to OS ✓");
   } catch (err) {
-    console.warn("[ES:watch] Could not initialize MongoDB change stream:", err.message);
+    console.warn("[OS:watch] Could not initialize MongoDB change stream:", err.message);
   }
 }
 
@@ -648,14 +652,14 @@ async function createCandidatesIndex() {
       index: CANDIDATES_INDEX,
       ...CANDIDATE_MAPPING,
     });
-    console.log(`[ES] Index "${CANDIDATES_INDEX}" created ✓`);
+    console.log(`[OS] Index "${CANDIDATES_INDEX}" created ✓`);
   } else {
     // Index already exists — add/verify new fields without altering existing data
     await client.indices.putMapping({
       index: CANDIDATES_INDEX,
       properties: CANDIDATE_MAPPING.mappings.properties,
     });
-    console.log(`[ES] Index "${CANDIDATES_INDEX}" mapping verified ✓`);
+    console.log(`[OS] Index "${CANDIDATES_INDEX}" mapping verified ✓`);
   }
 }
 
@@ -736,9 +740,9 @@ async function indexCandidate(profileOrId) {
       id: String(profile._id),
       document: doc,
     });
-    console.log(`[ES] Candidate indexed: ${profile._id} (${doc.name || doc.currentTitle}) ✓`);
+    console.log(`[OS] Candidate indexed: ${profile._id} (${doc.name || doc.currentTitle}) ✓`);
   } catch (err) {
-    console.error(`[ES] indexCandidate error for ${profileOrId?._id || profileOrId}:`, err.message);
+    console.error(`[OS] indexCandidate error for ${profileOrId?._id || profileOrId}:`, err.message);
   }
 }
 
@@ -749,10 +753,10 @@ async function deleteCandidate(candidateId) {
       index: CANDIDATES_INDEX,
       id: String(candidateId),
     });
-    console.log(`[ES] Candidate deleted from index: ${candidateId} ✓`);
+    console.log(`[OS] Candidate deleted from index: ${candidateId} ✓`);
   } catch (err) {
     if (err.meta?.statusCode === 404) return;
-    console.error(`[ES] deleteCandidate error for ${candidateId}:`, err.message);
+    console.error(`[OS] deleteCandidate error for ${candidateId}:`, err.message);
   }
 }
 
@@ -1067,7 +1071,7 @@ async function bulkReindexCandidates() {
     .lean();
 
   if (!profiles.length) {
-    console.log("[ES:Candidates] No candidate profiles found in MongoDB.");
+    console.log("[OS:Candidates] No candidate profiles found in MongoDB.");
     return 0;
   }
 
@@ -1079,10 +1083,10 @@ async function bulkReindexCandidates() {
   const bulkResponse = await client.bulk({ operations, refresh: true });
   const errors = bulkResponse.items?.filter((item) => item.index?.error);
   if (errors?.length) {
-    console.error(`[ES:Candidates] Bulk reindex had ${errors.length} errors`);
+    console.error(`[OS:Candidates] Bulk reindex had ${errors.length} errors`);
   }
 
-  console.log(`[ES:Candidates] Bulk indexed ${profiles.length} candidate profiles (${errors?.length || 0} errors) ✓`);
+  console.log(`[OS:Candidates] Bulk indexed ${profiles.length} candidate profiles (${errors?.length || 0} errors) ✓`);
   return profiles.length;
 }
 
@@ -1096,7 +1100,7 @@ function scheduleIndexCandidate(profileOrId) {
       }
       await indexCandidate(profileOrId);
     } catch (err) {
-      console.error("[ES:async] scheduleIndexCandidate error:", err.message);
+      console.error("[OS:async] scheduleIndexCandidate error:", err.message);
     }
   });
 }
@@ -1111,7 +1115,7 @@ function scheduleDeleteCandidate(candidateId) {
       }
       await deleteCandidate(candidateId);
     } catch (err) {
-      console.error("[ES:async] scheduleDeleteCandidate error:", err.message);
+      console.error("[OS:async] scheduleDeleteCandidate error:", err.message);
     }
   });
 }
@@ -1130,11 +1134,11 @@ function scheduleReindexCandidates(delayMs = 1500) {
         const available = await esAvailable();
         if (!available) return;
       }
-      console.log("[ES:sync] Automatically re-indexing candidates in background...");
+      console.log("[OS:sync] Automatically re-indexing candidates in background...");
       const count = await bulkReindexCandidates();
-      console.log(`[ES:sync] Automatic candidates re-index complete (${count} candidates synced) ✓`);
+      console.log(`[OS:sync] Automatic candidates re-index complete (${count} candidates synced) ✓`);
     } catch (err) {
-      console.error("[ES:sync] Automatic candidates re-index error:", err.message);
+      console.error("[OS:sync] Automatic candidates re-index error:", err.message);
     } finally {
       _isCandidateReindexing = false;
     }

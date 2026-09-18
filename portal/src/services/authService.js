@@ -10,6 +10,15 @@ const authService = {
     }
   },
 
+  logout: async () => {
+    try {
+      const response = await api.post('/candidate/auth/logout');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Logout failed' };
+    }
+  },
+
   register: async (userData) => {
     try {
       const response = await api.post('/candidate/auth/register', userData);
@@ -25,6 +34,24 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Google login failed' };
+    }
+  },
+
+  candidateSendMobileOtp: async (phone) => {
+    try {
+      const response = await api.post('/candidate/auth/mobile/send-otp', { phone });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send mobile OTP' };
+    }
+  },
+
+  candidateVerifyMobileOtp: async (phone, otp) => {
+    try {
+      const response = await api.post('/candidate/auth/mobile/verify-otp', { phone, otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to verify mobile OTP' };
     }
   },
 
@@ -82,6 +109,42 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch MIvites' };
+    }
+  },
+
+  getCredits: async () => {
+    try {
+      const response = await api.get('/company-panel/credits');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch credits' };
+    }
+  },
+
+  getQuotaUsage: async () => {
+    try {
+      const response = await api.get('/company-panel/quota-usage');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch quota usage' };
+    }
+  },
+
+  getQuotaManagement: async () => {
+    try {
+      const response = await api.get('/company-panel/quota-management');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch quota management config' };
+    }
+  },
+
+  updateQuotaManagement: async (payload) => {
+    try {
+      const response = await api.patch('/company-panel/quota-management', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update quota management config' };
     }
   },
 
@@ -271,6 +334,42 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Employer registration failed' };
+    }
+  },
+
+  sendMobileOtp: async (phone, countryCode) => {
+    try {
+      const response = await api.post('/company-panel/auth/send-mobile-otp', { phone, countryCode });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send mobile OTP' };
+    }
+  },
+
+  verifyMobileOtp: async (phone, countryCode, sessionId, otp) => {
+    try {
+      const response = await api.post('/company-panel/auth/verify-mobile-otp', { phone, countryCode, sessionId, otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to verify mobile OTP' };
+    }
+  },
+
+  sendEmailOtp: async (email) => {
+    try {
+      const response = await api.post('/company-panel/auth/send-email-otp', { email });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send email OTP' };
+    }
+  },
+
+  verifyEmailOtp: async (email, otp) => {
+    try {
+      const response = await api.post('/company-panel/auth/verify-email-otp', { email, otp });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to verify email OTP' };
     }
   },
 
@@ -485,12 +584,30 @@ const authService = {
     }
   },
 
+  getPackages: async () => {
+    try {
+      const response = await api.get('/company-panel/packages');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch packages' };
+    }
+  },
+
   employerLogin: async (email, password) => {
     try {
       const response = await api.post('/company-panel/auth/login', { email, password });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Employer login failed' };
+    }
+  },
+
+  logoutEmployer: async () => {
+    try {
+      const response = await api.post('/company-panel/auth/logout');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Employer logout failed' };
     }
   },
 

@@ -220,7 +220,7 @@ export default function EmployerDashboard() {
     useEffect(() => {
         let active = true;
         const loadDashboard = async () => {
-            if (!localStorage.getItem("employerToken")) {
+            if (!localStorage.getItem("employerUser")) {
                 if (active) setDashboardLoading(false);
                 return;
             }

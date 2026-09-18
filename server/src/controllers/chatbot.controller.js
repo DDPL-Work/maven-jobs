@@ -115,7 +115,7 @@ exports.recommendCandidates = async (req, res, next) => {
 
 exports.getTopApplicants = async (req, res, next) => {
   try {
-    if (req.user.role !== "CLIENT" || !req.user.companyId) {
+    if (!["CLIENT", "RECRUITER"].includes(req.user.role) || !req.user.companyId) {
       return res.status(403).json({ success: false, message: "Only employers can access this." });
     }
     const applicants = await ChatBotService.getTopApplicants(req.user.companyId);

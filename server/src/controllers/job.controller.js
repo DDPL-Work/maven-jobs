@@ -7,8 +7,8 @@ const {
   loadPackageCatalog,
   applyCompanyPackageSnapshot,
 } = require("../services/package-limit.service");
-const { esAvailable } = require("../config/elasticsearch");
-const esService = require("../services/elasticsearch.service");
+const { esAvailable } = require("../config/opensearch");
+const esService = require("../services/opensearch.service");
 const { scheduleIndex, scheduleDelete } = esService;
 
 // Create job (CLIENT or CRM)
@@ -17,7 +17,7 @@ exports.createJob = async (req, res) => {
 
   let companyId;
 
-  if (req.user.role === "CLIENT") {
+  if (["CLIENT", "RECRUITER"].includes(req.user.role)) {
     companyId = req.user.companyId;
   } else if (req.user.role === "CRM") {
     companyId = req.body.companyId;

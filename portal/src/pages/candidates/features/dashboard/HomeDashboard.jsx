@@ -228,11 +228,17 @@ export default function HomeDashboard() {
       for (let entry of entries) {
         if (entry.target === leftSidebarRef.current) {
           const height = entry.target.getBoundingClientRect().height;
-          document.documentElement.style.setProperty('--left-sidebar-height', `${height}px`);
+          document.documentElement.style.setProperty(
+            "--left-sidebar-height",
+            `${height}px`,
+          );
         }
         if (entry.target === rightSidebarRef.current) {
           const height = entry.target.getBoundingClientRect().height;
-          document.documentElement.style.setProperty('--right-sidebar-height', `${height}px`);
+          document.documentElement.style.setProperty(
+            "--right-sidebar-height",
+            `${height}px`,
+          );
         }
       }
     });
@@ -255,11 +261,9 @@ export default function HomeDashboard() {
   const [applyingJobId, setApplyingJobId] = useState(null);
   const [appliedJobs, setAppliedJobs] = useState({});
 
-
-
   const { data: blogsData } = usePublishedBlogs();
   const [latestBlogs, setLatestBlogs] = useState([]);
-  
+
   const { data: companiesData } = useCandidateCompanies({ limit: 4 }, !!user);
   const topCompanies = companiesData?.companies || [];
 
@@ -792,28 +796,58 @@ export default function HomeDashboard() {
                 user={user}
                 profileCompletion={Number(user?.profileCompletion || 0)}
               />
-              
-              <div className="pd-card" style={{ padding: '8px 12px', marginTop: '16px' }}>
+
+              <div
+                className="pd-card"
+                style={{ padding: "8px 12px", marginTop: "16px" }}
+              >
                 <div className="pd-quick-links-list">
                   {[
-                    { label: 'My home', id: 'section-home', icon: <FiHome size={18} /> },
-                    { label: 'Jobs', id: 'section-recommended', icon: <FiBriefcase size={18} /> },
-                    { label: 'Companies', id: 'section-companies', icon: <FiMonitor size={18} /> },
-                    { label: 'Blogs', id: 'section-blogs', icon: <FiBookOpen size={18} /> },
-                    { label: 'MIvites', id: 'section-mivites', icon: <FiMail size={18} /> },
-                    { label: 'Apply match', id: 'section-apply-match', icon: <FiTrendingUp size={18} /> }
+                    {
+                      label: "My home",
+                      id: "section-home",
+                      icon: <FiHome size={18} />,
+                    },
+                    {
+                      label: "Jobs",
+                      id: "section-recommended",
+                      icon: <FiBriefcase size={18} />,
+                    },
+                    {
+                      label: "Companies",
+                      id: "section-companies",
+                      icon: <FiMonitor size={18} />,
+                    },
+                    {
+                      label: "Blogs",
+                      id: "section-blogs",
+                      icon: <FiBookOpen size={18} />,
+                    },
+                    {
+                      label: "MIvites",
+                      id: "section-mivites",
+                      icon: <FiMail size={18} />,
+                    },
+                    {
+                      label: "Apply match",
+                      id: "section-apply-match",
+                      icon: <FiTrendingUp size={18} />,
+                    },
                   ].map((link, i) => (
-                    <div 
-                      key={link.id} 
-                      className={`pd-quick-link-item ${i === 0 ? 'active' : ''}`}
+                    <div
+                      key={link.id}
+                      className={`pd-quick-link-item ${i === 0 ? "active" : ""}`}
                       onClick={() => {
-                        if (link.id === 'section-home') {
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        if (link.id === "section-home") {
+                          window.scrollTo({ top: 0, behavior: "smooth" });
                           return;
                         }
                         const el = document.getElementById(link.id);
                         if (el) {
-                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
                         }
                       }}
                     >
@@ -878,7 +912,15 @@ export default function HomeDashboard() {
                   View all <FiChevronRight size={14} />
                 </Link>
               </div>
-              <div className="pd-tabs" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div
+                className="pd-tabs"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                }}
+              >
                 {Object.keys(recommendedJobs).map((tab) => (
                   <button
                     key={tab}
@@ -888,14 +930,25 @@ export default function HomeDashboard() {
                     {tab}
                   </button>
                 ))}
-                {activeTab && activeTab.startsWith("Preferences") && recommendedJobs[activeTab]?.length > 0 && (
-                  <button 
-                    onClick={() => setShowPreferencesSidebar(true)} 
-                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#2563eb', fontWeight: '600', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}
-                  >
-                    Edit
-                  </button>
-                )}
+                {activeTab &&
+                  activeTab.startsWith("Preferences") &&
+                  recommendedJobs[activeTab]?.length > 0 && (
+                    <button
+                      onClick={() => setShowPreferencesSidebar(true)}
+                      style={{
+                        marginLeft: "auto",
+                        background: "none",
+                        border: "none",
+                        color: "#2563eb",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        padding: "4px 8px",
+                      }}
+                    >
+                      Edit
+                    </button>
+                  )}
               </div>
               <div className="pd-scroll-wrap">
                 <button
@@ -905,7 +958,8 @@ export default function HomeDashboard() {
                   <FiChevronLeft size={18} />
                 </button>
                 <div className="pd-job-scroll" ref={jobScrollRef}>
-                  {!recommendedJobs[activeTab] || recommendedJobs[activeTab].length === 0 ? (
+                  {!recommendedJobs[activeTab] ||
+                  recommendedJobs[activeTab].length === 0 ? (
                     activeTab.startsWith("Preferences") ? (
                       <div
                         style={{
@@ -929,10 +983,12 @@ export default function HomeDashboard() {
                             fontWeight: "600",
                             margin: "0 0 20px 0",
                             textAlign: "center",
-                            lineHeight: "1.4"
+                            lineHeight: "1.4",
                           }}
                         >
-                          Get the best job recommendations by<br/>telling us your career needs
+                          Get the best job recommendations by
+                          <br />
+                          telling us your career needs
                         </h4>
                         <button
                           onClick={() => setShowPreferencesSidebar(true)}
@@ -944,7 +1000,7 @@ export default function HomeDashboard() {
                             fontWeight: "600",
                             border: "none",
                             cursor: "pointer",
-                            fontSize: "14px"
+                            fontSize: "14px",
                           }}
                         >
                           Update career preferences
@@ -1318,28 +1374,110 @@ export default function HomeDashboard() {
                   View all <FiChevronRight size={14} />
                 </Link>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', padding: '10px 0' }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: "16px",
+                  padding: "10px 0",
+                }}
+              >
                 {topCompanies.length > 0 ? (
-                  topCompanies.slice(0, 4).map(c => (
-                    <div key={c.id || c._id} onClick={() => navigate(`/company/${c.id || c._id}`)} style={{
-                      display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
-                      borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0',
-                      cursor: 'pointer', transition: 'transform 0.2s'
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                  topCompanies.slice(0, 4).map((c) => (
+                    <div
+                      key={c.id || c._id}
+                      onClick={() => navigate(`/company/${c.id || c._id}`)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "12px",
+                        borderRadius: "12px",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        cursor: "pointer",
+                        transition: "transform 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.borderColor = "#cbd5e1";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.borderColor = "#e2e8f0";
+                      }}
                     >
-                       <div style={{ width: 44, height: 44, borderRadius: 10, background: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-                          {c.logoUrl ? <img src={c.logoUrl} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }} alt={c.name} /> : <FiMonitor size={20} color="#64748b" />}
-                       </div>
-                       <div style={{ minWidth: 0 }}>
-                          <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</h4>
-                          <span style={{ fontSize: '12px', color: '#64748b', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.industry || 'Information Technology'}</span>
-                       </div>
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 10,
+                          background: "#fff",
+                          border: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          overflow: "hidden",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {c.logoUrl ? (
+                          <img
+                            src={c.logoUrl}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              padding: "4px",
+                            }}
+                            alt={c.name}
+                          />
+                        ) : (
+                          <FiMonitor size={20} color="#64748b" />
+                        )}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <h4
+                          style={{
+                            margin: 0,
+                            fontSize: "14px",
+                            fontWeight: 600,
+                            color: "#0f172a",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {c.name}
+                        </h4>
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            display: "block",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {c.industry || "Information Technology"}
+                        </span>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <div style={{ gridColumn: '1 / -1', padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <div
+                    style={{
+                      gridColumn: "1 / -1",
+                      padding: "20px",
+                      textAlign: "center",
+                      color: "#64748b",
+                      fontSize: "14px",
+                      background: "#f8fafc",
+                      borderRadius: "12px",
+                      border: "1px dashed #cbd5e1",
+                    }}
+                  >
                     Loading top companies...
                   </div>
                 )}
@@ -1365,27 +1503,109 @@ export default function HomeDashboard() {
                   View all <FiChevronRight size={14} />
                 </Link>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '10px' }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  paddingTop: "10px",
+                }}
+              >
                 {latestBlogs.length > 0 ? (
-                  latestBlogs.slice(0, 3).map(blog => (
-                    <Link key={blog._id || blog.id} to={`/blogs/${blog.slug}`} style={{ display: 'flex', gap: '16px', textDecoration: 'none', padding: '12px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', transition: 'background 0.2s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}
+                  latestBlogs.slice(0, 3).map((blog) => (
+                    <Link
+                      key={blog._id || blog.id}
+                      to={`/blogs/${blog.slug}`}
+                      style={{
+                        display: "flex",
+                        gap: "16px",
+                        textDecoration: "none",
+                        padding: "12px",
+                        borderRadius: "12px",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        transition: "background 0.2s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "#f1f5f9")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "#f8fafc")
+                      }
                     >
-                      <div style={{ width: '80px', height: '60px', borderRadius: '8px', background: blog.coverImage?.url ? `url(${blog.coverImage.url}) center/cover` : 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)', flexShrink: 0 }} />
-                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
-                        <h4 style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600, color: '#0f172a', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{blog.title}</h4>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '12px', color: '#64748b', background: '#e2e8f0', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>{blog.category || 'General'}</span>
-                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                            {blog.metadata?.readTimeMinutes ? `${blog.metadata.readTimeMinutes} min read` : '5 min read'}
+                      <div
+                        style={{
+                          width: "80px",
+                          height: "60px",
+                          borderRadius: "8px",
+                          background: blog.coverImage?.url
+                            ? `url(${blog.coverImage.url}) center/cover`
+                            : "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "center",
+                          flex: 1,
+                        }}
+                      >
+                        <h4
+                          style={{
+                            margin: "0 0 6px",
+                            fontSize: "14px",
+                            fontWeight: 600,
+                            color: "#0f172a",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {blog.title}
+                        </h4>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "10px",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              color: "#64748b",
+                              background: "#e2e8f0",
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              fontWeight: 500,
+                            }}
+                          >
+                            {blog.category || "General"}
+                          </span>
+                          <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            {blog.metadata?.readTimeMinutes
+                              ? `${blog.metadata.readTimeMinutes} min read`
+                              : "5 min read"}
                           </span>
                         </div>
                       </div>
                     </Link>
                   ))
                 ) : (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <div
+                    style={{
+                      padding: "20px",
+                      textAlign: "center",
+                      color: "#64748b",
+                      fontSize: "14px",
+                      background: "#f8fafc",
+                      borderRadius: "12px",
+                      border: "1px dashed #cbd5e1",
+                    }}
+                  >
                     Loading recommended blogs...
                   </div>
                 )}
@@ -1470,37 +1690,55 @@ export default function HomeDashboard() {
             />
 
             {/* Blogs */}
-            <div className="pd-card pd-blog-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div
+              className="pd-card pd-blog-card"
+              style={{ padding: 0, overflow: "hidden" }}
+            >
               {latestBlogs.length > 0 ? (
-                <Link to={`/blogs/${latestBlogs[0].slug}`} style={{ textDecoration: 'none', display: 'block' }}>
-                  <div style={{
-                    width: '100%',
-                    height: '140px',
-                    background: latestBlogs[0].coverImage?.url 
-                      ? `url(${latestBlogs[0].coverImage.url}) center/cover no-repeat`
-                      : 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 40%, #06B6D4 100%)'
-                  }} />
-                  <div style={{ padding: '20px 16px' }}>
-                    <h4 style={{ 
-                      margin: '0 0 20px 0', 
-                      fontSize: '16px', 
-                      fontWeight: 700, 
-                      color: '#0f172a', 
-                      lineHeight: '1.4' 
-                    }}>
+                <Link
+                  to={`/blogs/${latestBlogs[0].slug}`}
+                  style={{ textDecoration: "none", display: "block" }}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "140px",
+                      background: latestBlogs[0].coverImage?.url
+                        ? `url(${latestBlogs[0].coverImage.url}) center/cover no-repeat`
+                        : "linear-gradient(135deg, #1E40AF 0%, #3B82F6 40%, #06B6D4 100%)",
+                    }}
+                  />
+                  <div style={{ padding: "20px 16px" }}>
+                    <h4
+                      style={{
+                        margin: "0 0 20px 0",
+                        fontSize: "16px",
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        lineHeight: "1.4",
+                      }}
+                    >
                       {latestBlogs[0].title}
                     </h4>
-                    <span style={{ 
-                      fontSize: '15px', 
-                      fontWeight: 600, 
-                      color: '#2563eb' 
-                    }}>
+                    <span
+                      style={{
+                        fontSize: "15px",
+                        fontWeight: 600,
+                        color: "#2563eb",
+                      }}
+                    >
                       Know more
                     </span>
                   </div>
                 </Link>
               ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                <div
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    color: "#64748b",
+                  }}
+                >
                   <p>No blogs yet. Check back soon!</p>
                 </div>
               )}
@@ -2148,9 +2386,9 @@ export default function HomeDashboard() {
                           {user.name}{" "}
                           <FiCheckCircle size={10} color="#10b981" />
                         </div>
-                        <div className="km-mini-role">
+                        {/* <div className="km-mini-role">
                           {user.headline || "MERN Stack Developer"}
-                        </div>
+                        </div> */}
                       </div>
                       <span className="km-mini-tag">TOP MATCH</span>
                     </div>
@@ -2308,108 +2546,320 @@ function numberToIndianWords(n) {
   if (!n || isNaN(n)) return "";
   const num = parseInt(n, 10);
   if (num === 0) return "Zero rupees";
-  const ones = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine",
-    "Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen",
-    "Seventeen","Eighteen","Nineteen"];
-  const tens = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+  const tens = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
   const convert = (n) => {
     if (n < 20) return ones[n];
-    if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? " "+ones[n%10] : "");
-    if (n < 1000) return ones[Math.floor(n/100)]+" Hundred"+(n%100 ? " "+convert(n%100) : "");
-    if (n < 100000) return convert(Math.floor(n/1000))+" Thousand"+(n%1000 ? " "+convert(n%1000) : "");
-    if (n < 10000000) return convert(Math.floor(n/100000))+" Lakh"+(n%100000 ? " "+convert(n%100000) : "");
-    return convert(Math.floor(n/10000000))+" Crore"+(n%10000000 ? " "+convert(n%10000000) : "");
+    if (n < 100)
+      return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+    if (n < 1000)
+      return (
+        ones[Math.floor(n / 100)] +
+        " Hundred" +
+        (n % 100 ? " " + convert(n % 100) : "")
+      );
+    if (n < 100000)
+      return (
+        convert(Math.floor(n / 1000)) +
+        " Thousand" +
+        (n % 1000 ? " " + convert(n % 1000) : "")
+      );
+    if (n < 10000000)
+      return (
+        convert(Math.floor(n / 100000)) +
+        " Lakh" +
+        (n % 100000 ? " " + convert(n % 100000) : "")
+      );
+    return (
+      convert(Math.floor(n / 10000000)) +
+      " Crore" +
+      (n % 10000000 ? " " + convert(n % 10000000) : "")
+    );
   };
   return convert(num) + " rupees";
 }
 
 const JOB_ROLE_SUGGESTIONS = [
-  "Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer",
-  "Data Analyst", "Data Scientist", "Product Manager", "UI/UX Designer",
-  "DevOps Engineer", "Cloud Architect", "Mobile Developer", "Android Developer",
-  "iOS Developer", "Machine Learning Engineer", "Business Analyst", "QA Engineer",
-  "Scrum Master", "Technical Lead", "Project Manager", "Marketing Manager",
-  "HR Executive", "Sales Executive", "Graphic Designer", "Content Writer",
-  "System Administrator", "Database Administrator", "Security Analyst", "Network Engineer",
-  "Blockchain Developer", "Game Developer", "Data Engineer", "Site Reliability Engineer",
-  "Product Owner", "UX Researcher", "Web Designer", "Video Editor",
-  "Digital Marketing Executive", "SEO Specialist", "Social Media Manager", "Copywriter",
-  "Accountant", "Financial Analyst", "Operations Manager", "Customer Support Executive",
-  "Technical Writer", "Legal Advisor", "Business Development Executive", "Growth Hacker",
-  "Supply Chain Manager", "Logistics Coordinator", "Sales Manager", "Recruitment Specialist",
-  
+  "Software Engineer",
+  "Frontend Developer",
+  "Backend Developer",
+  "Full Stack Developer",
+  "Data Analyst",
+  "Data Scientist",
+  "Product Manager",
+  "UI/UX Designer",
+  "DevOps Engineer",
+  "Cloud Architect",
+  "Mobile Developer",
+  "Android Developer",
+  "iOS Developer",
+  "Machine Learning Engineer",
+  "Business Analyst",
+  "QA Engineer",
+  "Scrum Master",
+  "Technical Lead",
+  "Project Manager",
+  "Marketing Manager",
+  "HR Executive",
+  "Sales Executive",
+  "Graphic Designer",
+  "Content Writer",
+  "System Administrator",
+  "Database Administrator",
+  "Security Analyst",
+  "Network Engineer",
+  "Blockchain Developer",
+  "Game Developer",
+  "Data Engineer",
+  "Site Reliability Engineer",
+  "Product Owner",
+  "UX Researcher",
+  "Web Designer",
+  "Video Editor",
+  "Digital Marketing Executive",
+  "SEO Specialist",
+  "Social Media Manager",
+  "Copywriter",
+  "Accountant",
+  "Financial Analyst",
+  "Operations Manager",
+  "Customer Support Executive",
+  "Technical Writer",
+  "Legal Advisor",
+  "Business Development Executive",
+  "Growth Hacker",
+  "Supply Chain Manager",
+  "Logistics Coordinator",
+  "Sales Manager",
+  "Recruitment Specialist",
+
   // Expanded Technical & Engineering
-  "React Developer", "Angular Developer", "Vue.js Developer", "Node.js Developer",
-  "Python Developer", "Java Developer", "C++ Developer", ".NET Developer", "PHP Developer",
-  "Ruby on Rails Developer", "Golang Developer", "Rust Developer", "Embedded Systems Engineer",
-  "Hardware Engineer", "Firmware Engineer", "Automation Engineer", "Test Automation Engineer",
-  "Release Engineer", "Cloud Engineer", "AWS Solutions Architect", "Azure Cloud Engineer",
-  "GCP Engineer", "IT Support Specialist", "Help Desk Technician", "Cybersecurity Analyst",
-  "Penetration Tester", "Information Security Officer", "Data Architect", "AI Engineer",
-  "Deep Learning Engineer", "NLP Engineer", "Computer Vision Engineer", "Robotics Engineer",
-  "Systems Analyst", "Network Administrator", "Database Developer", "ETL Developer",
-  
+  "React Developer",
+  "Angular Developer",
+  "Vue.js Developer",
+  "Node.js Developer",
+  "Python Developer",
+  "Java Developer",
+  "C++ Developer",
+  ".NET Developer",
+  "PHP Developer",
+  "Ruby on Rails Developer",
+  "Golang Developer",
+  "Rust Developer",
+  "Embedded Systems Engineer",
+  "Hardware Engineer",
+  "Firmware Engineer",
+  "Automation Engineer",
+  "Test Automation Engineer",
+  "Release Engineer",
+  "Cloud Engineer",
+  "AWS Solutions Architect",
+  "Azure Cloud Engineer",
+  "GCP Engineer",
+  "IT Support Specialist",
+  "Help Desk Technician",
+  "Cybersecurity Analyst",
+  "Penetration Tester",
+  "Information Security Officer",
+  "Data Architect",
+  "AI Engineer",
+  "Deep Learning Engineer",
+  "NLP Engineer",
+  "Computer Vision Engineer",
+  "Robotics Engineer",
+  "Systems Analyst",
+  "Network Administrator",
+  "Database Developer",
+  "ETL Developer",
+
   // Expanded Design & Creative
-  "Art Director", "Creative Director", "UI Designer", "UX Designer", "Interaction Designer",
-  "Motion Graphics Designer", "3D Animator", "3D Modeler", "Illustrator", "Visual Designer",
-  "Sound Engineer", "Video Producer", "Photographer", "Content Strategist", "Technical Illustrator",
-  "Instructional Designer", "Game Designer", "Level Designer", "Sound Designer", "Concept Artist",
+  "Art Director",
+  "Creative Director",
+  "UI Designer",
+  "UX Designer",
+  "Interaction Designer",
+  "Motion Graphics Designer",
+  "3D Animator",
+  "3D Modeler",
+  "Illustrator",
+  "Visual Designer",
+  "Sound Engineer",
+  "Video Producer",
+  "Photographer",
+  "Content Strategist",
+  "Technical Illustrator",
+  "Instructional Designer",
+  "Game Designer",
+  "Level Designer",
+  "Sound Designer",
+  "Concept Artist",
 
   // Expanded Business, Finance & Legal
-  "Chief Executive Officer (CEO)", "Chief Technology Officer (CTO)", "Chief Operating Officer (COO)",
-  "Chief Financial Officer (CFO)", "Chief Marketing Officer (CMO)", "VP of Engineering",
-  "Director of Operations", "Business Consultant", "Management Consultant", "Strategy Consultant",
-  "Investment Banker", "Venture Capital Analyst", "Private Equity Associate", "Risk Manager",
-  "Compliance Officer", "Auditor", "Tax Consultant", "Corporate Lawyer", "Legal Assistant",
-  "Paralegal", "Contract Administrator", "Patent Attorney", "Economist", "Actuary",
+  "Chief Executive Officer (CEO)",
+  "Chief Technology Officer (CTO)",
+  "Chief Operating Officer (COO)",
+  "Chief Financial Officer (CFO)",
+  "Chief Marketing Officer (CMO)",
+  "VP of Engineering",
+  "Director of Operations",
+  "Business Consultant",
+  "Management Consultant",
+  "Strategy Consultant",
+  "Investment Banker",
+  "Venture Capital Analyst",
+  "Private Equity Associate",
+  "Risk Manager",
+  "Compliance Officer",
+  "Auditor",
+  "Tax Consultant",
+  "Corporate Lawyer",
+  "Legal Assistant",
+  "Paralegal",
+  "Contract Administrator",
+  "Patent Attorney",
+  "Economist",
+  "Actuary",
 
   // Expanded Marketing, Sales & Support
-  "VP of Sales", "Sales Director", "Account Executive", "Account Manager", "Key Account Manager",
-  "Inside Sales Representative", "Outside Sales Representative", "Pre-Sales Consultant",
-  "Sales Engineer", "Customer Success Manager", "Customer Experience Manager", "Support Engineer",
-  "Community Manager", "Brand Manager", "Product Marketing Manager", "Performance Marketer",
-  "Email Marketing Specialist", "Affiliate Manager", "Public Relations Manager", "Event Manager",
-  "Market Research Analyst", "Advertising Executive", "Media Buyer", "Content Creator",
+  "VP of Sales",
+  "Sales Director",
+  "Account Executive",
+  "Account Manager",
+  "Key Account Manager",
+  "Inside Sales Representative",
+  "Outside Sales Representative",
+  "Pre-Sales Consultant",
+  "Sales Engineer",
+  "Customer Success Manager",
+  "Customer Experience Manager",
+  "Support Engineer",
+  "Community Manager",
+  "Brand Manager",
+  "Product Marketing Manager",
+  "Performance Marketer",
+  "Email Marketing Specialist",
+  "Affiliate Manager",
+  "Public Relations Manager",
+  "Event Manager",
+  "Market Research Analyst",
+  "Advertising Executive",
+  "Media Buyer",
+  "Content Creator",
 
   // Expanded HR, Admin & Operations
-  "Human Resources Manager", "HR Generalist", "Talent Acquisition Specialist", "Technical Recruiter",
-  "HR Business Partner", "Compensation and Benefits Manager", "Training and Development Manager",
-  "Office Manager", "Executive Assistant", "Administrative Assistant", "Data Entry Operator",
-  "Facilities Manager", "Procurement Manager", "Inventory Manager", "Quality Assurance Manager",
-  "Quality Control Inspector", "Manufacturing Engineer", "Production Manager",
+  "Human Resources Manager",
+  "HR Generalist",
+  "Talent Acquisition Specialist",
+  "Technical Recruiter",
+  "HR Business Partner",
+  "Compensation and Benefits Manager",
+  "Training and Development Manager",
+  "Office Manager",
+  "Executive Assistant",
+  "Administrative Assistant",
+  "Data Entry Operator",
+  "Facilities Manager",
+  "Procurement Manager",
+  "Inventory Manager",
+  "Quality Assurance Manager",
+  "Quality Control Inspector",
+  "Manufacturing Engineer",
+  "Production Manager",
 
   // Expanded Healthcare, Education & Others
-  "Medical Officer", "Registered Nurse", "Pharmacist", "Clinical Research Associate",
-  "Healthcare Administrator", "Medical Biller", "Biomedical Engineer", "Teacher",
-  "Professor", "Lecturer", "Educational Consultant", "School Administrator", "Counselor",
-  "Civil Engineer", "Mechanical Engineer", "Electrical Engineer", "Architect", "Interior Designer",
-  "Real Estate Agent", "Property Manager", "Travel Consultant", "Hotel Manager", "Chef"
+  "Medical Officer",
+  "Registered Nurse",
+  "Pharmacist",
+  "Clinical Research Associate",
+  "Healthcare Administrator",
+  "Medical Biller",
+  "Biomedical Engineer",
+  "Teacher",
+  "Professor",
+  "Lecturer",
+  "Educational Consultant",
+  "School Administrator",
+  "Counselor",
+  "Civil Engineer",
+  "Mechanical Engineer",
+  "Electrical Engineer",
+  "Architect",
+  "Interior Designer",
+  "Real Estate Agent",
+  "Property Manager",
+  "Travel Consultant",
+  "Hotel Manager",
+  "Chef",
 ];
 
 // ─── Career Preferences Sidebar ──────────────────────────────────────────────
-export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved }) {
+export function CareerPreferencesSidebar({
+  candidateProfile,
+  onClose,
+  onSaved,
+}) {
   const [roleInput, setRoleInput] = useState("");
   const [roleSuggestions, setRoleSuggestions] = useState([]);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState(
-    () => candidateProfile?.preferredRoles
-      ? (Array.isArray(candidateProfile.preferredRoles)
-          ? candidateProfile.preferredRoles
-          : String(candidateProfile.preferredRoles).split(",").map(s => s.trim()).filter(Boolean))
-      : []
+  const [selectedRoles, setSelectedRoles] = useState(() =>
+    candidateProfile?.preferredRoles
+      ? Array.isArray(candidateProfile.preferredRoles)
+        ? candidateProfile.preferredRoles
+        : String(candidateProfile.preferredRoles)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+      : [],
   );
 
-  const [salary, setSalary] = useState(
-    () => candidateProfile?.expectedSalary ? String(candidateProfile.expectedSalary) : ""
+  const [salary, setSalary] = useState(() =>
+    candidateProfile?.expectedSalary
+      ? String(candidateProfile.expectedSalary)
+      : "",
   );
 
   const [locInput, setLocInput] = useState("");
-  const [selectedLocs, setSelectedLocs] = useState(
-    () => candidateProfile?.preferredLocations
-      ? (Array.isArray(candidateProfile.preferredLocations)
-          ? candidateProfile.preferredLocations
-          : String(candidateProfile.preferredLocations).split(",").map(s => s.trim()).filter(Boolean))
-      : []
+  const [selectedLocs, setSelectedLocs] = useState(() =>
+    candidateProfile?.preferredLocations
+      ? Array.isArray(candidateProfile.preferredLocations)
+        ? candidateProfile.preferredLocations
+        : String(candidateProfile.preferredLocations)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+      : [],
   );
 
   const [saving, setSaving] = useState(false);
@@ -2420,30 +2870,34 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
   // Role search
   useEffect(() => {
     const q = roleInput.trim().toLowerCase();
-    if (!q) { 
-      setRoleSuggestions(JOB_ROLE_SUGGESTIONS.filter(r => !selectedRoles.includes(r)));
-      return; 
+    if (!q) {
+      setRoleSuggestions(
+        JOB_ROLE_SUGGESTIONS.filter((r) => !selectedRoles.includes(r)),
+      );
+      return;
     }
     setRoleSuggestions(
-      JOB_ROLE_SUGGESTIONS.filter(r => r.toLowerCase().includes(q) && !selectedRoles.includes(r))
+      JOB_ROLE_SUGGESTIONS.filter(
+        (r) => r.toLowerCase().includes(q) && !selectedRoles.includes(r),
+      ),
     );
   }, [roleInput, selectedRoles]);
 
-
-
   const addRole = (role) => {
     if (selectedRoles.length >= 3) return;
-    setSelectedRoles(prev => [...prev, role]);
+    setSelectedRoles((prev) => [...prev, role]);
     setRoleInput("");
     setShowRoleDropdown(false);
   };
-  const removeRole = (role) => setSelectedRoles(prev => prev.filter(r => r !== role));
+  const removeRole = (role) =>
+    setSelectedRoles((prev) => prev.filter((r) => r !== role));
 
   const addLoc = (loc) => {
     if (selectedLocs.length >= 10 || !loc) return;
-    setSelectedLocs(prev => [...prev, loc]);
+    setSelectedLocs((prev) => [...prev, loc]);
   };
-  const removeLoc = (loc) => setSelectedLocs(prev => prev.filter(l => l !== loc));
+  const removeLoc = (loc) =>
+    setSelectedLocs((prev) => prev.filter((l) => l !== loc));
 
   const handleRoleKeyDown = (e) => {
     if (e.key === "Enter" && roleInput.trim()) {
@@ -2456,7 +2910,8 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
     setSaving(true);
     setError("");
     try {
-      const { default: authService } = await import("../../../../services/authService");
+      const { default: authService } =
+        await import("../../../../services/authService");
       await authService.updateProfile({
         preferredRoles: selectedRoles,
         expectedSalary: salary ? Number(salary) : undefined,
@@ -2477,7 +2932,9 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
   // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   const salaryWords = numberToIndianWords(salary);
@@ -2488,18 +2945,26 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
       <div
         onClick={onClose}
         style={{
-          position: "fixed", inset: 0, zIndex: 9000,
-          background: "rgba(15,23,42,0.45)", backdropFilter: "blur(2px)",
+          position: "fixed",
+          inset: 0,
+          zIndex: 9000,
+          background: "rgba(15,23,42,0.45)",
+          backdropFilter: "blur(2px)",
         }}
       />
       {/* Drawer */}
       <div
         style={{
-          position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 9001,
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9001,
           width: "min(480px, 100vw)",
           background: "#fff",
           boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
-          display: "flex", flexDirection: "column",
+          display: "flex",
+          flexDirection: "column",
           animation: "slideInRight 0.28s cubic-bezier(0.16,1,0.3,1)",
         }}
       >
@@ -2591,25 +3056,43 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
         `}</style>
 
         {/* Header */}
-        <div style={{
-          padding: "24px 28px 20px",
-          borderBottom: "1px solid #e2e8f0",
-          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-        }}>
+        <div
+          style={{
+            padding: "24px 28px 20px",
+            borderBottom: "1px solid #e2e8f0",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+          }}
+        >
           <div>
-            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "700", color: "#0f172a" }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "20px",
+                fontWeight: "700",
+                color: "#0f172a",
+              }}
+            >
               Manage your job preferences
             </h2>
-            <p style={{ margin: "6px 0 0", fontSize: "14px", color: "#64748b" }}>
+            <p
+              style={{ margin: "6px 0 0", fontSize: "14px", color: "#64748b" }}
+            >
               This will help us send you the best job recommendations
             </p>
           </div>
           <button
             onClick={onClose}
             style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: "#64748b", padding: "4px", borderRadius: "6px",
-              display: "flex", alignItems: "center",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#64748b",
+              padding: "4px",
+              borderRadius: "6px",
+              display: "flex",
+              alignItems: "center",
             }}
           >
             <FiX size={22} />
@@ -2618,24 +3101,37 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "28px" }}>
-
           {/* Preferred Job Role */}
           <div style={{ marginBottom: "28px" }}>
-            <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#475569", marginBottom: "10px" }}>
-              Preferred job role <span style={{ fontWeight: 400, color: "#94a3b8" }}>(Max 3)</span>
+            <label
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#475569",
+                marginBottom: "10px",
+              }}
+            >
+              Preferred job role{" "}
+              <span style={{ fontWeight: 400, color: "#94a3b8" }}>(Max 3)</span>
             </label>
             <div style={{ position: "relative" }}>
               <div className="cpref-input-wrap">
-                <FiSearch size={16} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                <FiSearch
+                  size={16}
+                  style={{ color: "#94a3b8", flexShrink: 0 }}
+                />
                 <input
                   ref={roleInputRef}
                   value={roleInput}
-                  onChange={e => {
+                  onChange={(e) => {
                     setRoleInput(e.target.value);
                     setShowRoleDropdown(true);
                   }}
                   onFocus={() => setShowRoleDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowRoleDropdown(false), 200)}
+                  onBlur={() =>
+                    setTimeout(() => setShowRoleDropdown(false), 200)
+                  }
                   onKeyDown={handleRoleKeyDown}
                   placeholder="Enter your preferred job role"
                   disabled={selectedRoles.length >= 3}
@@ -2644,8 +3140,12 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
               </div>
               {showRoleDropdown && roleSuggestions.length > 0 && (
                 <div className="cpref-suggestions">
-                  {roleSuggestions.map(s => (
-                    <button key={s} className="cpref-sugg-item" onMouseDown={() => addRole(s)}>
+                  {roleSuggestions.map((s) => (
+                    <button
+                      key={s}
+                      className="cpref-sugg-item"
+                      onMouseDown={() => addRole(s)}
+                    >
                       {s}
                     </button>
                   ))}
@@ -2653,42 +3153,69 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
               )}
             </div>
             {selectedRoles.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
-                {selectedRoles.map(r => (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  marginTop: "12px",
+                }}
+              >
+                {selectedRoles.map((r) => (
                   <span key={r} className="cpref-tag">
                     {r}
-                    <button className="cpref-tag-remove" onClick={() => removeRole(r)}>×</button>
+                    <button
+                      className="cpref-tag-remove"
+                      onClick={() => removeRole(r)}
+                    >
+                      ×
+                    </button>
                   </span>
                 ))}
               </div>
             )}
             {selectedRoles.length >= 3 && (
               <p className="cpref-limit-msg">
-                <FiInfo size={13} /> You have reached the maximum selection limit
+                <FiInfo size={13} /> You have reached the maximum selection
+                limit
               </p>
             )}
           </div>
 
           {/* Expected Annual Salary */}
           <div style={{ marginBottom: "28px" }}>
-            <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#475569", marginBottom: "10px" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#475569",
+                marginBottom: "10px",
+              }}
+            >
               Expected annual salary
             </label>
             <div className="cpref-salary-row">
-              <div className="cpref-salary-prefix">
-                ₹
-              </div>
+              <div className="cpref-salary-prefix">₹</div>
               <input
                 className="cpref-salary-input"
                 type="number"
                 min="0"
                 placeholder="e.g. 500000"
                 value={salary}
-                onChange={e => setSalary(e.target.value)}
+                onChange={(e) => setSalary(e.target.value)}
               />
             </div>
             {salaryWords && (
-              <p style={{ margin: "8px 0 0", fontSize: "13px", color: "#2563eb", fontWeight: "500", textTransform: "capitalize" }}>
+              <p
+                style={{
+                  margin: "8px 0 0",
+                  fontSize: "13px",
+                  color: "#2563eb",
+                  fontWeight: "500",
+                  textTransform: "capitalize",
+                }}
+              >
                 {salaryWords}
               </p>
             )}
@@ -2696,8 +3223,19 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
 
           {/* Preferred Work Locations */}
           <div style={{ marginBottom: "8px" }}>
-            <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#475569", marginBottom: "10px" }}>
-              Preferred work locations <span style={{ fontWeight: 400, color: "#94a3b8" }}>(Max 10)</span>
+            <label
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#475569",
+                marginBottom: "10px",
+              }}
+            >
+              Preferred work locations{" "}
+              <span style={{ fontWeight: 400, color: "#94a3b8" }}>
+                (Max 10)
+              </span>
             </label>
             <div className="cpref-loc-wrap" style={{ position: "relative" }}>
               <LocationAutocomplete
@@ -2715,41 +3253,65 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
               />
             </div>
             {selectedLocs.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
-                {selectedLocs.map(l => (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  marginTop: "12px",
+                }}
+              >
+                {selectedLocs.map((l) => (
                   <span key={l} className="cpref-tag">
                     {l}
-                    <button className="cpref-tag-remove" onClick={() => removeLoc(l)}>×</button>
+                    <button
+                      className="cpref-tag-remove"
+                      onClick={() => removeLoc(l)}
+                    >
+                      ×
+                    </button>
                   </span>
                 ))}
               </div>
             )}
             {selectedLocs.length >= 10 && (
               <p className="cpref-limit-msg">
-                <FiInfo size={13} /> You have reached the maximum selection limit
+                <FiInfo size={13} /> You have reached the maximum selection
+                limit
               </p>
             )}
           </div>
 
           {error && (
-            <p style={{ color: "#ef4444", fontSize: "13px", marginTop: "16px" }}>{error}</p>
+            <p
+              style={{ color: "#ef4444", fontSize: "13px", marginTop: "16px" }}
+            >
+              {error}
+            </p>
           )}
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: "20px 28px",
-          borderTop: "1px solid #e2e8f0",
-          display: "flex", gap: "16px", alignItems: "center",
-        }}>
+        <div
+          style={{
+            padding: "20px 28px",
+            borderTop: "1px solid #e2e8f0",
+            display: "flex",
+            gap: "16px",
+            alignItems: "center",
+          }}
+        >
           <button
             onClick={handleSave}
             disabled={saving}
             style={{
-              padding: "12px 36px", borderRadius: "999px",
+              padding: "12px 36px",
+              borderRadius: "999px",
               background: saving ? "#93c5fd" : "#2563eb",
-              color: "#fff", border: "none",
-              fontWeight: "700", fontSize: "15px",
+              color: "#fff",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "15px",
               cursor: saving ? "not-allowed" : "pointer",
               transition: "background 0.2s",
             }}
@@ -2759,9 +3321,13 @@ export function CareerPreferencesSidebar({ candidateProfile, onClose, onSaved })
           <button
             onClick={onClose}
             style={{
-              padding: "12px 20px", borderRadius: "999px",
-              background: "none", color: "#475569",
-              border: "none", fontWeight: "600", fontSize: "15px",
+              padding: "12px 20px",
+              borderRadius: "999px",
+              background: "none",
+              color: "#475569",
+              border: "none",
+              fontWeight: "600",
+              fontSize: "15px",
               cursor: "pointer",
             }}
           >

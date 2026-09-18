@@ -4,10 +4,12 @@ import {
   FiHome, FiBriefcase, FiTrendingUp, FiMessageSquare, FiBell,
   FiChevronDown, FiChevronUp, FiSearch, FiGrid, FiSend, FiLogOut,
   FiBarChart2, FiUsers, FiStar, FiFolder, FiFileText,
-  FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck
+  FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck, FiBookOpen, FiMessageCircle
 } from 'react-icons/fi';
+import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
 import authService from '../../services/authService';
+import FeedbackModal from './FeedbackModal';
 
 const C = {
   navy: "#002366",
@@ -48,11 +50,12 @@ export default function EmployerHeader({
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [employerNotifications, setEmployerNotifications] = useState([]);
   const [notificationsError, setNotificationsError] = useState("");
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const profileBtnRef = useRef(null);
   const profileSidebarRef = useRef(null);
   const dropdownRefs = useRef({});
-  const employerToken = localStorage.getItem("employerToken");
-  const isEmployerLoggedIn = !!employerToken && employerToken !== "undefined";
+  const userStored = localStorage.getItem("employerUser");
+  const isEmployerLoggedIn = !!userStored && userStored !== "undefined";
 
   const [sessionUser, setSessionUser] = useState(() => {
     try {
@@ -101,6 +104,11 @@ export default function EmployerHeader({
   }, [isEmployerLoggedIn]);
 
   const displayName = (() => {
+    const r = (user?.role || dashboardUser?.role || sessionUser?.role || '').toLowerCase();
+    if (r && r !== 'client') {
+      const uName = user?.name || user?.username || dashboardUser?.name || dashboardUser?.username || sessionUser?.name || sessionUser?.username;
+      if (uName) return uName;
+    }
     if (user?.name || user?.username) return user.name || user.username;
     if (company?.name) return company.name;
     const uName = dashboardUser?.name || dashboardUser?.username || sessionUser?.name || sessionUser?.username;
@@ -124,13 +132,14 @@ export default function EmployerHeader({
     dashboardUser?.profilePic ||
     "";
 
-  const displayEmail =
-    user?.email ||
-    dashboardUser?.email ||
-    sessionUser?.email ||
-    company?.email ||
-    dashboardCompany?.email ||
-    "";
+  const displayEmail = (() => {
+    const r = (user?.role || dashboardUser?.role || sessionUser?.role || '').toLowerCase();
+    if (r && r !== 'client') {
+      const uEmail = user?.email || dashboardUser?.email || sessionUser?.email;
+      if (uEmail) return uEmail;
+    }
+    return user?.email || dashboardUser?.email || sessionUser?.email || company?.email || dashboardCompany?.email || "";
+  })();
 
   const initials = (() => {
     const text = (displayName || "").trim();
@@ -186,7 +195,7 @@ export default function EmployerHeader({
 
   useEffect(() => {
     if (!requireAuth) return;
-    if (!localStorage.getItem("employerToken")) navigate("/employer-login");
+    if (!localStorage.getItem("employerUser")) navigate("/employer-login");
   }, [navigate, requireAuth]);
 
   const refreshCredits = useCallback(async () => {
@@ -276,7 +285,7 @@ export default function EmployerHeader({
       onNavigate(tabId);
     } else {
       if (tabId === "home") {
-        navigate(localStorage.getItem("employerToken") ? "/employer-dashboard" : "/employer-login");
+        navigate(localStorage.getItem("employerUser") ? "/employer-dashboard" : "/employer-login");
       } else if (tabId === "analysis") {
         navigate("/employer-dashboard/analytics");
       } else if (tabId === "jobs") {
@@ -285,14 +294,14 @@ export default function EmployerHeader({
     }
   }, [onNavigate, navigate]);
 
-  const handleLogoutAction = useCallback(() => {
+  const handleLogoutAction = useCallback(async () => {
+    try { await authService.logoutEmployer(); } catch {}
+    localStorage.clear();
+    sessionStorage.clear();
+    
     if (onLogout) {
       onLogout();
     } else {
-      localStorage.removeItem("employerToken");
-      localStorage.removeItem("candidateToken");
-      localStorage.removeItem("token");
-      localStorage.removeItem("employerUser");
       navigate("/employer-login");
     }
     setShowLogoutConfirm(false);
@@ -373,7 +382,7 @@ export default function EmployerHeader({
         { label: "Send MIvite",         path: "/resdex?tab=mivites" },
         { label: "Manage Searches",    path: "/manage-search" },
         { label: "Folders",            path: "/employer-dashboard/folders" },
-        { label: "Resdex Requirements",path: "#" },
+        { label: "Resdex Requirements",path: "/resdex-requirements" },
       ],
     },
     {
@@ -404,7 +413,7 @@ export default function EmployerHeader({
           maxWidth: 1160, margin: "0 auto", padding: "0 20px",
           display: "flex", alignItems: "center", gap: 0, height: 58
         }}>
-          <button type="button" onClick={() => navigate(localStorage.getItem("employerToken") ? "/employer-dashboard" : "/employer-login")}
+          <button type="button" onClick={() => navigate(localStorage.getItem("employerUser") ? "/employer-dashboard" : "/employer-login")}
             aria-label="Go to employer dashboard"
             style={{
               display: "flex", alignItems: "center", marginRight: 28, flexShrink: 0,
@@ -748,7 +757,7 @@ export default function EmployerHeader({
                     </div>
 
                     {/* Credits Card (if available) */}
-                    {creditData && (
+                    {isSuperUser && creditData && (
                       <div style={{
                         margin: "14px 16px 4px",
                         padding: "12px 14px",
@@ -796,38 +805,41 @@ export default function EmployerHeader({
                     {/* Navigation Items */}
                     <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px", display: "flex", flexDirection: "column", gap: 3 }}>
                       {/* 1. Company Profile */}
-                      <button
-                        onClick={() => {
-                          setShowProfileSidebar(false);
-                          navigate("/employer-dashboard/company-profile");
-                        }}
-                        className="ep-sidebar-btn"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 14,
-                          width: "100%",
-                          padding: "11px 14px",
-                          borderRadius: 10,
-                          border: "none",
-                          background: "transparent",
-                          color: "#334155",
-                          fontSize: 14.5,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          textAlign: "left",
-                          transition: "all 0.14s",
-                        }}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="4" width="20" height="16" rx="2" />
-                          <path d="M2 10h20" />
-                          <path d="M10 10v10" />
-                        </svg>
-                        <span>Company Profile</span>
-                      </button>
+                      {isSuperUser && (
+                        <button
+                          onClick={() => {
+                            setShowProfileSidebar(false);
+                            navigate("/employer-dashboard/company-profile");
+                          }}
+                          className="ep-sidebar-btn"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 14,
+                            width: "100%",
+                            padding: "11px 14px",
+                            borderRadius: 10,
+                            border: "none",
+                            background: "transparent",
+                            color: "#334155",
+                            fontSize: 14.5,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            transition: "all 0.14s",
+                          }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                            <path d="M2 10h20" />
+                            <path d="M10 10v10" />
+                          </svg>
+                          <span>Company Profile</span>
+                        </button>
+                      )}
 
                       {/* 2. My Subscriptions */}
+                      {isSuperUser && (
                       <button
                         onClick={() => {
                           setShowProfileSidebar(false);
@@ -854,6 +866,7 @@ export default function EmployerHeader({
                         <FiList size={18} color="#64748b" />
                         <span>My Subscriptions</span>
                       </button>
+                      )}
 
                       {/* 3. Settings (Collapsible Accordion) */}
                       <div>
@@ -921,6 +934,8 @@ export default function EmployerHeader({
                               Product Settings
                             </button>
 
+                            {isSuperUser && (
+                              <>
                             <button
                               onClick={() => {
                                 setShowProfileSidebar(false);
@@ -964,6 +979,8 @@ export default function EmployerHeader({
                             >
                               Manage Quota
                             </button>
+                              </>
+                            )}
 
                             <button
                               onClick={() => {
@@ -989,6 +1006,62 @@ export default function EmployerHeader({
                           </div>
                         )}
                       </div>
+
+                      {/* Learning Center */}
+                      <button
+                        onClick={() => {
+                          setShowProfileSidebar(false);
+                          navigate("/employer-dashboard/learning-center");
+                        }}
+                        className="ep-sidebar-btn"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: "transparent",
+                          color: "#334155",
+                          fontSize: 14.5,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: "all 0.14s",
+                        }}
+                      >
+                        <FiBookOpen size={18} color="#64748b" />
+                        <span>Learning Center</span>
+                      </button>
+
+                      {/* Feedback */}
+                      <button
+                        onClick={() => {
+                          setShowProfileSidebar(false);
+                          setShowFeedbackModal(true);
+                        }}
+                        className="ep-sidebar-btn"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: "transparent",
+                          color: "#334155",
+                          fontSize: 14.5,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: "all 0.14s",
+                        }}
+                      >
+                        <VscFeedback size={18} color="#64748b" />
+                        <span>Feedback</span>
+                      </button>
 
                       {/* Flexible Spacer for distinct gap between top tabs and logout button */}
                       <div style={{ flex: 1, minHeight: 48 }} />
@@ -1567,6 +1640,12 @@ export default function EmployerHeader({
           }
         `}</style>
       </header>
+
+      <FeedbackModal 
+        isOpen={showFeedbackModal} 
+        onClose={() => setShowFeedbackModal(false)} 
+      />
     </>
   );
 }
+

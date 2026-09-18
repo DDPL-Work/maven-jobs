@@ -75,8 +75,8 @@ export default function SearchResults() {
   }, [candidates, searchParams, pagination]);
 
   useEffect(() => {
-    const token = localStorage.getItem("employerToken");
-    if (!token) { setSessionExpired(true); setLoading(false); return; }
+    const userStored = localStorage.getItem("employerUser");
+    if (!userStored) { setSessionExpired(true); setLoading(false); return; }
     const load = async () => {
       try {
         const dashRes = await authService.getEmployerDashboard().catch(() => null);
@@ -139,7 +139,11 @@ export default function SearchResults() {
       }}
       onMessagesClick={() => {}}
       onNotificationsClick={() => {}}
-      onLogout={() => { localStorage.removeItem("employerToken"); navigate("/employer-login"); }}
+      onLogout={async () => { 
+          try { await authService.logoutEmployer(); } catch {} 
+          localStorage.clear(); sessionStorage.clear(); 
+          navigate("/employer-login"); 
+      }}
     >
       <EmployerBreadcrumb items={[
         { label: 'Employer Dashboard', path: '/employer-dashboard' },

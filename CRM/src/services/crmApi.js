@@ -173,6 +173,10 @@ export function getClients() {
   return request("/clients");
 }
 
+export function getAssignedClients() {
+  return request("/clients/assigned");
+}
+
 export function createClient(payload) {
   return request("/clients", {
     method: "POST",

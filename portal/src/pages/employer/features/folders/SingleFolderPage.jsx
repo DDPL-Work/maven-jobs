@@ -1,18 +1,21 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiFolder, FiEdit2, FiTrash2, FiShare2, FiSearch, FiX, FiArrowLeft, FiUsers } from 'react-icons/fi';
+import { FiFolder, FiEdit2, FiTrash2, FiShare2, FiSearch, FiX, FiArrowLeft, FiUsers, FiBriefcase, FiMapPin, FiPhone, FiChevronDown, FiSmartphone, FiArrowRight, FiMail, FiSend, FiMessageSquare, FiCheck, FiUser, FiCopy, FiClock } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import CandidateCard from '../../../../components/employer/CandidateCard';
 import { useFolder, useDeleteFolder, useUpdateFolder, useRemoveCandidateFromFolder, useBulkRemoveCandidates } from '../../../../hooks/useFolderQueries';
 import CreateFolderModal from '../../../../components/employer/CreateFolderModal';
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
 import './SingleFolderPage.css';
+import '../jobs/JobResponsesDetail.css';
 import EmployerHeader from '../../../../components/employer/EmployerHeader';
 
 export default function SingleFolderPage() {
   const { folderId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data, isLoading, refetch } = useFolder(folderId);
 
   const folder = data?.folder || null;
@@ -23,6 +26,59 @@ export default function SingleFolderPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [moveCandidateId, setMoveCandidateId] = useState(null);
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') === 'contacted' ? 'contacted' : 'all';
+  });
+  const [localStatuses, setLocalStatuses] = useState({});
+
+  // Additional state for JRD-style cards
+  const [revealedContacts, setRevealedContacts] = useState({});
+  const [openStatusDropdownId, setOpenStatusDropdownId] = useState(null);
+  const [hoveredTooltip, setHoveredTooltip] = useState(null);
+  const [openCommentCandidateId, setOpenCommentCandidateId] = useState(null);
+  const [commentTexts, setCommentTexts] = useState({});
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  // Handlers for mocked features
+  const showToast = (msg) => alert(msg); // Placeholder for standard toast
+  const handleRevealContact = (candidate) => {
+    setRevealedContacts((prev) => ({ ...prev, [candidate.userId || candidate.id]: true }));
+  };
+  const handleCopyPhone = (e, phone) => {
+    e.stopPropagation();
+    if (phone) navigator.clipboard?.writeText(phone);
+    showToast(`Copied ${phone || 'number'} to clipboard!`);
+  };
+  const handleCallFromApp = (candidate) => {
+    const rawPhone = candidate.phone || '';
+    if (rawPhone) window.location.href = `tel:${rawPhone.replace(/[^0-9+]/g, '')}`;
+  };
+  const handleOpenEmail = (candidate) => {
+    if (candidate.email) window.location.href = `mailto:${candidate.email}`;
+  };
+  const handleOpenWhatsApp = (candidate) => {
+    const digits = (candidate.phone || '').replace(/[^0-9]/g, '');
+    if (digits) window.open(`https://wa.me/${digits.length === 10 ? '91' + digits : digits}`, '_blank');
+  };
+  const handleSelectCallStatus = (candidate, opt) => {
+    setLocalStatuses(prev => ({ ...prev, [candidate.userId || candidate.id]: opt }));
+    setOpenStatusDropdownId(null);
+    showToast(`Status changed to "${opt}".`);
+  };
+
+  const getCallStatus = (candidate) => {
+    return localStatuses[candidate.userId || candidate.id] || candidate.callStatus || '';
+  };
+  const handleAddComment = (candidate) => {
+    setIsSubmittingComment(true);
+    setTimeout(() => {
+      setIsSubmittingComment(false);
+      setCommentTexts(prev => ({...prev, [candidate.userId || candidate.id]: ''}));
+      showToast('Comment saving is not fully wired to backend yet.');
+    }, 500);
+  };
+
 
   const deleteFolder = useDeleteFolder();
   const removeCandidate = useRemoveCandidateFromFolder();
@@ -40,6 +96,13 @@ export default function SingleFolderPage() {
       (c.skills || []).some((s) => String(s).toLowerCase().includes(q))
     );
   }, [candidates, search]);
+
+  const displayCandidates = useMemo(() => {
+    if (activeTab === 'contacted') {
+      return filteredCandidates.filter((c) => getCallStatus(c) === 'Called');
+    }
+    return filteredCandidates;
+  }, [filteredCandidates, activeTab, localStatuses]);
 
   const handleDeleteFolder = async () => {
     if (!window.confirm(`Delete "${folder?.name}"? Candidates will not be removed, only the folder.`)) return;
@@ -122,7 +185,7 @@ export default function SingleFolderPage() {
         <div className="sfp-container" style={{ textAlign: 'center', paddingTop: 80 }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>Folder not found</h2>
           <p style={{ color: '#64748b', fontSize: '0.88rem', marginTop: 8 }}>
-            <button onClick={() => navigate('/employer-dashboard/folders')} style={{ background: 'none', border: 'none', color: '#002366', fontWeight: 700, cursor: 'pointer', fontSize: 'inherit' }}>
+            <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#002366', fontWeight: 700, cursor: 'pointer', fontSize: 'inherit' }}>
               Back to Folders
             </button>
           </p>
@@ -141,7 +204,7 @@ export default function SingleFolderPage() {
           { label: folder.name },
         ]} />
 
-        <div className="sfp-back" onClick={() => navigate('/employer-dashboard/folders')}>
+        <div className="sfp-back" onClick={() => navigate(-1)}>
           <FiArrowLeft size={14} /> Back to Folders
         </div>
 
@@ -167,6 +230,21 @@ export default function SingleFolderPage() {
           </div>
         </div>
 
+        <div className="sfp-tabs" style={{ display: 'flex', gap: 24, marginBottom: 16, borderBottom: '1px solid #e2e8f0', paddingBottom: 0 }}>
+          <button
+            onClick={() => setActiveTab('all')}
+            style={{ background: 'none', border: 'none', fontSize: '0.95rem', fontWeight: activeTab === 'all' ? 700 : 500, color: activeTab === 'all' ? '#0284c7' : '#64748b', cursor: 'pointer', borderBottom: activeTab === 'all' ? '2px solid #0284c7' : '2px solid transparent', paddingBottom: 10, transition: 'all 0.2s ease' }}
+          >
+            All Candidates ({filteredCandidates.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('contacted')}
+            style={{ background: 'none', border: 'none', fontSize: '0.95rem', fontWeight: activeTab === 'contacted' ? 700 : 500, color: activeTab === 'contacted' ? '#0284c7' : '#64748b', cursor: 'pointer', borderBottom: activeTab === 'contacted' ? '2px solid #0284c7' : '2px solid transparent', paddingBottom: 10, transition: 'all 0.2s ease' }}
+          >
+            Contacted ({filteredCandidates.filter(c => getCallStatus(c) === 'Called').length})
+          </button>
+        </div>
+
         <div className="sfp-toolbar">
           <div className="sfp-search">
             <FiSearch size={16} className="sfp-search-icon" />
@@ -189,34 +267,310 @@ export default function SingleFolderPage() {
           )}
         </div>
 
-        {filteredCandidates.length > 0 && (
+        {displayCandidates.length > 0 && (
           <div className="sfp-select-all">
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: '#64748b', cursor: 'pointer' }}>
-              <input type="checkbox" checked={selectedIds.size === filteredCandidates.length && filteredCandidates.length > 0}
+              <input type="checkbox" checked={selectedIds.size === displayCandidates.length && displayCandidates.length > 0}
                 onChange={selectAll} style={{ width: 16, height: 16 }} />
-              Select all {filteredCandidates.length} candidate(s)
+              Select all {displayCandidates.length} candidate(s)
             </label>
           </div>
         )}
 
-        {filteredCandidates.length > 0 ? (
+        {displayCandidates.length > 0 ? (
           <div className="sfp-candidate-list">
-            {filteredCandidates.map((candidate, i) => (
+            {displayCandidates.map((candidate, i) => (
               <motion.div
                 key={candidate.userId || candidate.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03, duration: 0.2 }}
               >
-                <CandidateCard
-                  candidate={candidate}
-                  onToggleSelect={toggleSelect}
-                  isSelected={selectedIds.has(candidate.userId || candidate.id)}
-                  context="folder"
-                  isInFolder={true}
-                  onRemoveFromFolder={handleRemoveCandidate}
-                  onMoveFolder={(c) => { setMoveCandidateId(c.userId || c.id); setMoveModalOpen(true); }}
-                />
+                <div className={`jrd-candidate-card ${selectedIds.has(candidate.userId || candidate.id) ? 'selected' : ''}`} style={{ marginBottom: 16 }}>
+                  <div className="jrd-card-main-grid">
+                    <div className="jrd-card-checkbox-col">
+                      <input
+                        type="checkbox"
+                        className="jrd-checkbox"
+                        checked={selectedIds.has(candidate.userId || candidate.id)}
+                        onChange={() => toggleSelect(candidate)}
+                      />
+                    </div>
+                    <div className="jrd-card-profile-col">
+                      <div className="jrd-card-name-row">
+                        <span className="jrd-candidate-name jrd-candidate-name--link" onClick={() => window.open(`/candidates/${candidate.userId || candidate.id}`, '_blank')}>
+                          {candidate.name || 'Unknown Candidate'}
+                        </span>
+                        {candidate.isNew && <span className="jrd-badge-new-response">New</span>}
+                        {candidate.isRecommended && <span className="jrd-badge-recommended">Recommended</span>}
+                      </div>
+                      <div className="jrd-card-meta-tags">
+                        {candidate.experience && (
+                          <span className="jrd-meta-tag-item">
+                            <FiBriefcase size={14} color="#64748b" /> {candidate.experience}
+                          </span>
+                        )}
+                        {candidate.salary && (
+                          <span className="jrd-meta-tag-item">
+                            {String(candidate.salary).startsWith('₹') ? candidate.salary : `₹ ${candidate.salary}`}
+                          </span>
+                        )}
+                        {candidate.noticePeriod && (
+                          <span className="jrd-meta-tag-item">
+                            <FiClock size={14} color="#64748b" /> {candidate.noticePeriod}
+                          </span>
+                        )}
+                        {candidate.currentCity && (
+                          <span className="jrd-meta-tag-item">
+                            <FiMapPin size={14} color="#64748b" /> {candidate.currentCity}
+                          </span>
+                        )}
+                      </div>
+                      <div className="jrd-details-table">
+                        {candidate.currentTitle && (
+                          <div className="jrd-detail-row">
+                            <span className="jrd-detail-label">Current</span>
+                            <span className="jrd-detail-val">{candidate.currentTitle} {candidate.currentCompany ? `at ${candidate.currentCompany}` : ''}</span>
+                          </div>
+                        )}
+                        {candidate.education && (
+                          <div className="jrd-detail-row">
+                            <span className="jrd-detail-label">Education</span>
+                            <span className="jrd-detail-val">{Array.isArray(candidate.education) ? candidate.education[0]?.degree : (candidate.education?.degree || candidate.education)}</span>
+                          </div>
+                        )}
+                        {candidate.prefLocation && (
+                          <div className="jrd-detail-row">
+                            <span className="jrd-detail-label">Pref. location</span>
+                            <span className="jrd-detail-val">{candidate.prefLocation}</span>
+                          </div>
+                        )}
+                        {candidate.skills && candidate.skills.length > 0 && (
+                          <div className="jrd-detail-row">
+                            <span className="jrd-detail-label">Key skills</span>
+                            <span className="jrd-detail-skills">{candidate.skills.slice(0, 8).join(' | ')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="jrd-card-right-col">
+                       {candidate.avatar ? (
+                         <img src={candidate.avatar} alt={candidate.name} className="jrd-avatar-img" />
+                       ) : (
+                         <div className="jrd-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e0f2fe', color: '#0284c7', fontWeight: 700, fontSize: 18 }}>
+                           {(candidate.name || 'C').charAt(0).toUpperCase()}
+                         </div>
+                       )}
+                       {candidate.bio && (
+                         <p className="jrd-bio-quote" title={candidate.bio}>
+                           &ldquo;{candidate.bio}&rdquo;
+                         </p>
+                       )}
+                       {candidate.email && (
+                         <div className="jrd-candidate-email-text" title={candidate.email} style={{ marginTop: 12 }}>{candidate.email}</div>
+                       )}
+                       <div className="jrd-contact-status-wrapper">
+                         <div className="jrd-contact-status-pill">
+                            {revealedContacts[candidate.userId || candidate.id] ? (
+                              <span
+                                className="jrd-contact-phone-revealed"
+                                title="Click to copy number"
+                                onClick={(e) => handleCopyPhone(e, candidate.phone)}
+                              >
+                                <FiCopy size={13} />
+                                <span>{candidate.phone || 'No phone'}</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="jrd-contact-trigger-btn"
+                                onClick={() => handleRevealContact(candidate)}
+                                title="View and copy phone number"
+                              >
+                                <FiPhone size={12} />
+                                <span>Contact</span>
+                              </button>
+                            )}
+
+                            <span className="jrd-contact-sep">|</span>
+
+                            <button
+                              type="button"
+                              className={`jrd-status-trigger-btn ${candidate.callStatus ? 'has-status' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenStatusDropdownId(
+                                  openStatusDropdownId === (candidate.userId || candidate.id) ? null : (candidate.userId || candidate.id)
+                                );
+                              }}
+                              title="Change status"
+                            >
+                              <span>{getCallStatus(candidate) || 'Status'}</span>
+                              <FiChevronDown size={13} />
+                            </button>
+                         </div>
+                         {openStatusDropdownId === (candidate.userId || candidate.id) && (
+                           <div className="jrd-status-dropdown-menu">
+                             {['Called', 'Messaged', 'Not picked', 'Not reachable'].map((opt) => (
+                               <button
+                                 key={opt}
+                                 type="button"
+                                 className={`jrd-status-menu-item ${getCallStatus(candidate) === opt ? 'selected' : ''}`}
+                                 onClick={() => handleSelectCallStatus(candidate, opt)}
+                               >
+                                 {opt}
+                               </button>
+                             ))}
+                           </div>
+                         )}
+                       </div>
+
+                       <button
+                         type="button"
+                         className="jrd-btn-call-app"
+                         onClick={() => handleCallFromApp(candidate)}
+                         title={`Call ${candidate.name} via system phone app`}
+                       >
+                         <FiSmartphone size={14} />
+                         <span>Call from app</span>
+                         <FiArrowRight size={13} />
+                       </button>
+
+                       <div className="jrd-side-icons">
+                         <div
+                           className="jrd-side-icon-btn-wrapper"
+                           onMouseEnter={() => setHoveredTooltip(`email-${candidate.userId || candidate.id}`)}
+                           onMouseLeave={() => setHoveredTooltip(null)}
+                         >
+                           <button
+                             type="button"
+                             className="jrd-side-icon-btn"
+                             title="Email"
+                             onClick={() => handleOpenEmail(candidate)}
+                           >
+                             <FiMail size={15} />
+                           </button>
+                           {hoveredTooltip === `email-${candidate.userId || candidate.id}` && (
+                             <div className="jrd-side-tooltip">Email</div>
+                           )}
+                         </div>
+
+                         <div className="jrd-side-icon-btn-wrapper">
+                           <button
+                             type="button"
+                             className="jrd-side-icon-btn"
+                             title="Share candidate profile"
+                             onClick={() => {
+                               if (navigator.clipboard) {
+                                 navigator.clipboard.writeText(`${window.location.origin}/employer/candidate/${candidate.userId || candidate.id}`);
+                                 showToast("Candidate profile link copied!");
+                               }
+                             }}
+                           >
+                             <FiSend size={15} />
+                           </button>
+                         </div>
+
+                         <div className="jrd-side-icon-btn-wrapper">
+                           <button
+                             type="button"
+                             className="jrd-side-icon-btn whatsapp"
+                             title="Message on WhatsApp"
+                             onClick={() => handleOpenWhatsApp(candidate)}
+                           >
+                             <FaWhatsapp size={17} />
+                           </button>
+                         </div>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="jrd-card-footer">
+                    <div className="jrd-comment-trigger-wrapper">
+                      <button
+                        type="button"
+                        className={`jrd-btn-comment ${openCommentCandidateId === (candidate.userId || candidate.id) ? 'active' : ''}`}
+                        onClick={() =>
+                          setOpenCommentCandidateId((prev) =>
+                            prev === (candidate.userId || candidate.id) ? null : (candidate.userId || candidate.id)
+                          )
+                        }
+                      >
+                        <FiMessageSquare size={14} />
+                        <span>Add comment</span>
+                      </button>
+                      {openCommentCandidateId === (candidate.userId || candidate.id) && (
+                        <div className="jrd-btn-comment-indicator" />
+                      )}
+                    </div>
+                     <div className="jrd-card-actions-right">
+                       <button type="button" className="jrd-btn-action" onClick={() => { setMoveCandidateId(candidate.userId || candidate.id); setMoveModalOpen(true); }}>
+                         <FiFolder size={14} /> <span>Move</span>
+                       </button>
+                       <button type="button" className="jrd-btn-delete-card" title="Remove from folder" onClick={() => handleRemoveCandidate(candidate)}>
+                         <FiTrash2 size={14} />
+                       </button>
+                     </div>
+
+                     {/* Expandable Comments Area */}
+                     {openCommentCandidateId === (candidate.userId || candidate.id) && (
+                       <div className="jrd-comments-expand-panel">
+                         {Array.isArray(candidate.comments) && candidate.comments.length > 0 && (
+                           <div className="jrd-comments-list">
+                             {candidate.comments.map((comm, cIdx) => (
+                               <div key={comm._id || cIdx} className="jrd-comment-bubble">
+                                 <div className="jrd-comment-avatar">
+                                   <FiUser size={15} />
+                                 </div>
+                                 <div className="jrd-comment-bubble-content">
+                                   <div className="jrd-comment-author-row">
+                                     <span className="jrd-comment-author-name">
+                                       {comm.authorName || 'Recruiter'}
+                                     </span>
+                                     <span className="jrd-comment-date">
+                                       {comm.createdAt ? new Date(comm.createdAt).toLocaleDateString() : 'Just now'}
+                                     </span>
+                                   </div>
+                                   <p className="jrd-comment-bubble-text">{comm.text}</p>
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         )}
+
+                         <div className="jrd-comment-input-row">
+                           <div className="jrd-comment-avatar">
+                             <FiUser size={18} />
+                           </div>
+                           <div className="jrd-comment-field-wrapper">
+                             <textarea
+                               className="jrd-comment-textarea"
+                               placeholder="Type your comment here"
+                               rows={2}
+                               value={commentTexts[candidate.userId || candidate.id] || ''}
+                               onChange={(e) =>
+                                 setCommentTexts((prev) => ({
+                                   ...prev,
+                                   [candidate.userId || candidate.id]: e.target.value,
+                                 }))
+                               }
+                             />
+                             <div className="jrd-comment-submit-row">
+                               <button
+                                 type="button"
+                                 className="jrd-btn-submit-comment"
+                                 disabled={isSubmittingComment || !commentTexts[candidate.userId || candidate.id]?.trim()}
+                                 onClick={() => handleAddComment(candidate)}
+                               >
+                                 {isSubmittingComment ? 'Saving...' : 'Comment'}
+                               </button>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>

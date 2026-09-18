@@ -297,7 +297,14 @@ Apply here: ${job.externalLink || (`${window.location.origin}/jobs/${job.id || j
       if (res?.success) setSent(true);
       else setError(res?.message || 'Failed to send invitations');
     } catch (err) {
-      setError(err?.message || 'Something went wrong');
+      const status = err?.response?.status || err?.status;
+      const code   = err?.response?.data?.code || err?.code || '';
+      const msg    = err?.response?.data?.message || err?.message || '';
+      if (status === 429 || code === 'NVITE_QUOTA_EXHAUSTED') {
+        setError(msg || 'NVite quota exhausted for this period. Please contact your administrator to increase your quota.');
+      } else {
+        setError(msg || 'Something went wrong');
+      }
     }
     setSending(false);
   };

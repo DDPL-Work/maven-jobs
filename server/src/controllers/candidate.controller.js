@@ -5,6 +5,8 @@ const https = require("https");
 const mongoose = require("mongoose");
 const asyncHandler = require("../middleware/async.middleware");
 const User = require("../models/User");
+const LoginOTP = require("../models/LoginOTP");
+const smsService = require("../services/sms.service");
 const Job = require("../models/Job");
 const Company = require("../models/Company");
 const CompanyReview = require("../models/CompanyReview");
@@ -272,9 +274,15 @@ const formatProfile = (profile = {}, user = null) => {
       try { const parsed = JSON.parse(profile?.projects || "[]"); return Array.isArray(parsed) ? parsed : []; }
       catch { return []; }
     })(),
+    accomplishments: (() => {
+      try { const parsed = JSON.parse(profile?.accomplishments || "[]"); return Array.isArray(parsed) ? parsed : []; }
+      catch { return []; }
+    })(),
     projectTitle: profile?.projectTitle || "",
     projectLink: profile?.projectLink || "",
     projectDescription: profile?.projectDescription || "",
+    profileViews: profile?.profileViews || 0,
+    recruiterActions: profile?.recruiterActions || 0,
     lastScannedQrToken: profile?.lastScannedQrToken || "",
     savedJobIds: (profile?.savedJobIds || []).map((id) => String(id)),
     followedCompanyIds: (profile?.followedCompanyIds || []).map((id) => String(id)),
@@ -1057,8 +1065,6 @@ exports.register = asyncHandler(async (req, res) => {
     res.status(201).json({
       success: true,
       referenceId: `MVN-${String(user._id).slice(-8).toUpperCase()}`,
-      token: tokenPair.accessToken,
-      accessToken: tokenPair.accessToken,
       expiresInSeconds: tokenPair.expiresInSeconds,
       user: formatCandidateUser(user),
       profile: formatProfile(profile, user),
@@ -1114,8 +1120,6 @@ exports.login = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    token: tokenPair.accessToken,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: formatCandidateUser(user),
     profile: formatProfile(profile, user),
@@ -3426,5 +3430,156 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
     success: true,
     total: scoredCandidates.length,
     data: scoredCandidates.slice(0, 15),
+  });
+});
+
+
+// ------------------------------------------------------------
+// MOBILE OTP LOGIN (candidates only)
+// ------------------------------------------------------------
+
+const MOBILE_OTP_EXPIRY_MINUTES = 3;
+const MOBILE_OTP_MAX_ATTEMPTS = 5;
+const MOBILE_OTP_RATE_LIMIT = 3; // max OTP requests per 10 minutes per phone
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+
+exports.sendMobileOtp = asyncHandler(async (req, res) => {
+  const phone = String(req.body?.phone || "").trim().replace(/\D/g, "");
+
+  if (!MOBILE_REGEX.test(phone)) {
+    throw createHttpError(400, "Please enter a valid 10-digit mobile number.");
+  }
+
+  const profile = await CandidateProfile.findOne({
+    $or: [
+      { phone: phone },
+      { phone: `+91${phone}` },
+      { phone: `91${phone}` },
+    ],
+  }).lean();
+
+  if (!profile) {
+    throw createHttpError(404, "No candidate account found with this mobile number.");
+  }
+
+  const user = await User.findById(profile.userId);
+  if (!user) {
+    throw createHttpError(404, "No candidate account found with this mobile number.");
+  }
+
+  if (!user.isActive || user.accessStatus === "RESTRICTED") {
+    throw createHttpError(403, "This account has been restricted. Please contact support.");
+  }
+
+  if (user.role !== "CANDIDATE") {
+    throw createHttpError(403, "Mobile OTP login is only available for candidate accounts.");
+  }
+
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const recentCount = await LoginOTP.countDocuments({
+    phone,
+    createdAt: { $gte: tenMinutesAgo },
+  });
+
+  if (recentCount >= MOBILE_OTP_RATE_LIMIT) {
+    throw createHttpError(429, "Too many OTP requests. Please wait a few minutes and try again.");
+  }
+
+  await LoginOTP.updateMany(
+    { phone, used: false },
+    { $set: { used: true } }
+  );
+
+  let sessionId;
+  try {
+    sessionId = await smsService.sendOTP(phone);
+  } catch (smsErr) {
+    throw createHttpError(503, "Failed to send OTP. Please try again later.");
+  }
+
+  const expiresAt = new Date(Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000);
+  await LoginOTP.create({
+    phone,
+    userId: user._id,
+    sessionId,
+    expiresAt,
+    ipAddress: req.ip || req.connection?.remoteAddress || "",
+    userAgent: req.get("User-Agent") || "",
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP sent successfully.",
+    expiresIn: MOBILE_OTP_EXPIRY_MINUTES * 60,
+  });
+});
+
+exports.verifyMobileOtp = asyncHandler(async (req, res) => {
+  const phone = String(req.body?.phone || "").trim().replace(/\D/g, "");
+  const otp = String(req.body?.otp || "").trim();
+
+  if (!MOBILE_REGEX.test(phone)) {
+    throw createHttpError(400, "Please enter a valid 10-digit mobile number.");
+  }
+
+  if (!otp || !/^\d{6}$/.test(otp)) {
+    throw createHttpError(400, "Please enter a valid 6-digit OTP.");
+  }
+
+  const otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({ createdAt: -1 });
+
+  if (!otpDoc) {
+    throw createHttpError(400, "No active OTP found. Please request a new OTP.");
+  }
+
+  if (new Date() > otpDoc.expiresAt) {
+    throw createHttpError(400, "OTP has expired. Please request a new one.");
+  }
+
+  if (otpDoc.attempts >= MOBILE_OTP_MAX_ATTEMPTS) {
+    throw createHttpError(400, "Too many failed attempts. Please request a new OTP.");
+  }
+
+  const isValid = await smsService.verifyOTP(otpDoc.sessionId, otp);
+
+  if (!isValid) {
+    otpDoc.attempts += 1;
+    await otpDoc.save();
+
+    const remaining = MOBILE_OTP_MAX_ATTEMPTS - otpDoc.attempts;
+    if (remaining <= 0) {
+      throw createHttpError(400, "Invalid OTP. No attempts remaining. Please request a new OTP.");
+    }
+    throw createHttpError(400, `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
+  }
+
+  otpDoc.used = true;
+  await otpDoc.save();
+
+  const user = await User.findById(otpDoc.userId);
+  if (!user) {
+    throw createHttpError(404, "Account not found.");
+  }
+
+  if (!user.isActive || user.accessStatus === "RESTRICTED") {
+    throw createHttpError(403, "This account has been restricted. Please contact support.");
+  }
+
+  const profile = await ensureCandidateProfile(user);
+
+  const tokenPair = await issueTokenPair({
+    user,
+    source: "USER",
+    req,
+  });
+
+  setRefreshCookie(res, tokenPair.refreshToken);
+  setAccessCookie(res, tokenPair.accessToken);
+
+  res.status(200).json({
+    success: true,
+    expiresInSeconds: tokenPair.expiresInSeconds,
+    user: formatCandidateUser(user),
+    profile: formatProfile(profile, user),
   });
 });

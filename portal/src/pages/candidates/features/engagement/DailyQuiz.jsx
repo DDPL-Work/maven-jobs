@@ -758,7 +758,7 @@ export default function DailyQuiz() {
   useEffect(() => {
     let isMounted = true;
 
-    if (!user && !localStorage.getItem('candidateToken') && !localStorage.getItem('token')) {
+    if (!user && !localStorage.getItem('user')) {
       setLoading(false);
       setError('Please log in to play the daily quiz.');
       return undefined;

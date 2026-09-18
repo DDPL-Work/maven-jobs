@@ -3,6 +3,8 @@ const asyncHandler = require("../middleware/async.middleware");
 const User = require("../models/User");
 const CrmUser = require("../models/CrmUser");
 const CandidateProfile = require("../models/CandidateProfile");
+const LoginOTP = require("../models/LoginOTP");
+const smsService = require("../services/sms.service");
 const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
 const {
@@ -61,8 +63,6 @@ const sendAuthResponse = async (req, res, { user, source, profile = null }) => {
 
   return res.status(200).json({
     success: true,
-    token: tokenPair.accessToken,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: tokenPair.user,
     ...(profile ? { profile } : {}),
@@ -113,7 +113,6 @@ exports.registerCandidate = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: tokenPair.user,
   });
@@ -178,7 +177,6 @@ exports.refresh = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    accessToken: tokenPair.accessToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: tokenPair.user,
   });
@@ -395,6 +393,7 @@ exports.googleLogin = asyncHandler(async (req, res) => {
   return sendAuthResponse(req, res, { user, source, profile: formattedProfile });
 });
 
+
 // ------------------------------------------------------------
 // GOOGLE STATUS (optional — check if Google is configured)
 // ------------------------------------------------------------
@@ -405,4 +404,170 @@ exports.googleStatus = asyncHandler(async (_req, res) => {
     success: true,
     configured,
   });
+});
+
+// ------------------------------------------------------------
+// MOBILE OTP LOGIN (candidates only)
+// ------------------------------------------------------------
+
+const MOBILE_OTP_EXPIRY_MINUTES = 10;
+const MOBILE_OTP_MAX_ATTEMPTS = 5;
+const MOBILE_OTP_RATE_LIMIT = 3; // max OTP requests per 10 minutes per phone
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+
+/**
+ * POST /auth/mobile/send-otp
+ * Body: { phone: "9876543210" }
+ *
+ * 1. Validate phone format
+ * 2. Look up CandidateProfile by phone → get userId → get User
+ * 3. Rate-limit (3 requests per 10 min per phone)
+ * 4. Invalidate old unused OTPs for this phone
+ * 5. Send OTP via 2Factor → store sessionId in LoginOTP doc
+ */
+exports.sendMobileOtp = asyncHandler(async (req, res) => {
+  const phone = String(req.body?.phone || "").trim().replace(/\D/g, "");
+
+  if (!MOBILE_REGEX.test(phone)) {
+    throw createHttpError(400, "Please enter a valid 10-digit mobile number.");
+  }
+
+  // Find candidate profile with this phone number
+  // CandidateProfile.phone may be stored as "9876543210" or "+919876543210"
+  // We check both forms to be safe
+  const profile = await CandidateProfile.findOne({
+    $or: [
+      { phone: phone },
+      { phone: `+91${phone}` },
+      { phone: `91${phone}` },
+    ],
+  }).lean();
+
+  if (!profile) {
+    throw createHttpError(404, "No candidate account found with this mobile number.");
+  }
+
+  // Load the user and check status
+  const user = await User.findById(profile.userId);
+  if (!user) {
+    throw createHttpError(404, "No candidate account found with this mobile number.");
+  }
+
+  if (!user.isActive || user.accessStatus === "RESTRICTED") {
+    throw createHttpError(403, "This account has been restricted. Please contact support.");
+  }
+
+  if (user.role !== "CANDIDATE") {
+    throw createHttpError(403, "Mobile OTP login is only available for candidate accounts.");
+  }
+
+  // Rate limit: count OTP requests in the last 10 minutes for this phone
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const recentCount = await LoginOTP.countDocuments({
+    phone,
+    createdAt: { $gte: tenMinutesAgo },
+  });
+
+  if (recentCount >= MOBILE_OTP_RATE_LIMIT) {
+    throw createHttpError(429, "Too many OTP requests. Please wait a few minutes and try again.");
+  }
+
+  // Invalidate all previous unused OTPs for this phone
+  await LoginOTP.updateMany(
+    { phone, used: false },
+    { $set: { used: true } }
+  );
+
+  // Send OTP via 2Factor SMS API → returns a sessionId
+  let sessionId;
+  try {
+    sessionId = await smsService.sendOTP(phone);
+  } catch (smsErr) {
+    throw createHttpError(503, "Failed to send OTP. Please try again later.");
+  }
+
+  // Persist OTP session
+  const expiresAt = new Date(Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000);
+  await LoginOTP.create({
+    phone,
+    userId: user._id,
+    sessionId,
+    expiresAt,
+    ipAddress: req.ip || req.connection?.remoteAddress || "",
+    userAgent: req.get("User-Agent") || "",
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP sent successfully.",
+    expiresIn: MOBILE_OTP_EXPIRY_MINUTES * 60,
+  });
+});
+
+/**
+ * POST /auth/mobile/verify-otp
+ * Body: { phone: "9876543210", otp: "123456" }
+ *
+ * 1. Validate phone + OTP format
+ * 2. Find the latest unused LoginOTP for this phone
+ * 3. Check not expired / not used / attempts not exceeded
+ * 4. Call 2Factor verify API → boolean
+ * 5. On success → mark used, issue auth tokens
+ */
+exports.verifyMobileOtp = asyncHandler(async (req, res) => {
+  const phone = String(req.body?.phone || "").trim().replace(/\D/g, "");
+  const otp = String(req.body?.otp || "").trim();
+
+  if (!MOBILE_REGEX.test(phone)) {
+    throw createHttpError(400, "Please enter a valid 10-digit mobile number.");
+  }
+
+  if (!otp || !/^\d{6}$/.test(otp)) {
+    throw createHttpError(400, "Please enter a valid 6-digit OTP.");
+  }
+
+  // Find the most recent unused OTP doc for this phone
+  const otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({ createdAt: -1 });
+
+  if (!otpDoc) {
+    throw createHttpError(400, "No active OTP found. Please request a new OTP.");
+  }
+
+  if (new Date() > otpDoc.expiresAt) {
+    throw createHttpError(400, "OTP has expired. Please request a new one.");
+  }
+
+  if (otpDoc.attempts >= MOBILE_OTP_MAX_ATTEMPTS) {
+    throw createHttpError(400, "Too many failed attempts. Please request a new OTP.");
+  }
+
+  // Verify with 2Factor API
+  const isValid = await smsService.verifyOTP(otpDoc.sessionId, otp);
+
+  if (!isValid) {
+    otpDoc.attempts += 1;
+    await otpDoc.save();
+
+    const remaining = MOBILE_OTP_MAX_ATTEMPTS - otpDoc.attempts;
+    if (remaining <= 0) {
+      throw createHttpError(400, "Invalid OTP. No attempts remaining. Please request a new OTP.");
+    }
+    throw createHttpError(400, `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
+  }
+
+  // Mark OTP as used
+  otpDoc.used = true;
+  await otpDoc.save();
+
+  // Load user and issue auth tokens (identical to email/password login)
+  const user = await User.findById(otpDoc.userId);
+  if (!user) {
+    throw createHttpError(404, "Account not found.");
+  }
+
+  if (!user.isActive || user.accessStatus === "RESTRICTED") {
+    throw createHttpError(403, "This account has been restricted. Please contact support.");
+  }
+
+  return sendAuthResponse(req, res, { user, source: "USER" });
 });

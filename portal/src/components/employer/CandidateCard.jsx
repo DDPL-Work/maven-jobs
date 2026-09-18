@@ -7,6 +7,25 @@ import {
 } from 'react-icons/fi';
 import ResumeModal from './ResumeModal';
 import { useVisibility } from '../../hooks/useLazyAI';
+import { aiService } from '../../services/aiService';
+
+const HighlightText = ({ text, keyword }) => {
+  if (!keyword || !text) return <>{text}</>;
+  const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = String(text).split(new RegExp(`(${escapedKeyword})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === keyword.toLowerCase() ? (
+          <mark key={i} style={{ backgroundColor: '#fef08a', color: 'inherit', padding: '0 2px', borderRadius: 2 }}>{part}</mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+};
+
 
 const C = {
   navy: "#002366", navyD: "#001540", navyM: "#1a3a6e",
@@ -125,6 +144,8 @@ const CandidateCard = memo(function CandidateCard({
   onRemoveFromFolder,
   onMoveFolder,
   isInFolder,
+  searchKeyword = "",
+  jobId,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showResume, setShowResume] = useState(false);
@@ -142,27 +163,24 @@ const CandidateCard = memo(function CandidateCard({
       setLazyMatchScore(candidate.matchScore);
       return;
     }
+    if (!jobId) return;
+    
     setMatchLoading(true);
-    fetch(`/api/v1/ai/match-score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        profileId: candidate.userId || candidate.id,
-        source: context,
-      }),
+    aiService.request('/match-score', {
+      profileId: candidate.userId || candidate.id,
+      jobId,
+      source: context,
     })
-      .then((r) => r.json())
       .then((data) => {
-        if (data?.success && data?.data?.overallScore != null) {
-          setLazyMatchScore(data.data.overallScore);
+        if (data?.overallScore != null) {
+          setLazyMatchScore(data.overallScore);
         } else if (data?.matchScore != null) {
           setLazyMatchScore(data.matchScore);
         }
       })
       .catch(() => {})
       .finally(() => setMatchLoading(false));
-  }, [isVisible, candidate.userId, candidate.id, candidate.matchScore, context]);
+  }, [isVisible, candidate.userId, candidate.id, candidate.matchScore, context, jobId]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -282,12 +300,12 @@ const CandidateCard = memo(function CandidateCard({
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: "1rem", fontWeight: 700, color: C.s900, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {candidate.name || "Candidate"}
+                  <HighlightText text={candidate.name || "Candidate"} keyword={searchKeyword} />
                 </div>
                 <div style={{ fontSize: "0.82rem", color: C.s600, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {candidate.currentTitle || candidate.headline || ""}
+                  <HighlightText text={candidate.currentTitle || candidate.headline || ""} keyword={searchKeyword} />
                   {candidate.currentTitle && candidate.currentCompany ? " at " : ""}
-                  {candidate.currentCompany || ""}
+                  <HighlightText text={candidate.currentCompany || ""} keyword={searchKeyword} />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
@@ -345,7 +363,9 @@ const CandidateCard = memo(function CandidateCard({
                   <span key={i} style={{
                     padding: "2px 10px", borderRadius: 99, fontSize: "0.7rem",
                     fontWeight: 600, background: "#eef2ff", color: "#4338ca",
-                  }}>{skill}</span>
+                  }}>
+                    <HighlightText text={skill} keyword={searchKeyword} />
+                  </span>
                 ))}
                 {skills.length > 6 && !expanded && (
                   <button onClick={() => setExpanded(true)} style={{
@@ -392,7 +412,9 @@ const CandidateCard = memo(function CandidateCard({
                 fontSize: "0.78rem", color: C.s600, marginTop: 8, lineHeight: 1.5,
                 display: "-webkit-box", WebkitLineClamp: expanded ? "unset" : 2,
                 WebkitBoxOrient: "vertical", overflow: "hidden",
-              }}>{candidate.summary}</div>
+              }}>
+                <HighlightText text={candidate.summary} keyword={searchKeyword} />
+              </div>
             )}
           </div>
         </div>
@@ -465,18 +487,6 @@ const CandidateCard = memo(function CandidateCard({
           )}
 
           <button
-            className={`sr-btn ${!hasResume ? "sr-btn-disabled" : ""}`}
-            disabled={!hasResume}
-            onClick={handleResume}
-            title={hasResume ? "View Resume" : "No Resume Available"}
-            style={!hasResume ? {
-              opacity: 0.4, cursor: "not-allowed",
-              color: C.s400, background: "#f1f5f9", borderColor: C.s200,
-            } : {}}
-          >
-            <FiFileText size={13} /> {hasResume ? "Resume" : "No Resume"}
-          </button>
-          <button
             className="sr-btn"
             onClick={handleViewProfile}
             disabled={profileLoading}
@@ -486,14 +496,6 @@ const CandidateCard = memo(function CandidateCard({
           </button>
         </div>
       </div>
-
-      {showResume && (
-        <ResumeModal
-          candidateId={candidateId}
-          resumeUrl={resumeUrl}
-          onClose={() => setShowResume(false)}
-        />
-      )}
     </motion.div>
   );
 });

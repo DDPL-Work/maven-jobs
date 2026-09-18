@@ -662,8 +662,9 @@ export default function MySubscriptionsPage() {
                       fontWeight: 600,
                       color: '#1e5eff',
                       marginTop: 2,
+                      textTransform: 'uppercase'
                     }}>
-                      {approver.role || 'CRM Approver'}
+                      {approver.role === 'APPROVER' ? 'ACCOUNT MANAGER' : (approver.role || 'ACCOUNT MANAGER')}
                     </div>
                   </div>
                 </div>

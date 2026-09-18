@@ -130,7 +130,7 @@ export default function FolderListPage() {
 
   // Contacted candidates folders dynamically sorted
   const contactedFolders = useMemo(() => {
-    let list = Array.isArray(serverFolders) ? [...serverFolders] : [];
+    let list = Array.isArray(serverFolders) ? serverFolders.filter(f => (f.contactedCount || 0) > 0) : [];
     if (contactedSortBy === 'Date') {
       list.sort((a, b) => new Date(b.lastActivityAt || b.updatedAt || b.createdAt) - new Date(a.lastActivityAt || a.updatedAt || a.createdAt));
     } else if (contactedSortBy === 'Name') {
@@ -726,9 +726,9 @@ export default function FolderListPage() {
                                 <button
                                   type="button"
                                   className="flp-table-count-btn"
-                                  onClick={() => navigate(`/employer-dashboard/folders/${row._id}`)}
+                                  onClick={() => navigate(`/employer-dashboard/folders/${row._id}?tab=contacted`)}
                                 >
-                                  {row.candidateCount || 0}
+                                  {row.contactedCount || 0}
                                 </button>
                               </td>
                               <td className="flp-table-date-cell">

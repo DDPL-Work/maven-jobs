@@ -6,8 +6,8 @@ const Company = require("../models/Company");
 const Application = require("../models/Application");
 const CandidateProfile = require("../models/CandidateProfile");
 const CompanyReview = require("../models/CompanyReview");
-const { esAvailable } = require("../config/elasticsearch");
-const esService = require("../services/elasticsearch.service");
+const { esAvailable } = require("../config/opensearch");
+const esService = require("../services/opensearch.service");
 
 const formatCompactCount = (value = 0) => {
   const count = Number(value || 0);
@@ -427,7 +427,7 @@ async function esGetPublicJobs(req, res) {
   } catch (_) { /* non-critical */ }
 
   const searchDuration = Date.now() - searchStartTime;
-  console.log(`[ES:Search] ⚡ Served via Elasticsearch in ${searchDuration}ms | Total matches: ${total} | Page ${page}/${totalPages} (${formattedJobs.length} jobs returned)`);
+  console.log(`[OS:Search] ⚡ Served via OpenSearch in ${searchDuration}ms | Total matches: ${total} | Page ${page}/${totalPages} (${formattedJobs.length} jobs returned)`);
 
   return res.json({
     success: true,
@@ -438,14 +438,14 @@ async function esGetPublicJobs(req, res) {
       page,
       totalPages,
       appliedFilters: { search, location, experience, department, workMode, jobType, sort },
-      _source: "elasticsearch",
+      _source: "opensearch",
     },
   });
 }
 
 exports.getPublicJobs = async (req, res) => {
   try {
-    // ── Elasticsearch path ──────────────────────────────────────────
+    // ── OpenSearch path ──────────────────────────────────────────
     if (await esAvailable()) {
       try {
         return await esGetPublicJobs(req, res);
@@ -1015,13 +1015,13 @@ exports.getSearchSuggestions = async (req, res) => {
       return res.json({ success: true, data: { suggestions: [] } });
     }
 
-    // ── Elasticsearch path ──────────────────────────────────────────
+    // ── OpenSearch path ──────────────────────────────────────────
     if (await esAvailable()) {
       try {
         const suggStartTime = Date.now();
         const suggestions = await esService.getSuggestions(q);
         const suggDuration = Date.now() - suggStartTime;
-        console.log(`[ES:Suggestions] 💡 Served query="${q}" via Elasticsearch in ${suggDuration}ms (${suggestions.length} suggestions: [${suggestions.join(", ")}])`);
+        console.log(`[OS:Suggestions] 💡 Served query="${q}" via OpenSearch in ${suggDuration}ms (${suggestions.length} suggestions: [${suggestions.join(", ")}])`);
         return res.json({ success: true, data: { suggestions } });
       } catch (esErr) {
         console.error("[ES:Suggestions] ⚠️ ES path failed, falling back to MongoDB:", esErr.message);

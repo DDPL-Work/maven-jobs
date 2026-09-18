@@ -13,7 +13,7 @@ const {
 router.post(
   "/",
   auth.protectCRM,
-  role("CLIENT", "CRM"),
+  role("CLIENT", "RECRUITER", "CRM"),
   createJob
 );
 

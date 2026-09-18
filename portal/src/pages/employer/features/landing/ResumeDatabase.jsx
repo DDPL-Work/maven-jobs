@@ -53,7 +53,7 @@ export default function ResumeDatabase() {
     const [showAllProfiles, setShowAllProfiles] = useState(false);
 
     const isEmployerLoggedIn = useMemo(() => {
-        try { return !!localStorage.getItem("employerToken"); } catch { return false; }
+        try { return !!localStorage.getItem("employerUser"); } catch { return false; }
     }, []);
 
     const isProMember = useMemo(() => employerPlan.toLowerCase().includes("pro"), [employerPlan]);

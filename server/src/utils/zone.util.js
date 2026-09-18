@@ -2,7 +2,6 @@ const CANONICAL_ZONES = ["North", "South", "East", "West"];
 
 const INDIAN_STATES_BY_ZONE = Object.freeze({
   North: Object.freeze([
-    "Chandigarh",
     "Delhi",
     "Haryana",
     "Himachal Pradesh",
@@ -14,12 +13,10 @@ const INDIAN_STATES_BY_ZONE = Object.freeze({
     "Uttarakhand",
   ]),
   South: Object.freeze([
-    "Andaman and Nicobar Islands",
     "Andhra Pradesh",
+    "Goa",
     "Karnataka",
     "Kerala",
-    "Lakshadweep",
-    "Puducherry",
     "Tamil Nadu",
     "Telangana",
   ]),
@@ -28,7 +25,6 @@ const INDIAN_STATES_BY_ZONE = Object.freeze({
     "Assam",
     "Bihar",
     "Jharkhand",
-    "Manipur",
     "Meghalaya",
     "Mizoram",
     "Nagaland",
@@ -39,8 +35,6 @@ const INDIAN_STATES_BY_ZONE = Object.freeze({
   ]),
   West: Object.freeze([
     "Chhattisgarh",
-    "Dadra and Nagar Haveli and Daman and Diu",
-    "Goa",
     "Gujarat",
     "Madhya Pradesh",
     "Maharashtra",

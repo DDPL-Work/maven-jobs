@@ -14,105 +14,7 @@ import { getDrafts, deleteDraft } from '../../../../services/draftJobService';
 import employerJobService from '../../../../services/employerJobService';
 import './ManageJobsResponses.css';
 
-// Fallback initial jobs when server has no records yet
-const FALLBACK_JOBS = [
-  {
-    id: 'job-sample-1',
-    _id: 'job-sample-1',
-    title: 'Inside Sales Specialist',
-    location: 'Gurugram',
-    category: 'NVite',
-    status: 'active',
-    postedBy: 'recruit@mavenjobs.in',
-    postedByLabel: 'sent by recruit...',
-    date: '13 Aug 2026',
-    totalResponses: 2,
-    newResponses: 0,
-    shortlisted: 0,
-    recipientsCount: 73,
-    lastSentDate: '13 Aug 2026',
-  },
-  {
-    id: 'job-sample-2',
-    _id: 'job-sample-2',
-    title: 'Accountant',
-    location: 'Karnal +2',
-    category: 'NVite',
-    status: 'active',
-    postedBy: 'recruit@mavenjobs.in',
-    postedByLabel: 'sent by recruit...',
-    date: '08 Aug 2026',
-    totalResponses: 20,
-    newResponses: 0,
-    shortlisted: 0,
-    recipientsCount: 140,
-    lastSentDate: '08 Aug 2026',
-  },
-  {
-    id: 'job-sample-3',
-    _id: 'job-sample-3',
-    title: 'Data Analyst',
-    location: 'Panipat',
-    category: 'NVite',
-    status: 'active',
-    postedBy: 'info@mavenjobs.in',
-    postedByLabel: 'sent by info@...',
-    date: '07 Aug 2026',
-    totalResponses: 15,
-    newResponses: 0,
-    shortlisted: 0,
-    recipientsCount: 95,
-    lastSentDate: '07 Aug 2026',
-  },
-  {
-    id: 'job-sample-4',
-    _id: 'job-sample-4',
-    title: 'Export Executive',
-    location: 'Panipat',
-    category: 'NVite',
-    status: 'active',
-    postedBy: 'info@mavenjobs.in',
-    postedByLabel: 'sent by info@...',
-    date: '07 Aug 2026',
-    totalResponses: 15,
-    newResponses: 0,
-    shortlisted: 0,
-    recipientsCount: 88,
-    lastSentDate: '07 Aug 2026',
-  },
-  {
-    id: 'job-sample-5',
-    _id: 'job-sample-5',
-    title: 'Purchase Engineer',
-    location: 'New Delhi +2',
-    category: 'NVite',
-    status: 'active',
-    postedBy: 'recruit@mavenjobs.in',
-    postedByLabel: 'sent by recruit...',
-    date: '07 Aug 2026',
-    totalResponses: 21,
-    newResponses: 21,
-    shortlisted: 0,
-    recipientsCount: 110,
-    lastSentDate: '07 Aug 2026',
-  },
-  {
-    id: 'job-sample-6',
-    _id: 'job-sample-6',
-    title: 'Tele Caller',
-    location: 'Panipat',
-    category: 'NVite',
-    status: 'active',
-    postedBy: 'recruit@mavenjobs.in',
-    postedByLabel: 'sent by recruit...',
-    date: '07 Aug 2026',
-    totalResponses: 1,
-    newResponses: 1,
-    shortlisted: 0,
-    recipientsCount: 52,
-    lastSentDate: '07 Aug 2026',
-  },
-];
+
 
 const generateFiltersFromData = (dataList) => {
   const statusesMap = {};
@@ -346,13 +248,13 @@ export default function ManageJobsResponses() {
         setAllJobs(data.items);
         setFiltersData(generateFiltersFromData(data.items));
       } else {
-        setAllJobs(FALLBACK_JOBS);
-        setFiltersData(generateFiltersFromData(FALLBACK_JOBS));
+        setAllJobs([]);
+        setFiltersData(generateFiltersFromData([]));
       }
     } catch (err) {
-      console.warn("API failed, using fallback jobs", err);
-      setAllJobs(FALLBACK_JOBS);
-      setFiltersData(generateFiltersFromData(FALLBACK_JOBS));
+      console.warn("API failed, using empty list", err);
+      setAllJobs([]);
+      setFiltersData(generateFiltersFromData([]));
     } finally {
       setIsDataLoaded(true);
     }

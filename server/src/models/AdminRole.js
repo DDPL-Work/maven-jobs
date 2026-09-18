@@ -36,7 +36,7 @@ const adminRoleSchema = new mongoose.Schema(
     isSystemRole: { type: Boolean, default: false },
     systemRoleKey: {
       type: String,
-      enum: ["ADMIN", "CRM", "FSE", "CLIENT", "CANDIDATE", null],
+      enum: ["ADMIN", "CRM", "FSE", "CLIENT", "CANDIDATE", "RECRUITER", null],
       default: null,
     },
     permissions: {

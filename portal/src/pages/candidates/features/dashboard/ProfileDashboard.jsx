@@ -553,12 +553,9 @@ export default function ProfileDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    const token =
-      localStorage.getItem("candidateToken") || localStorage.getItem("token");
-    if (!token || candidateSocketRef.current) return;
+    if (candidateSocketRef.current) return;
 
     const socket = io(getCandidateSocketUrl(), {
-      auth: { token },
       transports: ["websocket", "polling"],
       withCredentials: true,
       reconnection: true,

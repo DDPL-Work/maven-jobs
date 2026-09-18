@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const chatBotThreadSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    userRole: { type: String, enum: ["CLIENT", "CANDIDATE", "COMPANY", "ADMIN", "CRM"], default: "CLIENT", index: true },
+    userRole: { type: String, enum: ["CLIENT", "CANDIDATE", "COMPANY", "ADMIN", "CRM", "RECRUITER"], default: "CLIENT", index: true },
 
     title: { type: String, default: "ChatBot" },
 

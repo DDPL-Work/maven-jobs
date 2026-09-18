@@ -9,6 +9,7 @@ import {
 import { FaWhatsapp, FaLinkedin, FaGithub } from 'react-icons/fa';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import employerJobService from '../../../../services/employerJobService';
+import authService from '../../../../services/authService';
 import './CandidateFullProfile.css';
 
 const CALL_STATUS_OPTIONS = [
@@ -216,11 +217,26 @@ export default function CandidateFullProfile() {
   };
 
   // Download resume
-  const handleDownloadResume = () => {
-    if (profile?.resumeUrl) {
-      window.open(profile.resumeUrl, '_blank');
-    } else {
+  const handleDownloadResume = async () => {
+    if (!profile?.resumeUrl) {
       showToast('No resume file attached');
+      return;
+    }
+
+    try {
+      showToast('Verifying access...');
+      const cr = await authService.useCredits('RESUME_DOWNLOAD', candidateId);
+
+      if (cr?.success) {
+        window.dispatchEvent(new CustomEvent("employer-credits-changed"));
+        window.open(profile.resumeUrl, '_blank');
+        showToast('Downloading resume...');
+      } else {
+        showToast(cr?.message || 'Insufficient credits to download resume');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Failed to download resume';
+      showToast(msg);
     }
   };
 
@@ -426,14 +442,14 @@ export default function CandidateFullProfile() {
                     <span className="cfp-dot-sep">|</span>
                   )}
                   {profile.resumeUrl && (
-                    <a
-                      href={profile.resumeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={handleDownloadResume}
                       className="cfp-view-resume-textlink"
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
                     >
                       View Resume
-                    </a>
+                    </button>
                   )}
                 </div>
               )}
@@ -501,17 +517,16 @@ export default function CandidateFullProfile() {
                 </button>
 
                 {profile.resumeUrl && (
-                  <a
-                    href={profile.resumeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={handleDownloadResume}
                     className="cfp-header-resume-btn"
                     title="Open candidate resume in new tab"
                   >
                     <FiEye size={14} />
                     <span>View Resume</span>
                     <FiExternalLink size={12} />
-                  </a>
+                  </button>
                 )}
               </div>
             </div>

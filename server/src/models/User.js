@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: false, default: "" },
     role: {
       type: String,
-      enum: ["ADMIN", "CRM", "FSE", "CLIENT", "CANDIDATE"],
+      enum: ["ADMIN", "CRM", "FSE", "CLIENT", "CANDIDATE", "RECRUITER"],
       required: true,
     },
     provider: {
@@ -17,6 +17,9 @@ const userSchema = new mongoose.Schema(
     },
     googleId: { type: String, default: "" },
     avatar: { type: String, default: "" },
+    avatarPublicId: { type: String, default: "" },
+    coverImageUrl: { type: String, default: "" },
+    coverImagePublicId: { type: String, default: "" },
     emailVerified: { type: Boolean, default: false },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,7 +30,7 @@ const userSchema = new mongoose.Schema(
     scope: { type: String, default: "" },
     accessStatus: {
       type: String,
-      enum: ["ACTIVE", "PENDING_INVITE", "RESTRICTED"],
+      enum: ["ACTIVE", "PENDING_INVITE", "RESTRICTED", "PENDING_VERIFICATION"],
       default: "ACTIVE",
     },
     isActive: { type: Boolean, default: true },

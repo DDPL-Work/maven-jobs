@@ -13,17 +13,21 @@ export function useEmployerAuth() {
     }
   });
 
-  const token = useMemo(() => localStorage.getItem('employerToken'), []);
+  const userStored = useMemo(() => !!localStorage.getItem('employerUser'), []);
 
-  const isAuthenticated = useMemo(() => !!token, [token]);
+  const isAuthenticated = useMemo(() => !!userStored, [userStored]);
 
   const openLogin = useCallback(() => {
     navigate('/employer-login');
   }, [navigate]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('employerToken');
-    localStorage.removeItem('employerUser');
+  const logout = useCallback(async () => {
+    try {
+      await authService.logoutEmployer();
+    } catch {
+      // ignore
+    }
+    localStorage.clear(); sessionStorage.clear();
     setSession(null);
     navigate('/employer-login');
   }, [navigate]);
@@ -50,17 +54,17 @@ export function useEmployerAuth() {
   }, [session]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!userStored) return;
     refreshSession();
   }, []);
 
   const requireAuth = useCallback((redirectTo) => {
-    if (!token) {
+    if (!userStored) {
       navigate(redirectTo || '/employer-login');
       return false;
     }
     return true;
-  }, [token, navigate]);
+  }, [userStored, navigate]);
 
-  return { session, token, isAuthenticated, logout, openLogin, refreshSession, requireAuth };
+  return { session, isAuthenticated, logout, openLogin, refreshSession, requireAuth };
 }

@@ -76,7 +76,7 @@ const timeAgo = (dateStr) => {
   return `${years}y ${months % 12}mo ago`;
 };
 
-export default function AnalyticsTab({ data, loading, error, range = '12m', onRangeChange, onRefresh }) {
+export default function AnalyticsTab({ data, loading, error, range = '12m', onRangeChange, onRefresh, isRecruiter = false }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('name');
   const [sortDir, setSortDir] = useState('desc');
@@ -319,28 +319,50 @@ export default function AnalyticsTab({ data, loading, error, range = '12m', onRa
       </div>
 
       <div className="ap-grid-3" style={{ marginBottom: 20 }}>
+        {/* Recruiter Performance / My Stats card */}
         <div className="ap-card">
           <div className="ap-card-header">
-            <span className="ap-card-title">Recruiter Performance</span>
+            <span className="ap-card-title">{isRecruiter ? 'My Performance' : 'Recruiter Performance'}</span>
           </div>
           <div className="ap-leaderboard">
-            {[
-              { name: 'Neha Kapoor', jobs: 12, responses: 89, hires: 8, eff: '74%' },
-              { name: 'Rajesh Tiwari', jobs: 8, responses: 64, hires: 5, eff: '62%' },
-              { name: 'Priya Mehta', jobs: 6, responses: 52, hires: 4, eff: '58%' },
-              { name: 'Amit Joshi', jobs: 4, responses: 38, hires: 2, eff: '45%' },
-            ].map((r, i) => (
-              <div key={r.name} className="ap-lb-row">
-                <div className={`ap-lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`}>
-                  {i + 1}
-                </div>
-                <span className="ap-lb-name">{r.name}</span>
-                <div className="ap-lb-stat"><strong>{r.jobs}</strong>Jobs</div>
-                <div className="ap-lb-stat"><strong>{r.responses}</strong>Resp.</div>
-                <div className="ap-lb-stat"><strong>{r.hires}</strong>Hires</div>
-                <div className="ap-lb-stat"><strong>{r.eff}</strong>Eff.</div>
+            {isRecruiter ? (
+              // RECRUITER: show their own stats
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '4px 0' }}>
+                {[
+                  { label: 'Live Jobs', value: data?.overview?.activeJobs ?? 0, color: '#1E5EFF', bg: '#EEF4FF' },
+                  { label: 'Applications Received', value: data?.overview?.totalApplications ?? 0, color: '#0DBF7B', bg: '#ECFDF5' },
+                  { label: 'Shortlisted', value: data?.overview?.shortlisted ?? 0, color: '#F59E0B', bg: '#FFFBEB' },
+                  { label: 'Interviews', value: data?.overview?.interviewed ?? 0, color: '#8B5CF6', bg: '#F5F3FF' },
+                  { label: 'Offers Sent', value: data?.overview?.offersSent ?? 0, color: '#EC4899', bg: '#FDF2F8' },
+                  { label: 'Hired', value: data?.overview?.hired ?? 0, color: '#059669', bg: '#ECFDF5' },
+                ].map((stat) => (
+                  <div key={stat.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 10, background: stat.bg }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>{stat.label}</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: stat.color }}>{formatCompact(stat.value)}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              // CLIENT: show real recruiter leaderboard from API
+              (data?.recruiterPerformance?.length > 0) ? (
+                data.recruiterPerformance.slice(0, 5).map((r, i) => (
+                  <div key={r.id} className="ap-lb-row">
+                    <div className={`ap-lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`}>
+                      {i + 1}
+                    </div>
+                    <span className="ap-lb-name">{r.name}</span>
+                    <div className="ap-lb-stat"><strong>{r.jobs}</strong>Jobs</div>
+                    <div className="ap-lb-stat"><strong>{r.responses}</strong>Resp.</div>
+                    <div className="ap-lb-stat"><strong>{r.hires}</strong>Hires</div>
+                    <div className="ap-lb-stat"><strong>{r.efficiency}</strong>Eff.</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '32px 12px', color: '#94a3b8', fontWeight: 600, fontSize: '0.85rem' }}>
+                  No recruiter data yet
+                </div>
+              )
+            )}
           </div>
         </div>
 
@@ -395,25 +417,37 @@ export default function AnalyticsTab({ data, loading, error, range = '12m', onRa
       </div>
 
       <div className="ap-grid-3">
-        {[
-          { title: 'Applications increased 32% this month.', desc: 'Highest volume since Q1. Marketing roles driving the surge.', color: '#0DBF7B', bg: '#ECFDF5' },
-          { title: 'Backend hiring demand up 18%.', desc: 'Node.js & Python roles see 40% more applications than frontend.', color: '#1E5EFF', bg: '#EEF4FF' },
-          { title: 'Average hiring time down 5 days.', desc: 'Streamlined screening pipeline improved efficiency by 22%.', color: '#F59E0B', bg: '#FFFBEB' },
-        ].map((insight, i) => (
-          <motion.div key={i} className="ap-card"
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i, duration: 0.3 }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: insight.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <FiTrendingUp size={20} color={insight.color} />
+        {(() => {
+          const ov = data?.overview || {};
+          const depts = data?.departments || [];
+          const topDept = depts[0]?.department || null;
+          const insights = [
+            ov.totalApplications > 0
+              ? { title: `${ov.totalApplications} total application${ov.totalApplications !== 1 ? 's' : ''} received.`, desc: `${ov.shortlisted || 0} shortlisted, ${ov.interviewed || 0} interviewed, ${ov.hired || 0} hired. Conversion rate: ${ov.conversion ?? 0}%.`, color: '#0DBF7B', bg: '#ECFDF5' }
+              : { title: 'No applications yet.', desc: 'Post your first job to start receiving applications and tracking your recruitment pipeline.', color: '#0DBF7B', bg: '#ECFDF5' },
+            topDept
+              ? { title: `Top hiring department: ${topDept}.`, desc: `${depts[0]?.applications || 0} applications received, ${depts[0]?.hired || 0} hired. ${depts.length > 1 ? `${depts[1]?.department || ''} follows with ${depts[1]?.applications || 0} applications.` : ''}`, color: '#1E5EFF', bg: '#EEF4FF' }
+              : { title: 'Department data pending.', desc: 'Add departments to your job postings to see per-department hiring breakdowns here.', color: '#1E5EFF', bg: '#EEF4FF' },
+            ov.timeToHire > 0
+              ? { title: `Average time to hire: ${ov.timeToHire} days.`, desc: `Offer acceptance rate is ${ov.acceptance ?? 0}%. ${ov.timeToHire <= 21 ? 'Great efficiency — well below industry average of 30 days.' : 'Consider streamlining screening to reduce hiring time.'}`, color: '#F59E0B', bg: '#FFFBEB' }
+              : { title: 'Track your time-to-hire.', desc: 'Once you start hiring candidates, your average time-to-hire metric will appear here automatically.', color: '#F59E0B', bg: '#FFFBEB' },
+          ];
+          return insights.map((insight, i) => (
+            <motion.div key={i} className="ap-card"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i, duration: 0.3 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: insight.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FiTrendingUp size={20} color={insight.color} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0a1628', marginBottom: 4 }}>{insight.title}</div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', lineHeight: 1.5 }}>{insight.desc}</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0a1628', marginBottom: 4 }}>{insight.title}</div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', lineHeight: 1.5 }}>{insight.desc}</div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ));
+        })()}
       </div>
     </div>
   );

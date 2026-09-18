@@ -13,6 +13,7 @@ const LEAD_SOURCES = [
   "Field Visit",
   "Social Media",
   "Inbound Inquiry",
+  "PORTAL",
 ];
 
 const LEAD_STATUSES = [

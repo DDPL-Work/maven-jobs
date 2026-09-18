@@ -20,11 +20,15 @@ function slugify(text) {
 
 // GET /folders
 exports.listFolders = asyncHandler(async (req, res) => {
-  const { search, sort = "recent", page = 1, limit = 20 } = req.query;
+  const { search, sort = "recent", page = 1, limit = 20, folderType } = req.query;
   const companyId = req.company._id;
   const employerId = req.user._id;
 
   const query = { companyId, employerId };
+
+  if (folderType) {
+    query.folderType = folderType;
+  }
 
   if (search) {
     query.name = { $regex: String(search).trim(), $options: "i" };
@@ -141,7 +145,7 @@ exports.getFolder = asyncHandler(async (req, res) => {
 
 // POST /folders
 exports.createFolder = asyncHandler(async (req, res) => {
-  const { name, description, icon, color, isPublic, sharedWith } = req.body;
+  const { name, description, icon, color, isPublic, sharedWith, folderType } = req.body;
   const companyId = req.company._id;
   const employerId = req.user._id;
 
@@ -151,8 +155,9 @@ exports.createFolder = asyncHandler(async (req, res) => {
 
   const trimmedName = String(name).trim();
   const slug = slugify(trimmedName);
+  const fType = folderType === 'REQUIREMENT' ? 'REQUIREMENT' : 'FOLDER';
 
-  const existing = await Folder.findOne({ companyId, employerId, name: trimmedName });
+  const existing = await Folder.findOne({ companyId, employerId, folderType: fType, name: trimmedName });
   if (existing) {
     throw createHttpError(409, "A folder with this name already exists");
   }
@@ -160,6 +165,7 @@ exports.createFolder = asyncHandler(async (req, res) => {
   const folder = await Folder.create({
     employerId,
     companyId,
+    folderType: fType,
     name: trimmedName,
     slug,
     description: String(description || "").trim(),

@@ -35,8 +35,8 @@ const {
   issueTokenPair,
   setRefreshCookie,
 } = require("../services/auth.service");
-const { esAvailable } = require("../config/elasticsearch");
-const esService = require("../services/elasticsearch.service");
+const { esAvailable } = require("../config/opensearch");
+const esService = require("../services/opensearch.service");
 const { scheduleIndex, scheduleDelete } = esService;
 
 const defaultPackages = DEFAULT_PACKAGE_CATALOG;
@@ -788,6 +788,34 @@ exports.getClients = asyncHandler(async (req, res) => {
   });
 });
 
+exports.getAssignedClients = asyncHandler(async (req, res) => {
+  const query = isFseOperator(req.user) 
+    ? { assignedFSE: req.user._id } 
+    : { createdByCRM: req.user._id };
+
+  const companies = await Company.find(query)
+    .sort({ updatedAt: -1 })
+    .populate("clientUserId", "name email accessStatus");
+  const { packageLimitMap } = await loadPackageCatalog();
+  const syncedCompanies = await Promise.all(
+    companies.map(async (company) => {
+      const { snapshot } = await syncLivePackageContextForCompany(company, packageLimitMap);
+
+      return {
+        company,
+        jobLimit: snapshot.jobLimit,
+      };
+    }),
+  );
+
+  res.status(200).json({
+    success: true,
+    data: syncedCompanies.map((item) =>
+      formatClient(item.company, item.company.clientUserId, { jobLimit: item.jobLimit }),
+    ),
+  });
+});
+
 exports.createClient = asyncHandler(async (req, res) => {
   await ensureCrmSetup();
 
@@ -860,7 +888,6 @@ exports.createClient = asyncHandler(async (req, res) => {
         zone: zone.trim(),
       },
       packageType: selectedPackage.name,
-      jobLimit: selectedPackage.jobLimit,
       configurationNotes: configurationNotes.trim(),
       accountManager: accountManager.trim(),
       createdByCRM: req.user._id,
@@ -1431,14 +1458,19 @@ exports.updatePackageChangeRequest = asyncHandler(async (req, res) => {
 exports.getPackages = asyncHandler(async (req, res) => {
   await ensureCrmSetup();
 
-  const packages = await Package.find().sort({ jobLimit: 1 });
+  const packages = await Package.find().sort({ jobPostingLimit: 1 });
 
   res.status(200).json({
     success: true,
     data: packages.map((pkg) => ({
       id: String(pkg._id),
       name: pkg.name,
-      jobLimit: pkg.jobLimit,
+      jobLimit: pkg.jobPostingLimit, // For backwards compatibility
+      jobPostingLimit: pkg.jobPostingLimit,
+      smbJobPostingLimit: pkg.smbJobPostingLimit,
+      cvAccessLimit: pkg.cvAccessLimit,
+      nviteLimit: pkg.nviteLimit,
+      price: pkg.price,
       description: pkg.description || "",
     })),
   });
@@ -1460,18 +1492,28 @@ exports.upsertPackage = asyncHandler(async (req, res) => {
     );
   }
 
-  const nextJobLimit = Number(req.body.jobLimit);
+  const nextJobLimit = Number(req.body.jobPostingLimit || req.body.jobLimit);
   if (!Number.isFinite(nextJobLimit) || nextJobLimit <= 0) {
-    throw createHttpError(400, "jobLimit must be a positive number");
+    throw createHttpError(400, "jobPostingLimit must be a positive number");
   }
 
-  const previousPackage = await Package.findOne({ name }).select("jobLimit");
+  const price = Number(req.body.price || 0);
+  const smbJobPostingLimit = Number(req.body.smbJobPostingLimit || 0);
+  const cvAccessLimit = Number(req.body.cvAccessLimit || 0);
+  const nviteLimit = Number(req.body.nviteLimit || 0);
+
+  const previousPackage = await Package.findOne({ name }).select("jobPostingLimit jobLimit");
+  const previousLimitPkg = previousPackage?.jobPostingLimit || previousPackage?.jobLimit;
 
   const updatedPackage = await Package.findOneAndUpdate(
     { name },
     {
       name,
-      jobLimit: nextJobLimit,
+      jobPostingLimit: nextJobLimit,
+      price,
+      smbJobPostingLimit,
+      cvAccessLimit,
+      nviteLimit,
       description: req.body.description?.trim() || "",
     },
     { returnDocument: "after", upsert: true, runValidators: true },
@@ -1481,14 +1523,14 @@ exports.upsertPackage = asyncHandler(async (req, res) => {
   await Promise.all(
     impactedCompanies.map((company) => {
       const previousLimit = Number(
-        company.jobLimit || previousPackage?.jobLimit || updatedPackage.jobLimit || 0,
+        company.jobLimit || previousLimitPkg || updatedPackage.jobPostingLimit || 0,
       );
       const activeJobCount = Number(company.activeJobCount || 0);
       const shouldApplyImmediately =
         rolloutMode === PACKAGE_ROLLOUT_MODES.APPLY_FOR_EVERYONE ||
         activeJobCount >= previousLimit;
 
-      company.jobLimit = shouldApplyImmediately ? updatedPackage.jobLimit : previousLimit;
+      company.jobLimit = shouldApplyImmediately ? updatedPackage.jobPostingLimit : previousLimit;
       company.grandfatheredJobLimit = shouldApplyImmediately ? 0 : previousLimit;
       return company.save();
     }),
@@ -1503,7 +1545,12 @@ exports.upsertPackage = asyncHandler(async (req, res) => {
     data: {
       id: String(updatedPackage._id),
       name: updatedPackage.name,
-      jobLimit: updatedPackage.jobLimit,
+      jobLimit: updatedPackage.jobPostingLimit, // for compatibility
+      jobPostingLimit: updatedPackage.jobPostingLimit,
+      price: updatedPackage.price,
+      smbJobPostingLimit: updatedPackage.smbJobPostingLimit,
+      cvAccessLimit: updatedPackage.cvAccessLimit,
+      nviteLimit: updatedPackage.nviteLimit,
       description: updatedPackage.description,
       rolloutMode,
     },

@@ -43,7 +43,7 @@ const ensureThreadAccess = async ({ user, threadId }) => {
   const isCompanyParticipant = String(thread.companyId) === String(user.companyId || "");
   const isCandidateParticipant = String(thread.candidateId) === String(user._id || user.id);
 
-  if (user.role === "CLIENT" && !isCompanyParticipant) {
+  if (["CLIENT", "RECRUITER"].includes(user.role) && !isCompanyParticipant) {
     throw new Error("Conversation access denied");
   }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
@@ -109,7 +109,7 @@ const initChatSocket = (server) => {
       try {
         const threadId = String(payload.threadId || "").trim();
         const thread = await ensureThreadAccess({ user: currentUser, threadId });
-        const senderRole = currentUser.role === "CLIENT" ? "COMPANY" : "CANDIDATE";
+        const senderRole = ["CLIENT", "RECRUITER"].includes(currentUser.role) ? "COMPANY" : "CANDIDATE";
         const message = await chatController._internal.persistMessage({
           thread,
           senderRole,
@@ -198,7 +198,7 @@ const initChatSocket = (server) => {
         const nextThread = await upsertCallState(thread, {
           state: "RINGING",
           mediaType: String(mediaType).toUpperCase() === "VIDEO" ? "VIDEO" : "AUDIO",
-          initiatedBy: currentUser.role === "CLIENT" ? "COMPANY" : "CANDIDATE",
+          initiatedBy: ["CLIENT", "RECRUITER"].includes(currentUser.role) ? "COMPANY" : "CANDIDATE",
           startedAt: new Date(),
         });
         const payload = {

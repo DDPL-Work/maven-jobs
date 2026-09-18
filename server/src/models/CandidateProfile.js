@@ -106,11 +106,11 @@ const candidateProfileSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Automatically sync CandidateProfile changes to Elasticsearch
+// Automatically sync CandidateProfile changes to OpenSearch
 candidateProfileSchema.post("save", function (doc) {
   if (doc?._id) {
     try {
-      const { scheduleIndexCandidate } = require("../services/elasticsearch.service");
+      const { scheduleIndexCandidate } = require("../services/opensearch.service");
       scheduleIndexCandidate(doc);
     } catch (_) {}
   }
@@ -119,7 +119,7 @@ candidateProfileSchema.post("save", function (doc) {
 candidateProfileSchema.post("findOneAndUpdate", function (doc) {
   if (doc?._id) {
     try {
-      const { scheduleIndexCandidate } = require("../services/elasticsearch.service");
+      const { scheduleIndexCandidate } = require("../services/opensearch.service");
       scheduleIndexCandidate(doc);
     } catch (_) {}
   }
@@ -128,7 +128,7 @@ candidateProfileSchema.post("findOneAndUpdate", function (doc) {
 candidateProfileSchema.post("findOneAndDelete", function (doc) {
   if (doc?._id) {
     try {
-      const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/elasticsearch.service");
+      const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/opensearch.service");
       scheduleDeleteCandidate(String(doc._id));
       scheduleReindexCandidates(1500);
     } catch (_) {}
@@ -138,7 +138,7 @@ candidateProfileSchema.post("findOneAndDelete", function (doc) {
 candidateProfileSchema.post("deleteOne", { document: true, query: false }, function () {
   if (this?._id) {
     try {
-      const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/elasticsearch.service");
+      const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/opensearch.service");
       scheduleDeleteCandidate(String(this._id));
       scheduleReindexCandidates(1500);
     } catch (_) {}
@@ -148,7 +148,7 @@ candidateProfileSchema.post("deleteOne", { document: true, query: false }, funct
 candidateProfileSchema.post("deleteOne", { document: false, query: true }, function () {
   try {
     const filter = this.getFilter();
-    const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/elasticsearch.service");
+    const { scheduleDeleteCandidate, scheduleReindexCandidates } = require("../services/opensearch.service");
     if (filter?._id) {
       scheduleDeleteCandidate(String(filter._id));
     }
@@ -158,7 +158,7 @@ candidateProfileSchema.post("deleteOne", { document: false, query: true }, funct
 
 candidateProfileSchema.post("deleteMany", function () {
   try {
-    const { scheduleReindexCandidates } = require("../services/elasticsearch.service");
+    const { scheduleReindexCandidates } = require("../services/opensearch.service");
     scheduleReindexCandidates(1500);
   } catch (_) {}
 });

@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const folderSchema = new mongoose.Schema({
   employerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true, index: true },
+  folderType: { type: String, enum: ['REQUIREMENT', 'FOLDER'], default: 'FOLDER' },
   name: { type: String, required: true, trim: true },
   slug: { type: String, required: true },
   description: { type: String, default: "", trim: true },
@@ -15,7 +16,7 @@ const folderSchema = new mongoose.Schema({
   sharedWith: [{ type: String, trim: true }],
 }, { timestamps: true });
 
-folderSchema.index({ companyId: 1, name: 1 }, { unique: true });
+folderSchema.index({ companyId: 1, folderType: 1, name: 1 }, { unique: true });
 folderSchema.index({ companyId: 1, updatedAt: -1 });
 folderSchema.index({ employerId: 1, updatedAt: -1 });
 

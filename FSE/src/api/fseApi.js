@@ -227,6 +227,21 @@ export const fetchFseLeads = async (params = {}) => {
   return data.data;
 };
 
+export const fetchPortalLeads = async (params = {}) => {
+  const { data } = await http.get("/portal-leads", { params });
+  return data.data;
+};
+
+export const verifyPortalLead = async (leadId, payload) => {
+  const { data } = await http.patch(`/portal-leads/${leadId}/verify`, payload);
+  return data;
+};
+
+export const fetchFseCRMs = async () => {
+  const { data } = await http.get("/crms");
+  return data.data;
+};
+
 export const fetchTransferCandidate = async (leadId) => {
   const { data } = await http.get(`/transfer-candidate/${leadId}`);
   return data.data;
