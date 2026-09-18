@@ -2,9 +2,13 @@ const mongoose = require("mongoose");
 const Credit = require("../models/Credit");
 const CreditTransaction = require("../models/CreditTransaction");
 const PaidResume = require("../models/PaidResume");
+const ResdexReportLog = require("../models/ResdexReportLog");
+const CandidateProfile = require("../models/CandidateProfile");
+const User = require("../models/User");
 const createHttpError = require("http-errors");
 const asyncHandler = require("../middleware/async.middleware");
 const activityService = require("../services/recruiter-activity.service");
+const { checkAndEnforceQuota } = require("../services/quota-enforcement.service");
 
 const RESUME_CREDIT_COST = 10;
 const SEARCH_CREDIT_COST = 10;
@@ -148,18 +152,73 @@ exports.useCredits = asyncHandler(async (req, res) => {
   const companyId = req.company?._id;
   if (!companyId) throw createHttpError(403, "Company context not found");
 
+  let hasQuota = false;
+  // ── Check period-based CV quota FIRST (weekly/monthly limits from quotaConfig) ──
+  // Skip quota check if the resume has already been paid for (free re-access)
+  const alreadyPaid = await PaidResume.findOne({ companyId, candidateId }).lean();
+  const allocationPolicy = req.company?.quotaConfig?.allocationPolicy || 'full';
+  
+  if (!alreadyPaid) {
+    try {
+      const quotaResult = await checkAndEnforceQuota(req.company, 'cvAccess', 1);
+      if (!quotaResult.unlimited) {
+        hasQuota = true; // Using period-based quota
+      }
+    } catch (quotaErr) {
+      return res.status(429).json({
+        success: false,
+        message: quotaErr.message,
+        code: quotaErr.code || 'CV_QUOTA_EXHAUSTED',
+        quotaInfo: quotaErr.quotaInfo || null,
+      });
+    }
+  }
+
   const credit = await Credit.findOne({ companyId });
   if (!credit) throw createHttpError(404, "Credit account not found. Please top up first.");
 
-  if (credit.balance < RESUME_CREDIT_COST) {
-    throw createHttpError(402, "Insufficient credits. Please top up.");
+  // If they are on 'full' allocation policy (pay-as-you-go), they MUST have enough financial credits
+  if (!alreadyPaid && allocationPolicy === 'full') {
+    if (credit.balance < RESUME_CREDIT_COST) {
+      throw createHttpError(402, "Insufficient credits. Please top up.");
+    }
   }
 
+  // ── Already paid: free re-access — update view count and log ──
   const paid = await PaidResume.findOne({ companyId, candidateId });
   if (paid) {
     paid.lastViewedAt = new Date();
     paid.viewCount += 1;
     await paid.save();
+
+    // Resolve candidate details for audit log
+    const candidateUser = await User.findById(candidateId).select("name email").lean();
+    const candidateName = candidateUser?.name || candidateUser?.email?.split('@')[0] || 'Candidate';
+    const candidateProfile = await CandidateProfile.findOne({ userId: candidateId }).select("currentTitle").lean();
+
+    // Write to ResdexReportLog (the audit ledger)
+    ResdexReportLog.create({
+      companyId,
+      userId: req.user._id,
+      subuserName: req.user.name || req.user.email || 'Recruiter',
+      subuserEmail: req.user.email || '',
+      actionType: action === 'RESUME_DOWNLOAD' ? 'CV_DOWNLOAD_EXCEL' : 'CV_VIEW',
+      section: 'DATABASE_USAGE',
+      candidateId,
+      candidateName,
+      candidateRole: candidateProfile?.currentTitle || '',
+      creditsUsed: 0,
+      platform: 'WEB',
+      metadata: {
+        charged: false,
+        reason: 'already_paid_free_reaccess',
+        viewCount: paid.viewCount,
+        recruiterName: req.user.name || '',
+        recruiterEmail: req.user.email || '',
+        companyName: req.company?.name || '',
+      },
+    }).catch(err => console.error('[ResdexReportLog] Failed to write re-access log:', err));
+
     activityService.fireAndForget(() =>
       activityService.logForCandidate({
         companyId,
@@ -178,21 +237,63 @@ exports.useCredits = asyncHandler(async (req, res) => {
     });
   }
 
-  credit.balance -= RESUME_CREDIT_COST;
-  credit.lifetimeUsed += RESUME_CREDIT_COST;
-  await credit.save();
+  // ── First-time access: create PaidResume, log ledger ──
+  // Deduct financial credits ONLY if they are Pay-As-You-Go (allocationPolicy === 'full')
+  if (allocationPolicy === 'full') {
+    credit.balance -= RESUME_CREDIT_COST;
+    credit.lifetimeUsed += RESUME_CREDIT_COST;
+    await credit.save();
+  }
+
+  // Resolve candidate details for audit log
+  const candidateUser = await User.findById(candidateId).select("name email").lean();
+  const candidateName = candidateUser?.name || candidateUser?.email?.split('@')[0] || 'Candidate';
+  const candidateProfile = await CandidateProfile.findOne({ userId: candidateId }).select("currentTitle").lean();
 
   await PaidResume.create({ companyId, candidateId, recruiterId: req.user._id });
 
-  await CreditTransaction.create({
+  // ── Write CreditTransaction (financial ledger) ONLY if financial credits used ──
+  if (allocationPolicy === 'full') {
+    await CreditTransaction.create({
+      companyId,
+      type: action,
+      amount: -RESUME_CREDIT_COST,
+      balanceAfter: credit.balance,
+      description: `${action === "RESUME_VIEW" ? "Viewed" : "Downloaded"} CV of ${candidateName} (${RESUME_CREDIT_COST} credits)`,
+      referenceId: String(candidateId),
+      metadata: {
+        candidateId,
+        candidateName,
+        action,
+        recruiterId: req.user._id,
+        recruiterName: req.user.name || '',
+        recruiterEmail: req.user.email || '',
+        companyName: req.company?.name || '',
+      },
+    });
+  }
+
+  // ── Write to ResdexReportLog (audit ledger) ALWAYS ──
+  ResdexReportLog.create({
     companyId,
-    type: action,
-    amount: -RESUME_CREDIT_COST,
-    balanceAfter: credit.balance,
-    description: `${action === "RESUME_VIEW" ? "Viewed" : "Downloaded"} resume (${RESUME_CREDIT_COST} credits)`,
-    referenceId: String(candidateId),
-    metadata: { candidateId, action },
-  });
+    userId: req.user._id,
+    subuserName: req.user.name || req.user.email || 'Recruiter',
+    subuserEmail: req.user.email || '',
+    actionType: action === 'RESUME_DOWNLOAD' ? 'CV_DOWNLOAD_EXCEL' : 'CV_VIEW',
+    section: 'DATABASE_USAGE',
+    candidateId,
+    candidateName,
+    candidateRole: candidateProfile?.currentTitle || '',
+    creditsUsed: allocationPolicy === 'full' ? RESUME_CREDIT_COST : 0,
+    platform: 'WEB',
+    metadata: {
+      charged: allocationPolicy === 'full',
+      balanceAfter: credit.balance,
+      recruiterName: req.user.name || '',
+      recruiterEmail: req.user.email || '',
+      companyName: req.company?.name || '',
+    },
+  }).catch(err => console.error('[ResdexReportLog] Failed to write CV access log:', err));
 
   activityService.fireAndForget(() =>
     activityService.logForCandidate({

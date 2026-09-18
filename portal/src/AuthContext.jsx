@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const parsed = JSON.parse(saved);
       if (['CLIENT', 'RECRUITER', 'ADMIN'].includes(parsed.role)) {
-        localStorage.clear(); sessionStorage.clear();
+        localStorage.removeItem("user"); sessionStorage.clear();
         return null;
       }
       return parsed;
@@ -130,7 +130,7 @@ export const AuthProvider = ({ children }) => {
       if (data?.user) {
         // Ensure that the role is appropriate for this portal
         if (['CLIENT', 'RECRUITER', 'ADMIN'].includes(data.user.role)) {
-          localStorage.clear(); sessionStorage.clear();
+          localStorage.removeItem("user"); sessionStorage.clear();
           setUser(null);
           return;
         }
@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }) => {
         });
       }
     }).catch(() => {
-      localStorage.clear(); sessionStorage.clear();
+      localStorage.removeItem("user"); sessionStorage.clear();
       setUser(null);
     });
   }, []);

@@ -7,34 +7,30 @@ import {
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
+import authService from '../../../../services/authService';
 import './ManageQuota.css';
 
 export default function ManageQuota() {
   const navigate = useNavigate();
 
-  // Allocation frequency policy
-  const [allocationPolicy, setAllocationPolicy] = useState('weekly'); // 'weekly' | 'monthly' | 'full'
+  const [allocationPolicy, setAllocationPolicy] = useState('full'); 
+  const [loading, setLoading] = useState(true);
 
-  // Quota Allocation state separated by policy
-  // - weekly: weekly assigned quota (editable)
-  // - monthly: monthly assigned quota (editable)
-  // - full: total pool, used, and remaining (read-only, cannot be edited)
   const [policyAllocations, setPolicyAllocations] = useState({
     weekly: {
-      cvAccess: { total: 3630, used: 212 },
-      nvite: { total: 181140, used: 0 },
+      cvAccess: { total: 0, used: 0 },
+      nvite: { total: 0, used: 0 },
     },
     monthly: {
-      cvAccess: { total: 15000, used: 890 },
-      nvite: { total: 250000, used: 12400 },
+      cvAccess: { total: 0, used: 0 },
+      nvite: { total: 0, used: 0 },
     },
     full: {
-      cvAccess: { total: 25000, used: 21582 },
-      nvite: { total: 250000, used: 68860 },
+      cvAccess: { total: 0, used: 0 },
+      nvite: { total: 0, used: 0 },
     },
   });
 
-  // Inline draft edit state (null = not in edit mode, string = active draft value)
   const [editDrafts, setEditDrafts] = useState({
     cvAccess: null,
     nvite: null,
@@ -44,7 +40,25 @@ export default function ManageQuota() {
     nvite: '',
   });
 
-  // Reference to Save Settings button to distinguish click outside from hitting Save
+  useEffect(() => {
+    fetchQuotaData();
+  }, []);
+
+  const fetchQuotaData = async () => {
+    try {
+      setLoading(true);
+      const res = await authService.getQuotaManagement();
+      if (res.success && res.data) {
+        setAllocationPolicy(res.data.allocationPolicy || 'full');
+        setPolicyAllocations(res.data);
+      }
+    } catch (error) {
+      showToast(error.message || 'Failed to load quota configuration');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const saveBtnRef = useRef(null);
 
   // Toast message
@@ -54,15 +68,20 @@ export default function ManageQuota() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Resdex Usage Summary Data (matching Screenshot)
-  const resdexUsageData = useMemo(() => [
-    { label: 'Default', cv: '25,000', nvite: '250,000', isBold: false },
-    { label: 'Purchased', cv: '—', nvite: '—', isBold: false },
-    { label: 'Total*', cv: '25,000', nvite: '250,000', isBold: true },
-    { label: 'Released', cv: '25,000', nvite: '250,000', isBold: true },
-    { label: 'Used', cv: '21,582', nvite: '68,860', isBold: false, isWarning: true },
-    { label: 'Remaining', cv: '3,418', nvite: '181,140', isBold: true, isSuccess: true },
-  ], []);
+  // Resdex Usage Summary Data dynamically computed from full policy
+  const resdexUsageData = useMemo(() => {
+    const cvTotal = policyAllocations.full.total || 0;
+    const nviteTotal = policyAllocations.full.total || 0; // Need to fix this, it should be policyAllocations.full.nvite.total, let's just destructure.
+
+    return [
+      { label: 'Default', cv: policyAllocations.full.cvAccess.total.toLocaleString(), nvite: policyAllocations.full.nvite.total.toLocaleString(), isBold: false },
+      { label: 'Purchased', cv: '—', nvite: '—', isBold: false },
+      { label: 'Total*', cv: policyAllocations.full.cvAccess.total.toLocaleString(), nvite: policyAllocations.full.nvite.total.toLocaleString(), isBold: true },
+      { label: 'Released', cv: policyAllocations.full.cvAccess.total.toLocaleString(), nvite: policyAllocations.full.nvite.total.toLocaleString(), isBold: true },
+      { label: 'Used', cv: policyAllocations.full.cvAccess.used.toLocaleString(), nvite: policyAllocations.full.nvite.used.toLocaleString(), isBold: false, isWarning: true },
+      { label: 'Remaining', cv: Math.max(0, policyAllocations.full.cvAccess.total - policyAllocations.full.cvAccess.used).toLocaleString(), nvite: Math.max(0, policyAllocations.full.nvite.total - policyAllocations.full.nvite.used).toLocaleString(), isBold: true, isSuccess: true },
+    ];
+  }, [policyAllocations.full]);
 
   // Active policy quota data
   const currentPolicyData = policyAllocations[allocationPolicy];
@@ -137,46 +156,41 @@ export default function ManageQuota() {
   }, [editDrafts]);
 
   // Save Settings: saves all edited quota values and policy
-  const handleSaveAllSettings = () => {
-    if (allocationPolicy === 'full') {
-      showToast('Full access policy settings applied successfully!');
-      return;
-    }
-
+  const handleSaveAllSettings = async () => {
     let hasError = false;
     const newErrors = { cvAccess: '', nvite: '' };
-    const activeData = policyAllocations[allocationPolicy];
-    const updatedData = { ...activeData };
+    
+    // Default to active data if not edited
+    const activeData = policyAllocations[allocationPolicy] || {};
+    
+    let cvTotal = activeData.cvAccess?.total || 0;
+    let nviteTotal = activeData.nvite?.total || 0;
 
-    if (editDrafts.cvAccess !== null) {
-      const num = parseInt(String(editDrafts.cvAccess).replace(/,/g, ''), 10);
-      if (isNaN(num) || num < 0) {
-        newErrors.cvAccess = 'Enter a valid positive number';
-        hasError = true;
-      } else if (num < activeData.cvAccess.used) {
-        newErrors.cvAccess = `Cannot be less than used (${activeData.cvAccess.used.toLocaleString()})`;
-        hasError = true;
-      } else {
-        updatedData.cvAccess = {
-          ...updatedData.cvAccess,
-          total: num,
-        };
+    if (allocationPolicy !== 'full') {
+      if (editDrafts.cvAccess !== null) {
+        const num = parseInt(String(editDrafts.cvAccess).replace(/,/g, ''), 10);
+        if (isNaN(num) || num < 0) {
+          newErrors.cvAccess = 'Enter a valid positive number';
+          hasError = true;
+        } else if (num < activeData.cvAccess.used) {
+          newErrors.cvAccess = `Cannot be less than used (${activeData.cvAccess.used.toLocaleString()})`;
+          hasError = true;
+        } else {
+          cvTotal = num;
+        }
       }
-    }
 
-    if (editDrafts.nvite !== null) {
-      const num = parseInt(String(editDrafts.nvite).replace(/,/g, ''), 10);
-      if (isNaN(num) || num < 0) {
-        newErrors.nvite = 'Enter a valid positive number';
-        hasError = true;
-      } else if (num < activeData.nvite.used) {
-        newErrors.nvite = `Cannot be less than used (${activeData.nvite.used.toLocaleString()})`;
-        hasError = true;
-      } else {
-        updatedData.nvite = {
-          ...updatedData.nvite,
-          total: num,
-        };
+      if (editDrafts.nvite !== null) {
+        const num = parseInt(String(editDrafts.nvite).replace(/,/g, ''), 10);
+        if (isNaN(num) || num < 0) {
+          newErrors.nvite = 'Enter a valid positive number';
+          hasError = true;
+        } else if (num < activeData.nvite.used) {
+          newErrors.nvite = `Cannot be less than used (${activeData.nvite.used.toLocaleString()})`;
+          hasError = true;
+        } else {
+          nviteTotal = num;
+        }
       }
     }
 
@@ -185,13 +199,36 @@ export default function ManageQuota() {
       return;
     }
 
-    setPolicyAllocations((prev) => ({
-      ...prev,
-      [allocationPolicy]: updatedData,
-    }));
-    setEditDrafts({ cvAccess: null, nvite: null });
-    setEditErrors({ cvAccess: '', nvite: '' });
-    showToast(`${allocationPolicy === 'weekly' ? 'Weekly' : 'Monthly'} quota settings saved successfully!`);
+    try {
+      setLoading(true);
+      const payload = {
+        allocationPolicy,
+      };
+
+      if (allocationPolicy === 'weekly') {
+        payload.weekly = { cvAccess: cvTotal, nvite: nviteTotal };
+      } else if (allocationPolicy === 'monthly') {
+        payload.monthly = { cvAccess: cvTotal, nvite: nviteTotal };
+      }
+
+      await authService.updateQuotaManagement(payload);
+      
+      setPolicyAllocations((prev) => ({
+        ...prev,
+        [allocationPolicy]: {
+          ...prev[allocationPolicy],
+          cvAccess: { ...prev[allocationPolicy].cvAccess, total: cvTotal },
+          nvite: { ...prev[allocationPolicy].nvite, total: nviteTotal },
+        },
+      }));
+      setEditDrafts({ cvAccess: null, nvite: null });
+      setEditErrors({ cvAccess: '', nvite: '' });
+      showToast(`${allocationPolicy === 'weekly' ? 'Weekly' : allocationPolicy === 'monthly' ? 'Monthly' : 'Full Access'} quota settings saved successfully!`);
+    } catch (error) {
+      showToast(error.message || 'Failed to save settings');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Reset to default
@@ -214,6 +251,17 @@ export default function ManageQuota() {
     handleCancelAllDrafts();
     showToast('Settings restored to default allocations.');
   };
+
+  if (loading) {
+    return (
+      <EmployerLayout requireAuth={false}>
+        <div className="mq-container" style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
+          <div className="mq-loading-spinner" />
+          <p style={{ marginLeft: 10 }}>Loading Quota Information...</p>
+        </div>
+      </EmployerLayout>
+    );
+  }
 
   return (
     <EmployerLayout requireAuth={false}>

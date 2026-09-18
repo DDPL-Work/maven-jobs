@@ -8,8 +8,11 @@ const packageSchema = new mongoose.Schema(
       unique: true,
     },
 
-    jobLimit: { type: Number, required: true }
-    ,
+    price: { type: Number, default: 0 },
+    jobPostingLimit: { type: Number, required: true },
+    smbJobPostingLimit: { type: Number, default: 0 },
+    cvAccessLimit: { type: Number, default: 0 },
+    nviteLimit: { type: Number, default: 0 },
     description: {
       type: String,
       default: "",

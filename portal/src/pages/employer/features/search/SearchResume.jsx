@@ -138,6 +138,7 @@ export default function SearchResume() {
   const [cachedResults, setCachedResults] = useState([]);
   const [folderCandidateId, setFolderCandidateId] = useState(null);
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [quotaErrorMsg, setQuotaErrorMsg] = useState(null); // null = credit error, string = quota error
 
   const skillSearchRef = useRef(null);
 
@@ -232,22 +233,7 @@ export default function SearchResume() {
   const fetchCandidates = useCallback(async (page = 1) => {
     setSearchLoading(true);
     setHasSearched(true);
-    try {
-      const creditRes = await authService.searchCredits();
-      if (!creditRes?.success) {
-        setShowCreditModal(true);
-        setSearchLoading(false);
-        return;
-      }
-      window.dispatchEvent(new CustomEvent("employer-credits-changed", { detail: creditRes.data }));
-    } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "";
-      if (msg.toLowerCase().includes("credit") || msg.toLowerCase().includes("insufficient")) {
-        setShowCreditModal(true);
-        setSearchLoading(false);
-        return;
-      }
-    }
+
     try {
       const params = {};
       Object.entries(filters).forEach(([key, value]) => {
@@ -646,6 +632,7 @@ export default function SearchResume() {
                           return (
                             <CandidateCard key={cid || index} candidate={candidate}
                               isSelected={selectedCandidates.has(cid)}
+                              searchKeyword={filters.keyword}
                               onToggleSelect={(c) => {
                                 const id = c.id || c.userId;
                                 setSelectedCandidates(prev => {
@@ -757,23 +744,41 @@ export default function SearchResume() {
       <AnimatePresence>
         {showCreditModal && (
           <motion.div className="sr-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowCreditModal(false)}>
+            onClick={() => { setShowCreditModal(false); setQuotaErrorMsg(null); }}>
             <motion.div className="sr-save-modal" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} style={{ maxWidth: 400, textAlign: "center", padding: "40px 32px 28px" }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                <FiAlertCircle size={28} color="#dc2626" />
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: quotaErrorMsg ? "#fef3c7" : "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <FiAlertCircle size={28} color={quotaErrorMsg ? "#d97706" : "#dc2626"} />
               </div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: C.s800, marginBottom: 8 }}>Insufficient Credits</h3>
-              <p style={{ fontSize: "0.85rem", color: C.s500, marginBottom: 24, lineHeight: 1.6 }}>
-                You need 10 credits per resume search. Please top up your account to continue searching.
-              </p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                <button className="sr-btn sr-btn-ghost" onClick={() => setShowCreditModal(false)}>Cancel</button>
-                <button className="sr-btn sr-btn-primary" onClick={() => { setShowCreditModal(false); navigate("/employer-dashboard/pricing"); }}
-                  style={{ background: "linear-gradient(135deg,#002366,#1a3a6e)" }}>
-                  Buy Credits
-                </button>
-              </div>
+              {quotaErrorMsg ? (
+                <>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: C.s800, marginBottom: 8 }}>CV Quota Exhausted</h3>
+                  <p style={{ fontSize: "0.85rem", color: C.s500, marginBottom: 24, lineHeight: 1.6 }}>
+                    {quotaErrorMsg}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                    <button className="sr-btn sr-btn-ghost" onClick={() => { setShowCreditModal(false); setQuotaErrorMsg(null); }}>Close</button>
+                    <button className="sr-btn sr-btn-primary" onClick={() => { setShowCreditModal(false); setQuotaErrorMsg(null); navigate("/employer-dashboard/analytics"); }}
+                      style={{ background: "linear-gradient(135deg,#d97706,#b45309)" }}>
+                      View Quota
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: C.s800, marginBottom: 8 }}>Insufficient Credits</h3>
+                  <p style={{ fontSize: "0.85rem", color: C.s500, marginBottom: 24, lineHeight: 1.6 }}>
+                    You need 10 credits per resume search. Please top up your account to continue searching.
+                  </p>
+                  <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                    <button className="sr-btn sr-btn-ghost" onClick={() => setShowCreditModal(false)}>Cancel</button>
+                    <button className="sr-btn sr-btn-primary" onClick={() => { setShowCreditModal(false); navigate("/employer-dashboard/pricing"); }}
+                      style={{ background: "linear-gradient(135deg,#002366,#1a3a6e)" }}>
+                      Buy Credits
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}

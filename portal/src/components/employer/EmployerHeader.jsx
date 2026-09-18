@@ -382,7 +382,7 @@ export default function EmployerHeader({
         { label: "Send MIvite",         path: "/resdex?tab=mivites" },
         { label: "Manage Searches",    path: "/manage-search" },
         { label: "Folders",            path: "/employer-dashboard/folders" },
-        { label: "Resdex Requirements",path: "#" },
+        { label: "Resdex Requirements",path: "/resdex-requirements" },
       ],
     },
     {

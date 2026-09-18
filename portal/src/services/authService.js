@@ -130,6 +130,24 @@ const authService = {
     }
   },
 
+  getQuotaManagement: async () => {
+    try {
+      const response = await api.get('/company-panel/quota-management');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch quota management config' };
+    }
+  },
+
+  updateQuotaManagement: async (payload) => {
+    try {
+      const response = await api.patch('/company-panel/quota-management', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update quota management config' };
+    }
+  },
+
   getJobs: async (params) => {
     try {
       const response = await api.get('/candidate/jobs', { params });
@@ -563,6 +581,15 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to submit employer enquiry' };
+    }
+  },
+
+  getPackages: async () => {
+    try {
+      const response = await api.get('/company-panel/packages');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch packages' };
     }
   },
 

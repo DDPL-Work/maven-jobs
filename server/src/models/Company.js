@@ -75,7 +75,7 @@ const companySchema = new mongoose.Schema(
     },
     jobLimit: {
       type: Number,
-      default: 2,
+      default: 0,
     },
     grandfatheredJobLimit: {
       type: Number,
@@ -83,17 +83,34 @@ const companySchema = new mongoose.Schema(
     },
     nviteLimit: {
       type: Number,
-      default: 200000,
+      default: 0,
     },
     activeJobCount: { type: Number, default: 0 },
     packageExpiresAt: { type: Date, default: null },
     configurationNotes: { type: String, default: "" },
     accountManager: { type: String, default: "" },
 
+    quotaConfig: {
+      allocationPolicy: { type: String, enum: ['weekly', 'monthly', 'full'], default: 'full' },
+      weekly: {
+        cvAccess: { type: Number, default: 0 },
+        nvite: { type: Number, default: 0 }
+      },
+      monthly: {
+        cvAccess: { type: Number, default: 0 },
+        nvite: { type: Number, default: 0 }
+      }
+    },
+
     status: {
       type: String,
-      enum: ["ACTIVE", "INACTIVE"],
+      enum: ["ACTIVE", "INACTIVE", "PENDING_VERIFICATION", "REJECTED"],
       default: "ACTIVE",
+    },
+    assignedFSE: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CrmUser",
+      default: null,
     },
   },
   { timestamps: true }

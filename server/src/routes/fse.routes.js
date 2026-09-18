@@ -22,6 +22,10 @@ router.get("/leads", controller.getLeads);
 router.patch("/leads/:id", controller.updateLead);
 router.patch("/leads/:id/status", controller.updateLeadStatus);
 router.get("/transfer-candidate/:id", controller.getTransferCandidate);
+router.get("/portal-leads", controller.getPortalLeads);
+router.patch("/portal-leads/:id/verify", controller.verifyPortalLead);
+router.get("/crms", controller.getCRMs);
+
 router.patch("/leads/:id/projection", controller.updateLeadProjection);
 router.patch("/leads/:id/transfer-to-sm", controller.transferLeadToSM);
 router.post("/leads/:id/activity", controller.logLeadActivity);

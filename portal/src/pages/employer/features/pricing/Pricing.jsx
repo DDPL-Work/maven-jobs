@@ -16,48 +16,24 @@ const C = {
   dm: "'DM Sans',sans-serif",
 };
 
-const PACKAGES = [
-  {
-    key: "STANDARD", name: "Job Package 1", posts: 5, price: 199,
+const PACKAGE_STATIC_MAP = {
+  STANDARD: {
+    name: "Standard Plan",
     color: C.amber, gradient: "linear-gradient(135deg,#fbbf24,#f59e0b)",
-    features: [
-      "5 active job postings",
-      "30 days listing per job",
-      "Basic candidate matching",
-      "Email notifications",
-      "Standard support",
-    ],
     desc: "Best for startups testing the platform",
   },
-  {
-    key: "PREMIUM", name: "Job Package 2", posts: 12, price: 349,
+  PREMIUM: {
+    name: "Premium Plan",
     color: C.navy, gradient: "linear-gradient(135deg,#002366,#1a3a6e)",
     popular: true,
-    features: [
-      "12 active job postings",
-      "45 days listing per job",
-      "AI-powered candidate matching",
-      "Priority email & phone support",
-      "Resdex database access",
-      "Applicant tracking",
-    ],
     desc: "Most popular for growing teams",
   },
-  {
-    key: "ELITE", name: "Job Package 3", posts: 20, price: 599,
+  ELITE: {
+    name: "Elite Plan",
     color: C.purple, gradient: "linear-gradient(135deg,#8b5cf6,#6d28d9)",
-    features: [
-      "20 active job postings",
-      "60 days listing per job",
-      "Advanced AI matching",
-      "Dedicated account manager",
-      "Unlimited Resdex access",
-      "Premium analytics & insights",
-      "Priority 24/7 support",
-    ],
     desc: "For high-volume enterprise hiring",
   },
-];
+};
 
 function loadRazorpay() {
   return new Promise((resolve, reject) => {
@@ -73,6 +49,7 @@ function loadRazorpay() {
 
 export default function Pricing() {
   const navigate = useNavigate();
+  const [packages, setPackages] = useState([]);
   const [user, setUser] = useState(null);
   const [company, setCompany] = useState(null);
   const [activeRequest, setActiveRequest] = useState(null);
@@ -93,6 +70,38 @@ export default function Pricing() {
       try {
         const raw = localStorage.getItem("employerUser");
         if (active) setUser(raw ? JSON.parse(raw) : null);
+        
+        try {
+          const pkgRes = await authService.getPackages();
+          if (active && pkgRes?.success) {
+            const dynamicPackages = pkgRes.data.map(pkg => {
+              const staticConfig = PACKAGE_STATIC_MAP[pkg.name] || PACKAGE_STATIC_MAP.STANDARD;
+              return {
+                key: pkg.name,
+                name: staticConfig.name,
+                posts: pkg.jobPostingLimit,
+                price: pkg.price || 0,
+                color: staticConfig.color,
+                gradient: staticConfig.gradient,
+                popular: staticConfig.popular,
+                desc: staticConfig.desc,
+                features: [
+                  `${pkg.jobPostingLimit} active job postings`,
+                  pkg.smbJobPostingLimit > 0 ? `${pkg.smbJobPostingLimit} SMB job postings` : "No SMB postings",
+                  `${pkg.cvAccessLimit} CV Access limit`,
+                  `${pkg.nviteLimit} MIvites included`,
+                  "Dedicated support"
+                ]
+              };
+            });
+            const order = { "STANDARD": 1, "PREMIUM": 2, "ELITE": 3 };
+            dynamicPackages.sort((a,b) => order[a.key] - order[b.key]);
+            setPackages(dynamicPackages);
+          }
+        } catch (e) {
+          console.error("Failed to fetch packages", e);
+        }
+
         const res = await authService.getEmployerDashboard();
         if (!active) return;
         const data = res?.data || res || {};
@@ -200,7 +209,7 @@ export default function Pricing() {
   const utilization = Math.min(100, Math.round((activeJobs / safeLimit) * 100));
   const remaining = Math.max(0, jobLimit - activeJobs);
 
-  const getPkgIndex = (key) => PACKAGES.findIndex(p => p.key === key);
+  const getPkgIndex = (key) => packages.findIndex(p => p.key === key);
   const currentIdx = getPkgIndex(currentPkg);
   const isElite = currentPkg === "ELITE";
 
@@ -225,7 +234,7 @@ export default function Pricing() {
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: C.s500, fontWeight: 600, background: "#fff", padding: "7px 14px", borderRadius: 10, border: `1px solid ${C.s200}` }}>
               <FiBriefcase size={14} color={C.navy} />
-              <span style={{ fontFamily: C.fd, fontWeight: 800, color: C.navy }}>{PACKAGES[currentIdx]?.name || currentPkg}</span>
+              <span style={{ fontFamily: C.fd, fontWeight: 800, color: C.navy }}>{packages[currentIdx]?.name || currentPkg}</span>
               <span style={{ width: 4, height: 4, borderRadius: "50%", background: C.s300 }} />
               <span style={{ fontWeight: 700, color: C.s700 }}>{activeJobs}/{jobLimit}</span> jobs
             </div>
@@ -255,7 +264,7 @@ export default function Pricing() {
 
         {/* Job Package Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 40 }}>
-          {PACKAGES.map((pkg) => {
+          {packages.map((pkg) => {
             const isActive = pkg.key === currentPkg;
             const pkgIdx = getPkgIndex(pkg.key);
             const canBuy = pkgIdx > currentIdx;

@@ -167,6 +167,9 @@ export default function UserManagement() {
   }, []);
 
   useEffect(() => { fetchDomains(); }, [fetchDomains]);
+  const [hoveredDomain, setHoveredDomain] = useState(null);
+  const [domainAction, setDomainAction] = useState('add'); // 'add', 'edit', 'delete'
+  const [targetDomain, setTargetDomain] = useState('');
   const [newDomainInput, setNewDomainInput] = useState('');
   const [domainStep, setDomainStep] = useState('otp'); // 'otp' | 'domain'
   const [domainOtp, setDomainOtp] = useState(['', '', '', '', '', '']);
@@ -554,9 +557,10 @@ export default function UserManagement() {
   };
 
   // --- Allowed Domain Flow: First verify OTP -> then enter new domain ---
-  // --- Allowed Domain Flow: First verify OTP -> then enter new domain ---
-  const handleOpenDomainModal = async () => {
-    setNewDomainInput('');
+  const handleOpenDomainModal = async (action = 'add', domain = '') => {
+    setDomainAction(action);
+    setTargetDomain(domain);
+    setNewDomainInput(action === 'edit' ? domain : '');
     setDomainOtp(['', '', '', '', '', '']);
     setDomainError('');
     setOtpTimer(30);
@@ -581,6 +585,7 @@ export default function UserManagement() {
       if (res.data) {
         setOtpSessionId(res.data.sessionId);
         setMaskedPhone(res.data.maskedPhone); // can be masked email or phone
+        setOtpTimer(res.data.expiresInSeconds || 600);
         showToast(`Verification OTP sent to CLIENT's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
       }
     } catch (err) {
@@ -646,8 +651,19 @@ export default function UserManagement() {
       const result = await userManagementService.verifyDomainOtp(otpSessionId, enteredCode);
       setDomainToken(result.data?.domainToken);
       setDomainError('');
-      setDomainStep('domain');
-      showToast('OTP verified! Please enter the new domain.');
+      
+      if (domainAction === 'delete') {
+        // Execute delete immediately after verification
+        const delResult = await userManagementService.deleteDomain(targetDomain, result.data.domainToken);
+        setAllowedDomains(delResult.data);
+        showToast(`Domain ${targetDomain} deleted successfully!`);
+        setShowDomainModal(false);
+        setDomainStep('otp');
+        setDomainOtp(['', '', '', '', '', '']);
+      } else {
+        setDomainStep('domain');
+        showToast('OTP verified! Please enter the domain.');
+      }
     } catch (err) {
       setDomainError(err?.message || 'Invalid OTP');
     } finally {
@@ -667,23 +683,33 @@ export default function UserManagement() {
       setDomainError('Please enter a valid domain (e.g. @mycompany.com)');
       return;
     }
-    if (allowedDomains.includes(dom)) {
+    if (domainAction === 'add' && allowedDomains.includes(dom)) {
+      setDomainError(`Domain ${dom} is already in the allowed domains list`);
+      return;
+    }
+    if (domainAction === 'edit' && dom !== targetDomain && allowedDomains.includes(dom)) {
       setDomainError(`Domain ${dom} is already in the allowed domains list`);
       return;
     }
     
     setOtpLoading(true);
     try {
-      const result = await userManagementService.addDomain(dom, domainToken);
-      setAllowedDomains(result.data || [...allowedDomains, dom]);
-      showToast(`Domain ${dom} added successfully!`);
+      if (domainAction === 'add') {
+        const result = await userManagementService.addDomain(dom, domainToken);
+        setAllowedDomains(result.data || [...allowedDomains, dom]);
+        showToast(`Domain ${dom} added successfully!`);
+      } else if (domainAction === 'edit') {
+        const result = await userManagementService.editDomain(targetDomain, dom, domainToken);
+        setAllowedDomains(result.data);
+        showToast(`Domain updated to ${dom} successfully!`);
+      }
       setShowDomainModal(false);
       setDomainStep('otp');
       setNewDomainInput('');
       setDomainOtp(['', '', '', '', '', '']);
       setDomainError('');
     } catch (err) {
-      setDomainError(err?.message || 'Failed to add domain');
+      setDomainError(err?.message || `Failed to ${domainAction} domain`);
     } finally {
       setOtpLoading(false);
     }
@@ -890,6 +916,8 @@ export default function UserManagement() {
                   {allowedDomains.map((dom) => (
                     <div
                       key={dom}
+                      onMouseEnter={() => setHoveredDomain(dom)}
+                      onMouseLeave={() => setHoveredDomain(null)}
                       style={{
                         padding: '6px 12px',
                         fontSize: 13,
@@ -897,10 +925,38 @@ export default function UserManagement() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        background: hoveredDomain === dom ? '#f8fafc' : 'transparent',
                       }}
                     >
                       <span>{dom}</span>
-                      <FiCheck size={14} color="#10b981" />
+                      {hoveredDomain === dom ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenDropdown(null);
+                              handleOpenDomainModal('edit', dom);
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 2 }}
+                            title="Edit Domain"
+                          >
+                            <FiEdit3 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenDropdown(null);
+                              handleOpenDomainModal('delete', dom);
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2 }}
+                            title="Delete Domain"
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <FiCheck size={14} color="#10b981" />
+                      )}
                     </div>
                   ))}
                   <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 4, paddingTop: 4 }}>
@@ -910,7 +966,7 @@ export default function UserManagement() {
                       style={{ color: '#0284c7', fontWeight: 600 }}
                       onClick={() => {
                         setOpenDropdown(null);
-                        handleOpenDomainModal();
+                        handleOpenDomainModal('add', '');
                       }}
                     >
                       <FiPlus size={14} /> Add Allowed Domain
@@ -1136,7 +1192,7 @@ export default function UserManagement() {
                 role="button"
                 tabIndex={0}
                 className="um-info-link"
-                onClick={handleOpenDomainModal}
+                onClick={() => handleOpenDomainModal('add', '')}
               >
                 Add Allowed Domain
               </span>
@@ -1774,7 +1830,7 @@ export default function UserManagement() {
             <div className="um-modal-box" onClick={(e) => e.stopPropagation()}>
               <div className="um-modal-header">
                 <h2 className="um-modal-title">
-                  {domainStep === 'select_method' ? 'Choose Verification Method' : domainStep === 'otp' ? 'Security Verification' : 'Add Allowed Domain'}
+                  {domainStep === 'select_method' ? 'Choose Verification Method' : domainStep === 'otp' ? 'Security Verification' : domainAction === 'edit' ? 'Edit Allowed Domain' : 'Add Allowed Domain'}
                 </h2>
                 <button
                   type="button"
@@ -1820,7 +1876,7 @@ export default function UserManagement() {
                           <FiShield size={20} color="#0ea5e9" />
                         </div>
                         <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                          To authorize adding a new domain, enter the 6-digit OTP sent to the CLIENT's registered {otpMethod === 'email' ? 'email' : 'mobile number'}:{' '}
+                          To authorize {domainAction === 'delete' ? `deleting the domain ${targetDomain}` : domainAction === 'edit' ? `editing the domain ${targetDomain}` : 'adding a new domain'}, enter the 6-digit OTP sent to the CLIENT's registered {otpMethod === 'email' ? 'email' : 'mobile number'}:{' '}
                           <strong style={{ color: '#002366' }}>{maskedPhone}</strong>
                         </div>
                       </div>
@@ -1853,7 +1909,7 @@ export default function UserManagement() {
                     <div style={{ textAlign: 'center', fontSize: 12.5, color: '#64748b' }}>
                       {otpTimer > 0 ? (
                         <span>
-                          Resend OTP in <strong>{otpTimer}s</strong>
+                          OTP expires in <strong>{Math.floor(otpTimer / 60)}:{String(otpTimer % 60).padStart(2, '0')}</strong>
                         </span>
                       ) : (
                         <button
@@ -1951,7 +2007,7 @@ export default function UserManagement() {
                       Cancel
                     </button>
                     <button type="submit" className="um-btn-modal-save">
-                      Add Domain
+                      {domainAction === 'edit' ? 'Update Domain' : 'Add Domain'}
                     </button>
                   </div>
                 </form>

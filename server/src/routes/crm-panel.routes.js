@@ -15,6 +15,7 @@ router.get("/auth/me", protectCrmPanel, crmPanelController.me);
 router.get("/dashboard", protectCrmPanel, crmPanelController.getDashboard);
 
 router.get("/clients", protectCrmPanel, crmPanelController.getClients);
+router.get("/clients/assigned", protectCrmPanel, crmPanelController.getAssignedClients);
 router.post("/clients", protectCrmPanel, uploadQrLogo, crmPanelController.createClient);
 router.put("/clients/:id", protectCrmPanel, uploadQrLogo, crmPanelController.updateClient);
 router.patch(

@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
     scope: { type: String, default: "" },
     accessStatus: {
       type: String,
-      enum: ["ACTIVE", "PENDING_INVITE", "RESTRICTED"],
+      enum: ["ACTIVE", "PENDING_INVITE", "RESTRICTED", "PENDING_VERIFICATION"],
       default: "ACTIVE",
     },
     isActive: { type: Boolean, default: true },

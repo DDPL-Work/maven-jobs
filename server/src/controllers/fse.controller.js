@@ -5,10 +5,13 @@ const asyncHandler = require("../middleware/async.middleware");
 const CrmUser = require("../models/CrmUser");
 const Lead = require("../models/Lead");
 const NonVisitDay = require("../models/NonVisitDay");
+const Company = require("../models/Company");
+const User = require("../models/User");
 const {
   issueTokenPair,
   setRefreshCookie,
 } = require("../services/auth.service");
+const emailService = require("../services/email.service");
 const {
   LEAD_STATUSES,
   LEAD_SOURCES,
@@ -261,6 +264,7 @@ const formatLead = (lead) => ({
     ? {
         id: String(lead.assignedTo._id),
         fullName: lead.assignedTo.fullName,
+        email: lead.assignedTo.email || "",
         role: lead.assignedTo.role,
         profileImage: lead.assignedTo.profileImageUrl || "",
       }
@@ -826,6 +830,228 @@ exports.getLeads = asyncHandler(async (req, res) => {
         totalPages: Math.ceil(total / limit) || 0,
       },
     },
+  });
+});
+
+exports.getPortalLeads = asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page || 1));
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
+  const skip = (page - 1) * limit;
+
+  const search = String(req.query.search || "").trim();
+  const location = String(req.query.location || "").trim();
+  const assignedTo = String(req.query.assignedTo || "").trim();
+  const status = String(req.query.status || "").trim().toUpperCase();
+  const dateRange = String(req.query.date || "").trim().toLowerCase();
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+
+  const myZone = getUserZone(req.user);
+  
+  const query = { 
+    leadSource: "PORTAL",
+  };
+
+  if (status) {
+    query.status = status;
+  } else {
+    query.status = { $in: ["NEW", "REJECTED", "ASSIGNED"] };
+  }
+
+  if (assignedTo) {
+    query.assignedTo = assignedTo;
+  } else {
+    const zoneStates = getZoneStates(myZone);
+    if (zoneStates && zoneStates.length > 0) {
+      query.$or = [
+        { assignedTo: req.user._id },
+        { state: { $in: zoneStates } } 
+      ];
+    } else {
+      query.assignedTo = req.user._id;
+    }
+  }
+
+  if (search) {
+    const safeRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const searchConditions = [
+      { companyName: safeRegex },
+      { contactName: safeRegex },
+      { phone: safeRegex },
+      { leadCode: safeRegex },
+    ];
+    if (query.$or) {
+      query.$and = [
+        { $or: query.$or },
+        { $or: searchConditions }
+      ];
+      delete query.$or;
+    } else {
+      query.$or = searchConditions;
+    }
+  }
+
+  if (location) {
+    const locRegex = new RegExp(location.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const locConditions = [
+      { city: locRegex },
+      { state: locRegex },
+      { address: locRegex }
+    ];
+    if (query.$and) {
+      query.$and.push({ $or: locConditions });
+    } else if (query.$or) {
+      query.$and = [
+        { $or: query.$or },
+        { $or: locConditions }
+      ];
+      delete query.$or;
+    } else {
+      query.$or = locConditions;
+    }
+  }
+
+  if (startDate || endDate) {
+    query.createdAt = {};
+    if (startDate) query.createdAt.$gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query.createdAt.$lte = end;
+    }
+  } else if (dateRange) {
+    const createdAtFilter = buildDateFilter(dateRange);
+    if (createdAtFilter) {
+      query.createdAt = createdAtFilter;
+    }
+  }
+
+  const [leads, total] = await Promise.all([
+    Lead.find(query)
+      .populate("createdBy", "fullName role territory profileImageUrl")
+      .populate("assignedTo", "fullName email role profileImageUrl")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Lead.countDocuments(query),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      items: leads.map(formatLead),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 0,
+      },
+    },
+  });
+});
+
+exports.verifyPortalLead = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { action, crmUserId, reason } = req.body; // action: "APPROVE" or "REJECT"
+
+  if (!["APPROVE", "REJECT"].includes(action)) {
+    throw createHttpError(400, "Action must be APPROVE or REJECT");
+  }
+
+  const lead = await Lead.findById(id);
+  if (!lead) {
+    throw createHttpError(404, "Portal Lead not found");
+  }
+
+  // Find the associated Company by email or phone. We used exact email during registration.
+  const company = await Company.findOne({
+    $or: [
+      { email: lead.email },
+      { contactPhone: lead.phone }
+    ],
+    status: "PENDING_VERIFICATION"
+  });
+
+  if (!company) {
+    throw createHttpError(404, "Associated pending company not found");
+  }
+
+  // Find the associated User
+  const user = await User.findOne({ companyId: company._id, accessStatus: "PENDING_VERIFICATION" });
+  if (!user) {
+    throw createHttpError(404, "Associated pending user not found");
+  }
+
+  if (action === "APPROVE") {
+    if (!crmUserId) {
+      throw createHttpError(400, "A CRM user must be selected when approving");
+    }
+    
+    // Ensure CRM exists
+    const crmUser = await CrmUser.findById(crmUserId);
+    if (!crmUser) {
+      throw createHttpError(404, "Selected CRM user not found");
+    }
+
+    company.status = "ACTIVE";
+    company.createdByCRM = crmUser._id;
+    await company.save();
+
+    user.accessStatus = "ACTIVE";
+    user.isActive = true;
+    await user.save();
+
+    lead.status = "ASSIGNED";
+    lead.assignedTo = crmUser._id;
+    lead.notes = `Verified and approved by FSE. ${lead.notes}`;
+    await lead.save();
+
+    // Trigger email/welcome flow
+    const employerLoginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/employer-login`;
+    await emailService.sendNotificationEmail({
+      to: company.email,
+      name: company.contactPerson || company.companyName,
+      notification: {
+        title: "Account Verified Successfully",
+        message: "Your employer account has been verified successfully. You can now access your dashboard with the email and password you used during registration.",
+        actionUrl: employerLoginUrl,
+        category: "Account Update"
+      }
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: "Company verified and approved successfully",
+    });
+
+  } else if (action === "REJECT") {
+    if (!reason) {
+      throw createHttpError(400, "Rejection reason is required");
+    }
+
+    company.status = "REJECTED";
+    await company.save();
+
+    user.accessStatus = "RESTRICTED";
+    await user.save();
+
+    lead.status = "REJECTED";
+    lead.notes = `Rejected by FSE: ${reason}\n${lead.notes}`;
+    await lead.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Company rejected",
+    });
+  }
+});
+
+exports.getCRMs = asyncHandler(async (req, res) => {
+  // Fetch all active CRM users (excluding FSEs if you want, or just everyone)
+  const crms = await CrmUser.find({ isActive: true }).select("fullName email role");
+  res.status(200).json({
+    success: true,
+    data: crms.map(c => ({ id: c._id, name: c.fullName, email: c.email, role: c.role })),
   });
 });
 

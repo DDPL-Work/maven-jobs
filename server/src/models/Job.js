@@ -12,7 +12,12 @@ const jobSchema = new mongoose.Schema(
     title: { type: String, required: true },
     summary: { type: String, default: "" },
     department: String,
-    jobType: String,
+    jobType: String, // Full-time, Part-time, etc.
+    jobCategory: {
+      type: String,
+      enum: ["standard", "management", "hot", "internship"],
+      default: "standard"
+    },
     workplaceType: String,
 
     location: String,

@@ -29,6 +29,10 @@ export default function PackagesPage() {
   const [packages, setPackages] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [jobLimit, setJobLimit] = useState("");
+  const [price, setPrice] = useState("");
+  const [smbJobPostingLimit, setSmbJobPostingLimit] = useState("");
+  const [cvAccessLimit, setCvAccessLimit] = useState("");
+  const [nviteLimit, setNviteLimit] = useState("");
   const [description, setDescription] = useState("");
   const [rolloutMode, setRolloutMode] = useState("APPLY_FOR_EVERYONE");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,7 +75,9 @@ export default function PackagesPage() {
 
     try {
       const response = await getPackages();
-      setPackages(response.data);
+      const order = { STANDARD: 1, PREMIUM: 2, ELITE: 3 };
+      const sorted = response.data.sort((a, b) => (order[a.name?.toUpperCase()] || 99) - (order[b.name?.toUpperCase()] || 99));
+      setPackages(sorted);
     } catch (requestError) {
       setPageError(requestError.message || "Unable to load package plans.");
     } finally {
@@ -81,7 +87,11 @@ export default function PackagesPage() {
 
   const openEditModal = (pkg) => {
     setSelectedPackage(pkg);
-    setJobLimit(String(pkg.jobLimit || ""));
+    setJobLimit(String(pkg.jobLimit || pkg.jobPostingLimit || ""));
+    setPrice(String(pkg.price || "0"));
+    setSmbJobPostingLimit(String(pkg.smbJobPostingLimit || "0"));
+    setCvAccessLimit(String(pkg.cvAccessLimit || "0"));
+    setNviteLimit(String(pkg.nviteLimit || "0"));
     setDescription(pkg.description || "");
     setRolloutMode("APPLY_FOR_EVERYONE");
     setActionError("");
@@ -95,7 +105,11 @@ export default function PackagesPage() {
 
     try {
       await updatePackage(selectedPackage.name, {
-        jobLimit: Number(jobLimit || 0),
+        jobPostingLimit: Number(jobLimit || 0),
+        price: Number(price || 0),
+        smbJobPostingLimit: Number(smbJobPostingLimit || 0),
+        cvAccessLimit: Number(cvAccessLimit || 0),
+        nviteLimit: Number(nviteLimit || 0),
         description,
         rolloutMode,
       });
@@ -150,9 +164,14 @@ export default function PackagesPage() {
                       {titleCase(pkg.name)}
                     </p>
                     <p className="mt-3 text-4xl font-bold text-slate-900">
-                      {pkg.jobLimit}
+                      ₹{formatNumber(pkg.price || 0)}
                     </p>
-                    <p className="mt-2 text-sm text-slate-500">default job posts</p>
+                    <div className="mt-4 flex flex-col gap-2 text-sm text-slate-500">
+                      <p><strong>{pkg.jobLimit || pkg.jobPostingLimit || 0}</strong> Max Job Postings</p>
+                      <p><strong>{pkg.smbJobPostingLimit || 0}</strong> SMB Job Postings</p>
+                      <p><strong>{pkg.cvAccessLimit || 0}</strong> CV Access</p>
+                      <p><strong>{pkg.nviteLimit || 0}</strong> Send MIvites</p>
+                    </div>
                   </div>
                   <button
                     onClick={() => openEditModal(pkg)}
@@ -184,13 +203,43 @@ export default function PackagesPage() {
         description="Adjust default posting limits and choose how this package change should roll out across existing client accounts."
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          <TextField
-            label="Job posting limit"
-            type="number"
-            value={jobLimit}
-            onChange={(event) => setJobLimit(event.target.value)}
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField
+              label="Price (₹)"
+              type="number"
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+              required
+            />
+            <TextField
+              label="Max Job Posting"
+              type="number"
+              value={jobLimit}
+              onChange={(event) => setJobLimit(event.target.value)}
+              required
+            />
+            <TextField
+              label="SMB Job Posting"
+              type="number"
+              value={smbJobPostingLimit}
+              onChange={(event) => setSmbJobPostingLimit(event.target.value)}
+              required
+            />
+            <TextField
+              label="Max CV Access"
+              type="number"
+              value={cvAccessLimit}
+              onChange={(event) => setCvAccessLimit(event.target.value)}
+              required
+            />
+            <TextField
+              label="Max Send MIvites"
+              type="number"
+              value={nviteLimit}
+              onChange={(event) => setNviteLimit(event.target.value)}
+              required
+            />
+          </div>
           <TextAreaField
             label="Package description"
             value={description}

@@ -148,16 +148,16 @@ export default function PublicCandidateProfile() {
     if (!candidateId || !profile?.resume?.url) return;
     setResumeLoading(true);
     try {
-      const res = await authService.getCandidateResume(candidateId);
-      if (res?.success && res?.data?.url) {
-        window.open(res.data.url, "_blank", "noopener,noreferrer");
+      const cr = await authService.useCredits('RESUME_DOWNLOAD', candidateId);
+      if (cr?.success) {
+        window.dispatchEvent(new CustomEvent("employer-credits-changed"));
+        window.open(profile.resume.url, "_blank", "noopener,noreferrer");
       } else {
-        window.open(profile.resume.url, "_blank", "noopener,noreferrer");
+        alert(cr?.message || 'Insufficient credits to download resume');
       }
-    } catch {
-      if (profile?.resume?.url) {
-        window.open(profile.resume.url, "_blank", "noopener,noreferrer");
-      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Failed to download resume';
+      alert(msg);
     }
     setResumeLoading(false);
   }, [candidateId, profile]);
@@ -926,7 +926,7 @@ export default function PublicCandidateProfile() {
                       </button>
                     </div>
                     <iframe
-                      src={profile.resume.url}
+                      src={`${profile.resume.url}#toolbar=0&navpanes=0&scrollbar=0`}
                       title="Candidate CV"
                       style={{ width: "100%", height: 700, border: "1px solid #e2e8f0", borderRadius: 8 }}
                     />

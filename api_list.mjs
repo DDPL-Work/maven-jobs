@@ -1048,5 +1048,124 @@ export const apiList = [
     description: "This endpoint is used to update security settings via the portal application.",
     internalFunction: "updateSecuritySettings",
     usedInPortalPages: ["UserManagement.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/feedback",
+    description: "This endpoint is used to submit feedback via the portal application.",
+    internalFunction: "submitFeedback",
+    usedInPortalPages: ["FeedbackModal.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/usage",
+    description: "This endpoint is used to get chatbot usage via the portal application.",
+    internalFunction: "getChatbotUsage",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/message",
+    description: "This endpoint is used to send chatbot message via the portal application.",
+    internalFunction: "sendChatbotMessage",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/recommend-jobs",
+    description: "This endpoint is used to get recommended jobs from chatbot via the portal application.",
+    internalFunction: "recommendJobsChatbot",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/top-applicants",
+    description: "This endpoint is used to get top applicants from chatbot via the portal application.",
+    internalFunction: "getTopApplicantsChatbot",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/recommend-candidates",
+    description: "This endpoint is used to get recommend candidates from chatbot via the portal application.",
+    internalFunction: "recommendCandidatesChatbot",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/upload",
+    description: "This endpoint is used to upload file to chatbot via the portal application.",
+    internalFunction: "uploadToChatbot",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/threads/details",
+    description: "This endpoint is used to get chatbot thread details via the portal application.",
+    internalFunction: "getChatbotThreadDetails",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/matched-jobs",
+    description: "This endpoint is used to get matched jobs from chatbot via the portal application.",
+    internalFunction: "getMatchedJobsChatbot",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "GET",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/threads/:threadId/messages",
+    description: "This endpoint is used to get chatbot thread messages via the portal application.",
+    internalFunction: "getChatbotThreadMessages",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "DELETE",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/chatbot/threads/:threadId",
+    description: "This endpoint is used to delete chatbot thread via the portal application.",
+    internalFunction: "deleteChatbotThread",
+    usedInPortalPages: ["Premium3D.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/candidate/auth/forgot-password",
+    description: "This endpoint is used to forgot password candidate via the portal application.",
+    internalFunction: "candidateForgotPassword",
+    usedInPortalPages: ["ForgotPassword.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/candidate/auth/verify-reset-otp",
+    description: "This endpoint is used to verify reset otp candidate via the portal application.",
+    internalFunction: "candidateVerifyResetOtp",
+    usedInPortalPages: ["ForgotPassword.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/candidate/auth/reset-password",
+    description: "This endpoint is used to reset password candidate via the portal application.",
+    internalFunction: "candidateResetPassword",
+    usedInPortalPages: ["ForgotPassword.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/forgot-password",
+    description: "This endpoint is used to forgot password employer via the portal application.",
+    internalFunction: "employerForgotPassword",
+    usedInPortalPages: ["ForgotPassword.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/verify-reset-otp",
+    description: "This endpoint is used to verify reset otp employer via the portal application.",
+    internalFunction: "employerVerifyResetOtp",
+    usedInPortalPages: ["ForgotPassword.jsx"]
+  },
+  {
+    method: "POST",
+    fullUrl: "https://maven-jobs.onrender.com/api/v1/company-panel/auth/reset-password",
+    description: "This endpoint is used to reset password employer via the portal application.",
+    internalFunction: "employerResetPassword",
+    usedInPortalPages: ["ForgotPassword.jsx"]
   }
 ];

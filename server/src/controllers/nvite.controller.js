@@ -6,6 +6,8 @@ const CandidateProfile = require("../models/CandidateProfile");
 const emailModule = require("../email");
 const logger = require("../config/logger");
 const activityService = require("../services/recruiter-activity.service");
+const { checkAndEnforceQuota } = require("../services/quota-enforcement.service");
+const ResdexReportLog = require("../models/ResdexReportLog");
 
 exports.sendNvite = asyncHandler(async (req, res) => {
   const company = req.company;
@@ -27,6 +29,18 @@ exports.sendNvite = asyncHandler(async (req, res) => {
   const validRecipients = recipients.filter(r => typeof r === "string" && r.includes("@"));
   if (validRecipients.length === 0) {
     return res.status(400).json({ success: false, message: "No valid recipient emails provided" });
+  }
+
+  // ── Check NVite quota before sending ──
+  try {
+    await checkAndEnforceQuota(company, 'nvite', validRecipients.length);
+  } catch (quotaErr) {
+    return res.status(429).json({
+      success: false,
+      message: quotaErr.message,
+      code: quotaErr.code || 'NVITE_QUOTA_EXHAUSTED',
+      quotaInfo: quotaErr.quotaInfo || null,
+    });
   }
 
   const foundUsers = await User.find({
@@ -154,6 +168,48 @@ exports.sendNvite = asyncHandler(async (req, res) => {
         failedEmails: failedEmails.length > 0 ? failedEmails : undefined,
       },
     },
+  });
+
+  // ── Write per-recipient ResdexReportLog entries (audit ledger) ──
+  // Done AFTER response is sent so it doesn’t delay the user
+  setImmediate(async () => {
+    try {
+      const logs = recipientsData.map(recipient => {
+        const candidateUser = foundUsers.find(u => u.email === recipient.email);
+        const candidateName = candidateUser?.name || recipient.email.split('@')[0];
+        const delivered = sentResults.some(r => r.email === recipient.email && r.success);
+        return {
+          companyId: company._id,
+          userId: recruiter._id,
+          subuserName: recruiter.name || recruiter.email || 'Recruiter',
+          subuserEmail: recruiter.email || '',
+          actionType: 'NVITE_SENT',
+          section: 'DATABASE_USAGE',
+          candidateId: recipient.userId || null,
+          candidateName,
+          contactChannel: 'NVITE',
+          contactStatus: delivered ? 'Delivered' : 'Failed',
+          platform: 'WEB',
+          creditsUsed: 0,
+          metadata: {
+            nviteId: nvite._id,
+            subject: subject.trim(),
+            recipientEmail: recipient.email,
+            recipientUserId: recipient.userId || null,
+            onMavenJobs: !!recipient.userId,
+            emailDelivered: delivered,
+            recruiterName: recruiter.name || '',
+            recruiterEmail: recruiter.email || '',
+            companyName: company.name || '',
+            totalRecipientsInBatch: validRecipients.length,
+          },
+        };
+      });
+      await ResdexReportLog.insertMany(logs, { ordered: false });
+      logger.info(`[ResdexReportLog] Wrote ${logs.length} NVITE_SENT entries for nvite ${nvite._id}`);
+    } catch (err) {
+      logger.error('[ResdexReportLog] Failed to write NVite audit logs:', err.message);
+    }
   });
 });
 

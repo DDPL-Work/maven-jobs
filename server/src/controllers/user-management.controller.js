@@ -294,7 +294,7 @@ exports.addCompanyDomain = asyncHandler(async (req, res) => {
 
   try {
     const decoded = jwt.verify(domainToken, process.env.JWT_SECRET);
-    if (!decoded.verified || decoded.action !== "add_domain" || decoded.companyId !== String(companyId)) {
+    if (!decoded.verified || !["add_domain", "manage_domain"].includes(decoded.action) || decoded.companyId !== String(companyId)) {
       throw new Error("Invalid token payload");
     }
   } catch (err) {
@@ -317,6 +317,79 @@ exports.addCompanyDomain = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Domain added successfully",
+    data: company.allowedDomains,
+  });
+});
+
+exports.editCompanyDomain = asyncHandler(async (req, res) => {
+  const { oldDomain, newDomain, domainToken } = req.body;
+  const companyId = req.user.companyId;
+
+  if (!domainToken) throw createHttpError(400, "Missing domain verification token");
+
+  try {
+    const decoded = jwt.verify(domainToken, process.env.JWT_SECRET);
+    if (!decoded.verified || decoded.action !== "manage_domain" || decoded.companyId !== String(companyId)) {
+      throw new Error("Invalid token payload");
+    }
+  } catch (err) {
+    throw createHttpError(400, "Invalid or expired verification token. Please verify OTP again.");
+  }
+
+  const company = await Company.findById(companyId);
+  if (!company) throw createHttpError(404, "Company not found");
+
+  if (!company.allowedDomains) company.allowedDomains = [];
+
+  const cleanOld = oldDomain.toLowerCase().trim();
+  const cleanNew = newDomain.toLowerCase().trim();
+
+  const idx = company.allowedDomains.indexOf(cleanOld);
+  if (idx === -1) {
+    throw createHttpError(404, "Domain not found in allowed list");
+  }
+
+  if (cleanOld !== cleanNew && company.allowedDomains.includes(cleanNew)) {
+    throw createHttpError(400, `Domain ${cleanNew} is already in the allowed domains list`);
+  }
+
+  company.allowedDomains[idx] = cleanNew;
+  await company.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Domain updated successfully",
+    data: company.allowedDomains,
+  });
+});
+
+exports.deleteCompanyDomain = asyncHandler(async (req, res) => {
+  const { domain, domainToken } = req.query;
+  const companyId = req.user.companyId;
+
+  if (!domainToken) throw createHttpError(400, "Missing domain verification token");
+
+  try {
+    const decoded = jwt.verify(domainToken, process.env.JWT_SECRET);
+    if (!decoded.verified || decoded.action !== "manage_domain" || decoded.companyId !== String(companyId)) {
+      throw new Error("Invalid token payload");
+    }
+  } catch (err) {
+    throw createHttpError(400, "Invalid or expired verification token. Please verify OTP again.");
+  }
+
+  const company = await Company.findById(companyId);
+  if (!company) throw createHttpError(404, "Company not found");
+
+  if (!company.allowedDomains) company.allowedDomains = [];
+
+  const cleanDomain = domain.toLowerCase().trim();
+  company.allowedDomains = company.allowedDomains.filter(d => d !== cleanDomain);
+  await company.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Domain deleted successfully",
     data: company.allowedDomains,
   });
 });
@@ -389,7 +462,8 @@ exports.sendDomainOtp = asyncHandler(async (req, res) => {
       message: "OTP sent to registered email",
       data: {
         sessionId,
-        maskedPhone: maskedEmail
+        maskedPhone: maskedEmail,
+        expiresInSeconds: 600
       }
     });
   }
@@ -414,7 +488,8 @@ exports.sendDomainOtp = asyncHandler(async (req, res) => {
     message: "OTP sent to registered mobile number",
     data: {
       sessionId,
-      maskedPhone
+      maskedPhone,
+      expiresInSeconds: 600
     }
   });
 });
@@ -456,7 +531,7 @@ exports.verifyDomainOtp = asyncHandler(async (req, res) => {
 
   // Issue a short-lived token to prove verification in the next step
   const domainToken = jwt.sign(
-    { verified: true, action: "add_domain", companyId: String(req.user.companyId) },
+    { verified: true, action: "manage_domain", companyId: String(req.user.companyId) },
     process.env.JWT_SECRET,
     { expiresIn: "5m" }
   );

@@ -75,6 +75,24 @@ const userManagementService = {
     }
   },
 
+  editDomain: async (oldDomain, newDomain, domainToken) => {
+    try {
+      const response = await api.put('/company-panel/user-management/domains', { oldDomain, newDomain, domainToken });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to edit domain' };
+    }
+  },
+
+  deleteDomain: async (domain, domainToken) => {
+    try {
+      const response = await api.delete('/company-panel/user-management/domains', { params: { domain, domainToken } });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to delete domain' };
+    }
+  },
+
   sendDomainOtp: async (method) => {
     try {
       const response = await api.post('/company-panel/user-management/domains/otp', { method });

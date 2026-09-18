@@ -20,6 +20,7 @@ export default function EmployerLayout({
   onNotificationsClick,
   onLogout,
   containerWidth = 1160,
+  hideFooter = false,
   children,
 }) {
   const navigate = useNavigate();
@@ -85,7 +86,7 @@ export default function EmployerLayout({
       }}>
         {children}
       </div>
-      <EmployerFooter />
+      {!hideFooter && <EmployerFooter />}
     </div>
   );
 }

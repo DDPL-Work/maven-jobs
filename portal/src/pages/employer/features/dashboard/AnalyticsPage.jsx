@@ -33,6 +33,7 @@ export default function AnalyticsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('analytics');
   const [range, setRange] = useState('12m');
+  const [showRangeDropdown, setShowRangeDropdown] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -148,9 +149,67 @@ export default function AnalyticsPage() {
           <button className="ap-btn" onClick={handleExport} disabled={!data}>
             <FiDownload size={14} /> Export CSV
           </button>
-          <button className="ap-btn ap-btn-primary" style={{ gap: 6 }}>
-            <FiCalendar size={14} /> This Year
-          </button>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button 
+              className="ap-btn ap-btn-primary" 
+              style={{ gap: 6 }}
+              onClick={() => setShowRangeDropdown(!showRangeDropdown)}
+            >
+              <FiCalendar size={14} /> {range === '7d' ? 'This Week' : range === '30d' ? 'This Month' : 'This Year'}
+            </button>
+            {showRangeDropdown && (
+              <>
+                <div 
+                  style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+                  onClick={() => setShowRangeDropdown(false)} 
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: 8,
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  zIndex: 50,
+                  minWidth: 160,
+                  overflow: 'hidden'
+                }}>
+                  {[
+                    { value: '7d', label: 'Weekly' },
+                    { value: '30d', label: 'Monthly' },
+                    { value: '12m', label: 'Yearly' }
+                  ].map(opt => (
+                    <div
+                      key={opt.value}
+                      onClick={() => {
+                        handleRangeChange(opt.value);
+                        setShowRangeDropdown(false);
+                      }}
+                      style={{
+                        padding: '10px 16px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        color: range === opt.value ? '#1E5EFF' : '#475569',
+                        fontWeight: range === opt.value ? 600 : 400,
+                        backgroundColor: range === opt.value ? '#eff6ff' : '#ffffff',
+                        transition: 'background-color 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (range !== opt.value) e.currentTarget.style.backgroundColor = '#f8fafc';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (range !== opt.value) e.currentTarget.style.backgroundColor = '#ffffff';
+                      }}
+                    >
+                      {opt.label}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

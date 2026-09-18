@@ -15,6 +15,9 @@ const CandidateNotification = require("../models/CandidateNotification");
 const PackageChangeRequest = require("../models/PackageChangeRequest");
 const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
+const Lead = require("../models/Lead");
+const CrmUser = require("../models/CrmUser");
+const { getZoneFromState } = require("../utils/zone.util");
 const {
   loadPackageCatalog,
   applyCompanyPackageSnapshot,
@@ -362,6 +365,10 @@ exports.login = asyncHandler(async (req, res) => {
     throw createHttpError(403, "Company profile is inactive");
   }
 
+  if (company.status === "PENDING_VERIFICATION" || user.accessStatus === "PENDING_VERIFICATION") {
+    throw createHttpError(403, "Your account is currently pending verification by our team. You will be able to log in once approved.");
+  }
+
   const { packageSnapshot } = await syncCompanyPackageContext(company);
 
   const tokenPair = await issueTokenPair({
@@ -469,6 +476,24 @@ exports.verifyEmailOtp = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: { emailToken } });
 });
 
+exports.getPackages = asyncHandler(async (req, res) => {
+  const Package = require("../models/Package");
+  const packages = await Package.find().sort({ jobPostingLimit: 1 });
+  res.status(200).json({
+    success: true,
+    data: packages.map(pkg => ({
+      id: String(pkg._id),
+      name: pkg.name,
+      jobPostingLimit: pkg.jobPostingLimit,
+      smbJobPostingLimit: pkg.smbJobPostingLimit,
+      cvAccessLimit: pkg.cvAccessLimit,
+      nviteLimit: pkg.nviteLimit,
+      price: pkg.price,
+      description: pkg.description || ""
+    }))
+  });
+});
+
 exports.register = asyncHandler(async (req, res) => {
   const fullName = toTrimmedString(req.body.fullName || req.body.name);
   const companyName = toTrimmedString(req.body.companyName);
@@ -528,8 +553,8 @@ exports.register = asyncHandler(async (req, res) => {
       email,
       password: hashedPassword,
       role: "CLIENT",
-      accessStatus: "ACTIVE",
-      isActive: true,
+      accessStatus: "PENDING_VERIFICATION",
+      isActive: false,
     });
 
     const primaryDomain = `@${email.split('@')[1]?.toLowerCase()}`;
@@ -553,8 +578,7 @@ exports.register = asyncHandler(async (req, res) => {
       createdByCRM: user._id,
       clientUserId: user._id,
       packageType: "STANDARD",
-      jobLimit: 2,
-      status: "ACTIVE",
+      status: "PENDING_VERIFICATION",
       configurationNotes: designation ? `Primary contact title: ${designation}` : "",
       allowedDomains: [primaryDomain],
     });
@@ -575,6 +599,45 @@ exports.register = asyncHandler(async (req, res) => {
         resdex: true,
       },
     });
+
+    // Create a Lead for FSE Verification
+    const zone = getZoneFromState(state);
+    
+    // Find an FSE in this zone (if any)
+    let assignedFse = null;
+    if (zone) {
+      const fse = await CrmUser.findOne({ role: "FSE", territory: zone, isActive: true });
+      if (fse) {
+        assignedFse = fse._id;
+        company.assignedFSE = fse._id;
+        await company.save();
+      }
+    }
+
+    let systemUser = await CrmUser.findOne({ role: "ADMIN" });
+    if (!systemUser) {
+        systemUser = await CrmUser.findOne(); 
+    }
+
+    await Lead.create({
+      contactName: fullName,
+      companyName: companyName,
+      phone: phone,
+      email: email,
+      businessCategory: "IT & Technology", 
+      leadSource: "PORTAL",
+      status: "NEW",
+      priority: "HIGH",
+      city: city || "Unknown",
+      state: state || "Unknown",
+      address: address || "Unknown",
+      pincode: pincode || "",
+      clientType: "Standard",
+      createdBy: systemUser ? systemUser._id : user._id,
+      updatedBy: systemUser ? systemUser._id : user._id,
+      assignedTo: assignedFse,
+    });
+
   } catch (error) {
     if (company?._id) {
       await Company.deleteOne({ _id: company._id });
@@ -584,17 +647,6 @@ exports.register = asyncHandler(async (req, res) => {
     }
     throw error;
   }
-
-  const { packageSnapshot } = await syncCompanyPackageContext(company);
-
-  const tokenPair = await issueTokenPair({
-    user,
-    source: "USER",
-    req,
-  });
-
-  setRefreshCookie(res, tokenPair.refreshToken);
-  setAccessCookie(res, tokenPair.accessToken);
 
   EventBus.emit(EVENTS.RECRUITER_REGISTERED, {
     recruiterId: user._id,
@@ -606,16 +658,7 @@ exports.register = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    expiresInSeconds: tokenPair.expiresInSeconds,
-    user: {
-      id: String(user._id),
-      username: user.name || "",
-      email: user.email || "",
-      role: user.role || "CLIENT",
-      companyId: String(company._id),
-      companyName: company.name || "",
-    },
-    company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
+    message: "Your request is received. We will get back to you soon.",
   });
 });
 
@@ -869,12 +912,35 @@ exports.createJob = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Job title is required");
   }
 
+  const jobCategory = toTrimmedString(req.body.jobCategory) || "standard";
+
+  // Always count active standard jobs — needed for activeJobCount tracking after save
   const activeApprovedCount = await Job.countDocuments({
     companyId: company._id,
     isActive: true,
-    approvalStatus: "APPROVED",
+    jobCategory: { $ne: "management" }
   });
-  const hasAvailablePackageSlot = activeApprovedCount < Number(packageSnapshot.jobLimit || 0);
+
+  if (jobCategory === "management") {
+    // SMB Job limit check
+    const smbActiveCount = await Job.countDocuments({
+      companyId: company._id,
+      isActive: true,
+      jobCategory: "management"
+    });
+    const smbLimit = Number(packageSnapshot.smbJobPostingLimit || 0);
+    if (smbLimit <= 0 || smbActiveCount >= smbLimit) {
+      throw createHttpError(403, "Your plan does not allow more SMB job postings. Please upgrade your package.");
+    }
+  } else {
+    // Standard Job limit check
+    const standardLimit = Number(packageSnapshot.jobPostingLimit || packageSnapshot.jobLimit || 0);
+    if (standardLimit <= 0 || activeApprovedCount >= standardLimit) {
+      throw createHttpError(403, "Your plan does not allow more standard job postings. Please upgrade your package.");
+    }
+  }
+
+  const hasAvailablePackageSlot = true; // Limits are strictly enforced above, so if we reach here, it's true.
 
   const rawSkills = Array.isArray(req.body.skills)
     ? req.body.skills
@@ -895,6 +961,7 @@ exports.createJob = asyncHandler(async (req, res) => {
     summary: toTrimmedString(req.body.summary),
     department: toTrimmedString(req.body.department),
     jobType: toTrimmedString(req.body.jobType),
+    jobCategory,
     workplaceType: toTrimmedString(req.body.workplaceType),
     location: toTrimmedString(req.body.location),
     experience: toTrimmedString(req.body.experience),
@@ -2349,22 +2416,63 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   const PaidResume = require("../models/PaidResume");
   const Nvite = require("../models/Nvite");
 
-  // CV Access (Resdex Credits)
-  const credit = await Credit.findOne({ companyId: company._id }).lean() || { balance: 0, lifetimePurchased: 200, lifetimeUsed: 0 };
-  const cvTotal = credit.lifetimePurchased;
-  const cvLeft = credit.balance;
-  const cvUsedByAll = Math.max(0, cvTotal - cvLeft);
+  const Package = require("../models/Package");
+  const pkg = await Package.findOne({ name: company.packageType || "STANDARD" });
+  
+  const credit = await Credit.findOne({ companyId: company._id }).lean();
+  const actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
+  const fullNviteTotal = company.nviteLimit || 200000;
+
+  const quotaConfig = company.quotaConfig || {};
+  const allocationPolicy = quotaConfig.allocationPolicy || "full";
+
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay();
+  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+  startOfWeek.setDate(diff);
+  startOfWeek.setHours(0,0,0,0);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let dateFilter = {};
+  if (allocationPolicy === "weekly") {
+    dateFilter = { createdAt: { $gte: startOfWeek } };
+  } else if (allocationPolicy === "monthly") {
+    dateFilter = { createdAt: { $gte: startOfMonth } };
+  }
+
+  // CV Access
+  let cvTotal = actualFullCvTotal;
+  let cvBadge = "OVERALL";
+  if (allocationPolicy === "weekly") {
+    cvTotal = quotaConfig.weekly?.cvAccess || 0;
+    cvBadge = "WEEKLY";
+  } else if (allocationPolicy === "monthly") {
+    cvTotal = quotaConfig.monthly?.cvAccess || 0;
+    cvBadge = "MONTHLY";
+  }
+
+  const cvUsedByAll = await PaidResume.countDocuments({ companyId: company._id, ...dateFilter });
+  const cvLeft = Math.max(0, cvTotal - cvUsedByAll);
   
   let cvUsedByYou = 0;
   if (isRecruiter) {
-    cvUsedByYou = await PaidResume.countDocuments({ companyId: company._id, recruiterId: req.user._id });
+    cvUsedByYou = await PaidResume.countDocuments({ companyId: company._id, recruiterId: req.user._id, ...dateFilter });
   }
 
   // NVites
-  const nviteTotal = company.nviteLimit || 200000;
+  let nviteTotal = fullNviteTotal;
+  let nviteBadge = "OVERALL";
+  if (allocationPolicy === "weekly") {
+    nviteTotal = quotaConfig.weekly?.nvite || 0;
+    nviteBadge = "WEEKLY";
+  } else if (allocationPolicy === "monthly") {
+    nviteTotal = quotaConfig.monthly?.nvite || 0;
+    nviteBadge = "MONTHLY";
+  }
   
   const nviteAllAgg = await Nvite.aggregate([
-    { $match: { companyId: company._id } },
+    { $match: { companyId: company._id, ...dateFilter } },
     { $group: { _id: null, sum: { $sum: "$totalCount" } } }
   ]);
   const nviteUsedByAll = nviteAllAgg[0]?.sum || 0;
@@ -2373,21 +2481,37 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   let nviteUsedByYou = 0;
   if (isRecruiter) {
     const nviteYouAgg = await Nvite.aggregate([
-      { $match: { companyId: company._id, recruiterId: req.user._id } },
+      { $match: { companyId: company._id, recruiterId: req.user._id, ...dateFilter } },
       { $group: { _id: null, sum: { $sum: "$totalCount" } } }
     ]);
     nviteUsedByYou = nviteYouAgg[0]?.sum || 0;
   }
 
-  // Job Postings
-  const jobTotal = (company.jobLimit || 2) + (company.grandfatheredJobLimit || 0);
-  const jobUsedByAll = company.activeJobCount || await Job.countDocuments({ companyId: company._id, isActive: true });
+  // Job Postings (always overall)
+  const jobTotal = (pkg?.jobPostingLimit || 2) + (company.grandfatheredJobLimit || 0);
+  const jobUsedByAll = company.activeJobCount || await Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $ne: "management" } });
   const jobLeft = Math.max(0, jobTotal - jobUsedByAll);
-
+  
   let jobUsedByYou = 0;
   if (isRecruiter) {
-    jobUsedByYou = await Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true });
+    jobUsedByYou = await Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: { $ne: "management" } });
   }
+
+  // SMB Job Postings
+  const smbJobTotal = pkg?.smbJobPostingLimit || 0;
+  const smbJobUsedByAll = await Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" });
+  const smbJobLeft = Math.max(0, smbJobTotal - smbJobUsedByAll);
+
+  let smbJobUsedByYou = 0;
+  if (isRecruiter) {
+    smbJobUsedByYou = await Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "management" });
+  }
+
+  const CompanySubUser = require("../models/CompanySubUser");
+  
+  const totalSubUsers = await CompanySubUser.countDocuments({ companyId: company._id });
+  const resdexSubUsers = await CompanySubUser.countDocuments({ companyId: company._id, "permissions.resdex": true });
+  const jobPostingSubUsers = await CompanySubUser.countDocuments({ companyId: company._id, "permissions.jobPosting": true });
 
   res.status(200).json({
     success: true,
@@ -2396,20 +2520,140 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
         total: cvTotal,
         left: cvLeft,
         usedByAll: cvUsedByAll,
-        usedByYou: isRecruiter ? cvUsedByYou : null
+        usedByYou: isRecruiter ? cvUsedByYou : null,
+        licensesAssigned: `${resdexSubUsers}/${totalSubUsers || 1} users assigned`,
+        badge: cvBadge
       },
       nvite: {
         total: nviteTotal,
         left: nviteLeft,
         usedByAll: nviteUsedByAll,
-        usedByYou: isRecruiter ? nviteUsedByYou : null
+        usedByYou: isRecruiter ? nviteUsedByYou : null,
+        licensesAssigned: `${resdexSubUsers}/${totalSubUsers || 1} users assigned`,
+        badge: nviteBadge
       },
       jobPosting: {
         total: jobTotal,
         left: jobLeft,
         usedByAll: jobUsedByAll,
-        usedByYou: isRecruiter ? jobUsedByYou : null
+        usedByYou: isRecruiter ? jobUsedByYou : null,
+        licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
+        badge: "OVERALL"
+      },
+      smbJobPosting: {
+        total: smbJobTotal,
+        left: smbJobLeft,
+        usedByAll: smbJobUsedByAll,
+        usedByYou: isRecruiter ? smbJobUsedByYou : null,
+        licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
+        badge: "OVERALL"
       }
     }
+  });
+});
+
+exports.getQuotaManagement = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+
+  const Credit = require("../models/Credit");
+  const PaidResume = require("../models/PaidResume");
+  const Nvite = require("../models/Nvite");
+  const Package = require("../models/Package");
+
+  const pkg = await Package.findOne({ name: company.packageType || "STANDARD" });
+  
+  const credit = await Credit.findOne({ companyId: company._id }).lean();
+  const actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
+  const actualFullCvUsed = await PaidResume.countDocuments({ companyId: company._id });
+
+  const fullNviteTotal = pkg?.nviteLimit || 250000;
+  const nviteAllAgg = await Nvite.aggregate([
+    { $match: { companyId: company._id } },
+    { $group: { _id: null, sum: { $sum: "$totalCount" } } }
+  ]);
+  const fullNviteUsed = nviteAllAgg[0]?.sum || 0;
+
+  const now = new Date();
+  
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay();
+  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+  startOfWeek.setDate(diff);
+  startOfWeek.setHours(0,0,0,0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const monthlyCvUsed = await PaidResume.countDocuments({ companyId: company._id, createdAt: { $gte: startOfMonth } });
+  const monthlyNviteAgg = await Nvite.aggregate([
+    { $match: { companyId: company._id, createdAt: { $gte: startOfMonth } } },
+    { $group: { _id: null, sum: { $sum: "$totalCount" } } }
+  ]);
+  const monthlyNviteUsed = monthlyNviteAgg[0]?.sum || 0;
+
+  const weeklyCvUsed = await PaidResume.countDocuments({ companyId: company._id, createdAt: { $gte: startOfWeek } });
+  const weeklyNviteAgg = await Nvite.aggregate([
+    { $match: { companyId: company._id, createdAt: { $gte: startOfWeek } } },
+    { $group: { _id: null, sum: { $sum: "$totalCount" } } }
+  ]);
+  const weeklyNviteUsed = weeklyNviteAgg[0]?.sum || 0;
+
+  const quotaConfig = company.quotaConfig || {};
+
+  res.status(200).json({
+    success: true,
+    data: {
+      allocationPolicy: quotaConfig.allocationPolicy || "full",
+      weekly: {
+        cvAccess: { total: quotaConfig.weekly?.cvAccess || 0, used: weeklyCvUsed },
+        nvite: { total: quotaConfig.weekly?.nvite || 0, used: weeklyNviteUsed },
+      },
+      monthly: {
+        cvAccess: { total: quotaConfig.monthly?.cvAccess || 0, used: monthlyCvUsed },
+        nvite: { total: quotaConfig.monthly?.nvite || 0, used: monthlyNviteUsed },
+      },
+      full: {
+        cvAccess: { total: actualFullCvTotal, used: actualFullCvUsed },
+        nvite: { total: fullNviteTotal, used: fullNviteUsed },
+      }
+    }
+  });
+});
+
+exports.updateQuotaManagement = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const { allocationPolicy, weekly, monthly } = req.body;
+  
+  if (allocationPolicy && !["weekly", "monthly", "full"].includes(allocationPolicy)) {
+    throw createHttpError(400, "Invalid allocation policy");
+  }
+
+  if (!company.quotaConfig) {
+    company.quotaConfig = {
+      allocationPolicy: "full",
+      weekly: { cvAccess: 0, nvite: 0 },
+      monthly: { cvAccess: 0, nvite: 0 }
+    };
+  }
+  
+  if (allocationPolicy) company.quotaConfig.allocationPolicy = allocationPolicy;
+  
+  if (weekly) {
+    if (!company.quotaConfig.weekly) company.quotaConfig.weekly = { cvAccess: 0, nvite: 0 };
+    if (weekly.cvAccess !== undefined) company.quotaConfig.weekly.cvAccess = Math.max(0, Number(weekly.cvAccess));
+    if (weekly.nvite !== undefined) company.quotaConfig.weekly.nvite = Math.max(0, Number(weekly.nvite));
+  }
+  
+  if (monthly) {
+    if (!company.quotaConfig.monthly) company.quotaConfig.monthly = { cvAccess: 0, nvite: 0 };
+    if (monthly.cvAccess !== undefined) company.quotaConfig.monthly.cvAccess = Math.max(0, Number(monthly.cvAccess));
+    if (monthly.nvite !== undefined) company.quotaConfig.monthly.nvite = Math.max(0, Number(monthly.nvite));
+  }
+
+  company.markModified('quotaConfig');
+  await company.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Quota configuration saved successfully"
   });
 });

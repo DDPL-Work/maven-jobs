@@ -15,6 +15,7 @@ import PaymentsPage from "../pages/PaymentsPage";
 import ProtectedRoute from "./ProtectedRoute";
 import QRCodesPage from "../pages/QRCodesPage";
 import SettingsPage from "../pages/SettingsPage";
+import AssignedClients from "../pages/AssignedClients";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
           { index: true, element: <Navigate to="/crm/dashboard" replace /> },
           { path: "/crm/dashboard", element: <CrmDashboard /> },
           { path: "/crm/clients", element: <ClientsPage /> },
+          { path: "/crm/assigned-clients", element: <AssignedClients /> },
           { path: "/crm/jobs", element: <JobsPage /> },
           { path: "/crm/approvals", element: <ApprovalsPage /> },
           { path: "/crm/packages", element: <PackagesPage /> },

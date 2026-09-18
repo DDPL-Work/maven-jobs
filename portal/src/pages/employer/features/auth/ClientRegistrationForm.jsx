@@ -76,6 +76,8 @@ const ClientRegistrationForm = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [phone, setPhone] = useState("");
   const [countryCode, setCountryCode] = useState("91");
@@ -292,11 +294,8 @@ const ClientRegistrationForm = () => {
       };
 
       const data = await authService.employerRegister(payload);
-      if (data?.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-        setUser(data.user);
-      }
-      navigate("/employer-dashboard");
+      setIsSuccess(true);
+      setSuccessMessage(data.message || "Your request is received. We will get back to you soon.");
     } catch (err) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
@@ -393,10 +392,37 @@ const ClientRegistrationForm = () => {
         </div>
 
         <div className="crf2-card">
-          {renderStepper()}
+          {!isSuccess && renderStepper()}
 
           <div className="crf2-card-body">
-            {step === 1 && (
+            {isSuccess && (
+              <div className="crf2-fade" style={{ textAlign: "center", padding: "40px 20px" }}>
+                <div style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background: "rgba(16, 185, 129, 0.1)",
+                  color: "#10b981",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 20px",
+                }}>
+                  <FiCheck size={30} />
+                </div>
+                <h2 style={{ fontSize: "24px", fontWeight: "700", color: "#111827", marginBottom: "12px" }}>
+                  Registration Successful
+                </h2>
+                <p style={{ fontSize: "16px", color: "#4b5563", lineHeight: "1.6", marginBottom: "30px" }}>
+                  {successMessage}
+                </p>
+                <Link to="/employer-login" className="crf2-btn" style={{ textDecoration: "none", display: "inline-block" }}>
+                  Go to Login
+                </Link>
+              </div>
+            )}
+
+            {!isSuccess && step === 1 && (
               <div className="crf2-fade">
                 <div className="crf2-section-head">
                   <span className="crf2-section-icon crf2-icon-navy"><FaMobileAlt /></span>
@@ -443,7 +469,7 @@ const ClientRegistrationForm = () => {
               </div>
             )}
 
-            {step === 2 && (
+            {!isSuccess && step === 2 && (
               <div className="crf2-fade">
                 <div className="crf2-section-head">
                   <span className="crf2-section-icon crf2-icon-teal"><FiCheck /></span>
@@ -497,7 +523,7 @@ const ClientRegistrationForm = () => {
               </div>
             )}
 
-            {step === 3 && (
+            {!isSuccess && step === 3 && (
               <div className="crf2-fade">
                 <div className="crf2-section-head">
                   <span className="crf2-section-icon crf2-icon-lime"><FaBuilding /></span>
@@ -673,7 +699,7 @@ const ClientRegistrationForm = () => {
               </div>
             )}
 
-            {step === 4 && (
+            {!isSuccess && step === 4 && (
               <div className="crf2-fade">
                 <div className="crf2-section-head">
                   <span className="crf2-section-icon crf2-icon-navy"><FaEnvelopeOpenText /></span>

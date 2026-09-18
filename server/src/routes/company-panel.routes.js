@@ -40,6 +40,8 @@ router.post("/auth/verify-mobile-otp", controller.verifyMobileOtp);
 router.post("/auth/send-email-otp", controller.sendEmailOtp);
 router.post("/auth/verify-email-otp", controller.verifyEmailOtp);
 
+router.get("/packages", controller.getPackages);
+
 router.use(protectUser);
 router.use(role("CLIENT", "RECRUITER"));
 router.use(resolveCompanyContext);
@@ -70,6 +72,8 @@ router.get("/applications/:applicationId/resume/preview", controller.previewAppl
 router.post("/applications/:applicationId/resume/upload", uploadPdf, controller.uploadApplicationResume);
 router.get("/analytics", controller.getAnalytics);
 router.get("/quota-usage", controller.getQuotaUsage);
+router.get("/quota-management", controller.getQuotaManagement);
+router.patch("/quota-management", controller.updateQuotaManagement);
 router.get("/activity", controller.getRecentActivity);
 router.get("/chats", chatController.getCompanyThreads);
 router.get("/chats/:threadId/messages", chatController.getCompanyThreadMessages);
@@ -150,11 +154,13 @@ router.post("/user-management/users/bulk-delete", userManagementController.delet
 router.put("/user-management/users/:id/password", userManagementController.changeUserPassword);
 router.put("/user-management/users/time-restrictions", userManagementController.updateTimeRestrictions);
 
-// Allowed Domains
-router.get("/user-management/domains", userManagementController.getCompanyDomains);
-router.post("/user-management/domains", userManagementController.addCompanyDomain);
-router.post("/user-management/domains/otp", userManagementController.sendDomainOtp);
-router.post("/user-management/domains/verify-otp", userManagementController.verifyDomainOtp);
+  // Allowed Domains
+  router.get("/user-management/domains", userManagementController.getCompanyDomains);
+  router.post("/user-management/domains", userManagementController.addCompanyDomain);
+  router.put("/user-management/domains", userManagementController.editCompanyDomain);
+  router.delete("/user-management/domains", userManagementController.deleteCompanyDomain);
+  router.post("/user-management/domains/otp", userManagementController.sendDomainOtp);
+  router.post("/user-management/domains/verify-otp", userManagementController.verifyDomainOtp);
 // Security Settings
 router.get("/user-management/security-settings", userManagementController.getSecuritySettings);
 router.put("/user-management/security-settings", userManagementController.updateSecuritySettings);

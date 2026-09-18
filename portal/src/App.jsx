@@ -55,6 +55,7 @@ import AnalyticsPage from "./pages/employer/features/dashboard/AnalyticsPage";
 import SearchResume from "./pages/employer/features/search/SearchResume";
 import SearchResults from "./pages/employer/features/search/SearchResults";
 import ManageSearch from "./pages/employer/features/search/ManageSearch";
+import ResdexRequirements from "./pages/employer/features/search/ResdexRequirements";
 import Pricing from "./pages/employer/features/pricing/Pricing";
 import DraftJobs from "./pages/employer/features/jobs/DraftJobs";
 import ReviewSharePage from "./pages/employer/features/reviews/ReviewSharePage";
@@ -240,6 +241,7 @@ function AppContent() {
         <Route path="/manage-folders/:tab" element={<ProtectedEmployerRoute requiredPermission="resdex"><FolderListPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/folders/:folderId" element={<ProtectedEmployerRoute requiredPermission="resdex"><SingleFolderPage /></ProtectedEmployerRoute>} />
         <Route path="/resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><SearchResume /></ProtectedEmployerRoute>} />
+        <Route path="/resdex-requirements" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexRequirements /></ProtectedEmployerRoute>} />
         <Route path="/resdex/search-results" element={<ProtectedEmployerRoute requiredPermission="resdex"><SearchResults /></ProtectedEmployerRoute>} />
         <Route path="/manage-search" element={<ProtectedEmployerRoute requiredPermission="resdex"><ManageSearch /></ProtectedEmployerRoute>} />
         <Route path="/manage-users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />
