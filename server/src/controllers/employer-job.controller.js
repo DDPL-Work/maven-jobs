@@ -229,6 +229,10 @@ const formatCandidateCard = (app, candidate = {}, profile = {}, isRecommended = 
       } catch (_) {}
       return insts;
     })(),
+    rawEducations: profile.educations || [],
+    dob: profile.dob || profile.dateOfBirth || "",
+    homeTown: profile.homeTown || profile.currentCity || "",
+    lastActive: profile.updatedAt || candidate.updatedAt || "",
   };
 };
 

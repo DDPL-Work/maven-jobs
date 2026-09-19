@@ -548,6 +548,13 @@
   letter-spacing: 0.02em;
 }
 
+.mjr-job-tag.closed {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 1px 6px; /* slightly smaller padding to account for border */
+}
+
 /* Stats Columns */
 .mjr-job-stats {
   display: flex;

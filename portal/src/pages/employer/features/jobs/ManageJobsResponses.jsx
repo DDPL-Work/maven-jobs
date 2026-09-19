@@ -172,7 +172,7 @@ export default function ManageJobsResponses() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState(['active']);
+  const [selectedStatuses, setSelectedStatuses] = useState(['active', 'closed']);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedPosters, setSelectedPosters] = useState([]);
 
@@ -393,7 +393,7 @@ export default function ManageJobsResponses() {
     setSearchTerm('');
     setDebouncedSearch('');
     setUserSearchTerm('');
-    setSelectedStatuses(['active']);
+    setSelectedStatuses(['active', 'closed']);
     setSelectedCategories([]);
     setSelectedPosters([]);
     setCurrentPage(1);
@@ -831,7 +831,12 @@ export default function ManageJobsResponses() {
                             {job.title}
                           </span>
                           <span className="mjr-job-location">{job.location}</span>
-                          <span className="mjr-job-tag">{job.category}</span>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span className="mjr-job-tag">{job.category}</span>
+                            {job.status === 'closed' && (
+                              <span className="mjr-job-tag closed">Closed</span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Middle Stats */}
