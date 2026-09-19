@@ -564,6 +564,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
               placeholder="Select location"
               id="post-job-location"
               aria-label="Primary Location"
+              className="pj-location-input"
             />
           </div>
         </div>
@@ -2259,6 +2260,8 @@ export default function PostJob() {
 
   useEffect(() => {
     const checkQuota = async () => {
+      setQuotaLoading(true);
+      setQuotaExhausted(false);
       try {
         const res = await authService.getQuotaUsage();
         if (res?.data) {
@@ -2278,6 +2281,8 @@ export default function PostJob() {
               });
             }
             setAvailablePlans(available);
+          } else {
+            setQuotaExhausted(false);
           }
         }
       } catch (err) {
@@ -2807,6 +2812,29 @@ export default function PostJob() {
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
         input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+        .pj-location-input, .pj-location-input * {
+          outline: none !important;
+        }
+        .pj-location-input .la-input-wrapper {
+          border: 1.5px solid #E2E8F0;
+          border-radius: 12px;
+          background: #fff;
+          transition: border-color 0.18s, box-shadow 0.18s;
+          height: 42px; 
+        }
+        .pj-location-input.la-container--focused .la-input-wrapper {
+          border-color: #002366;
+        }
+        .pj-location-input .la-input {
+          padding: 0 14px 0 36px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #0F172A;
+        }
+        .pj-location-input .la-input-icon {
+          left: 12px;
+          color: #64748B;
+        }
       `}</style>
 
       {/* ── CONTENT ── */}

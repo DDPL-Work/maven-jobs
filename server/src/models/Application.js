@@ -69,6 +69,7 @@ const applicationSchema = new mongoose.Schema(
 
     callStatus: {
       type: String,
+      enum: ["", "Called", "Messaged", "Not picked", "Not reachable"],
       default: "",
     },
 

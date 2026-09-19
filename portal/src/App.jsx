@@ -71,6 +71,7 @@ import ManageQuota from "./pages/employer/features/manageQuota/ManageQuota";
 import ManageJobsResponses from "./pages/employer/features/jobs/ManageJobsResponses";
 import JobResponsesDetail from "./pages/employer/features/jobs/JobResponsesDetail";
 import CandidateFullProfile from "./pages/employer/features/jobs/CandidateFullProfile";
+import LearningCenter from "./pages/employer/features/learning/LearningCenter";
 import PublicProfileByShareId from "./pages/candidates/features/profile/PublicProfileByShareId";
 import PublicCandidateProfile from "./pages/candidates/features/profile/PublicCandidateProfile";
 import CandidateSitemap from "./pages/candidates/features/landing/CandidateSitemap";
@@ -256,6 +257,7 @@ function AppContent() {
         <Route path="/reports-job-posting" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><JobPostingReport /></ProtectedEmployerRoute>} />
         <Route path="/report/resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
         <Route path="/reports-resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
+        <Route path="/employers/learning-center" element={<LearningCenter />} />
       </Routes>
 
       <DailyQuizNotification

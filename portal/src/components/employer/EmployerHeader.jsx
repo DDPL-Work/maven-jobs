@@ -1011,7 +1011,7 @@ export default function EmployerHeader({
                       <button
                         onClick={() => {
                           setShowProfileSidebar(false);
-                          navigate("/employer-dashboard/learning-center");
+                          window.open('/employers/learning-center', '_blank', 'noopener,noreferrer');
                         }}
                         className="ep-sidebar-btn"
                         style={{

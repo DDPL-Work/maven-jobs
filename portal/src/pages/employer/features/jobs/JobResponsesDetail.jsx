@@ -513,6 +513,126 @@ export default function JobResponsesDetail() {
     setSelectedIds([]);
   };
 
+  // Download Excel
+  const handleDownloadExcel = () => {
+    if (selectedIds.length === 0) {
+      showToast('Please select at least one candidate to download.');
+      return;
+    }
+    
+    const selectedCandidates = filteredCandidates.filter((c) => selectedIds.includes(c.applicationId));
+    
+    // Gather all unique questions from answers
+    const questionSet = new Set();
+    selectedCandidates.forEach(c => {
+      if (Array.isArray(c.answers)) {
+        c.answers.forEach(a => {
+          if (a.question) questionSet.add(a.question);
+        });
+      }
+    });
+    const dynamicQuestions = Array.from(questionSet);
+
+    const headers = [
+      "Job Title", "Date of Application", "Name", "Email ID", "Phone", 
+      "Current Location", "Preferred Location", "Total Experience", 
+      "Curr. Company", "Curr. Designation", "Annual Salary", 
+      "Notice period/ Availability", "Resume Headline", 
+      "Under Graduate", "UG Institute", "PG Degree", "PG Institute", 
+      "Doctorate", "Doctorate Institute", "Gender", "Home Town", 
+      "Date of Birth", "Latest Activity", 
+      "Comment 1", "Comment 2", "Comment 3", "Comment 4", "Comment 5",
+      ...dynamicQuestions.map(q => `Ans(${q})`),
+      "Candidate profile"
+    ];
+
+    const rows = selectedCandidates.map(candidate => {
+      // Parse educations
+      let ugDeg = "NA", ugInst = "NA", pgDeg = "NA", pgInst = "NA", docDeg = "NA", docInst = "NA";
+      try {
+        const edus = Array.isArray(candidate.rawEducations) ? candidate.rawEducations : 
+                     (typeof candidate.rawEducations === 'string' ? JSON.parse(candidate.rawEducations || "[]") : []);
+        edus.forEach(e => {
+          const deg = e.degree || e.course || e.qualification || '';
+          const inst = e.institution || e.college || e.university || e.school || '';
+          const degLower = deg.toLowerCase();
+          if (degLower.includes('phd') || degLower.includes('doctorate')) {
+            docDeg = deg; docInst = inst;
+          } else if (degLower.includes('master') || degLower.includes('m.') || degLower.includes('mba') || degLower.includes('pg')) {
+            pgDeg = deg; pgInst = inst;
+          } else {
+            ugDeg = deg; ugInst = inst;
+          }
+        });
+      } catch (e) {}
+
+      // Parse comments
+      const comments = candidate.comments || [];
+      const c1 = comments[0]?.text || "NA";
+      const c2 = comments[1]?.text || "NA";
+      const c3 = comments[2]?.text || "NA";
+      const c4 = comments[3]?.text || "NA";
+      const c5 = comments[4]?.text || "NA";
+
+      // Parse answers
+      const ansMap = {};
+      if (Array.isArray(candidate.answers)) {
+        candidate.answers.forEach(a => {
+          if (a.question) ansMap[a.question] = a.answer;
+        });
+      }
+      const ansList = dynamicQuestions.map(q => ansMap[q] || "NA");
+
+      let dateOfApp = candidate.appliedAtFormatted || candidate.appliedOn || "NA";
+      if (dateOfApp.includes("from NVite")) {
+        dateOfApp = dateOfApp.replace("Applied on : ", "").replace(" from NVite", "").trim();
+      } else if (candidate.appliedAt) {
+        try {
+          dateOfApp = new Date(candidate.appliedAt).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch (_) {}
+      }
+
+      const profileLink = `${window.location.origin}/employer/candidate/${candidate.candidateId}?jobId=${jobId}`;
+
+      return [
+        job.title || "NA",
+        dateOfApp,
+        candidate.name || "NA",
+        candidate.email || "NA",
+        candidate.phone || "NA",
+        candidate.location || "NA",
+        candidate.prefLocation || "NA",
+        candidate.experience || "NA",
+        candidate.company || "NA",
+        candidate.currentRole || "NA",
+        candidate.salary || "NA",
+        candidate.noticePeriod || "NA",
+        candidate.bio || "NA",
+        ugDeg, ugInst,
+        pgDeg, pgInst,
+        docDeg, docInst,
+        candidate.gender || candidate.diversity || "NA",
+        candidate.homeTown || "NA",
+        candidate.dob || "NA",
+        candidate.lastActive || "NA",
+        c1, c2, c3, c4, c5,
+        ...ansList,
+        { v: "View profile", l: { Target: profileLink } }
+      ];
+    });
+
+    import('xlsx').then(XLSX => {
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Candidates");
+      XLSX.writeFile(workbook, `candidates_${jobId}_${new Date().getTime()}.xlsx`);
+      showToast(`Downloaded Excel with ${selectedCandidates.length} candidate(s)`);
+    }).catch(err => {
+      console.error("Failed to load xlsx package", err);
+      showToast("Error generating Excel file");
+    });
+  };
+
   // Share Job
   const handleShareJob = () => {
     if (navigator.clipboard) {
@@ -1195,7 +1315,7 @@ export default function JobResponsesDetail() {
               <button
                 type="button"
                 className="jrd-toolbar-btn"
-                onClick={() => showToast('Downloading candidate resumes...')}
+                onClick={handleDownloadExcel}
               >
                 <FiDownload size={14} />
                 <span>Download</span>
@@ -1451,7 +1571,11 @@ export default function JobResponsesDetail() {
                                     key={opt}
                                     type="button"
                                     className={`jrd-status-menu-item ${candidate.callStatus === opt ? 'selected' : ''}`}
-                                    onClick={() => handleSelectCallStatus(candidate, opt)}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleSelectCallStatus(candidate, opt);
+                                    }}
                                   >
                                     {opt}
                                   </button>
