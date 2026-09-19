@@ -679,9 +679,9 @@ exports.getDashboard = asyncHandler(async (req, res) => {
   const jobs = await Job.find(jobFilter).sort({ updatedAt: -1 });
   const jobIds = jobs.map((j) => j._id);
 
-  let appFilter = { companyId: company._id };
+  let appFilter = { jobId: { $in: jobIds } };
   if (req.user.role === "RECRUITER") {
-    appFilter.jobId = { $in: jobIds };
+    // Already scoped by jobIds which are filtered by recruiter above
   }
 
   const [applications, activePackageRequest, recentPackageRequests, reviews, followers] = await Promise.all([

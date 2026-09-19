@@ -6,6 +6,7 @@ const folderCandidateSchema = new mongoose.Schema({
   addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   notes: { type: String, default: "", trim: true },
   tags: [{ type: String, trim: true }],
+  callStatus: { type: String, enum: ['Called', 'Messaged', 'Not picked', 'Not reachable', ''], default: '' },
 }, { timestamps: true });
 
 folderCandidateSchema.index({ folderId: 1, candidateId: 1 }, { unique: true });

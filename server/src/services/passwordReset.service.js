@@ -5,7 +5,7 @@ const User = require("../models/User");
 const logger = require("../config/logger");
 
 const OTP_LENGTH = 6;
-const OTP_EXPIRY_MINUTES = 10;
+const OTP_EXPIRY_MINUTES = 3;
 const MAX_OTP_REQUESTS_PER_HOUR = 3;
 const MAX_OTP_VERIFY_ATTEMPTS = 5;
 const RESET_TOKEN_SECRET = process.env.JWT_SECRET + "_password_reset";

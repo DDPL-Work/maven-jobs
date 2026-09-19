@@ -25,6 +25,7 @@ const recruiterActivitySchema = new mongoose.Schema(
         "CANDIDATE_ADDED",
         "JOB_POSTED",
         "CANDIDATE_APPLIED",
+        "PROFILE_VIEW",
       ],
       required: true,
       index: true,

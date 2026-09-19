@@ -17,6 +17,102 @@ function slugify(text) {
     .replace(/^-+/, "")
     .replace(/-+$/, "");
 }
+// GET /folders/candidates/contacted
+exports.getContactedCandidates = asyncHandler(async (req, res) => {
+  const companyId = req.company._id;
+  const employerId = req.user._id;
+
+  const validFolders = await Folder.find({
+    companyId,
+    $or: [
+      { employerId },
+      { sharedWith: req.user.email }
+    ]
+  }).select("_id name").lean();
+
+  const validFolderIds = validFolders.map(f => f._id);
+  const validFolderMap = validFolders.reduce((acc, f) => {
+    acc[f._id] = f.name;
+    return acc;
+  }, {});
+
+  const contactedCandidates = await FolderCandidate.find({
+    folderId: { $in: validFolderIds },
+    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] }
+  }).sort({ updatedAt: -1 }).lean();
+
+  const rawCandidateIds = [...new Set(contactedCandidates.map(fc => String(fc.candidateId)).filter(Boolean))];
+
+  const [users, profiles] = await Promise.all([
+    rawCandidateIds.length > 0
+      ? User.find({ _id: { $in: rawCandidateIds } }).select("name email avatar").lean()
+      : [],
+    rawCandidateIds.length > 0
+      ? CandidateProfile.find({
+          $or: [
+            { userId: { $in: rawCandidateIds } },
+            { _id: { $in: rawCandidateIds } },
+          ],
+        })
+          .select("userId headline summary currentTitle currentCompany totalExperience currentCity skills expectedSalary noticePeriod education resume profilePic publicShareId currentSalary preferredLocations")
+          .lean()
+      : [],
+  ]);
+
+  const userMap = {};
+  for (const u of users) userMap[String(u._id)] = u;
+
+  const profileByUserId = {};
+  const profileById = {};
+  for (const p of profiles) {
+    profileByUserId[String(p.userId)] = p;
+    profileById[String(p._id)] = p;
+  }
+
+  const enriched = contactedCandidates.map((fc) => {
+    const rawId = fc.candidateId;
+    const rawIdStr = String(rawId || "");
+    const user = userMap[rawIdStr] || {};
+    const profile = profileByUserId[rawIdStr] || profileById[rawIdStr] || {};
+
+    return {
+      id: rawIdStr,
+      folderCandidateId: String(fc._id),
+      folderName: validFolderMap[fc.folderId],
+      userId: String(user._id || profile.userId || rawIdStr),
+      name: user.name || profile.name || "",
+      email: user.email || "",
+      avatar: user.avatar || profile.avatar || "",
+      profilePic: profile.profilePic || "",
+      headline: profile.headline || "",
+      summary: profile.summary || "",
+      currentTitle: profile.currentTitle || "",
+      currentCompany: profile.currentCompany || "",
+      totalExperience: profile.totalExperience || "",
+      currentCity: profile.currentCity || "",
+      skills: profile.skills || [],
+      expectedSalary: profile.expectedSalary || "",
+      currentSalary: profile.currentSalary || "",
+      noticePeriod: profile.noticePeriod || "",
+      education: profile.education || "",
+      certifications: profile.certifications || [],
+      resume: profile.resume || null,
+      publicShareId: profile.publicShareId || "",
+      preferredLocations: profile.preferredLocations || [],
+      notes: fc.notes || "",
+      tags: fc.tags || [],
+      callStatus: fc.callStatus || "",
+      addedAt: fc.createdAt,
+      updatedAt: fc.updatedAt,
+    };
+  });
+
+  res.json({
+    success: true,
+    data: enriched,
+    total: enriched.length
+  });
+});
 
 // GET /folders
 exports.listFolders = asyncHandler(async (req, res) => {
@@ -24,7 +120,12 @@ exports.listFolders = asyncHandler(async (req, res) => {
   const companyId = req.company._id;
   const employerId = req.user._id;
 
-  const query = { companyId, employerId };
+  const query = {
+    $or: [
+      { companyId, employerId },
+      { sharedWith: req.user.email }
+    ]
+  };
 
   if (folderType) {
     query.folderType = folderType;
@@ -62,8 +163,10 @@ exports.listFolders = asyncHandler(async (req, res) => {
 exports.getFolder = asyncHandler(async (req, res) => {
   const folder = await Folder.findOne({
     _id: req.params.id,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   }).lean();
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -133,6 +236,7 @@ exports.getFolder = asyncHandler(async (req, res) => {
       preferredLocations: profile.preferredLocations || [],
       notes: fc.notes || "",
       tags: fc.tags || [],
+      callStatus: fc.callStatus || "",
       addedAt: fc.createdAt,
     };
   });
@@ -194,8 +298,10 @@ exports.updateFolder = asyncHandler(async (req, res) => {
   const { name, description, icon, color, isPublic, sharedWith } = req.body;
   const folder = await Folder.findOne({
     _id: req.params.id,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -205,9 +311,10 @@ exports.updateFolder = asyncHandler(async (req, res) => {
     const dup = await Folder.findOne({
       _id: { $ne: folder._id },
       companyId: req.company._id,
-      employerId: req.user._id,
+      employerId: folder.employerId, // Check against owner's namespace
       name: trimmedName,
     });
+
     if (dup) throw createHttpError(409, "A folder with this name already exists");
     folder.name = trimmedName;
     folder.slug = slugify(trimmedName);
@@ -230,8 +337,10 @@ exports.updateFolder = asyncHandler(async (req, res) => {
 exports.deleteFolder = asyncHandler(async (req, res) => {
   const folder = await Folder.findOneAndDelete({
     _id: req.params.id,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -245,8 +354,10 @@ exports.deleteFolder = asyncHandler(async (req, res) => {
 exports.addCandidate = asyncHandler(async (req, res) => {
   const folder = await Folder.findOne({
     _id: req.params.id,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -266,6 +377,10 @@ exports.addCandidate = asyncHandler(async (req, res) => {
   });
 
   folder.candidateCount = await FolderCandidate.countDocuments({ folderId: folder._id });
+  folder.contactedCount = await FolderCandidate.countDocuments({ 
+    folderId: folder._id, 
+    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  });
   folder.lastActivityAt = new Date();
   await folder.save();
 
@@ -287,8 +402,10 @@ exports.addCandidate = asyncHandler(async (req, res) => {
 exports.removeCandidate = asyncHandler(async (req, res) => {
   const folder = await Folder.findOne({
     _id: req.params.id,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -299,6 +416,10 @@ exports.removeCandidate = asyncHandler(async (req, res) => {
   });
 
   folder.candidateCount = await FolderCandidate.countDocuments({ folderId: folder._id });
+  folder.contactedCount = await FolderCandidate.countDocuments({ 
+    folderId: folder._id, 
+    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  });
   folder.lastActivityAt = new Date();
   await folder.save();
 
@@ -307,7 +428,7 @@ exports.removeCandidate = asyncHandler(async (req, res) => {
 
 // PATCH /folders/:id/candidates/:candidateId
 exports.updateCandidate = asyncHandler(async (req, res) => {
-  const { notes, tags } = req.body;
+  const { notes, tags, callStatus } = req.body;
 
   const fc = await FolderCandidate.findOne({
     folderId: req.params.id,
@@ -318,8 +439,19 @@ exports.updateCandidate = asyncHandler(async (req, res) => {
 
   if (notes !== undefined) fc.notes = String(notes).trim();
   if (tags !== undefined) fc.tags = Array.isArray(tags) ? tags.map((t) => String(t).trim()).filter(Boolean) : [];
+  if (callStatus !== undefined) fc.callStatus = String(callStatus).trim();
 
   await fc.save();
+
+  const folder = await Folder.findById(fc.folderId);
+  if (folder) {
+    folder.contactedCount = await FolderCandidate.countDocuments({ 
+      folderId: folder._id, 
+      callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+    });
+    folder.lastActivityAt = new Date();
+    await folder.save();
+  }
 
   res.json({ success: true, data: fc });
 });
@@ -333,8 +465,10 @@ exports.bulkRemoveCandidates = asyncHandler(async (req, res) => {
 
   const folder = await Folder.findOne({
     _id: req.params.id,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -344,9 +478,13 @@ exports.bulkRemoveCandidates = asyncHandler(async (req, res) => {
     candidateId: { $in: candidateIds },
   });
 
-  folder.candidateCount = await FolderCandidate.countDocuments({ folderId: folder._id });
-  folder.lastActivityAt = new Date();
-  await folder.save();
+    folder.candidateCount = await FolderCandidate.countDocuments({ folderId: folder._id });
+    folder.contactedCount = await FolderCandidate.countDocuments({ 
+      folderId: folder._id, 
+      callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+    });
+    folder.lastActivityAt = new Date();
+    await folder.save();
 
   res.json({ success: true, message: "Candidates removed" });
 });
@@ -360,8 +498,14 @@ exports.moveCandidates = asyncHandler(async (req, res) => {
   }
 
   const [fromFolder, toFolder] = await Promise.all([
-    Folder.findOne({ _id: fromFolderId, companyId: req.company._id, employerId: req.user._id }),
-    Folder.findOne({ _id: toFolderId, companyId: req.company._id, employerId: req.user._id }),
+    Folder.findOne({ 
+      _id: fromFolderId, 
+      $or: [ { companyId: req.company._id, employerId: req.user._id }, { sharedWith: req.user.email } ] 
+    }),
+    Folder.findOne({ 
+      _id: toFolderId, 
+      $or: [ { companyId: req.company._id, employerId: req.user._id }, { sharedWith: req.user.email } ] 
+    }),
   ]);
 
   if (!fromFolder) throw createHttpError(404, "Source folder not found");
@@ -379,8 +523,16 @@ exports.moveCandidates = asyncHandler(async (req, res) => {
   }
 
   fromFolder.candidateCount = await FolderCandidate.countDocuments({ folderId: fromFolder._id });
+  fromFolder.contactedCount = await FolderCandidate.countDocuments({ 
+    folderId: fromFolder._id, 
+    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  });
   fromFolder.lastActivityAt = new Date();
   toFolder.candidateCount = await FolderCandidate.countDocuments({ folderId: toFolder._id });
+  toFolder.contactedCount = await FolderCandidate.countDocuments({ 
+    folderId: toFolder._id, 
+    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  });
   toFolder.lastActivityAt = new Date();
   await Promise.all([fromFolder.save(), toFolder.save()]);
 
@@ -397,8 +549,10 @@ exports.copyCandidates = asyncHandler(async (req, res) => {
 
   const toFolder = await Folder.findOne({
     _id: toFolderId,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   });
 
   if (!toFolder) throw createHttpError(404, "Target folder not found");
@@ -415,6 +569,10 @@ exports.copyCandidates = asyncHandler(async (req, res) => {
   }
 
   toFolder.candidateCount = await FolderCandidate.countDocuments({ folderId: toFolder._id });
+  toFolder.contactedCount = await FolderCandidate.countDocuments({ 
+    folderId: toFolder._id, 
+    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  });
   toFolder.lastActivityAt = new Date();
   await toFolder.save();
 
@@ -425,8 +583,10 @@ exports.copyCandidates = asyncHandler(async (req, res) => {
 exports.duplicateFolder = asyncHandler(async (req, res) => {
   const source = await Folder.findOne({
     _id: req.params.id,
-    companyId: req.company._id,
-    employerId: req.user._id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email }
+    ]
   });
 
   if (!source) throw createHttpError(404, "Folder not found");
@@ -458,6 +618,7 @@ exports.duplicateFolder = asyncHandler(async (req, res) => {
     }));
     await FolderCandidate.insertMany(docs);
     folder.candidateCount = docs.length;
+    folder.contactedCount = docs.filter(d => ['Called', 'Messaged', 'Not picked', 'Not reachable'].includes(d.callStatus)).length;
     await folder.save();
   }
 

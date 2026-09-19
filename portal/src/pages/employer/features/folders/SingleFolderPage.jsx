@@ -5,7 +5,7 @@ import { FiFolder, FiEdit2, FiTrash2, FiShare2, FiSearch, FiX, FiArrowLeft, FiUs
 import { FaWhatsapp } from 'react-icons/fa';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import CandidateCard from '../../../../components/employer/CandidateCard';
-import { useFolder, useDeleteFolder, useUpdateFolder, useRemoveCandidateFromFolder, useBulkRemoveCandidates } from '../../../../hooks/useFolderQueries';
+import { useFolder, useDeleteFolder, useUpdateFolder, useRemoveCandidateFromFolder, useBulkRemoveCandidates, useUpdateFolderCandidate } from '../../../../hooks/useFolderQueries';
 import CreateFolderModal from '../../../../components/employer/CreateFolderModal';
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
 import './SingleFolderPage.css';
@@ -40,8 +40,14 @@ export default function SingleFolderPage() {
   const [commentTexts, setCommentTexts] = useState({});
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-  // Handlers for mocked features
-  const showToast = (msg) => alert(msg); // Placeholder for standard toast
+  const [toastMessage, setToastMessage] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+
+  const showToast = useCallback((msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  }, []);
   const handleRevealContact = (candidate) => {
     setRevealedContacts((prev) => ({ ...prev, [candidate.userId || candidate.id]: true }));
   };
@@ -61,10 +67,21 @@ export default function SingleFolderPage() {
     const digits = (candidate.phone || '').replace(/[^0-9]/g, '');
     if (digits) window.open(`https://wa.me/${digits.length === 10 ? '91' + digits : digits}`, '_blank');
   };
-  const handleSelectCallStatus = (candidate, opt) => {
+  const updateFolderCandidate = useUpdateFolderCandidate();
+
+  const handleSelectCallStatus = async (candidate, opt) => {
     setLocalStatuses(prev => ({ ...prev, [candidate.userId || candidate.id]: opt }));
     setOpenStatusDropdownId(null);
-    showToast(`Status changed to "${opt}".`);
+    try {
+      await updateFolderCandidate.mutateAsync({
+        folderId,
+        candidateId: candidate.userId || candidate.id,
+        data: { callStatus: opt }
+      });
+      showToast(`Status changed to "${opt}".`);
+    } catch {
+      showToast('Failed to update status.');
+    }
   };
 
   const getCallStatus = (candidate) => {
@@ -104,8 +121,11 @@ export default function SingleFolderPage() {
     return filteredCandidates;
   }, [filteredCandidates, activeTab, localStatuses]);
 
-  const handleDeleteFolder = async () => {
-    if (!window.confirm(`Delete "${folder?.name}"? Candidates will not be removed, only the folder.`)) return;
+  const handleDeleteFolder = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteFolder = async () => {
     try {
       await deleteFolder.mutateAsync(folderId);
       navigate('/employer-dashboard/folders');
@@ -123,13 +143,17 @@ export default function SingleFolderPage() {
     }
   };
 
-  const handleBulkRemove = async () => {
+  const handleBulkRemove = () => {
     if (selectedIds.size === 0) return;
+    setShowRemoveConfirm(true);
+  };
+
+  const confirmBulkRemove = async () => {
     const ids = [...selectedIds];
-    if (!window.confirm(`Remove ${ids.length} candidate(s) from this folder?`)) return;
     try {
       await bulkRemove.mutateAsync({ folderId, candidateIds: ids });
       setSelectedIds(new Set());
+      setShowRemoveConfirm(false);
       refetch();
     } catch {
       // silent
@@ -196,6 +220,29 @@ export default function SingleFolderPage() {
 
   return (
     <div className="sfp-root">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: '#1e293b',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          zIndex: 9999
+        }}>
+          <span>{toastMessage}</span>
+          <button type="button" onClick={() => setToastMessage(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, display: 'flex' }}>
+            <FiX size={15} />
+          </button>
+        </div>
+      )}
+
       <EmployerHeader />
       <div className="sfp-container">
         <EmployerBreadcrumb items={[
@@ -354,8 +401,8 @@ export default function SingleFolderPage() {
                       </div>
                     </div>
                     <div className="jrd-card-right-col">
-                       {candidate.avatar ? (
-                         <img src={candidate.avatar} alt={candidate.name} className="jrd-avatar-img" />
+                       {((typeof candidate.profilePic === 'string' ? candidate.profilePic : candidate.profilePic?.url) || candidate.avatar) ? (
+                         <img src={(typeof candidate.profilePic === 'string' ? candidate.profilePic : candidate.profilePic?.url) || candidate.avatar} alt={candidate.name} className="jrd-avatar-img" />
                        ) : (
                          <div className="jrd-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e0f2fe', color: '#0284c7', fontWeight: 700, fontSize: 18 }}>
                            {(candidate.name || 'C').charAt(0).toUpperCase()}
@@ -596,6 +643,48 @@ export default function SingleFolderPage() {
             refetch();
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="sfp-modal-overlay" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 1000}}>
+          <div className="sfp-modal-content" style={{background:'white', borderRadius:'12px', width:'400px', maxWidth:'90%', overflow:'hidden'}}>
+            <div className="sfp-modal-header" style={{display:'flex', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #e2e8f0'}}>
+              <h2 style={{margin:0, fontSize:'1.1rem', color:'#0f172a'}}>Confirm Deletion</h2>
+              <button type="button" onClick={() => setShowDeleteConfirm(false)} style={{background:'none', border:'none', cursor:'pointer', color:'#64748b'}}>
+                <FiX size={20} />
+              </button>
+            </div>
+            <div className="sfp-modal-body" style={{ padding: '20px' }}>
+              <p style={{ margin: 0, marginBottom: '20px', color: '#475569' }}>Delete "{folder?.name}"? Candidates will not be removed, only the folder.</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowDeleteConfirm(false)} style={{ padding: '8px 16px', borderRadius: '6px', background: 'none', border: '1px solid #cbd5e1', color: '#475569', cursor: 'pointer', fontWeight: '500' }}>Cancel</button>
+                <button type="button" onClick={confirmDeleteFolder} style={{ padding: '8px 16px', borderRadius: '6px', background: '#ef4444', border: 'none', color: 'white', cursor: 'pointer', fontWeight: '500' }}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Remove Confirmation Modal */}
+      {showRemoveConfirm && (
+        <div className="sfp-modal-overlay" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex: 1000}}>
+          <div className="sfp-modal-content" style={{background:'white', borderRadius:'12px', width:'400px', maxWidth:'90%', overflow:'hidden'}}>
+            <div className="sfp-modal-header" style={{display:'flex', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #e2e8f0'}}>
+              <h2 style={{margin:0, fontSize:'1.1rem', color:'#0f172a'}}>Confirm Removal</h2>
+              <button type="button" onClick={() => setShowRemoveConfirm(false)} style={{background:'none', border:'none', cursor:'pointer', color:'#64748b'}}>
+                <FiX size={20} />
+              </button>
+            </div>
+            <div className="sfp-modal-body" style={{ padding: '20px' }}>
+              <p style={{ margin: 0, marginBottom: '20px', color: '#475569' }}>Remove {selectedIds.size} candidate(s) from this folder?</p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowRemoveConfirm(false)} style={{ padding: '8px 16px', borderRadius: '6px', background: 'none', border: '1px solid #cbd5e1', color: '#475569', cursor: 'pointer', fontWeight: '500' }}>Cancel</button>
+                <button type="button" onClick={confirmBulkRemove} style={{ padding: '8px 16px', borderRadius: '6px', background: '#ef4444', border: 'none', color: 'white', cursor: 'pointer', fontWeight: '500' }}>Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,14 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FiX, FiShare2, FiSearch, FiCheck, FiCopy, FiUser, FiPlus, FiFolder } from 'react-icons/fi';
-
-const COMPANY_TEAM_USERS = [
-  { id: 'u1', name: 'Admin (Master User)', email: 'admin@mavenjobs.in', role: 'Master Admin' },
-  { id: 'u2', name: 'Rahul Sharma', email: 'rahul.s@mavenjobs.in', role: 'Lead Recruiter' },
-  { id: 'u3', name: 'Priya Verma', email: 'priya.v@mavenjobs.in', role: 'Senior Talent Sourcer' },
-  { id: 'u4', name: 'Amit Patel', email: 'amit.p@mavenjobs.in', role: 'Tech Hiring Specialist' },
-  { id: 'u5', name: 'Sneha Kulkarni', email: 'sneha.k@mavenjobs.in', role: 'Executive Sourcer' },
-  { id: 'u6', name: 'Vikram Malhotra', email: 'vikram.m@mavenjobs.in', role: 'HR Partner' },
-];
+import userManagementService from '../../services/userManagementService';
 
 export default function ShareFolderModal({ isOpen, onClose, onShare, selectedFolders = [] }) {
   const [search, setSearch] = useState('');
@@ -17,12 +9,34 @@ export default function ShareFolderModal({ isOpen, onClose, onShare, selectedFol
   const [permission, setPermission] = useState('view');
   const [copied, setCopied] = useState(false);
 
+  const [teamUsers, setTeamUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingUsers(true);
+      userManagementService.getUsers()
+        .then((res) => {
+          if (res.success) {
+            setTeamUsers(res.data.map(u => ({
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              role: u.isSuperUser ? 'Master Admin' : (u.jobPosting || u.resdex ? 'Recruiter' : 'Member')
+            })));
+          }
+        })
+        .catch((err) => console.error('Failed to fetch team users:', err))
+        .finally(() => setLoadingUsers(false));
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const filteredUsers = COMPANY_TEAM_USERS.filter((u) =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase()) ||
-    u.role.toLowerCase().includes(search.toLowerCase())
+  const filteredUsers = teamUsers.filter((u) =>
+    (u.name && u.name.toLowerCase().includes(search.toLowerCase())) ||
+    (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
+    (u.role && u.role.toLowerCase().includes(search.toLowerCase()))
   );
 
   const toggleUser = (email) => {
@@ -163,7 +177,12 @@ export default function ShareFolderModal({ isOpen, onClose, onShare, selectedFol
               background: '#f8fafc',
             }}
           >
-            {filteredUsers.map((u) => {
+            {loadingUsers ? (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: 13, color: '#64748b' }}>Loading team members...</div>
+            ) : filteredUsers.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: 13, color: '#64748b' }}>No team members found</div>
+            ) : (
+              filteredUsers.map((u) => {
               const isChecked = selectedUserEmails.includes(u.email);
               return (
                 <div
@@ -226,7 +245,7 @@ export default function ShareFolderModal({ isOpen, onClose, onShare, selectedFol
                   </span>
                 </div>
               );
-            })}
+            }))}
           </div>
 
           {/* Add custom user email */}

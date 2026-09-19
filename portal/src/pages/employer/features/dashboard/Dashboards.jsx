@@ -94,6 +94,7 @@ import {
 import EmployerHeader from "../../../../components/employer/EmployerHeader";
 import { SkeletonPage } from "../../../../components/Skeleton";
 import Cropper from "react-easy-crop";
+import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
 
 /* ── Tokens ─────────────────────────────────────────────── */
 const C = {
@@ -1577,6 +1578,8 @@ export default function EmployerProfile() {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [scheduledCalls, setScheduledCalls] = useState([]);
+  const [fetchingCalls, setFetchingCalls] = useState(false);
   const [aiTopCandidates, setAiTopCandidates] = useState(null);
   const [aiCandidatesLoading, setAiCandidatesLoading] = useState(false);
   const [mediaLoading, setMediaLoading] = useState({
@@ -1608,6 +1611,8 @@ export default function EmployerProfile() {
   const [jobPage, setJobPage] = useState(0);
   const [anaTab, setAnaTab] = useState("overview");
   const [showViewJob, setShowViewJob] = useState(false);
+    const [detailedJob, setDetailedJob] = useState(null);
+    const [isDetailedJobLoading, setIsDetailedJobLoading] = useState(false);
   const [showEditJob, setShowEditJob] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [editJobTab, setEditJobTab] = useState("basic");
@@ -2348,7 +2353,27 @@ export default function EmployerProfile() {
   }, [activeConversation?.id, localCallStream]);
 
   useEffect(() => {
-    if (showEditJob && selectedJob) {
+      if (showViewJob && selectedJob) {
+        const fetchJobDetails = async () => {
+          setIsDetailedJobLoading(true);
+          try {
+            const res = await authService.getEmployerJob(selectedJob.id || selectedJob._id);
+            const job = res?.data || res || {};
+            setDetailedJob(job);
+          } catch (error) {
+            console.error('Failed to fetch full job details', error);
+          } finally {
+            setIsDetailedJobLoading(false);
+          }
+        };
+        fetchJobDetails();
+      } else {
+        setDetailedJob(null);
+      }
+    }, [showViewJob, selectedJob]);
+
+    useEffect(() => {
+      if (showEditJob && selectedJob) {
       setEditJobTab("basic");
       setEditError("");
       (async () => {
@@ -2526,8 +2551,8 @@ export default function EmployerProfile() {
 
   const isRecruiter = employerSession.current?.role === "RECRUITER";
   const NAV_TABS = isRecruiter
-    ? ["Jobs", "Candidates", "Comments", "Progress"]
-    : ["Overview", "Jobs", "Candidates", "Comments", "Progress"];
+    ? ["Jobs", "Candidates", "Comments", "Progress", "Calls"]
+    : ["Overview", "Jobs", "Candidates", "Comments", "Progress", "Calls"];
   const company = {
     id: dashboard?.company?.id || employerSession.current?.companyId || "",
     name:
@@ -2564,6 +2589,26 @@ export default function EmployerProfile() {
     1,
     Math.ceil(companyReviews.length / reviewPageSize),
   );
+
+  useEffect(() => {
+    if (activeTab === "Calls") {
+      fetchScheduledCalls();
+    }
+  }, [activeTab]);
+
+  const fetchScheduledCalls = async () => {
+    try {
+      setFetchingCalls(true);
+      const res = await api.get("/company-panel/scheduled-calls");
+      if (res.data?.success) {
+        setScheduledCalls(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch scheduled calls", err);
+    } finally {
+      setFetchingCalls(false);
+    }
+  };
 
   const handleReviewShare = async (review) => {
     const reviewId =
@@ -4232,6 +4277,25 @@ export default function EmployerProfile() {
                   />
                 )}
 
+                {activeTab === "Calls" && (
+                  <ScheduledCallsSection
+                    calls={scheduledCalls}
+                    fetching={fetchingCalls}
+                    onUpdateCall={async (id, data) => {
+                      try {
+                        const res = await api.patch(`/company-panel/scheduled-calls/${id}`, data);
+                        if (res.data?.success) {
+                          setScheduledCalls((prev) =>
+                            prev.map((c) => (c._id === id ? res.data.data : c))
+                          );
+                        }
+                      } catch (err) {
+                        alert("Failed to update call");
+                      }
+                    }}
+                  />
+                )}
+
                 {activeTab === "Jobs" && (
                   <Card className="ep-card">
                     <SectionHead
@@ -4599,7 +4663,7 @@ export default function EmployerProfile() {
                                     style={{
                                       fontSize: 10,
                                       fontWeight: 700,
-                                      color: C.s400,
+                                      color: "#dc2626",
                                       textTransform: "uppercase",
                                       letterSpacing: ".04em",
                                     }}
@@ -8356,12 +8420,14 @@ export default function EmployerProfile() {
 
           {/* ─── View Job Modal ─── */}
           <Modal
-            open={showViewJob}
-            onClose={() => setShowViewJob(false)}
-            title={selectedJob?.title || "Job Details"}
-            width={720}
-          >
-            {selectedJob && (
+              open={showViewJob}
+              onClose={() => setShowViewJob(false)}
+              title={detailedJob?.title || selectedJob?.title || "Job Details"}
+              width={720}
+            >
+              {selectedJob && (() => {
+                const displayJob = detailedJob || selectedJob;
+                return (
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 18 }}
               >
@@ -8418,7 +8484,7 @@ export default function EmployerProfile() {
                           marginBottom: 2,
                         }}
                       >
-                        {selectedJob.title}
+                        {displayJob.title}
                       </div>
                       <div
                         style={{
@@ -8432,9 +8498,9 @@ export default function EmployerProfile() {
                       >
                         <FiMapPin size={12} />
                         <span>
-                          {selectedJob.department || selectedJob.dept || "—"}{" "}
+                          {displayJob.department || displayJob.dept || "—"}{" "}
                           &middot;{" "}
-                          {selectedJob.location || selectedJob.loc || "—"}
+                          {displayJob.location || displayJob.loc || "—"}
                         </span>
                       </div>
                     </div>
@@ -8452,7 +8518,7 @@ export default function EmployerProfile() {
                         flexShrink: 0,
                       }}
                     >
-                      {selectedJob.jobType || selectedJob.type || "Full-time"}
+                      {displayJob.jobType || displayJob.type || "Full-time"}
                     </div>
                   </div>
                 </div>
@@ -8470,9 +8536,9 @@ export default function EmployerProfile() {
                       icon: FiCalendar,
                       label: "Posted",
                       val:
-                        selectedJob.lastUpdated ||
-                        selectedJob.posted ||
-                        "Recent",
+                        displayJob.lastUpdated ||
+                        displayJob.posted ||
+                        (displayJob.createdAt ? new Date(displayJob.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Recent"),
                       color: "#6366f1",
                       bg: "#f5f3ff",
                     },
@@ -8480,7 +8546,7 @@ export default function EmployerProfile() {
                       icon: FiUsers,
                       label: "Applicants",
                       val: String(
-                        selectedJob.applicantCount ?? selectedJob.apps ?? 0,
+                        normalizedApplications.filter((a) => a.jobId === displayJob.id || a.jobId === displayJob._id).length
                       ),
                       color: "#10b981",
                       bg: "#ecfdf5",
@@ -8488,7 +8554,7 @@ export default function EmployerProfile() {
                     {
                       icon: FiDollarSign,
                       label: "Salary",
-                      val: selectedJob.salary || "Not disclosed",
+                      val: (displayJob.salaryMin && displayJob.salaryMax) ? `${displayJob.salaryMin.toLocaleString()} - ${displayJob.salaryMax.toLocaleString()}` : (displayJob.salary || "Not disclosed"),
                       color: "#f59e0b",
                       bg: "#fffbeb",
                     },
@@ -8548,11 +8614,44 @@ export default function EmployerProfile() {
                   ))}
                 </div>
 
+                
+                  {/* Dynamic Details Section */}
+                  {isDetailedJobLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                      Loading full details...
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {displayJob.summary && (
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>Summary</div>
+                          <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{displayJob.summary}</div>
+                        </div>
+                      )}
+                      {displayJob.description && (
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 4 }}>Description</div>
+                          <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: displayJob.description }} />
+                        </div>
+                      )}
+                      {displayJob.skills && displayJob.skills.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#1e293b', marginBottom: 6 }}>Skills Required</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {displayJob.skills.map((skill, i) => (
+                              <span key={i} style={{ background: '#f1f5f9', color: '#334155', padding: '4px 10px', borderRadius: 100, fontSize: 12, fontWeight: 600 }}>{skill}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+      
                 {/* Candidates Section */}
                 <div>
                   {(() => {
                     const jobApps = normalizedApplications.filter(
-                      (a) => a.jobId === selectedJob.id,
+                      (a) => a.jobId === displayJob.id,
                     );
                     const totalCount = jobApps.length;
 
@@ -9232,7 +9331,7 @@ export default function EmployerProfile() {
                   </button>
                 </div>
               </div>
-            )}
+            );})()}
           </Modal>
 
           {/* ─── Edit Job Modal ─── */}
@@ -10238,6 +10337,7 @@ export default function EmployerProfile() {
                   </button>
                   <button
                     onClick={handleEditSave}
+                    
                     style={{
                       flex: 2,
                       display: "flex",
@@ -11136,3 +11236,118 @@ export default function EmployerProfile() {
   );
 }
 
+function ScheduledCallsSection({ calls, fetching, onUpdateCall }) {
+  const [editingCall, setEditingCall] = useState(null);
+
+  if (fetching) {
+    return (
+      <Card className="ep-card">
+        <div style={{ padding: 20 }}>Loading scheduled calls...</div>
+      </Card>
+    );
+  }
+
+  if (!calls || calls.length === 0) {
+    return (
+      <Card className="ep-card">
+        <div style={{ padding: 20, color: C.s400 }}>No scheduled calls found.</div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="ep-card">
+      <SectionHead title="Scheduled Calls" />
+      <div style={{ padding: "0 20px 20px 20px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${C.s100}` }}>
+              <th style={{ textAlign: "left", padding: 10, color: C.s400, fontWeight: 500, fontSize: 14 }}>Candidate</th>
+              <th style={{ textAlign: "left", padding: 10, color: C.s400, fontWeight: 500, fontSize: 14 }}>Date & Time</th>
+              <th style={{ textAlign: "left", padding: 10, color: C.s400, fontWeight: 500, fontSize: 14 }}>Meeting Link</th>
+              <th style={{ textAlign: "left", padding: 10, color: C.s400, fontWeight: 500, fontSize: 14 }}>Status</th>
+              <th style={{ textAlign: "left", padding: 10, color: C.s400, fontWeight: 500, fontSize: 14 }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {calls.map((c) => (
+              <tr key={c._id} style={{ borderBottom: `1px solid ${C.s100}` }}>
+                <td style={{ padding: 10 }}>
+                  <div style={{ fontWeight: 500, color: C.s800 }}>{c.candidateId?.name}</div>
+                  <div style={{ fontSize: 12, color: C.s400 }}>{c.candidateId?.email}</div>
+                </td>
+                <td style={{ padding: 10 }}>
+                  <div>{c.date} at {c.time}</div>
+                </td>
+                <td style={{ padding: 10 }}>
+                  <a
+                    href={c.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 12px",
+                      backgroundColor: C.navy,
+                      color: "#fff",
+                      borderRadius: 20,
+                      textDecoration: "none",
+                      fontSize: 12,
+                      fontWeight: 500
+                    }}
+                  >
+                    <FiVideo size={14} /> Join Call
+                  </a>
+                </td>
+                <td style={{ padding: 10 }}>
+                  <select
+                    value={c.status}
+                    onChange={(e) => onUpdateCall(c._id, { status: e.target.value })}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: `1px solid ${C.s200}`,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      backgroundColor: c.status === "Active" ? "#e6f7ef" : "#fff",
+                      color: c.status === "Active" ? "#00c853" : C.s600
+                    }}
+                  >
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Rescheduled">Rescheduled</option>
+                    <option value="Called">Called</option>
+                    <option value="Closed">Closed</option>
+                    <option value="Active">Active</option>
+                  </select>
+                </td>
+                <td style={{ padding: 10 }}>
+                  <button
+                    onClick={() => setEditingCall(c)}
+                    style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px", background: "none", border: `1px solid ${C.s200}`, borderRadius: 4, cursor: "pointer", fontSize: 12, color: C.s600 }}
+                  >
+                    <FiEdit2 size={12} /> Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      {editingCall && (
+        <ScheduleVideoCallModal
+          isOpen={!!editingCall}
+          onClose={() => setEditingCall(null)}
+          candidateId={editingCall.candidateId?._id}
+          candidateName={editingCall.candidateId?.name}
+          editCall={editingCall}
+          onUpdateSuccess={async (id, data) => {
+            await onUpdateCall(id, { ...data, status: "Rescheduled" });
+            setEditingCall(null);
+          }}
+        />
+      )}
+    </Card>
+  );
+}

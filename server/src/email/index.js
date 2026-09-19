@@ -345,6 +345,39 @@ async function sendEmployerPasswordResetOTPEmail(params) {
   });
 }
 
+async function sendVideoCallEmail(params) {
+  const queueEnabled = process.env.EMAIL_QUEUE_ENABLED === "true";
+
+  if (queueEnabled) {
+    const queue = _getQueue(null);
+    if (!queue._initialized) {
+      await queue.initialize();
+    }
+    if (queue.enabled) {
+      return queue.add({ type: "video-call", ...params });
+    }
+  }
+
+  const service = getEmailService();
+  const cb = _getCircuitBreaker();
+  const rl = _getRateLimiter();
+  await rl.consume(1);
+
+  return cb.call(async () => {
+    const startTime = Date.now();
+    try {
+      const result = await service.sendVideoCallEmail(params);
+      recordSendDuration(Date.now() - startTime);
+      incrementCounter("emailsSentTotal");
+      return result;
+    } catch (error) {
+      incrementCounter("emailsFailedTotal");
+      incrementCounter("providerFailuresTotal");
+      throw error;
+    }
+  });
+}
+
 module.exports = {
   EmailProvider,
   SmtpEmailProvider,
@@ -385,6 +418,7 @@ module.exports = {
   sendJobApplicationConfirmation,
   sendPasswordResetOTPEmail,
   sendEmployerPasswordResetOTPEmail,
+  sendVideoCallEmail,
   _getCircuitBreaker,
   _getRateLimiter,
   _getQueue,

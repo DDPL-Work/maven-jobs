@@ -192,4 +192,22 @@ module.exports = {
   sendPasswordResetEmail,
   sendNotificationEmail,
   sendApplicationConfirmation,
+  sendVideoCallEmail,
 };
+
+async function sendVideoCallEmail({ to, candidateName, companyName, companyWebsite, date, time, link, reason }) {
+  try {
+    const result = await emailModule.sendVideoCallEmail({ to, candidateName, companyName, companyWebsite, date, time, link, reason });
+
+    return {
+      success: true,
+      messageId: result.messageId,
+    };
+  } catch (error) {
+    console.error("Failed to send video call email:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}

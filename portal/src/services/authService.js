@@ -961,6 +961,15 @@ const authService = {
   },
 
   // ── Folder Management ──
+  getContactedCandidates: async () => {
+    try {
+      const response = await api.get('/company-panel/folders/candidates/contacted');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch contacted candidates' };
+    }
+  },
+
   listFolders: async (params) => {
     const response = await api.get('/company-panel/folders', { params });
     return response.data;
@@ -996,6 +1005,23 @@ const authService = {
   updateFolderCandidate: async (folderId, candidateId, data) => {
     const response = await api.patch(`/company-panel/folders/${folderId}/candidates/${candidateId}`, data);
     return response.data;
+  },
+
+  scheduleVideoCall: async (candidateId, data) => {
+    try {
+      const response = await api.post(`/company-panel/candidates/${candidateId}/schedule-video-call`, data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to schedule video call' };
+    }
+  },
+  getAlsoViewedCandidates: async (candidateId) => {
+    try {
+      const response = await api.get(`/company-panel/candidates/${candidateId}/also-viewed`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch also viewed candidates' };
+    }
   },
   bulkRemoveCandidates: async (folderId, candidateIds) => {
     const response = await api.post(`/company-panel/folders/${folderId}/candidates/bulk-remove`, { candidateIds });

@@ -237,12 +237,12 @@ function AppContent() {
         <Route path="/my-subscriptions" element={<ProtectedEmployerRoute><MySubscriptionsPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/analytics" element={<ProtectedEmployerRoute><AnalyticsPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/pricing" element={<ProtectedEmployerRoute><Pricing /></ProtectedEmployerRoute>} />
-        <Route path="/employer-dashboard/folders" element={<ProtectedEmployerRoute requiredPermission="resdex"><FolderListPage /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/folders" element={<ProtectedEmployerRoute><FolderListPage /></ProtectedEmployerRoute>} />
         <Route path="/manage-folders" element={<ProtectedEmployerRoute requiredPermission="resdex"><FolderListPage /></ProtectedEmployerRoute>} />
         <Route path="/manage-folders/:tab" element={<ProtectedEmployerRoute requiredPermission="resdex"><FolderListPage /></ProtectedEmployerRoute>} />
-        <Route path="/employer-dashboard/folders/:folderId" element={<ProtectedEmployerRoute requiredPermission="resdex"><SingleFolderPage /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/folders/:folderId" element={<ProtectedEmployerRoute><SingleFolderPage /></ProtectedEmployerRoute>} />
         <Route path="/resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><SearchResume /></ProtectedEmployerRoute>} />
-        <Route path="/resdex-requirements" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexRequirements /></ProtectedEmployerRoute>} />
+        <Route path="/resdex-requirements" element={<ProtectedEmployerRoute><ResdexRequirements /></ProtectedEmployerRoute>} />
         <Route path="/resdex/search-results" element={<ProtectedEmployerRoute requiredPermission="resdex"><SearchResults /></ProtectedEmployerRoute>} />
         <Route path="/manage-search" element={<ProtectedEmployerRoute requiredPermission="resdex"><ManageSearch /></ProtectedEmployerRoute>} />
         <Route path="/manage-users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />

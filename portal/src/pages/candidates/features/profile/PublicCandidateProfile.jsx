@@ -27,6 +27,7 @@ import { FaWhatsapp, FaLinkedinIn } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import authService from "../../../../services/authService";
 import EmployerHeader from "../../../../components/employer/EmployerHeader";
+import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
 import "./PublicCandidateProfile.css";
 
 const parseJSON = (str) => {
@@ -64,12 +65,15 @@ export default function PublicCandidateProfile() {
   const [similarTab, setSimilarTab] = useState("profile_details"); // 'profile_details' | 'recruiters_viewed'
   const [similarCandidates, setSimilarCandidates] = useState([]);
   const [similarLoading, setSimilarLoading] = useState(false);
+  const [alsoViewedCandidates, setAlsoViewedCandidates] = useState([]);
+  const [alsoViewedLoading, setAlsoViewedLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showFullPhone, setShowFullPhone] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
+  const [isVideoCallModalOpen, setIsVideoCallModalOpen] = useState(false);
 
   // List Context State
   const [listIds, setListIds] = useState([]);
@@ -130,6 +134,19 @@ export default function PublicCandidateProfile() {
           console.error("Failed to load similar candidates:", simErr);
         } finally {
           if (active) setSimilarLoading(false);
+        }
+
+        // Fetch Also Viewed profiles
+        setAlsoViewedLoading(true);
+        try {
+          const viewedRes = await authService.getAlsoViewedCandidates(candidateId);
+          if (active && viewedRes?.data) {
+            setAlsoViewedCandidates(viewedRes.data);
+          }
+        } catch (viewErr) {
+          console.error("Failed to load also viewed candidates:", viewErr);
+        } finally {
+          if (active) setAlsoViewedLoading(false);
         }
       } catch (e) {
         if (!active) return;
@@ -324,7 +341,7 @@ export default function PublicCandidateProfile() {
         <button
           type="button"
           className="pcp-act-btn"
-          onClick={() => alert("Video interview link generated.")}
+          onClick={() => setIsVideoCallModalOpen(true)}
         >
           <FiVideo size={14} /> Schedule video call
         </button>
@@ -882,7 +899,7 @@ export default function PublicCandidateProfile() {
                 </div>
 
                 {/* Attached CV preview row */}
-                <div className="pcp-detail-section" style={{ borderTop: "1px solid #f1f5f9", paddingTop: 16 }}>
+                {/* <div className="pcp-detail-section" style={{ borderTop: "1px solid #f1f5f9", paddingTop: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
@@ -905,7 +922,7 @@ export default function PublicCandidateProfile() {
                       </button>
                     )}
                   </div>
-                </div>
+                </div> */}
               </>
             ) : (
               /* Attached CV tab content */
@@ -1021,28 +1038,31 @@ export default function PublicCandidateProfile() {
                 className={`pcp-similar-tab ${similarTab === "recruiters_viewed" ? "active" : ""}`}
                 onClick={() => setSimilarTab("recruiters_viewed")}
               >
-                Recruiters also viewed (0)
+                Recruiters also viewed ({alsoViewedCandidates.length})
               </button>
             </div>
 
             {/* List of Similar Candidate Profiles */}
             <div className="pcp-similar-list-container">
-              {similarLoading ? (
+              {similarTab === "profile_details" && similarLoading ? (
                 <div style={{ textAlign: "center", padding: "24px 0", color: "#64748b", fontSize: 13 }}>
                   <FiSparkles size={18} style={{ animation: "spin 1s linear infinite" }} />
                   <div style={{ marginTop: 8 }}>AI matching similar profiles...</div>
                 </div>
-              ) : similarTab === "recruiters_viewed" ? (
-                <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 13 }}>
-                  No recent team views found for this candidate.
+              ) : similarTab === "recruiters_viewed" && alsoViewedLoading ? (
+                <div style={{ textAlign: "center", padding: "24px 0", color: "#64748b", fontSize: 13 }}>
+                  <div style={{ marginTop: 8 }}>Loading team views...</div>
                 </div>
-              ) : displayedSimilar.length > 0 ? (
-                displayedSimilar.map((c) => (
-                  <Link
-                    key={c.id}
-                    to={`/candidate/${c.id}`}
-                    className="pcp-similar-item"
-                  >
+              ) : (similarTab === "recruiters_viewed" ? alsoViewedCandidates : displayedSimilar).length === 0 ? (
+                <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 13 }}>
+                  {similarTab === "recruiters_viewed" ? "No recent team views found for this candidate." : "No similar candidates found."}
+                </div>
+              ) : (similarTab === "recruiters_viewed" ? alsoViewedCandidates : displayedSimilar).map((c) => (
+                <Link
+                  key={c.id}
+                  to={`/candidates/${c.id}`}
+                  className="pcp-similar-item"
+                >
                     <div className="pcp-sim-head">
                       <div className="pcp-sim-avatar">
                         {(c.avatar || c.profilePic?.url) ? (
@@ -1106,16 +1126,17 @@ export default function PublicCandidateProfile() {
                       <span>{c.activeStatus || "Active recently"}</span>
                     </div>
                   </Link>
-                ))
-              ) : (
-                <div style={{ textAlign: "center", padding: "20px 0", color: "#94a3b8", fontSize: 13 }}>
-                  No similar candidates found.
-                </div>
-              )}
+                ))}
             </div>
           </div>
         </div>
       </div>
+
+      <ScheduleVideoCallModal 
+        isOpen={isVideoCallModalOpen} 
+        onClose={() => setIsVideoCallModalOpen(false)} 
+        candidateId={candidateId} 
+      />
     </div>
     </>
   );

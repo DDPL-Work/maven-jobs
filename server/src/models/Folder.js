@@ -11,6 +11,7 @@ const folderSchema = new mongoose.Schema({
   color: { type: String, default: "#002366" },
   isPublic: { type: Boolean, default: false },
   candidateCount: { type: Number, default: 0 },
+  contactedCount: { type: Number, default: 0 },
   lastActivityAt: { type: Date, default: null },
   createdBy: { type: String, default: "" },
   sharedWith: [{ type: String, trim: true }],

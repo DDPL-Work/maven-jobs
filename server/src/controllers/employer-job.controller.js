@@ -6,7 +6,13 @@ const User = require("../models/User");
 const Company = require("../models/Company");
 const CandidateProfile = require("../models/CandidateProfile");
 const Nvite = require("../models/Nvite");
+const ScheduledCall = require("../models/ScheduledCall");
 const jobReportService = require("../services/job-posting-report.service");
+const cacheService = require("../services/cache/cache.service");
+
+const recruiterActivityService = require("../services/recruiter-activity.service");
+const RecruiterActivity = require("../models/RecruiterActivity");
+const emailService = require("../services/email.service");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -764,95 +770,102 @@ exports.getEmployerJobs = asyncHandler(async (req, res) => {
  */
 exports.getEmployerJobFilters = asyncHandler(async (req, res) => {
   const { user, company } = await resolveClientUserAndCompany(req.user._id);
-  const now = new Date();
+  const cacheKey = `employer_job_filters:${company._id}:${user._id}`;
+  
+  const data = await cacheService.cacheAside({
+    key: cacheKey,
+    ttl: 300,
+    fetch: async () => {
+      const now = new Date();
 
-  const [allJobs, teamUsers] = await Promise.all([
-    Job.find({ companyId: company._id }).select("jobType department isActive deadline approvalStatus createdByClient").lean(),
-    User.find({ companyId: company._id }).select("_id name email").lean(),
-  ]);
+      const [allJobs, teamUsers] = await Promise.all([
+        Job.find({ companyId: company._id }).select("jobType department isActive deadline approvalStatus createdByClient").lean(),
+        User.find({ companyId: company._id }).select("_id name email").lean(),
+      ]);
 
-  let activeCount = 0;
-  let closedCount = 0;
-  let expiredCount = 0;
+      let activeCount = 0;
+      let closedCount = 0;
+      let expiredCount = 0;
 
-  const categoryCountMap = {
-    NVite: 0,
-    Private: 0,
-    "Hot Vacancy": 0,
-    "SMB Job": 0,
-    Internship: 0,
-  };
+      const categoryCountMap = {
+        NVite: 0,
+        Private: 0,
+        "Hot Vacancy": 0,
+        "SMB Job": 0,
+        Internship: 0,
+      };
 
-  const posterCountMap = new Map();
-  posterCountMap.set("me", 0);
+      const posterCountMap = new Map();
+      posterCountMap.set("me", 0);
 
-  teamUsers.forEach((u) => {
-    posterCountMap.set(u.email.toLowerCase(), 0);
-  });
+      teamUsers.forEach((u) => {
+        posterCountMap.set(u.email.toLowerCase(), 0);
+      });
 
-  allJobs.forEach((job) => {
-    // Status
-    if (!job.isActive || job.approvalStatus === "REJECTED") {
-      closedCount += 1;
-    } else if (job.deadline && new Date(job.deadline) < now) {
-      expiredCount += 1;
-    } else {
-      activeCount += 1;
+      allJobs.forEach((job) => {
+        if (!job.isActive || job.approvalStatus === "REJECTED") {
+          closedCount += 1;
+        } else if (job.deadline && new Date(job.deadline) < now) {
+          expiredCount += 1;
+        } else {
+          activeCount += 1;
+        }
+
+        const cat = resolveJobCategory(job);
+        categoryCountMap[cat] = (categoryCountMap[cat] || 0) + 1;
+
+        if (job.createdByClient) {
+          const isMe = String(job.createdByClient) === String(user._id);
+          if (isMe) {
+            posterCountMap.set("me", (posterCountMap.get("me") || 0) + 1);
+          }
+          const posterUser = teamUsers.find((tu) => String(tu._id) === String(job.createdByClient));
+          if (posterUser?.email) {
+            const emailKey = posterUser.email.toLowerCase();
+            posterCountMap.set(emailKey, (posterCountMap.get(emailKey) || 0) + 1);
+          }
+        }
+      });
+
+      const postersList = [
+        {
+          id: "me",
+          label: "Me",
+          email: user.email,
+          count: posterCountMap.get("me") || 0,
+        },
+        ...teamUsers
+          .filter((tu) => String(tu._id) !== String(user._id))
+          .map((tu) => ({
+            id: tu.email.toLowerCase(),
+            label: tu.name || tu.email,
+            email: tu.email,
+            count: posterCountMap.get(tu.email.toLowerCase()) || 0,
+          })),
+      ];
+
+      return {
+        totalJobs: allJobs.length,
+        statuses: [
+          { id: "active", label: "Active Jobs", count: activeCount },
+          { id: "closed", label: "Closed Jobs", count: closedCount },
+          { id: "expired", label: "Expired Jobs", count: expiredCount },
+        ],
+        categories: [
+          { id: "NVite", label: "NVite", count: categoryCountMap["NVite"] || 0 },
+          { id: "Private", label: "Private", count: categoryCountMap["Private"] || 0 },
+          { id: "Hot Vacancy", label: "Hot Vacancy", count: categoryCountMap["Hot Vacancy"] || 0 },
+          { id: "SMB Job", label: "SMB Job", count: categoryCountMap["SMB Job"] || 0 },
+          { id: "Internship", label: "Internship", count: categoryCountMap["Internship"] || 0 },
+        ],
+        posters: postersList,
+      };
     }
-
-    // Category
-    const cat = resolveJobCategory(job);
-    categoryCountMap[cat] = (categoryCountMap[cat] || 0) + 1;
-
-    // Poster
-    if (job.createdByClient) {
-      const isMe = String(job.createdByClient) === String(user._id);
-      if (isMe) {
-        posterCountMap.set("me", (posterCountMap.get("me") || 0) + 1);
-      }
-      const posterUser = teamUsers.find((tu) => String(tu._id) === String(job.createdByClient));
-      if (posterUser?.email) {
-        const emailKey = posterUser.email.toLowerCase();
-        posterCountMap.set(emailKey, (posterCountMap.get(emailKey) || 0) + 1);
-      }
-    }
   });
-
-  const postersList = [
-    {
-      id: "me",
-      label: "Me",
-      email: user.email,
-      count: posterCountMap.get("me") || 0,
-    },
-    ...teamUsers
-      .filter((tu) => String(tu._id) !== String(user._id))
-      .map((tu) => ({
-        id: tu.email.toLowerCase(),
-        label: tu.name || tu.email,
-        email: tu.email,
-        count: posterCountMap.get(tu.email.toLowerCase()) || 0,
-      })),
-  ];
 
   res.status(200).json({
     success: true,
-    data: {
-      totalJobs: allJobs.length,
-      statuses: [
-        { id: "active", label: "Active Jobs", count: activeCount },
-        { id: "closed", label: "Closed Jobs", count: closedCount },
-        { id: "expired", label: "Expired Jobs", count: expiredCount },
-      ],
-      categories: [
-        { id: "NVite", label: "NVite", count: categoryCountMap["NVite"] || 0 },
-        { id: "Private", label: "Private", count: categoryCountMap["Private"] || 0 },
-        { id: "Hot Vacancy", label: "Hot Vacancy", count: categoryCountMap["Hot Vacancy"] || 0 },
-        { id: "SMB Job", label: "SMB Job", count: categoryCountMap["SMB Job"] || 0 },
-        { id: "Internship", label: "Internship", count: categoryCountMap["Internship"] || 0 },
-      ],
-      posters: postersList,
-    },
+    data,
   });
 });
 
@@ -1223,7 +1236,7 @@ exports.addCandidateComment = asyncHandler(async (req, res) => {
  */
 exports.getCandidateFullProfile = asyncHandler(async (req, res) => {
   // Verify caller is a valid employer
-  await resolveClientUserAndCompany(req.user._id);
+  const { user, company } = await resolveClientUserAndCompany(req.user._id);
 
   const { candidateId } = req.params;
 
@@ -1424,6 +1437,7 @@ exports.getCandidateFullProfile = asyncHandler(async (req, res) => {
     appliedAtFormatted: activeApp?.createdAt
       ? new Date(activeApp.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" })
       : "",
+    answers: activeApp?.answers || [],
 
     // Application history (jobs applied to)
     applicationHistory: applications.map((app) => ({
@@ -1439,9 +1453,203 @@ exports.getCandidateFullProfile = asyncHandler(async (req, res) => {
     })),
   };
 
+  recruiterActivityService.fireAndForget(() =>
+    recruiterActivityService.logForCandidate({
+      companyId: company._id,
+      recruiter: user,
+      candidateId,
+      action: "PROFILE_VIEW",
+      text: "Viewed {{candidateName}}'s profile",
+    })
+  );
+
   res.status(200).json({
     success: true,
     data: fullProfile,
   });
 });
 
+exports.scheduleVideoCall = asyncHandler(async (req, res) => {
+  const { candidateId } = req.params;
+  const { date, time, link, reason } = req.body;
+
+  if (!candidateId || !date || !time || !link) {
+    throw createHttpError(400, "Candidate ID, date, time, and link are required");
+  }
+
+  const { user, company } = await resolveClientUserAndCompany(req.user._id);
+
+  // Fetch candidate info
+  const profile = await CandidateProfile.findOne({
+    $or: [{ userId: candidateId }, { _id: candidateId }]
+  }).populate("userId", "name email");
+
+  if (!profile) {
+    throw createHttpError(404, "Candidate profile not found");
+  }
+
+  const candidateEmail = profile.userId?.email || profile.email;
+  const candidateName = profile.userId?.name || profile.name || "Candidate";
+
+  if (!candidateEmail) {
+    throw createHttpError(400, "Candidate email not found");
+  }
+
+  const emailResponse = await emailService.sendVideoCallEmail({
+    to: candidateEmail,
+    candidateName,
+    companyName: company.name,
+    companyWebsite: company.website,
+    date,
+    time,
+    link,
+    reason,
+  });
+
+  if (!emailResponse.success) {
+    throw createHttpError(500, "Failed to send video call email: " + (emailResponse.error || "Unknown error"));
+  }
+
+  const scheduledCall = await ScheduledCall.create({
+    companyId: company._id,
+    candidateId: candidateId,
+    date,
+    time,
+    link,
+    reason
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Video call scheduled successfully",
+    data: scheduledCall,
+  });
+});
+
+exports.getScheduledCalls = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+
+  const calls = await ScheduledCall.find({ companyId: company._id })
+    .populate("candidateId", "name email")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    data: calls,
+  });
+});
+
+exports.updateScheduledCall = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { date, time, link, reason, status } = req.body;
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+
+  let scheduledCall = await ScheduledCall.findOne({
+    _id: id,
+    companyId: company._id,
+  }).populate("candidateId", "name email");
+
+  if (!scheduledCall) {
+    throw createHttpError(404, "Scheduled call not found");
+  }
+
+  // Update fields
+  if (date) scheduledCall.date = date;
+  if (time) scheduledCall.time = time;
+  if (link) scheduledCall.link = link;
+  if (reason) scheduledCall.reason = reason;
+  if (status) scheduledCall.status = status;
+
+  await scheduledCall.save();
+
+  // If status is rescheduled, we might want to send a new email.
+  if (status === "Rescheduled") {
+    const candidateEmail = scheduledCall.candidateId?.email;
+    const candidateName = scheduledCall.candidateId?.name || "Candidate";
+    if (candidateEmail) {
+      await emailService.sendVideoCallEmail({
+        to: candidateEmail,
+        candidateName,
+        companyName: company.name,
+        companyWebsite: company.website,
+        date: scheduledCall.date,
+        time: scheduledCall.time,
+        link: scheduledCall.link,
+        reason: scheduledCall.reason,
+      });
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Scheduled call updated successfully",
+    data: scheduledCall,
+  });
+});
+
+/**
+ * GET /api/v1/company-panel/candidates/:candidateId/also-viewed
+ * Fetches other candidates that recruiters from this company have also viewed
+ */
+exports.getAlsoViewedCandidates = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const { candidateId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(candidateId)) {
+    return res.status(400).json({ success: false, message: "Invalid candidate ID" });
+  }
+
+  // Find recent PROFILE_VIEW activities by this company, excluding the current candidate
+  const recentViews = await RecruiterActivity.find({
+    companyId: company._id,
+    action: "PROFILE_VIEW",
+    "metadata.candidateId": { $ne: candidateId, $exists: true }
+  })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .lean();
+
+  // Extract unique candidate IDs
+  const uniqueCandidateIds = [];
+  const seen = new Set();
+  for (const view of recentViews) {
+    const cid = String(view.metadata.candidateId);
+    if (!seen.has(cid)) {
+      seen.add(cid);
+      uniqueCandidateIds.push(view.metadata.candidateId);
+    }
+    if (uniqueCandidateIds.length >= 10) break; // Limit to top 10 unique
+  }
+
+  if (uniqueCandidateIds.length === 0) {
+    return res.status(200).json({ success: true, data: [] });
+  }
+
+  // Fetch the CandidateProfiles and Users
+  const profiles = await CandidateProfile.find({ userId: { $in: uniqueCandidateIds } })
+    .populate("userId", "name email avatar")
+    .lean();
+
+  // Map to lightweight objects for the UI cards
+  const alsoViewed = profiles.map(profile => {
+    return {
+      id: profile.userId?._id || profile.userId,
+      name: profile.userId?.name || profile.name || "Candidate",
+      avatar: profile.profilePic?.url || profile.userId?.avatar || "",
+      headline: profile.headline || profile.currentTitle || "",
+      location: [profile.currentCity, profile.currentState].filter(Boolean).join(", ") || profile.currentCountry || "",
+    };
+  });
+
+  // Preserve the order from uniqueCandidateIds (most recently viewed first)
+  const orderedResult = [];
+  for (const id of uniqueCandidateIds) {
+    const match = alsoViewed.find(p => String(p.id) === String(id));
+    if (match) orderedResult.push(match);
+  }
+
+  res.status(200).json({
+    success: true,
+    data: orderedResult
+  });
+});

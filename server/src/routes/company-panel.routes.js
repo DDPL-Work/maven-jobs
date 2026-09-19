@@ -64,6 +64,10 @@ router.post("/jobs-responses/bulk-refresh", employerJobController.bulkRefreshJob
 
 // Full Candidate Profile (for employer view when clicking candidate name)
 router.get("/candidates/:candidateId/full-profile", employerJobController.getCandidateFullProfile);
+router.get("/candidates/:candidateId/also-viewed", employerJobController.getAlsoViewedCandidates);
+router.post("/candidates/:candidateId/schedule-video-call", employerJobController.scheduleVideoCall);
+router.get("/scheduled-calls", employerJobController.getScheduledCalls);
+router.patch("/scheduled-calls/:id", employerJobController.updateScheduledCall);
 router.get("/package-change-requests", controller.getPackageChangeRequests);
 router.post("/package-change-requests", controller.createPackageChangeRequest);
 router.get("/applications", controller.getApplications);
@@ -115,6 +119,7 @@ router.get("/resdex/nvite/stats", nviteController.getNviteStats);
 // Folders — Candidate Folder Management
 router.get("/folders", folderController.listFolders);
 router.post("/folders", folderController.createFolder);
+router.get("/folders/candidates/contacted", folderController.getContactedCandidates);
 router.get("/folders/duplicate/:id", folderController.duplicateFolder);
 router.post("/folders/candidates/move", folderController.moveCandidates);
 router.post("/folders/candidates/copy", folderController.copyCandidates);

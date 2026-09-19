@@ -5,6 +5,7 @@ const {
   buildPasswordResetHtml,
   buildOTPHtml,
   buildJobApplicationConfirmationHtml,
+  buildVideoCallHtml,
 } = require("../templates/layouts");
 
 class EmailService {
@@ -187,6 +188,36 @@ class EmailService {
     return this.sendEmail({
       to,
       subject: `Application submitted — ${role} at ${company}`,
+      html,
+      text,
+    });
+  }
+
+  async sendVideoCallEmail({ to, candidateName, companyName, companyWebsite, date, time, link, reason }) {
+    const displayName = String(candidateName || "").trim() || "there";
+    const company = String(companyName || "A company").trim();
+    const html = buildVideoCallHtml({ candidateName, companyName, companyWebsite, date, time, link, reason });
+    const text = [
+      "Video Call Scheduled",
+      "",
+      `Hi ${displayName},`,
+      "",
+      `${company} has scheduled a video call with you.`,
+      "",
+      `Date: ${date}`,
+      `Time: ${time}`,
+      `Agenda: ${reason}`,
+      `Meeting Link: ${link}`,
+      "",
+      "Please ensure you are ready a few minutes early. We look forward to speaking with you!",
+      "",
+      "Best regards,",
+      `The ${company} Team`,
+    ].join("\n");
+
+    return this.sendEmail({
+      to,
+      subject: `Video Call Scheduled with ${company}`,
       html,
       text,
     });

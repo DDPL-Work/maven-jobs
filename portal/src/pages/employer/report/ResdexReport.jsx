@@ -11,6 +11,8 @@ import EmployerLayout from '../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../components/employer/EmployerBreadcrumb';
 import authService from '../../../services/authService';
 import DynamicReportTable from './DynamicReportTable';
+import CandidateCard from '../../../components/employer/CandidateCard';
+import { useContactedCandidates } from '../../../hooks/useFolderQueries';
 import './ResdexReport.css';
 
 const TABS = [
@@ -166,6 +168,9 @@ export default function ResdexReport() {
 
   const [isSavingSubscription, setIsSavingSubscription] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Fetch contacted candidates if on the MIS tab
+  const { data: contactedCandidates = [], isLoading: isContactedLoading } = useContactedCandidates(activeTab === 'contacted-candidate-mis');
 
   // Close user dropdown on outside click
   useEffect(() => {
@@ -1251,7 +1256,7 @@ export default function ResdexReport() {
             {/* Sub tab indicator & pagination row */}
             <div className="rxr-contacted-header-row">
               <div className="rxr-contacted-tab-indicator">
-                Profiles 0
+                Profiles {contactedCandidates.length}
               </div>
 
               <div className="rxr-contacted-page-controls">
@@ -1343,61 +1348,75 @@ export default function ResdexReport() {
               </div>
             </div>
 
-            {/* Empty State Card */}
-            <div className="rxr-contacted-empty-card">
-              {/* Recruiter Empty State SVG Illustration */}
-              <svg width="260" height="200" viewBox="0 0 260 200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-                {/* Hanging Lamp */}
-                <line x1="85" y1="0" x2="85" y2="40" stroke="#93c5fd" strokeWidth="1.5" />
-                <path d="M73 40C73 35 97 35 97 40L102 52H68L73 40Z" fill="#3b82f6" opacity="0.85" />
-                <circle cx="85" cy="53" r="2.5" fill="#fef08a" />
-                <polygon points="65,54 105,54 125,120 45,120" fill="#60a5fa" opacity="0.1" />
-
-                {/* Thought Bubble with Question Mark */}
-                <path d="M102 68C102 62.5 106.5 58 112 58H122C127.5 58 132 62.5 132 68C132 73.5 127.5 78 122 78H115L108 84V78H112C106.5 78 102 73.5 102 68Z" fill="#ffffff" stroke="#93c5fd" strokeWidth="1.5" />
-                <text x="117" y="72" fontSize="12" fontWeight="700" fill="#2563eb" textAnchor="middle">?</text>
-
-                {/* Background papers behind folder */}
-                <rect x="52" y="70" width="48" height="60" rx="3" transform="rotate(-12 52 70)" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1.5" />
-                <line x1="45" y1="88" x2="72" y2="82" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-                <line x1="48" y1="100" x2="68" y2="96" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-
-                <rect x="78" y="75" width="48" height="60" rx="3" transform="rotate(8 78 75)" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1.5" />
-                <line x1="88" y1="92" x2="114" y2="96" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-                <line x1="89" y1="104" x2="110" y2="107" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-
-                {/* Recruiter woman character */}
-                <ellipse cx="134" cy="67" rx="9" ry="11" fill="#1e293b" />
-                <circle cx="134" cy="70" r="6" fill="#fcd34d" />
-                <path d="M126 65C126 60 142 60 142 65C138 64 130 63 126 65Z" fill="#0f172a" />
-                <path d="M124 77C124 75 144 75 144 77L146 102H122L124 77Z" fill="#0284c7" />
-                <path d="M130 76L134 82L138 76" fill="#ffffff" />
-                <path d="M124 82L116 98L122 100" stroke="#0284c7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M123 102L121 138H145L144 102H123Z" fill="#1e293b" />
-                <line x1="128" y1="138" x2="128" y2="152" stroke="#fcd34d" strokeWidth="2.5" />
-                <line x1="138" y1="138" x2="138" y2="152" stroke="#fcd34d" strokeWidth="2.5" />
-                <path d="M125 152H131L133 155H124V152Z" fill="#0f172a" />
-                <path d="M135 152H141L143 155H134V152Z" fill="#0f172a" />
-
-                {/* Front Main Blue Folder */}
-                <path d="M48 108C48 105 50 103 53 103H72L78 108H118C121 108 123 110 123 113V152C123 155 121 157 118 157H53C50 157 48 155 48 152V108Z" fill="#2563eb" />
-                <path d="M42 120H128L120 158H36L42 120Z" fill="#3b82f6" />
-                <line x1="74" y1="133" x2="90" y2="149" stroke="#93c5fd" strokeWidth="3.5" strokeLinecap="round" />
-                <line x1="90" y1="133" x2="74" y2="149" stroke="#93c5fd" strokeWidth="3.5" strokeLinecap="round" />
-
-                {/* Botanical leaf sprig on bottom left */}
-                <path d="M32 156C32 156 30 148 26 146C22 148 24 156 32 156Z" fill="#60a5fa" />
-                <path d="M34 155C34 155 35 146 41 144C43 148 39 154 34 155Z" fill="#3b82f6" />
-                <path d="M33 157C33 150 33 142 33 138" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" />
-
-                {/* Ground shadow */}
-                <ellipse cx="90" cy="160" rx="60" ry="3.5" fill="#e2e8f0" />
-              </svg>
-
-              <div className="rxr-contacted-empty-title">
-                There are no profiles in this folder
+            {/* Contacted Candidates List or Empty State */}
+            {isContactedLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>Loading candidates...</div>
+            ) : contactedCandidates.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+                {contactedCandidates.map(candidate => (
+                  <CandidateCard
+                    key={`${candidate.id}-${candidate.folderCandidateId}`}
+                    candidate={candidate}
+                    context="folder"
+                  />
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="rxr-contacted-empty-card">
+                {/* Recruiter Empty State SVG Illustration */}
+                <svg width="260" height="200" viewBox="0 0 260 200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+                  {/* Hanging Lamp */}
+                  <line x1="85" y1="0" x2="85" y2="40" stroke="#93c5fd" strokeWidth="1.5" />
+                  <path d="M73 40C73 35 97 35 97 40L102 52H68L73 40Z" fill="#3b82f6" opacity="0.85" />
+                  <circle cx="85" cy="53" r="2.5" fill="#fef08a" />
+                  <polygon points="65,54 105,54 125,120 45,120" fill="#60a5fa" opacity="0.1" />
+
+                  {/* Thought Bubble with Question Mark */}
+                  <path d="M102 68C102 62.5 106.5 58 112 58H122C127.5 58 132 62.5 132 68C132 73.5 127.5 78 122 78H115L108 84V78H112C106.5 78 102 73.5 102 68Z" fill="#ffffff" stroke="#93c5fd" strokeWidth="1.5" />
+                  <text x="117" y="72" fontSize="12" fontWeight="700" fill="#2563eb" textAnchor="middle">?</text>
+
+                  {/* Background papers behind folder */}
+                  <rect x="52" y="70" width="48" height="60" rx="3" transform="rotate(-12 52 70)" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1.5" />
+                  <line x1="45" y1="88" x2="72" y2="82" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="48" y1="100" x2="68" y2="96" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+
+                  <rect x="78" y="75" width="48" height="60" rx="3" transform="rotate(8 78 75)" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1.5" />
+                  <line x1="88" y1="92" x2="114" y2="96" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="89" y1="104" x2="110" y2="107" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+
+                  {/* Recruiter woman character */}
+                  <ellipse cx="134" cy="67" rx="9" ry="11" fill="#1e293b" />
+                  <circle cx="134" cy="70" r="6" fill="#fcd34d" />
+                  <path d="M126 65C126 60 142 60 142 65C138 64 130 63 126 65Z" fill="#0f172a" />
+                  <path d="M124 77C124 75 144 75 144 77L146 102H122L124 77Z" fill="#0284c7" />
+                  <path d="M130 76L134 82L138 76" fill="#ffffff" />
+                  <path d="M124 82L116 98L122 100" stroke="#0284c7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M123 102L121 138H145L144 102H123Z" fill="#1e293b" />
+                  <line x1="128" y1="138" x2="128" y2="152" stroke="#fcd34d" strokeWidth="2.5" />
+                  <line x1="138" y1="138" x2="138" y2="152" stroke="#fcd34d" strokeWidth="2.5" />
+                  <path d="M125 152H131L133 155H124V152Z" fill="#0f172a" />
+                  <path d="M135 152H141L143 155H134V152Z" fill="#0f172a" />
+
+                  {/* Front Main Blue Folder */}
+                  <path d="M48 108C48 105 50 103 53 103H72L78 108H118C121 108 123 110 123 113V152C123 155 121 157 118 157H53C50 157 48 155 48 152V108Z" fill="#2563eb" />
+                  <path d="M42 120H128L120 158H36L42 120Z" fill="#3b82f6" />
+                  <line x1="74" y1="133" x2="90" y2="149" stroke="#93c5fd" strokeWidth="3.5" strokeLinecap="round" />
+                  <line x1="90" y1="133" x2="74" y2="149" stroke="#93c5fd" strokeWidth="3.5" strokeLinecap="round" />
+
+                  {/* Botanical leaf sprig on bottom left */}
+                  <path d="M32 156C32 156 30 148 26 146C22 148 24 156 32 156Z" fill="#60a5fa" />
+                  <path d="M34 155C34 155 35 146 41 144C43 148 39 154 34 155Z" fill="#3b82f6" />
+                  <path d="M33 157C33 150 33 142 33 138" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" />
+
+                  {/* Ground shadow */}
+                  <ellipse cx="90" cy="160" rx="60" ry="3.5" fill="#e2e8f0" />
+                </svg>
+
+                <div className="rxr-contacted-empty-title">
+                  There are no contacted candidates yet.
+                </div>
+              </div>
+            )}
           </div>
         )}
 

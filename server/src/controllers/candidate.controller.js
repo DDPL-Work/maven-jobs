@@ -23,6 +23,7 @@ const activityService = require("../services/recruiter-activity.service");
 const jobReportService = require("../services/job-posting-report.service");
 const { uploadResumeFile, deleteResumeFile } = require("../services/resume-storage.service");
 const { replaceCandidateImage } = require("../services/candidate-image-storage.service");
+const cacheService = require("../services/cache/cache.service");
 const {
   issueTokenPair,
   setAccessCookie,
@@ -1901,17 +1902,26 @@ exports.getApplications = asyncHandler(async (req, res) => {
 });
 
 exports.getProfile = asyncHandler(async (req, res) => {
-  const profile = await ensureCandidateProfile(req.user);
-  const history = await CandidateProfileHistory.find({ candidateId: req.user._id })
-    .sort({ createdAt: -1 })
-    .limit(8);
+  const cacheKey = `profile_response:${req.user._id}`;
+  const data = await cacheService.cacheAside({
+    key: cacheKey,
+    ttl: 300,
+    fetch: async () => {
+      const profile = await ensureCandidateProfile(req.user);
+      const history = await CandidateProfileHistory.find({ candidateId: req.user._id })
+        .sort({ createdAt: -1 })
+        .limit(8);
+
+      return {
+        profile: formatProfile(profile, req.user),
+        history: history.map((item) => formatHistoryItem(item)),
+      };
+    }
+  });
 
   res.status(200).json({
     success: true,
-    data: {
-      profile: formatProfile(profile, req.user),
-      history: history.map((item) => formatHistoryItem(item)),
-    },
+    data,
   });
 });
 
@@ -2122,6 +2132,9 @@ exports.updateProfile = asyncHandler(async (req, res) => {
     actorId: req.user._id,
   });
 
+  const cacheKey = `profile_response:${req.user._id}`;
+  await cacheService.del(cacheKey);
+
   res.status(200).json({
     success: true,
     data: formatProfile(profile, req.user),
@@ -2189,6 +2202,9 @@ exports.uploadResume = asyncHandler(async (req, res) => {
     actionUrl: "/candidate/profile",
   });
 
+  const cacheKey = `profile_response:${req.user._id}`;
+  await cacheService.del(cacheKey);
+
   res.status(200).json({
     success: true,
     data: formatProfile(profile, req.user),
@@ -2213,6 +2229,9 @@ exports.deleteResume = asyncHandler(async (req, res) => {
     category: "SYSTEM",
     actionUrl: "/candidate/profile",
   });
+  const cacheKey = `profile_response:${req.user._id}`;
+  await cacheService.del(cacheKey);
+
   res.status(200).json({ success: true, data: formatProfile(profile, req.user) });
 });
 
@@ -3475,37 +3494,67 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
     throw createHttpError(403, "Mobile OTP login is only available for candidate accounts.");
   }
 
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-  const recentCount = await LoginOTP.countDocuments({
-    phone,
-    createdAt: { $gte: tenMinutesAgo },
-  });
-
-  if (recentCount >= MOBILE_OTP_RATE_LIMIT) {
-    throw createHttpError(429, "Too many OTP requests. Please wait a few minutes and try again.");
-  }
-
-  await LoginOTP.updateMany(
-    { phone, used: false },
-    { $set: { used: true } }
-  );
-
+  const redis = cacheService.getClient();
   let sessionId;
-  try {
-    sessionId = await smsService.sendOTP(phone);
-  } catch (smsErr) {
-    throw createHttpError(503, "Failed to send OTP. Please try again later.");
-  }
 
-  const expiresAt = new Date(Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000);
-  await LoginOTP.create({
-    phone,
-    userId: user._id,
-    sessionId,
-    expiresAt,
-    ipAddress: req.ip || req.connection?.remoteAddress || "",
-    userAgent: req.get("User-Agent") || "",
-  });
+  if (redis) {
+    const rateLimitKey = `rate_limit:otp:${phone}`;
+    const currentCount = await redis.incr(rateLimitKey);
+    if (currentCount === 1) {
+      await redis.expire(rateLimitKey, 600); // 10 minutes
+    }
+    
+    if (currentCount > MOBILE_OTP_RATE_LIMIT) {
+      throw createHttpError(429, "Too many OTP requests. Please wait a few minutes and try again.");
+    }
+
+    try {
+      sessionId = await smsService.sendOTP(phone);
+    } catch (smsErr) {
+      await redis.decr(rateLimitKey);
+      throw createHttpError(503, "Failed to send OTP. Please try again later.");
+    }
+
+    const otpKey = `otp:${phone}`;
+    const otpData = {
+      phone,
+      userId: user._id,
+      sessionId,
+      attempts: 0
+    };
+    await redis.setex(otpKey, MOBILE_OTP_EXPIRY_MINUTES * 60, JSON.stringify(otpData));
+  } else {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const recentCount = await LoginOTP.countDocuments({
+      phone,
+      createdAt: { $gte: tenMinutesAgo },
+    });
+
+    if (recentCount >= MOBILE_OTP_RATE_LIMIT) {
+      throw createHttpError(429, "Too many OTP requests. Please wait a few minutes and try again.");
+    }
+
+    await LoginOTP.updateMany(
+      { phone, used: false },
+      { $set: { used: true } }
+    );
+
+    try {
+      sessionId = await smsService.sendOTP(phone);
+    } catch (smsErr) {
+      throw createHttpError(503, "Failed to send OTP. Please try again later.");
+    }
+
+    const expiresAt = new Date(Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000);
+    await LoginOTP.create({
+      phone,
+      userId: user._id,
+      sessionId,
+      expiresAt,
+      ipAddress: req.ip || req.connection?.remoteAddress || "",
+      userAgent: req.get("User-Agent") || "",
+    });
+  }
 
   return res.status(200).json({
     success: true,
@@ -3526,14 +3575,27 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Please enter a valid 6-digit OTP.");
   }
 
-  const otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({ createdAt: -1 });
+  const redis = cacheService.getClient();
+  let otpDoc;
+  let isRedis = false;
+  let otpKey = `otp:${phone}`;
 
-  if (!otpDoc) {
-    throw createHttpError(400, "No active OTP found. Please request a new OTP.");
+  if (redis) {
+    const rawData = await redis.get(otpKey);
+    if (rawData) {
+      otpDoc = JSON.parse(rawData);
+      isRedis = true;
+    }
   }
 
-  if (new Date() > otpDoc.expiresAt) {
-    throw createHttpError(400, "OTP has expired. Please request a new one.");
+  if (!otpDoc) {
+    otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({ createdAt: -1 });
+    if (!otpDoc) {
+      throw createHttpError(400, "No active OTP found. Please request a new OTP.");
+    }
+    if (new Date() > otpDoc.expiresAt) {
+      throw createHttpError(400, "OTP has expired. Please request a new one.");
+    }
   }
 
   if (otpDoc.attempts >= MOBILE_OTP_MAX_ATTEMPTS) {
@@ -3544,7 +3606,14 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
 
   if (!isValid) {
     otpDoc.attempts += 1;
-    await otpDoc.save();
+    if (isRedis) {
+      const ttl = await redis.ttl(otpKey);
+      if (ttl > 0) {
+        await redis.setex(otpKey, ttl, JSON.stringify(otpDoc));
+      }
+    } else {
+      await otpDoc.save();
+    }
 
     const remaining = MOBILE_OTP_MAX_ATTEMPTS - otpDoc.attempts;
     if (remaining <= 0) {
@@ -3553,8 +3622,12 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
     throw createHttpError(400, `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
   }
 
-  otpDoc.used = true;
-  await otpDoc.save();
+  if (isRedis) {
+    await redis.del(otpKey);
+  } else {
+    otpDoc.used = true;
+    await otpDoc.save();
+  }
 
   const user = await User.findById(otpDoc.userId);
   if (!user) {

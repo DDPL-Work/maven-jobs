@@ -12,6 +12,7 @@ import ShareFolderModal from '../../../../components/employer/ShareFolderModal';
 import {
   useFolders, useCreateFolder, useUpdateFolder, useDeleteFolder, useDuplicateFolder
 } from '../../../../hooks/useFolderQueries';
+import { useEmployerAuth } from '../../../../hooks/useEmployerAuth';
 import './FolderListPage.css';
 
 const TABS = [
@@ -72,6 +73,7 @@ export default function FolderListPage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [renameData, setRenameData] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const showToast = useCallback((msg) => {
     setToastMessage(msg);
@@ -79,6 +81,8 @@ export default function FolderListPage() {
   }, []);
 
   // Fetch backend custom folders
+  const { session } = useEmployerAuth();
+  
   const params = useMemo(() => {
     return { sort: sortBy, page, limit: pageSize };
   }, [sortBy, page, pageSize]);
@@ -89,9 +93,9 @@ export default function FolderListPage() {
   const deleteFolder = useDeleteFolder();
   const duplicateFolder = useDuplicateFolder();
 
-  // Filter server folders dynamically based on date filter
+  // Filter server folders dynamically based on date filter (My Folders only)
   const filteredFolders = useMemo(() => {
-    let list = Array.isArray(serverFolders) ? [...serverFolders] : [];
+    let list = Array.isArray(serverFolders) ? serverFolders.filter(f => f.employerId === session?.id) : [];
     const now = new Date();
 
     if (dateFilter === 'last-7') {
@@ -124,9 +128,9 @@ export default function FolderListPage() {
   // Shared folders dynamically filtered
   const sharedFolders = useMemo(() => {
     return (serverFolders || []).filter(
-      f => f.isPublic || (Array.isArray(f.sharedWith) && f.sharedWith.length > 0) || f.shareWithUsers
+      f => f.employerId !== session?.id
     );
-  }, [serverFolders]);
+  }, [serverFolders, session]);
 
   // Contacted candidates folders dynamically sorted
   const contactedFolders = useMemo(() => {
@@ -161,19 +165,21 @@ export default function FolderListPage() {
   };
 
   // Delete selected folders
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selectedFolderIds.length === 0) {
       showToast('Please select at least one folder to delete.');
       return;
     }
+    setShowDeleteConfirm(true);
+  };
 
-    if (!window.confirm(`Delete ${selectedFolderIds.length} selected folder(s)?`)) return;
-
+  const confirmDeleteFolders = async () => {
     try {
       for (const id of selectedFolderIds) {
         await deleteFolder.mutateAsync(id);
       }
       setSelectedFolderIds([]);
+      setShowDeleteConfirm(false);
       refetch();
       showToast('Selected folder(s) deleted successfully.');
     } catch {
@@ -821,6 +827,55 @@ export default function FolderListPage() {
           onShare={handleConfirmShare}
           selectedFolders={selectedFolderObjects}
         />
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="flp-modal-overlay">
+            <div className="flp-modal-content">
+              <div className="flp-modal-header">
+                <h2>Confirm Deletion</h2>
+                <button type="button" onClick={() => setShowDeleteConfirm(false)} className="flp-modal-close-icon">
+                  <FiX size={20} />
+                </button>
+              </div>
+              <div className="flp-modal-body" style={{ padding: '20px' }}>
+                <p>Are you sure you want to delete {selectedFolderIds.length} selected folder(s)?</p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      background: 'none',
+                      border: '1px solid #cbd5e1',
+                      color: '#475569',
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteFolders}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      background: '#ef4444',
+                      border: 'none',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </EmployerLayout>
   );

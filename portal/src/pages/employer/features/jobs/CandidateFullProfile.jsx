@@ -287,6 +287,7 @@ export default function CandidateFullProfile() {
     return s;
   };
 
+  const hasQuestionnaire = Boolean(profile.answers?.length > 0);
   const hasSummary = Boolean(profile.summary || profile.bio);
   const hasExperience = Boolean(profile.workExperiences?.length > 0);
   const hasEducation = Boolean(profile.educations?.length > 0);
@@ -307,6 +308,7 @@ export default function CandidateFullProfile() {
   );
 
   const navLinks = [
+    hasQuestionnaire && { id: 'questionnaire', label: 'Questionnaire' },
     hasSummary && { id: 'summary', label: 'Summary' },
     hasExperience && { id: 'experience', label: 'Work Experience' },
     hasEducation && { id: 'education', label: 'Education' },
@@ -630,6 +632,23 @@ export default function CandidateFullProfile() {
                 </a>
               </Fragment>
             ))}
+          </div>
+        )}
+
+        {/* ─── 5b. Questionnaire Responses Card ─── */}
+        {hasQuestionnaire && (
+          <div id="questionnaire" className="cfp-card" style={{ marginBottom: 24 }}>
+            <h2 className="cfp-card-heading">Questionnaire Responses</h2>
+            <div className="cfp-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {profile.answers.map((ans, idx) => (
+                <div key={idx} style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{ans.question}</h4>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#475569', whiteSpace: 'pre-wrap' }}>
+                    {ans.answer || '—'}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

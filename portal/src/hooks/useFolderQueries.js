@@ -20,6 +20,18 @@ export function useFolders(params, enabled = true) {
   });
 }
 
+export function useContactedCandidates(enabled = true) {
+  return useQuery({
+    queryKey: ['folders', 'contactedCandidates'],
+    queryFn: async () => {
+      const res = await authService.getContactedCandidates();
+      return res.success ? res.data : [];
+    },
+    enabled,
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useFolder(id, enabled = true) {
   return useQuery({
     queryKey: folderKeys.detail(id),
@@ -103,5 +115,13 @@ export function useCopyCandidates() {
   return useMutation({
     mutationFn: (data) => authService.copyCandidates(data.toFolderId, data.candidateIds),
     onSuccess: () => qc.invalidateQueries({ queryKey: folderKeys.all }),
+  });
+}
+
+export function useUpdateFolderCandidate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ folderId, candidateId, data }) => authService.updateFolderCandidate(folderId, candidateId, data),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: folderKeys.detail(vars.folderId) }),
   });
 }

@@ -410,7 +410,7 @@ exports.googleStatus = asyncHandler(async (_req, res) => {
 // MOBILE OTP LOGIN (candidates only)
 // ------------------------------------------------------------
 
-const MOBILE_OTP_EXPIRY_MINUTES = 10;
+const MOBILE_OTP_EXPIRY_MINUTES = 3;
 const MOBILE_OTP_MAX_ATTEMPTS = 5;
 const MOBILE_OTP_RATE_LIMIT = 3; // max OTP requests per 10 minutes per phone
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
