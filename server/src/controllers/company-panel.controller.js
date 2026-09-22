@@ -969,7 +969,10 @@ exports.createJob = asyncHandler(async (req, res) => {
     salaryMax: toSafeNumber(req.body.salaryMax, 0),
     skills: rawSkills,
     deadline,
-    description: toTrimmedString(req.body.description),
+    description: toTrimmedString(req.body.description),           // Role Description
+    responsibilities: toTrimmedString(req.body.responsibilities), // Key Responsibilities
+    qualifications: toTrimmedString(req.body.qualifications),     // Required Skills & Qualifications
+
     externalLink: toTrimmedString(req.body.externalLink),
     approvalStatus: hasAvailablePackageSlot ? "APPROVED" : "PENDING",
     rejectionReason: "",
@@ -1151,7 +1154,7 @@ exports.getJob = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Job ID is required");
   }
 
-  const job = await Job.findOne({ _id: jobId, companyId: company._id });
+  const job = await Job.findOne({ _id: jobId, companyId: company._id }).lean();
 
   if (!job) {
     throw createHttpError(404, "Job not found");
@@ -1160,6 +1163,7 @@ exports.getJob = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
+      ...job,
       id: String(job._id),
       title: job.title || "",
       department: job.department || "",

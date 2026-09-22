@@ -58,12 +58,12 @@ const sortPackageCatalog = (items = []) => {
 };
 
 const loadPackageCatalog = async () => {
-  const packageDocs = await Package.find().select("name jobLimit description").lean();
+  const packageDocs = await Package.find().select("name jobPostingLimit description").lean();
 
   const candidateCatalog = packageDocs.length
     ? packageDocs.map((pkg) => ({
         name: normalizePackageName(pkg.name),
-        jobLimit: toSafePositiveInt(pkg.jobLimit, 0),
+        jobLimit: toSafePositiveInt(pkg.jobPostingLimit, 0),
         description: String(pkg.description || "").trim(),
       }))
     : DEFAULT_PACKAGE_CATALOG;
@@ -93,11 +93,6 @@ const resolveCompanyJobLimit = (company, packageLimitMap = new Map()) => {
   const packageLimit = Number(packageLimitMap.get(packageType) || 0);
   if (packageLimit > 0) {
     return packageLimit;
-  }
-
-  const companyLimit = toSafePositiveInt(company?.jobLimit, 0);
-  if (companyLimit > 0) {
-    return companyLimit;
   }
 
   const fallback = DEFAULT_PACKAGE_CATALOG.find((item) => item.name === packageType);

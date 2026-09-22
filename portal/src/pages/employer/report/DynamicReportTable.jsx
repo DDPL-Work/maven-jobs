@@ -1,17 +1,6 @@
 import React, { useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import './DynamicReportTable.css';
-
-/**
- * Helper to escape CSV cell contents safely
- */
-const escapeCsvCell = (val) => {
-  if (val === null || val === undefined) return '';
-  const str = String(val);
-  if (/[",\n\r]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-};
 
 /**
  * DynamicReportTable component
@@ -25,7 +14,7 @@ const escapeCsvCell = (val) => {
  * - showNote: boolean (default true)
  * - theme: 'blue' | 'gray' (default 'blue')
  * - onNewReport: () => void (handler to navigate back to configuration form)
- * - onDownloadExcel?: () => void (optional custom export handler, otherwise uses default CSV export)
+ * - onDownloadExcel?: () => void (optional custom export handler, otherwise uses default Excel export)
  * - filename?: string (name for downloaded file)
  */
 export default function DynamicReportTable({
@@ -117,35 +106,27 @@ export default function DynamicReportTable({
     return totals;
   }, [showTotalRow, normalizedRows, normalizedColumns]);
 
-  // Default export to CSV
+  // Default export to Excel
   const handleDefaultDownload = () => {
     if (onDownloadExcel) {
       onDownloadExcel();
       return;
     }
 
-    const headerRow = normalizedColumns.map((c) => escapeCsvCell(c.label)).join(',');
-    const dataRows = normalizedRows.map((r) =>
-      r.map((val) => escapeCsvCell(val)).join(',')
-    );
+    const headerRow = normalizedColumns.map(c => c.label);
+    const dataRows = normalizedRows.slice();
 
-    const allCsvLines = [headerRow, ...dataRows];
+    const allLines = [headerRow, ...dataRows];
 
     if (totalRowData) {
-      allCsvLines.push(totalRowData.map((val) => escapeCsvCell(val)).join(','));
+      allLines.push(totalRowData);
     }
 
-    const csvContent = allCsvLines.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const cleanFilename = `${filename.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.download = cleanFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(allLines);
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    const cleanFilename = `${filename.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, cleanFilename);
   };
 
   return (

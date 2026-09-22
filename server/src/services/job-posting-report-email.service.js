@@ -1,6 +1,7 @@
 const JobPostingReportLog = require("../models/JobPostingReportLog");
 const emailModule = require("../email");
 const logger = require("../config/logger");
+const XLSX = require("xlsx");
 
 /**
  * Calculate date window:
@@ -112,12 +113,7 @@ async function getAggregatedReportData(companyId, start, end) {
 /**
  * Generate CSV buffer for the aggregated report rows
  */
-function buildReportCSV(rows, period, start, end, companyName = "Company") {
-  const escapeCsv = (val) => {
-    const s = String(val ?? "");
-    return /[,"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-
+function buildReportExcel(rows, period, start, end, companyName = "Company") {
   const formatDateStr = (d) => {
     const pad = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -138,43 +134,42 @@ function buildReportCSV(rows, period, start, end, companyName = "Company") {
     "Total Expense",
   ];
 
-  const lines = [
-    `# Job Posting ${period === "weekly" ? "Weekly" : "Monthly"} Report - ${companyName}`,
-    `# Period: ${formatDateStr(start)} to ${formatDateStr(end)}`,
-    "",
-    headers.map(escapeCsv).join(","),
-  ];
-
+  const data = [];
+  
   if (!rows || rows.length === 0) {
-    lines.push(
-      ["No activity recorded during this period", "", "", 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        .map(escapeCsv)
-        .join(",")
-    );
+    data.push(["No activity recorded during this period"]);
   } else {
     for (const r of rows) {
-      lines.push(
-        [
-          r.userName || "Recruiter",
-          r.userEmail || "",
-          r.alias || "",
-          r.jobsPosted || 0,
-          r.jobPostExpense || 0,
-          r.jobEditExpense || 0,
-          r.jobRefreshExpense || 0,
-          r.jobsClosed || 0,
-          r.jobsDeleted || 0,
-          r.applicationsReceived || 0,
-          r.jobViews || 0,
-          r.totalExpense || 0,
-        ]
-          .map(escapeCsv)
-          .join(",")
-      );
+      data.push([
+        r.userName || "Recruiter",
+        r.userEmail || "",
+        r.alias || "",
+        r.jobsPosted || 0,
+        r.jobPostExpense || 0,
+        r.jobEditExpense || 0,
+        r.jobRefreshExpense || 0,
+        r.jobsClosed || 0,
+        r.jobsDeleted || 0,
+        r.applicationsReceived || 0,
+        r.jobViews || 0,
+        r.totalExpense || 0,
+      ]);
     }
   }
 
-  return Buffer.from(lines.join("\r\n"), "utf-8");
+  const worksheetData = [
+    [`Job Posting ${period === "weekly" ? "Weekly" : "Monthly"} Report - ${companyName}`],
+    [`Period: ${formatDateStr(start)} to ${formatDateStr(end)}`],
+    [],
+    headers,
+    ...data
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Job Posting Report");
+
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 }
 
 /**
@@ -198,9 +193,9 @@ async function sendJobPostingReportEmail({
 
   const periodLabel = period === "weekly" ? "Weekly" : "Monthly";
   const dateRangeStr = `${formatDateStr(start)} - ${formatDateStr(end)}`;
-  const filename = `Job_Posting_Report_${periodLabel}_${dateRangeStr.replace(/[^a-zA-Z0-9_-]/g, "_")}.csv`;
+  const filename = `Job_Posting_Report_${periodLabel}_${dateRangeStr.replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
 
-  const csvBuffer = buildReportCSV(rows, period, start, end, companyName);
+  const excelBuffer = buildReportExcel(rows, period, start, end, companyName);
 
   const subject = `${companyName}: Your ${periodLabel} Job Posting Report (${dateRangeStr})`;
 
@@ -235,7 +230,7 @@ async function sendJobPostingReportEmail({
       </div>
 
       <p style="font-size: 13px; color: #64748b;">
-        The detailed breakdown user-wise is available in the attached CSV file. You can open it directly with Microsoft Excel or Google Sheets.
+        The detailed breakdown user-wise is available in the attached Excel file. You can open it directly with Microsoft Excel or Google Sheets.
       </p>
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
@@ -245,7 +240,7 @@ async function sendJobPostingReportEmail({
     </div>
   `;
 
-  const text = `Job Posting ${periodLabel} Report for ${companyName}\nPeriod: ${dateRangeStr}\nTotal Jobs Posted: ${totalPosted}\nApplications Received: ${totalApps}\nTotal Expenses: ${totalExpense}\n\nPlease review the attached CSV report.`;
+  const text = `Job Posting ${periodLabel} Report for ${companyName}\nPeriod: ${dateRangeStr}\nTotal Jobs Posted: ${totalPosted}\nApplications Received: ${totalApps}\nTotal Expenses: ${totalExpense}\n\nPlease review the attached Excel report.`;
 
   const results = [];
   for (const to of toEmails) {
@@ -259,8 +254,8 @@ async function sendJobPostingReportEmail({
         attachments: [
           {
             filename,
-            content: csvBuffer,
-            contentType: "text/csv",
+            content: excelBuffer,
+            contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           },
         ],
       });
@@ -277,6 +272,6 @@ async function sendJobPostingReportEmail({
 module.exports = {
   getReportDateWindow,
   getAggregatedReportData,
-  buildReportCSV,
+  buildReportExcel,
   sendJobPostingReportEmail,
 };

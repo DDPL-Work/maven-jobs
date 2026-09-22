@@ -497,6 +497,71 @@
   margin: 16px 0 8px 0;
 }
 
+/* ── IT Skills Table ── */
+.pcp-it-skills-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid #e8ecf1;
+}
+
+.pcp-it-skills-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pcp-it-skills-table thead tr {
+  background: #f5f7fa;
+}
+
+.pcp-it-skills-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  border-bottom: 1px solid #e8ecf1;
+  white-space: nowrap;
+}
+
+.pcp-it-skills-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+
+.pcp-it-skills-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.pcp-it-skills-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.pcp-it-skills-table tbody tr:hover {
+  background: #eff6ff;
+}
+
+.pcp-it-skills-table td {
+  padding: 10px 16px;
+  color: #475569;
+  vertical-align: middle;
+}
+
+.pcp-it-skill-name {
+  color: #0f7ea6;
+  font-weight: 500;
+}
+
+.pcp-it-skill-name.highlight {
+  color: #0073e6;
+  background: #eff6ff;
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+
 /* Skills chip cloud */
 .pcp-skills-cloud {
   display: flex;

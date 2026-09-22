@@ -61,6 +61,34 @@ export const employerJobService = {
   },
 
   /**
+   * Fetch a single job details
+   * @param {string} jobId
+   */
+  getJob: async (jobId) => {
+    try {
+      const response = await api.get(`/company-panel/jobs/${jobId}`);
+      return response.data?.data || null;
+    } catch (error) {
+      console.error(`Failed to fetch job ${jobId}:`, error);
+      throw error.response?.data || { message: 'Failed to fetch job' };
+    }
+  },
+
+  /**
+   * Fetch NVite recipient profiles for a specific job
+   * @param {string} jobId
+   */
+  getJobNviteRecipients: async (jobId) => {
+    try {
+      const response = await api.get(`/company-panel/jobs-responses/${jobId}/nvite-recipients`);
+      return response.data?.data || [];
+    } catch (error) {
+      console.error(`Failed to fetch NVite recipients for ${jobId}:`, error);
+      throw error.response?.data || { message: 'Failed to fetch NVite recipients' };
+    }
+  },
+
+  /**
    * Update candidate status on a job (SHORTLISTED, MAYBE, REJECTED) or callStatus (Called, Messaged, Not picked, Not reachable)
    * @param {string} jobId
    * @param {string} applicationId

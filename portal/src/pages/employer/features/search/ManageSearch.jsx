@@ -418,7 +418,7 @@ export default function ManageSearch() {
   }, []);
 
   const handleRunSearch = useCallback((search) => {
-    navigate('/resdex', { state: { savedFilters: search.filters, searchName: search.name } });
+    navigate('/resume-search', { state: { savedFilters: search.filters, searchName: search.name } });
   }, [navigate]);
 
   const handlePinToggle = useCallback(async (search) => {
@@ -527,7 +527,7 @@ export default function ManageSearch() {
         <div className="ms-root">
           <EmployerBreadcrumb items={[
             { label: 'Employer Dashboard', path: '/employer-dashboard' },
-            { label: 'Resdex', path: '/resdex' },
+            { label: 'Resdex', path: '/resume-search' },
             { label: 'Manage Searches' },
           ]} />
 
@@ -537,7 +537,7 @@ export default function ManageSearch() {
               <p className="ms-subtitle">Access, organize and reuse all your saved and previous candidate searches.</p>
             </div>
             <button className="sr-btn sr-btn-primary" style={{ padding: '10px 22px', fontSize: '0.82rem', flexShrink: 0 }}
-              onClick={() => navigate('/resdex')} aria-label="Create new search">
+              onClick={() => navigate('/resume-search')} aria-label="Create new search">
               <FiPlus size={15} /> New Search
             </button>
           </div>
@@ -668,7 +668,7 @@ export default function ManageSearch() {
                   <h3 className="ms-empty-title">No Saved Searches Yet</h3>
                   <p className="ms-empty-desc">Save your favourite candidate searches to quickly continue recruiting later.</p>
                   <button className="sr-btn sr-btn-primary" style={{ padding: '10px 24px', fontSize: '0.85rem' }}
-                    onClick={() => navigate('/resdex')}>
+                    onClick={() => navigate('/resume-search')}>
                     <FiSearch size={15} /> Start Searching
                   </button>
                 </div>
@@ -784,7 +784,7 @@ export default function ManageSearch() {
               <div className="ms-insight-card">
                 <h4 className="ms-insight-title"><FiZap size={14} /> Quick Actions</h4>
                 <div className="ms-quick-actions">
-                  <button className="ms-quick-btn ms-quick-btn-primary" onClick={() => navigate('/resdex')}>
+                  <button className="ms-quick-btn ms-quick-btn-primary" onClick={() => navigate('/resume-search')}>
                     <FiPlus size={14} /> Create New Search
                   </button>
                   <button className="ms-quick-btn" onClick={() => {}}>

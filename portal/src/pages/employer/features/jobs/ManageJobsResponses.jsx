@@ -12,6 +12,7 @@ import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import { getDrafts, deleteDraft } from '../../../../services/draftJobService';
 import employerJobService from '../../../../services/employerJobService';
+import PreviewMiviteModal from './components/PreviewMiviteModal';
 import './ManageJobsResponses.css';
 
 
@@ -196,6 +197,7 @@ export default function ManageJobsResponses() {
 
   // Row Action Menu Dropdown (job id)
   const [openRowMenuId, setOpenRowMenuId] = useState(null);
+  const [previewMiviteJobId, setPreviewMiviteJobId] = useState(null);
 
   // Selected Jobs for Bulk Actions
   const [selectedJobIds, setSelectedJobIds] = useState([]);
@@ -914,7 +916,7 @@ export default function ManageJobsResponses() {
                                   className="mjr-row-action-btn"
                                   onClick={() => {
                                     setOpenRowMenuId(null);
-                                    showToast(`Opening NVite preview for ${job.title}`);
+                                    setPreviewMiviteJobId(job.id);
                                   }}
                                 >
                                   Preview NVite
@@ -1175,6 +1177,13 @@ export default function ManageJobsResponses() {
           </div>
         )}
       </div>
+
+      {previewMiviteJobId && (
+        <PreviewMiviteModal
+          jobId={previewMiviteJobId}
+          onClose={() => setPreviewMiviteJobId(null)}
+        />
+      )}
     </EmployerLayout>
   );
 }

@@ -100,7 +100,7 @@ export default function EmployerFooter() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <FooterLink to="/employer-dashboard">Home</FooterLink>
               <FooterLink to="/post-job">Jobs & Responses</FooterLink>
-              <FooterLink to="/resdex">Resdex</FooterLink>
+              <FooterLink to="/resume-search">Resdex</FooterLink>
               <FooterLink to="/report/resdex">Reports</FooterLink>
             </div>
           </div>

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   FiRefreshCw, FiDownload, FiCalendar, FiBarChart2
 } from 'react-icons/fi';
@@ -8,7 +8,6 @@ import authService from '../../../../services/authService';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import './AnalyticsPage.css';
-
 const ResdexTab = lazy(() => import('../../../../components/employer/ResdexTab'));
 const AnalyticsTab = lazy(() => import('../../../../components/employer/AnalyticsTab'));
 
@@ -31,7 +30,12 @@ function TabSkeleton() {
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState('analytics');
+  const { tabSlug } = useParams();
+  const tab = tabSlug === 'analytics' ? 'analytics' : 'resdex';
+
+  const setTab = (newTab) => {
+    navigate(`/employer-dashboard/analytics/${newTab}`);
+  };
   const [range, setRange] = useState('12m');
   const [showRangeDropdown, setShowRangeDropdown] = useState(false);
   const [data, setData] = useState(null);
@@ -74,43 +78,6 @@ export default function AnalyticsPage() {
     setRange(newRange);
   }, []);
 
-  const handleExport = useCallback(() => {
-    if (!data) return;
-    const esc = (v) => {
-      const s = String(v ?? '');
-      return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const rows = [
-      ['Section', 'Metric', 'Value'],
-      ...data.kpis.map(k => ['Analytics', k.label, esc(k.val)]),
-    ];
-    if (data.overview) {
-      rows.push(['', '', ''], ['Overview', 'Field', 'Value']);
-      Object.entries(data.overview).forEach(([key, val]) => rows.push(['', key, esc(val)]));
-    }
-    if (data.recentApplications?.length) {
-      rows.push(['', '', ''], ['Recent Applications', 'Name', 'Role', 'Status', 'Applied']);
-      data.recentApplications.forEach(a => rows.push(['', esc(a.name), esc(a.role), esc(a.status), new Date(a.applied).toLocaleDateString()]));
-    }
-    if (data.sources?.length) {
-      rows.push(['', '', ''], ['Source Breakdown', 'Source', 'Applications']);
-      data.sources.forEach(s => rows.push(['', esc(s.source || s._id || 'Unknown'), s.count ?? s.applications ?? 0]));
-    }
-    if (data.departments?.length) {
-      rows.push(['', '', ''], ['Departments', 'Department', 'Applications', 'Hired']);
-      data.departments.forEach(d => rows.push(['', esc(d.department), d.applications ?? 0, d.hired ?? 0]));
-    }
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `mavenjobs-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [data]);
-
   return (
     <EmployerLayout
       company={data?.company || {}}
@@ -145,9 +112,6 @@ export default function AnalyticsPage() {
           <button className="ap-btn" onClick={handleRefresh} disabled={refreshing || loading}
             style={refreshing ? { opacity: 0.6 } : {}}>
             <FiRefreshCw size={14} className={refreshing ? 'ap-spin' : ''} /> Refresh
-          </button>
-          <button className="ap-btn" onClick={handleExport} disabled={!data}>
-            <FiDownload size={14} /> Export CSV
           </button>
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <button 

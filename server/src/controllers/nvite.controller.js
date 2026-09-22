@@ -12,7 +12,7 @@ const ResdexReportLog = require("../models/ResdexReportLog");
 exports.sendNvite = asyncHandler(async (req, res) => {
   const company = req.company;
   const recruiter = req.user;
-  const { recipients, subject, body, templateId } = req.body;
+  const { recipients, subject, body, templateId, jobIds } = req.body;
 
   if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
     return res.status(400).json({ success: false, message: "At least one recipient is required" });
@@ -64,6 +64,7 @@ exports.sendNvite = asyncHandler(async (req, res) => {
     subject: subject.trim(),
     body: body.trim(),
     templateId: templateId || null,
+    jobIds: Array.isArray(jobIds) ? jobIds : [],
     totalCount: validRecipients.length,
     unknownCount: unknown.length,
   });

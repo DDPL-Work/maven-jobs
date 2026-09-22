@@ -35,7 +35,9 @@ exports.createJob = async (req, res) => {
     await company.save();
   }
 
-  if (company.activeJobCount >= packageSnapshot.jobLimit) {
+  const activeJobCount = await require("../models/Job").countDocuments({ companyId: company._id, isActive: true, approvalStatus: { $in: ["APPROVED", "PENDING"] } });
+
+  if (activeJobCount >= packageSnapshot.jobLimit) {
     return res.status(400).json({
       message: "Job limit exceeded for this package",
     });
@@ -90,7 +92,9 @@ exports.approveJob = async (req, res) => {
     await company.save();
   }
 
-  if (company.activeJobCount >= packageSnapshot.jobLimit) {
+  const activeJobCount = await require("../models/Job").countDocuments({ companyId: company._id, isActive: true, approvalStatus: { $in: ["APPROVED", "PENDING"] } });
+
+  if (activeJobCount >= packageSnapshot.jobLimit) {
     return res.status(400).json({ message: "Job limit exceeded for this package" });
   }
 

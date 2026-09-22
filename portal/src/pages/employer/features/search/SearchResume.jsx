@@ -108,7 +108,9 @@ export default function SearchResume() {
     titles: [], noticePeriods: NOTICE_OPTIONS, certifications: [],
   });
 
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const initialFilters = {
       keyword: "", skills: [], booleanQuery: "", currentCompany: "",
       previousCompany: "", designation: "", excludeKeywords: "",
       minExperience: "", maxExperience: "",
@@ -123,6 +125,24 @@ export default function SearchResume() {
       returnship: false, womenHiring: false, campusHiring: false, freshers: false,
       languages: [], workPermit: [], passport: false, visa: "",
       github: "", linkedIn: "", portfolio: "",
+    };
+    let hasUrlFilters = false;
+    for (const [key, value] of searchParams.entries()) {
+      if (['tab', 'activeTab', 'version', 'page', 'limit'].includes(key)) continue;
+      if (key in initialFilters) {
+        if (Array.isArray(initialFilters[key])) {
+          initialFilters[key] = value.split(',').filter(Boolean);
+        } else if (typeof initialFilters[key] === 'boolean') {
+          initialFilters[key] = value === 'true';
+        } else {
+          initialFilters[key] = value;
+        }
+        hasUrlFilters = true;
+      }
+    }
+    // We can store a flag on window if we need to auto-search on mount
+    if (hasUrlFilters) window.__AUTO_SEARCH_RESDEX__ = true;
+    return initialFilters;
   });
 
   const [savedSearches, setSavedSearches] = useState([]);
@@ -178,9 +198,9 @@ export default function SearchResume() {
       if (location.state?.preSelectedCandidate) {
         handled = true;
         const c = location.state.preSelectedCandidate;
-        const id = c.id || c.userId || c._id;
+        const id = c.id || c._id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || String(c);
         setSelectedCandidates(new Map([[id, c]]));
-        setCachedResults(prev => prev.some(p => (p.id || p.userId || p._id) === id) ? prev : [c, ...prev]);
+        setCachedResults(prev => prev.some(p => (p.id || p._id || (p.userId && (p.userId._id || p.userId.id || p.userId)) || String(p)) === id) ? prev : [c, ...prev]);
         const searchParams = new URLSearchParams(location.search);
         if (searchParams.get('tab') === 'mivites') {
           setActiveTab('mivites');
@@ -188,11 +208,16 @@ export default function SearchResume() {
       }
       if (location.state?.savedFilters) {
         handled = true;
-        setFilters(prev => ({ ...prev, ...location.state.savedFilters }));
+        const newFilters = { ...filters, ...location.state.savedFilters };
+        setFilters(newFilters);
         if (location.state.searchName) {
           setSearchName(location.state.searchName);
         }
-        setTimeout(() => fetchCandidates(1), 100);
+        setTimeout(() => fetchCandidates(1, newFilters), 0);
+      } else if (window.__AUTO_SEARCH_RESDEX__) {
+        handled = true;
+        delete window.__AUTO_SEARCH_RESDEX__;
+        setTimeout(() => fetchCandidates(1, filters), 0);
       }
       if (handled) {
         locationStateProcessed.current = true;
@@ -230,17 +255,45 @@ export default function SearchResume() {
     return count;
   }, [filters]);
 
-  const fetchCandidates = useCallback(async (page = 1) => {
+  const generateSlug = (activeFilters) => {
+    const parts = [];
+    if (activeFilters.keyword) parts.push(activeFilters.keyword.replace(/[^a-zA-Z0-9]+/g, '-'));
+    if (activeFilters.skills && activeFilters.skills.length > 0) parts.push(activeFilters.skills.map(s => s.replace(/[^a-zA-Z0-9]+/g, '-')).join('-'));
+    if (activeFilters.designation) parts.push(activeFilters.designation.replace(/[^a-zA-Z0-9]+/g, '-'));
+    if (parts.length > 0) {
+      parts.push("candidates");
+    } else {
+      parts.push("all-candidates");
+    }
+    if (activeFilters.currentCity && activeFilters.currentCity.length > 0) {
+      parts.push("in");
+      parts.push(activeFilters.currentCity.map(c => c.replace(/[^a-zA-Z0-9]+/g, '-')).join('-'));
+    }
+    const finalSlug = parts.filter(Boolean).join('-').toLowerCase().replace(/-+/g, '-').replace(/^-|-$/g, '');
+    return finalSlug || 'all-candidates';
+  };
+
+  const fetchCandidates = useCallback(async (page = 1, overrideFilters = null) => {
     setSearchLoading(true);
     setHasSearched(true);
 
     try {
       const params = {};
-      Object.entries(filters).forEach(([key, value]) => {
+      const activeFilters = overrideFilters || filters;
+      Object.entries(activeFilters).forEach(([key, value]) => {
         if (Array.isArray(value) && value.length > 0) params[key] = value.join(",");
         else if (typeof value === "boolean" && value) params[key] = "true";
         else if (typeof value === "string" && value.trim()) params[key] = value.trim();
       });
+
+      // Update URL with SEO slug and actual query filters
+      const slug = generateSlug(activeFilters);
+      const urlSearchParams = new URLSearchParams(params);
+      if (activeTab === "mivites") {
+        urlSearchParams.set("tab", "mivites");
+      }
+      window.history.replaceState(null, '', `/resume-search/${slug}?${urlSearchParams.toString()}`);
+
       params.page = String(page);
       params.limit = "10";
       const res = await authService.searchResdexCandidates(params);
@@ -351,8 +404,9 @@ export default function SearchResume() {
 
   const handleLoadSearch = (search) => {
     if (search.filters) {
-      setFilters(prev => ({ ...prev, ...search.filters }));
-      setTimeout(() => fetchCandidates(1), 100);
+      const newFilters = { ...filters, ...search.filters };
+      setFilters(newFilters);
+      setTimeout(() => fetchCandidates(1, newFilters), 0);
     }
   };
 
@@ -383,10 +437,10 @@ export default function SearchResume() {
       ]} />
 
         <div className="sr-tab-bar">
-          <button className={`sr-tab-btn ${activeTab === "search" ? "active" : ""}`} onClick={() => { setActiveTab("search"); navigate("/resdex", { replace: true }); }}>
+          <button className={`sr-tab-btn ${activeTab === "search" ? "active" : ""}`} onClick={() => { setActiveTab("search"); navigate("/resume-search", { replace: true }); }}>
             <FiSearch size={15} /> Search Resume
           </button>
-          <button className={`sr-tab-btn ${activeTab === "mivites" ? "active" : ""}`} onClick={() => { setActiveTab("mivites"); navigate("/resdex?tab=mivites", { replace: true }); }}>
+          <button className={`sr-tab-btn ${activeTab === "mivites" ? "active" : ""}`} onClick={() => { setActiveTab("mivites"); navigate("/resume-search?tab=mivites", { replace: true }); }}>
             <FiSend size={15} /> Send MIvites
           </button>
         </div>
@@ -634,7 +688,7 @@ export default function SearchResume() {
                               isSelected={selectedCandidates.has(cid)}
                               searchKeyword={filters.keyword}
                               onToggleSelect={(c) => {
-                                const id = c.id || c.userId;
+                                const id = c.id || c._id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || String(c);
                                 setSelectedCandidates(prev => {
                                   const next = new Map(prev);
                                   if (next.has(id)) next.delete(id); else next.set(id, c);

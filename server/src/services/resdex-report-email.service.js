@@ -1,6 +1,7 @@
 const ResdexReportLog = require("../models/ResdexReportLog");
 const emailModule = require("../email");
 const logger = require("../config/logger");
+const XLSX = require("xlsx");
 
 /**
  * Calculate date window:
@@ -133,44 +134,95 @@ async function getResdexAggregatedData({
       { $sort: { cvViews: -1, searches: -1, subuserName: 1 } },
     ]);
 
+    const ResdexSearch = require("../models/ResdexSearch");
+    const searchMatch = {
+      companyId,
+      $or: [
+        { updatedAt: { $gte: start, $lte: end } },
+        { lastRunAt: { $gte: start, $lte: end } },
+        { createdAt: { $gte: start, $lte: end } }
+      ]
+    };
+    if (Array.isArray(userIds) && userIds.length > 0) {
+      searchMatch.userId = { $in: userIds };
+    }
+    const searchCounts = await ResdexSearch.aggregate([
+      { $match: searchMatch },
+      { $group: { _id: "$userId", totalSearches: { $sum: 1 } } }
+    ]);
+
+    const searchMap = {};
+    searchCounts.forEach(s => {
+      if (s._id) searchMap[s._id.toString()] = s.totalSearches;
+    });
+
+    const finalRows = [];
+    const processedUserIds = new Set();
+    
+    for (const r of rows) {
+      const uid = r._id?.toString();
+      if (uid) {
+        processedUserIds.add(uid);
+        r.searches = searchMap[uid] || 0;
+      }
+      finalRows.push(r);
+    }
+
+    const missingUserIds = Object.keys(searchMap).filter(uid => !processedUserIds.has(uid));
+    if (missingUserIds.length > 0) {
+      const CompanySubUser = require("../models/CompanySubUser");
+      const subusers = await CompanySubUser.find({
+        companyId,
+        userId: { $in: missingUserIds }
+      }).populate("userId", "name email");
+
+      subusers.forEach(su => {
+        if (su.userId) {
+          finalRows.push({
+            _id: su.userId._id,
+            subuserName: su.userId.name || "Unknown",
+            subuserEmail: su.userId.email || "",
+            searches: searchMap[su.userId._id.toString()],
+            cvViews: 0,
+            excelDl: 0,
+            wordDl: 0,
+            nvites: 0,
+            dup: 0,
+            fwd: 0,
+            sms: 0,
+            phone: 0,
+            uniqueCv: 0
+          });
+        }
+      });
+    }
+
+    finalRows.sort((a, b) => (b.cvViews - a.cvViews) || (b.searches - a.searches) || (a.subuserName || "").localeCompare(b.subuserName || ""));
+
     return {
       headers: [
         "Subuser",
         "Total Searches",
         "Total CV Views",
-        "Total CVs Downloaded in Excel (in Resdex)",
-        "Resume Downloaded in Word",
+        "Total CVs Downloaded (in Resdex)",
         "NVites",
-        "Duplicate Candidates Detected",
         "Resumes Forwarded",
         "SMS Sent",
         "View phone number/Call candidate",
         "Unique CV Views or View Phone number/Call candidate",
-        "Unique Excel Downloads (in Resdex)",
-        "CV Access due to CV View/C2V (A)",
-        "CV Access due to Forward (B)",
-        "CV Access due to Excel Downloads (C) (in Resdex)",
-        "CV Access By Company (A+B+C)",
       ],
-      rows: rows.map((r) => [
+      rows: finalRows.map((r) => [
         `${r.subuserName} | ${r.subuserEmail}`,
         r.searches,
         r.cvViews,
         r.excelDl,
-        r.wordDl,
         r.nvites,
-        r.dup,
         r.fwd,
         r.sms,
         r.phone,
         r.uniqueCv,
-        r.uniqueExcel,
-        r.a,
-        r.b,
-        r.c,
-        r.total,
       ]),
-      rawRows: rows,
+      rawRows: finalRows,
     };
   }
 
@@ -306,20 +358,51 @@ async function getResdexAggregatedData({
   }
 
   if (tab === "search-report") {
-    const match = { ...baseMatch, actionType: "SEARCH" };
-    if (keyword) {
-      match.searchQuery = { $regex: keyword, $options: "i" };
+    const ResdexSearch = require("../models/ResdexSearch");
+    require("../models/User");
+
+    const searchMatch = {
+      companyId,
+      $or: [
+        { updatedAt: { $gte: start, $lte: end } },
+        { lastRunAt: { $gte: start, $lte: end } },
+        { createdAt: { $gte: start, $lte: end } }
+      ]
+    };
+
+    if (Array.isArray(userIds) && userIds.length > 0) {
+      searchMatch.userId = { $in: userIds };
     }
-    const logs = await ResdexReportLog.find(match).sort({ actionDate: -1 }).limit(300);
+
+    if (keyword) {
+      searchMatch.$and = [
+        {
+          $or: [
+            { name: { $regex: keyword, $options: "i" } },
+            { "filters.keyword": { $regex: keyword, $options: "i" } }
+          ]
+        }
+      ];
+    }
+
+    const logs = await ResdexSearch.find(searchMatch)
+      .sort({ updatedAt: -1 })
+      .limit(300)
+      .populate("userId", "name email");
 
     return {
       headers: ["Search Query", "Performed By", "Results Found", "Date & Time"],
-      rows: logs.map((l) => [
-        l.searchQuery || "Keyword Search",
-        `${l.subuserName} | ${l.subuserEmail}`,
-        l.resultsCount || 0,
-        l.actionDate.toLocaleString(),
-      ]),
+      rows: logs.map((l) => {
+        const queryName = l.name || l.filters?.keyword || "Keyword Search";
+        const userName = l.userId ? l.userId.name : "Unknown User";
+        const userEmail = l.userId ? l.userId.email : "No Email";
+        return [
+          queryName,
+          `${userName} | ${userEmail}`,
+          l.resultCount || 0,
+          l.updatedAt.toLocaleString(),
+        ];
+      }),
       rawRows: logs,
     };
   }
@@ -363,36 +446,35 @@ async function getResdexAggregatedData({
   return { headers: [], rows: [], rawRows: [] };
 }
 
-/**
- * Generate CSV buffer for the Resdex report
- */
-function buildResdexReportCSV({ headers, rows, tab, period, start, end, companyName = "Company" }) {
-  const escapeCsv = (val) => {
-    const s = String(val ?? "");
-    return /[,"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-
+function buildResdexReportExcel({ headers, rows, tab, period, start, end, companyName = "Company" }) {
   const formatDateStr = (d) => {
     const pad = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   };
 
-  const lines = [
-    `# RESDEX ${tab.toUpperCase().replace(/-/g, " ")} REPORT - ${companyName}`,
-    `# Period: ${period} (${formatDateStr(start)} to ${formatDateStr(end)})`,
-    "",
-    headers.map(escapeCsv).join(","),
-  ];
+  const data = [];
 
   if (!rows || rows.length === 0) {
-    lines.push(["No records found for the specified period", ...new Array(headers.length - 1).fill("")].map(escapeCsv).join(","));
+    data.push(["No records found for the specified period", ...new Array(headers.length - 1).fill("")]);
   } else {
     for (const r of rows) {
-      lines.push(r.map(escapeCsv).join(","));
+      data.push(r);
     }
   }
 
-  return Buffer.from(lines.join("\r\n"), "utf-8");
+  const worksheetData = [
+    [`RESDEX ${tab.toUpperCase().replace(/-/g, " ")} REPORT - ${companyName}`],
+    [`Period: ${period} (${formatDateStr(start)} to ${formatDateStr(end)})`],
+    [],
+    headers,
+    ...data
+  ];
+
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Resdex Report");
+
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 }
 
 /**
@@ -422,9 +504,9 @@ async function sendResdexReportEmail({
     .join(" ");
 
   const dateRangeStr = `${formatDateStr(start)} - ${formatDateStr(end)}`;
-  const filename = `Resdex_${tabTitle.replace(/[^a-zA-Z0-9_-]/g, "_")}_${period}_${dateRangeStr.replace(/[^a-zA-Z0-9_-]/g, "_")}.csv`;
+  const filename = `Resdex_${tabTitle.replace(/[^a-zA-Z0-9_-]/g, "_")}_${period}_${dateRangeStr.replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
 
-  const csvBuffer = buildResdexReportCSV({ headers, rows, tab, period, start, end, companyName });
+  const excelBuffer = buildResdexReportExcel({ headers, rows, tab, period, start, end, companyName });
   const subject = `${companyName}: Your Resdex ${tabTitle} Report (${dateRangeStr})`;
 
   const html = `
@@ -441,7 +523,7 @@ async function sendResdexReportEmail({
       </div>
 
       <p style="font-size: 13px; color: #64748b;">
-        The detailed breakdown is available in the attached CSV file. You can open it directly in Microsoft Excel or Google Sheets.
+        The detailed breakdown is available in the attached Excel file. You can open it directly in Microsoft Excel or Google Sheets.
       </p>
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
@@ -451,7 +533,7 @@ async function sendResdexReportEmail({
     </div>
   `;
 
-  const text = `Resdex ${tabTitle} Report for ${companyName}\nPeriod: ${dateRangeStr}\nTotal Records: ${rows.length}\n\nPlease review the attached CSV report.`;
+  const text = `Resdex ${tabTitle} Report for ${companyName}\nPeriod: ${dateRangeStr}\nTotal Records: ${rows.length}\n\nPlease review the attached Excel report.`;
 
   const results = [];
   for (const to of toEmails) {
@@ -465,8 +547,8 @@ async function sendResdexReportEmail({
         attachments: [
           {
             filename,
-            content: csvBuffer,
-            contentType: "text/csv",
+            content: excelBuffer,
+            contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           },
         ],
       });
@@ -483,6 +565,6 @@ async function sendResdexReportEmail({
 module.exports = {
   getResdexDateWindow,
   getResdexAggregatedData,
-  buildResdexReportCSV,
+  buildResdexReportExcel,
   sendResdexReportEmail,
 };

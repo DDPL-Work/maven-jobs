@@ -82,7 +82,7 @@ const employerGroups = [
   {
     title: 'Talent & Hiring', icon: FiUser,
     pages: [
-      { label: 'Resdex – Search Resumes', path: '/resdex', icon: FiGrid, desc: 'Search candidate resumes.' },
+      { label: 'Resdex – Search Resumes', path: '/resume-search', icon: FiGrid, desc: 'Search candidate resumes.' },
       { label: 'Talent Pulse', path: '/talent-pulse', icon: FiZap, desc: 'Discover talent insights.' },
       { label: 'Hiring Automation', path: '/hiring-automation', icon: FiFileText, desc: 'Automate your hiring workflow.' },
     ],
