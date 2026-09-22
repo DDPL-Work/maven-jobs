@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
 import {
   FiPlus, FiMoreVertical, FiChevronDown, FiInfo,
   FiSearch, FiCheck, FiX, FiLock, FiShield,
@@ -724,56 +726,41 @@ export default function UserManagement() {
     await triggerSendOtp(otpMethod);
   };
 
-  const handleExportCSV = () => {
-    const domainsRow = ['Allowed Domains', ...allowedDomains].join(',');
-    const securityRows = [
-      ['Notify Password Change', notifyPasswordChange ? 'Yes' : 'No'].join(','),
-      ['Receive OTP Only On Mobile', receiveOtpOnlyOnMobile ? 'Yes' : 'No'].join(','),
-      ['Use OTP On Pattern Change', useOtpOnPatternChange ? 'Yes' : 'No'].join(',')
-    ].join('\n');
-    
-    const restrictionRows = [
-      ['Blocked Weekend Days', weekendRestrictions.length ? weekendRestrictions.join(' and ') : 'None'].join(','),
-      ['Access Start Time', accessStartTime].join(','),
-      ['Access End Time', accessEndTime].join(',')
-    ].join('\n');
+  const handleExportExcel = () => {
+    const rows = [];
+    rows.push(['--- GENERAL SETTINGS ---']);
+    rows.push(['Allowed Domains', ...allowedDomains]);
+    rows.push(['Notify Password Change', notifyPasswordChange ? 'Yes' : 'No']);
+    rows.push(['Receive OTP Only On Mobile', receiveOtpOnlyOnMobile ? 'Yes' : 'No']);
+    rows.push(['Use OTP On Pattern Change', useOtpOnPatternChange ? 'Yes' : 'No']);
+    rows.push([]);
+    rows.push(['--- TIME RESTRICTIONS ---']);
+    rows.push(['Blocked Weekend Days', weekendRestrictions.length ? weekendRestrictions.join(' and ') : 'None']);
+    rows.push(['Access Start Time', accessStartTime]);
+    rows.push(['Access End Time', accessEndTime]);
+    rows.push([]);
+    rows.push(['--- USERS ---']);
+    rows.push(['ID', 'Name', 'Email', 'Role', 'Restricted', 'Resdex', 'Job Posting', 'Job Booster']);
+    users.forEach(u => {
+      rows.push([
+        u.id,
+        u.name,
+        u.email,
+        u.isSuperUser ? 'CLIENT' : 'RECRUITER',
+        u.isRestricted ? 'Yes' : 'No',
+        u.resdex ? 'Yes' : 'No',
+        u.jobPosting ? 'Yes' : 'No',
+        u.jobBooster ? 'Yes' : 'No'
+      ]);
+    });
 
-    const userHeaders = ['ID', 'Name', 'Email', 'Role', 'Restricted', 'Resdex', 'Job Posting', 'Job Booster'];
-    const userRows = users.map(u => [
-      u.id,
-      `"${u.name}"`,
-      `"${u.email}"`,
-      u.isSuperUser ? 'CLIENT' : 'RECRUITER',
-      u.isRestricted ? 'Yes' : 'No',
-      u.resdex ? 'Yes' : 'No',
-      u.jobPosting ? 'Yes' : 'No',
-      u.jobBooster ? 'Yes' : 'No'
-    ].join(',')).join('\n');
-
-    const csvContent = [
-      '--- GENERAL SETTINGS ---',
-      domainsRow,
-      securityRows,
-      '',
-      '--- TIME RESTRICTIONS ---',
-      restrictionRows,
-      '',
-      '--- USERS ---',
-      userHeaders.join(','),
-      userRows
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `user_management_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, "Users & Settings");
+    XLSX.writeFile(wb, `user_management_export_${new Date().toISOString().split('T')[0]}.xlsx`);
 
     setOpenDropdown(null);
-    showToast('Data exported to CSV successfully.');
+    showToast('Data exported to Excel successfully.');
   };
 
   // Calculate dynamic permission counts
@@ -875,9 +862,9 @@ export default function UserManagement() {
                   <button
                     type="button"
                     className="um-popover-item"
-                    onClick={handleExportCSV}
+                    onClick={handleExportExcel}
                   >
-                    Export users CSV
+                    Export users Excel
                   </button>
                 </div>
               )}

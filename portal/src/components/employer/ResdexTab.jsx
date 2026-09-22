@@ -127,6 +127,13 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
   const [activityTotalItems, setActivityTotalItems] = useState(0);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState(false);
+  const [copiedSearchId, setCopiedSearchId] = useState(null);
+  const [modal, setModal] = useState({
+    open: false,
+    type: null,
+    search: null,
+    value: "",
+  });
 
   const fetchActivities = useCallback(async (page = 1) => {
     setActivityLoading(true);
@@ -164,7 +171,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
   // Fetch saved searches
   const fetchSavedSearches = useCallback(async () => {
     try {
-      const res = await api.get("/company-panel/resdex/searches/recent");
+      const res = await api.get("/company-panel/resdex/searches");
       const items = res?.data?.data || res?.data?.searches || [];
       setSavedSearches(Array.isArray(items) ? items : []);
     } catch {}
@@ -177,6 +184,79 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
       const items = res?.data?.data || res?.data?.folders || [];
       setFolders(Array.isArray(items) ? items : []);
     } catch {}
+  }, []);
+
+  const handleRunSearch = useCallback(
+    (s) => {
+      navigate("/resume-search", {
+        state: { savedFilters: s.filters, searchName: s.name || s.searchName },
+      });
+    },
+    [navigate],
+  );
+
+  const handleRenameSearch = useCallback(
+    async (s) => {
+      const newName = window.prompt(
+        "Enter new name for this search:",
+        s.name || s.searchName,
+      );
+      if (!newName || !newName.trim()) return;
+      try {
+        await authService.updateResdexSearch(s._id || s.id, {
+          name: newName.trim(),
+        });
+        fetchSavedSearches();
+      } catch (err) {
+        console.error("Failed to rename search:", err);
+      }
+    },
+    [fetchSavedSearches],
+  );
+
+  const handleDuplicateSearch = useCallback(
+    async (s) => {
+      const newName = (s.name || s.searchName) + " (Copy)";
+      try {
+        await authService.saveResdexSearch({
+          name: newName,
+          filters: s.filters,
+          isPinned: false,
+        });
+        fetchSavedSearches();
+      } catch (err) {
+        console.error("Failed to duplicate search:", err);
+      }
+    },
+    [fetchSavedSearches],
+  );
+
+  const handleDeleteSearch = useCallback((s) => {
+    setModal({
+      open: true,
+      type: "delete",
+      search: s,
+      value: "",
+    });
+  }, []);
+
+  const handleCopySearchName = useCallback(async (s) => {
+    const searchName = s.name || s.searchName || "";
+    const searchId = s._id || s.id;
+
+    if (!searchName) return;
+
+    try {
+      await navigator.clipboard.writeText(searchName);
+
+      setCopiedSearchId(searchId);
+
+      setTimeout(() => {
+        setCopiedSearchId(null);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy search name:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -213,6 +293,44 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
     );
     return () => clearInterval(t);
   }, []);
+
+  const handleModalSubmit = async () => {
+    const { type, search, value } = modal;
+
+    if (!search) return;
+
+    try {
+      if (type === "rename") {
+        const newName = value.trim();
+
+        if (!newName) return;
+
+        await authService.updateResdexSearch(search._id || search.id, {
+          name: newName,
+        });
+      }
+
+      if (type === "delete") {
+        await authService.deleteResdexSearch(search._id || search.id);
+      }
+
+      setModal({
+        open: false,
+        type: null,
+        search: null,
+        value: "",
+      });
+
+      fetchSavedSearches();
+    } catch (err) {
+      console.error(
+        type === "rename"
+          ? "Failed to rename search:"
+          : "Failed to delete search:",
+        err,
+      );
+    }
+  };
 
   return (
     <div>
@@ -700,7 +818,9 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                       </div>
 
                       <div
-                        onClick={() => navigate('/employer-dashboard/manage-users')}
+                        onClick={() =>
+                          navigate("/employer-dashboard/manage-users")
+                        }
                         style={{
                           background: "#f0f9ff",
                           color: "#0369a1",
@@ -815,11 +935,16 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                       </td>
                       <td>
                         <span className="ap-pill ap-pill-blue">
-                          {s.profileCount ?? s.profiles ?? "—"} profiles
+                          {s.resultCount ?? s.profileCount ?? s.profiles ?? "—"}{" "}
+                          profiles
                         </span>
                       </td>
                       <td style={{ color: "#94a3b8" }}>
-                        {s.updatedAt ? timeAgo(s.updatedAt) : "—"}
+                        {s.lastRunAt
+                          ? timeAgo(s.lastRunAt)
+                          : s.updatedAt
+                            ? timeAgo(s.updatedAt)
+                            : "—"}
                       </td>
                       <td>
                         <div
@@ -829,20 +954,58 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                             justifyContent: "flex-end",
                           }}
                         >
-                          {[FiEye, FiEdit2, FiCopy, FiTrash2].map((Icon, j) => (
-                            <button
-                              key={j}
-                              className="ap-btn"
-                              style={{
-                                padding: "5px 7px",
-                                border: "none",
-                                background: "#f8fafc",
-                              }}
-                              title={["Open", "Edit", "Duplicate", "Delete"][j]}
-                            >
-                              <Icon size={13} />
-                            </button>
-                          ))}
+                          <button
+                            className="ap-btn"
+                            style={{
+                              padding: "5px 7px",
+                              border: "none",
+                              background: "#f8fafc",
+                            }}
+                            title="Open"
+                            onClick={() => handleRunSearch(s)}
+                          >
+                            <FiEye size={13} />
+                          </button>
+                          <button
+                            className="ap-btn"
+                            style={{
+                              padding: "5px 7px",
+                              border: "none",
+                              background:
+                                copiedSearchId === (s._id || s.id)
+                                  ? "#ecfdf5"
+                                  : "#f8fafc",
+                              color:
+                                copiedSearchId === (s._id || s.id)
+                                  ? "#059669"
+                                  : "#475569",
+                              transition: "all 0.2s ease",
+                            }}
+                            title={
+                              copiedSearchId === (s._id || s.id)
+                                ? "Copied!"
+                                : "Copy search name"
+                            }
+                            onClick={() => handleCopySearchName(s)}
+                          >
+                            {copiedSearchId === (s._id || s.id) ? (
+                              <FiCheckCircle size={13} />
+                            ) : (
+                              <FiCopy size={13} />
+                            )}
+                          </button>
+                          <button
+                            className="ap-btn"
+                            style={{
+                              padding: "5px 7px",
+                              border: "none",
+                              background: "#f8fafc",
+                            }}
+                            title="Delete"
+                            onClick={() => handleDeleteSearch(s)}
+                          >
+                            <FiTrash2 size={13} />
+                          </button>
                         </div>
                       </td>
                     </motion.tr>
@@ -867,6 +1030,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
               borderColor: "#ccdaff",
               background: "#EEF4FF",
             }}
+            onClick={() => navigate("/resume-search")}
           >
             <FiSearch size={14} /> Search Again
           </button>
@@ -923,7 +1087,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                           </span>
                         </td>
                         <td style={{ color: "#64748b" }}>
-                          {f.ownerName || f.owner || "—"}
+                          {f.ownerName || (typeof f.owner === 'object' ? f.owner?.name : f.owner) || (typeof f.createdBy === 'object' ? f.createdBy?.name : f.createdBy) || "—"}
                         </td>
                         <td style={{ color: "#94a3b8" }}>
                           {f.updatedAt ? timeAgo(f.updatedAt) : "—"}
@@ -1289,6 +1453,283 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
           </>
         )}
       </div>
+
+      <AnimatePresence>
+        {modal.open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15, 23, 42, 0.45)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              padding: 20,
+            }}
+            onClick={() =>
+              setModal({
+                open: false,
+                type: null,
+                search: null,
+                value: "",
+              })
+            }
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: 500,
+                background: "#fff",
+                borderRadius: 18,
+                boxShadow: "0 24px 60px rgba(15, 23, 42, 0.20)",
+                overflow: "hidden",
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "20px 24px",
+                  borderBottom: "1px solid #e2e8f0",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "1.05rem",
+                    lineHeight: 1.3,
+                    fontWeight: 700,
+                    color: "#0f172a",
+                  }}
+                >
+                  {modal.type === "rename" ? "Rename Search" : "Delete Search"}
+                </h3>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setModal({
+                      open: false,
+                      type: null,
+                      search: null,
+                      value: "",
+                    })
+                  }
+                  style={{
+                    width: 38,
+                    height: 38,
+                    padding: 0,
+                    border: "none",
+                    background: "#f8fafc",
+                    borderRadius: 9,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: "#64748b",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FiX size={19} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div
+                style={{
+                  padding: "26px 24px 28px",
+                }}
+              >
+                {modal.type === "rename" ? (
+                  <>
+                    <p
+                      style={{
+                        margin: "0 0 12px",
+                        fontSize: "0.88rem",
+                        lineHeight: 1.5,
+                        color: "#64748b",
+                      }}
+                    >
+                      Enter a new name for this saved search.
+                    </p>
+
+                    <input
+                      autoFocus
+                      value={modal.value}
+                      onChange={(e) =>
+                        setModal((prev) => ({
+                          ...prev,
+                          value: e.target.value,
+                        }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleModalSubmit();
+                        }
+
+                        if (e.key === "Escape") {
+                          setModal({
+                            open: false,
+                            type: null,
+                            search: null,
+                            value: "",
+                          });
+                        }
+                      }}
+                      placeholder="Search name"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        height: 44,
+                        padding: "0 13px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 9,
+                        outline: "none",
+                        fontSize: "0.9rem",
+                        color: "#0f172a",
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Delete Icon */}
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: "50%",
+                        background: "#fef2f2",
+                        color: "#ef1f2f",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <FiTrash2 size={23} strokeWidth={2} />
+                    </div>
+
+                    {/* Title */}
+                    <h4
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: "1rem",
+                        lineHeight: 1.4,
+                        fontWeight: 600,
+                        color: "#0f172a",
+                      }}
+                    >
+                      Delete this saved search?
+                    </h4>
+
+                    {/* Description */}
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "0.88rem",
+                        lineHeight: 1.6,
+                        color: "#64748b",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      Are you sure you want to delete{" "}
+                      <strong
+                        style={{
+                          color: "#0f172a",
+                          fontWeight: 700,
+                        }}
+                      >
+                        "{modal.search?.name || modal.search?.searchName}"
+                      </strong>
+                      ? This action cannot be undone.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  gap: 10,
+                  padding: "16px 24px",
+                  borderTop: "1px solid #f1f5f9",
+                  background: "#f8fafc",
+                }}
+              >
+                <button
+                  type="button"
+                  className="ap-btn"
+                  onClick={() =>
+                    setModal({
+                      open: false,
+                      type: null,
+                      search: null,
+                      value: "",
+                    })
+                  }
+                  style={{
+                    minWidth: 90,
+                    height: 44,
+                    padding: "0 18px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 9,
+                    background: "#fff",
+                    border: "1px solid #dbe3ef",
+                    color: "#475569",
+                    fontSize: "0.88rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="ap-btn"
+                  onClick={handleModalSubmit}
+                  style={{
+                    minWidth: 88,
+                    height: 44,
+                    padding: "0 18px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 9,
+                    background: modal.type === "delete" ? "#ef1f2f" : "#1E5EFF",
+                    color: "#fff",
+                    border: "1px solid",
+                    borderColor:
+                      modal.type === "delete" ? "#ef1f2f" : "#1E5EFF",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {modal.type === "delete" ? "Delete" : "Rename"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

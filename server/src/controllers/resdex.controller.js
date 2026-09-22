@@ -214,6 +214,7 @@ async function esSearchCandidates(req, res) {
         { companyId: company._id, "filters.keyword": kw || "__all__" },
         {
           companyId: company._id,
+          userId: req.user._id,
           name: autoName,
           filters: req.query,
           resultCount: total,

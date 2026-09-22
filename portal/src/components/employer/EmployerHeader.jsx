@@ -320,7 +320,7 @@ export default function EmployerHeader({
     }
     // Under Resdex
     if (
-      pathname.startsWith('/resdex') ||
+      pathname.startsWith('/resume-search') ||
       pathname.includes('/manage-search') ||
       pathname.includes('/folders')
     ) {
@@ -378,8 +378,8 @@ export default function EmployerHeader({
     {
       id: "resdex", icon: FiSearch, label: "Resdex",
       items: [
-        { label: "Search Resumes",     path: "/resdex" },
-        { label: "Send MIvite",         path: "/resdex?tab=mivites" },
+        { label: "Search Resumes",     path: "/resume-search" },
+        { label: "Send MIvite",         path: "/resume-search?tab=mivites" },
         { label: "Manage Searches",    path: "/manage-search" },
         { label: "Folders",            path: "/employer-dashboard/folders" },
         { label: "Resdex Requirements",path: "/resdex-requirements" },
@@ -395,8 +395,8 @@ export default function EmployerHeader({
   ];
 
   const dropdownItems = [
-    { label: "Resdex",  icon: FiSearch, path: "/resdex" },
-    { label: "Database", icon: FiGrid,   path: "/resdex" },
+    { label: "Resdex",  icon: FiSearch, path: "/resume-search" },
+    { label: "Database", icon: FiGrid,   path: "/resume-search" },
     { label: "Mivites", icon: FiSend,   path: "#" },
     { label: "Pricing & Credits", icon: FiDollarSign, path: "/employer-dashboard/pricing" },
   ];

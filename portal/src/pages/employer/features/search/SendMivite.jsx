@@ -8,6 +8,7 @@ import {
   FiSliders, FiChevronDown,
 } from 'react-icons/fi';
 import authService from '../../../../services/authService';
+import PostJob from '../jobs/PostJob';
 import './SendMivite.css';
 
 const PAGE_SIZE = 10;
@@ -148,6 +149,8 @@ export default function SendMivite({ company, user, initialResults, initialSelec
   const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   /* ── job & compose state ── */
+  const [jobSelectionMode, setJobSelectionMode] = useState('new'); // 'new' or 'existing'
+  const [jobDropdownOpen, setJobDropdownOpen] = useState(false);
   const [employerJobs, setEmployerJobs] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [selectedJobs, setSelectedJobs] = useState([]);
@@ -163,7 +166,7 @@ export default function SendMivite({ company, user, initialResults, initialSelec
           if (normalizedJobs.length > 0) {
             // Can filter by status here if needed, but showing all employer jobs is usually fine
             // or filter by job.status !== 'CLOSED' etc.
-            setEmployerJobs(normalizedJobs.filter(job => job.status !== 'CLOSED' && job.status !== 'DRAFT'));
+            setEmployerJobs(normalizedJobs.filter(job => job.isActive === true));
           }
         } catch (e) {
           console.error(e);
@@ -180,10 +183,20 @@ export default function SendMivite({ company, user, initialResults, initialSelec
   const [previewName, setPreviewName] = useState('John Doe');
 
   /* derived */
-  const selectedCandidates = useMemo(() =>
-    results.filter(c => selectedIds.has(c.id || c._id)),
-    [results, selectedIds],
-  );
+  const selectedCandidates = useMemo(() => {
+    console.log("[SendMivite debug] Re-evaluating selectedCandidates");
+    console.log("[SendMivite debug] Current results:", results);
+    console.log("[SendMivite debug] Current selectedIds:", Array.from(selectedIds));
+    const filtered = results.filter(c => {
+      const extractedId = c.id || c._id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || c;
+      const matchId = String(extractedId);
+      const isMatch = selectedIds.has(matchId);
+      if (!isMatch) console.log("[SendMivite debug] No match for candidate:", c, "with extracted ID:", matchId);
+      return isMatch;
+    });
+    console.log("[SendMivite debug] Filtered selectedCandidates:", filtered);
+    return filtered;
+  }, [results, selectedIds]);
 
   const fetchCandidates = useCallback(async (page = 1) => {
     setLoading(true);
@@ -273,7 +286,15 @@ Apply here: ${job.externalLink || (`${window.location.origin}/jobs/${job.id || j
     setSending(true);
     setError(null);
     try {
-      const recipients = selectedCandidates.map(c => c.email).filter(Boolean);
+      const recipients = selectedCandidates.map(c => 
+        c.email || c.contact?.email || c.user?.email || (c.userId && (c.userId.email || c.userId.username || c.userId.contact?.email))
+      ).filter(Boolean);
+      console.log("[SendMivite debug] handleSend called.");
+      console.log("[SendMivite debug] results length:", results.length);
+      console.log("[SendMivite debug] selectedIds:", Array.from(selectedIds));
+      console.log("[SendMivite debug] selectedCandidates:", selectedCandidates);
+      console.log("[SendMivite debug] recipients extracted:", recipients);
+
       if (recipients.length === 0) { setError('No valid email addresses found for selected candidates.'); setSending(false); return; }
       
       const jobsListText = getJobsListText(selectedJobs);
@@ -667,7 +688,7 @@ Apply here: ${job.externalLink || (`${window.location.origin}/jobs/${job.id || j
             )}
 
             {step === 1 && (
-              <div className="sm-step-content">
+              <div className="sm-step-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div className="sm-step-header">
                   <FiBriefcase size={18} />
                   <h3>Choose a Job</h3>
@@ -676,61 +697,148 @@ Apply here: ${job.externalLink || (`${window.location.origin}/jobs/${job.id || j
                   Select the job you want to invite <strong>{selectedCandidates.length}</strong> candidate{selectedCandidates.length !== 1 ? 's' : ''} to apply for.
                 </p>
 
-                {loadingJobs ? (
-                  <div className="sm-loading-state" style={{ minHeight: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="sm-spinner" />
-                    <p style={{ marginTop: 12, color: '#64748b', fontSize: 14 }}>Loading jobs...</p>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  {/* Create New Option */}
+                  <div 
+                    onClick={() => setJobSelectionMode('new')}
+                    style={{ 
+                      flex: 1,
+                      padding: '16px 20px', 
+                      borderRadius: 12, 
+                      border: `2px solid ${jobSelectionMode === 'new' ? '#2563eb' : '#e2e8f0'}`,
+                      background: jobSelectionMode === 'new' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6
+                    }}
+                  >
+                    <h4 style={{ margin: 0, fontSize: 16, color: '#0f172a' }}>Create new</h4>
+                    <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>All responses will appear as a new item in Manage Jobs and Responses</p>
                   </div>
-                ) : employerJobs.length === 0 ? (
-                  <div className="sm-empty-state" style={{ minHeight: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <FiBriefcase size={32} />
-                    <p style={{ marginTop: 12, color: '#64748b', fontSize: 14 }}>No active jobs found. Please create a job first.</p>
+
+                  {/* Use Previous Option */}
+                  <div 
+                    onClick={() => setJobSelectionMode('existing')}
+                    style={{ 
+                      flex: 1,
+                      padding: '16px 20px', 
+                      borderRadius: 12, 
+                      border: `2px solid ${jobSelectionMode === 'existing' ? '#2563eb' : '#e2e8f0'}`,
+                      background: jobSelectionMode === 'existing' ? '#eff6ff' : '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6
+                    }}
+                  >
+                    <h4 style={{ margin: 0, fontSize: 16, color: '#0f172a' }}>Use a previous one/posted job</h4>
+                    <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>Responses will be clubbed with a previous NVite/posted job</p>
                   </div>
-                ) : (
-                  <div className="sm-template-grid">
-                    {employerJobs.map(job => {
-                        const isSelected = selectedJobs.some(j => (j._id || j.id) === (job._id || job.id));
-                        return (
-                        <div key={job._id || job.id} className={`sm-template-card ${isSelected ? 'active' : ''}`}
-                          onClick={() => handleSelectJob(job)} style={{ cursor: 'pointer', position: 'relative' }}>
-                            <div style={{ position: 'absolute', top: 16, right: 16 }}>
-                              <div style={{ 
-                                width: 18, 
-                                height: 18, 
-                                borderRadius: 4, 
-                                border: isSelected ? 'none' : '2px solid #cbd5e1',
-                                backgroundColor: isSelected ? '#2563eb' : '#fff',
-                                transition: 'all 0.2s ease',
+                </div>
+
+                <div style={{ marginTop: 24 }}>
+                  {jobSelectionMode === 'new' ? (
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 16, padding: '20px', background: '#f8fafc' }}>
+                      <PostJob 
+                        isEmbedded={true} 
+                        onJobCreated={(job) => {
+                          setSelectedJobs([job]);
+                          setStep(2);
+                        }} 
+                        onCancel={() => setJobSelectionMode('existing')}
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      {loadingJobs ? (
+                        <div className="sm-loading-state" style={{ padding: 20, textAlign: 'center' }}>
+                          <div className="sm-spinner" />
+                          <p style={{ marginTop: 12, color: '#64748b', fontSize: 14 }}>Loading jobs...</p>
+                        </div>
+                      ) : employerJobs.length === 0 ? (
+                        <div className="sm-empty-state" style={{ padding: 20, textAlign: 'center' }}>
+                          <p style={{ color: '#64748b', fontSize: 14 }}>No active jobs found. Please create a new job.</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <label style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>Select a job from the list</label>
+                          <div style={{ position: 'relative', maxWidth: 400 }}>
+                            <div 
+                              onClick={() => setJobDropdownOpen(!jobDropdownOpen)}
+                              style={{ 
+                                padding: '12px 16px', 
+                                borderRadius: 8, 
+                                border: '1px solid #cbd5e1', 
+                                fontSize: 14, 
+                                background: '#fff',
+                                cursor: 'pointer',
                                 display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxSizing: 'border-box'
-                              }}>
-                                {isSelected && <FiCheck size={12} color="#fff" strokeWidth={3} />}
-                              </div>
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <span style={{ color: selectedJobs.length > 0 ? '#0f172a' : '#64748b' }}>
+                                {selectedJobs.length > 0 ? `${selectedJobs[0].title} (${selectedJobs[0].location || 'Remote'})` : '-- Choose a job --'}
+                              </span>
+                              <FiChevronDown size={16} color="#64748b" style={{ transform: jobDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                             </div>
-                          <div className="sm-template-icon"><FiBriefcase size={18} /></div>
-                          <div className="sm-template-name" style={{ textAlign: 'left', paddingRight: 24 }}>{job.title}</div>
-                          <div className="sm-template-preview" style={{ textAlign: 'left' }}>{job.location || 'Remote'} &bull; {job.jobType || 'Full-time'}</div>
-                          <div style={{ marginTop: 16, display: 'flex' }}>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); setViewJob(job); }}
-                              className="sm-btn sm-btn-ghost" style={{ fontSize: '0.75rem', padding: '6px 12px', minHeight: 0, background: '#f1f5f9' }}>
-                              <FiEye size={12} /> View Details
-                            </button>
+                            
+                            {jobDropdownOpen && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                right: 0,
+                                marginTop: 4,
+                                background: '#fff',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: 8,
+                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                                zIndex: 10,
+                                maxHeight: 200,
+                                overflowY: 'auto'
+                              }}>
+                                {employerJobs.map(job => (
+                                  <div 
+                                    key={job._id || job.id} 
+                                    onClick={() => {
+                                      setSelectedJobs([job]);
+                                      setJobDropdownOpen(false);
+                                    }}
+                                    style={{
+                                      padding: '10px 16px',
+                                      fontSize: 14,
+                                      cursor: 'pointer',
+                                      borderBottom: '1px solid #f1f5f9',
+                                      background: selectedJobs[0]?._id === (job._id || job.id) ? '#f1f5f9' : '#fff'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = selectedJobs[0]?._id === (job._id || job.id) ? '#f1f5f9' : '#fff'}
+                                  >
+                                    {job.title} ({job.location || 'Remote'})
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        );
-                      })}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                <div className="sm-step-nav">
+                <div className="sm-step-nav" style={{ marginTop: 'auto', paddingTop: 24 }}>
                   <button className="sm-btn sm-btn-ghost" onClick={() => setStep(0)}>
                     <FiChevronLeft size={14} /> Back to Search
                   </button>
-                  <button className="sm-btn sm-btn-primary" disabled={!canProceed()} onClick={() => setStep(2)}>
-                    Compose Message <FiChevronRight size={14} />
-                  </button>
+                  {jobSelectionMode === 'existing' && (
+                    <button className="sm-btn sm-btn-primary" disabled={selectedJobs.length === 0} onClick={() => setStep(2)}>
+                      Compose Message <FiChevronRight size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             )}

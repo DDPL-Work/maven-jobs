@@ -24,13 +24,12 @@ exports.getContactedCandidates = asyncHandler(async (req, res) => {
 
   const validFolders = await Folder.find({
     companyId,
-    $or: [
-      { employerId },
-      { sharedWith: req.user.email }
-    ]
-  }).select("_id name").lean();
+    $or: [{ employerId }, { sharedWith: req.user.email }],
+  })
+    .select("_id name")
+    .lean();
 
-  const validFolderIds = validFolders.map(f => f._id);
+  const validFolderIds = validFolders.map((f) => f._id);
   const validFolderMap = validFolders.reduce((acc, f) => {
     acc[f._id] = f.name;
     return acc;
@@ -38,14 +37,22 @@ exports.getContactedCandidates = asyncHandler(async (req, res) => {
 
   const contactedCandidates = await FolderCandidate.find({
     folderId: { $in: validFolderIds },
-    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] }
-  }).sort({ updatedAt: -1 }).lean();
+    callStatus: { $in: ["Called", "Messaged", "Not picked", "Not reachable"] },
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
 
-  const rawCandidateIds = [...new Set(contactedCandidates.map(fc => String(fc.candidateId)).filter(Boolean))];
+  const rawCandidateIds = [
+    ...new Set(
+      contactedCandidates.map((fc) => String(fc.candidateId)).filter(Boolean),
+    ),
+  ];
 
   const [users, profiles] = await Promise.all([
     rawCandidateIds.length > 0
-      ? User.find({ _id: { $in: rawCandidateIds } }).select("name email avatar").lean()
+      ? User.find({ _id: { $in: rawCandidateIds } })
+          .select("name email avatar")
+          .lean()
       : [],
     rawCandidateIds.length > 0
       ? CandidateProfile.find({
@@ -54,7 +61,9 @@ exports.getContactedCandidates = asyncHandler(async (req, res) => {
             { _id: { $in: rawCandidateIds } },
           ],
         })
-          .select("userId headline summary currentTitle currentCompany totalExperience currentCity skills expectedSalary noticePeriod education resume profilePic publicShareId currentSalary preferredLocations")
+          .select(
+            "userId headline summary currentTitle currentCompany totalExperience currentCity skills expectedSalary noticePeriod education resume profilePic publicShareId currentSalary preferredLocations",
+          )
           .lean()
       : [],
   ]);
@@ -110,22 +119,29 @@ exports.getContactedCandidates = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: enriched,
-    total: enriched.length
+    total: enriched.length,
   });
 });
 
 // GET /folders
 exports.listFolders = asyncHandler(async (req, res) => {
-  const { search, sort = "recent", page = 1, limit = 20, folderType } = req.query;
+  const {
+    search,
+    sort = "recent",
+    page = 1,
+    limit = 20,
+    folderType,
+    scope,
+  } = req.query;
   const companyId = req.company._id;
   const employerId = req.user._id;
 
-  const query = {
-    $or: [
-      { companyId, employerId },
-      { sharedWith: req.user.email }
-    ]
-  };
+  const query = {};
+  if (scope === "company") {
+    query.companyId = companyId;
+  } else {
+    query.$or = [{ companyId, employerId }, { sharedWith: req.user.email }];
+  }
 
   if (folderType) {
     query.folderType = folderType;
@@ -138,11 +154,13 @@ exports.listFolders = asyncHandler(async (req, res) => {
   let sortQuery = { updatedAt: -1 };
   if (sort === "oldest") sortQuery = { createdAt: 1 };
   else if (sort === "name") sortQuery = { name: 1 };
-  else if (sort === "candidates") sortQuery = { candidateCount: -1, updatedAt: -1 };
+  else if (sort === "candidates")
+    sortQuery = { candidateCount: -1, updatedAt: -1 };
   else if (sort === "recent") sortQuery = { updatedAt: -1 };
   else if (sort === "created") sortQuery = { createdAt: -1 };
 
-  const skip = (Math.max(1, Number(page)) - 1) * Math.min(Math.max(1, Number(limit)), 100);
+  const skip =
+    (Math.max(1, Number(page)) - 1) * Math.min(Math.max(1, Number(limit)), 100);
   const pageLimit = Math.min(Math.max(1, Number(limit)), 100);
 
   const [folders, total] = await Promise.all([
@@ -165,8 +183,8 @@ exports.getFolder = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   }).lean();
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -181,7 +199,9 @@ exports.getFolder = asyncHandler(async (req, res) => {
 
   const [users, profiles] = await Promise.all([
     rawCandidateIds.length > 0
-      ? User.find({ _id: { $in: rawCandidateIds } }).select("name email avatar").lean()
+      ? User.find({ _id: { $in: rawCandidateIds } })
+          .select("name email avatar")
+          .lean()
       : [],
     rawCandidateIds.length > 0
       ? CandidateProfile.find({
@@ -190,7 +210,9 @@ exports.getFolder = asyncHandler(async (req, res) => {
             { _id: { $in: rawCandidateIds } },
           ],
         })
-          .select("userId headline summary currentTitle currentCompany totalExperience currentCity skills expectedSalary noticePeriod education resume profilePic publicShareId currentSalary preferredLocations")
+          .select(
+            "userId headline summary currentTitle currentCompany totalExperience currentCity skills expectedSalary noticePeriod education resume profilePic publicShareId currentSalary preferredLocations",
+          )
           .lean()
       : [],
   ]);
@@ -249,7 +271,8 @@ exports.getFolder = asyncHandler(async (req, res) => {
 
 // POST /folders
 exports.createFolder = asyncHandler(async (req, res) => {
-  const { name, description, icon, color, isPublic, sharedWith, folderType } = req.body;
+  const { name, description, icon, color, isPublic, sharedWith, folderType } =
+    req.body;
   const companyId = req.company._id;
   const employerId = req.user._id;
 
@@ -259,9 +282,14 @@ exports.createFolder = asyncHandler(async (req, res) => {
 
   const trimmedName = String(name).trim();
   const slug = slugify(trimmedName);
-  const fType = folderType === 'REQUIREMENT' ? 'REQUIREMENT' : 'FOLDER';
+  const fType = folderType === "REQUIREMENT" ? "REQUIREMENT" : "FOLDER";
 
-  const existing = await Folder.findOne({ companyId, employerId, folderType: fType, name: trimmedName });
+  const existing = await Folder.findOne({
+    companyId,
+    employerId,
+    folderType: fType,
+    name: trimmedName,
+  });
   if (existing) {
     throw createHttpError(409, "A folder with this name already exists");
   }
@@ -276,8 +304,15 @@ exports.createFolder = asyncHandler(async (req, res) => {
     icon: icon || "folder",
     color: color || "#002366",
     isPublic: Boolean(isPublic),
-    sharedWith: Array.isArray(sharedWith) ? sharedWith : (sharedWith ? [sharedWith] : []),
-    createdBy: req.user.name || req.user.email || "Unknown",
+    sharedWith: Array.isArray(sharedWith)
+      ? sharedWith
+      : sharedWith
+        ? [sharedWith]
+        : [],
+    createdBy: {
+      id: req.user._id,
+      name: req.user.name || req.user.email || "Unknown",
+    },
     lastActivityAt: new Date(),
   });
 
@@ -300,8 +335,8 @@ exports.updateFolder = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -315,12 +350,14 @@ exports.updateFolder = asyncHandler(async (req, res) => {
       name: trimmedName,
     });
 
-    if (dup) throw createHttpError(409, "A folder with this name already exists");
+    if (dup)
+      throw createHttpError(409, "A folder with this name already exists");
     folder.name = trimmedName;
     folder.slug = slugify(trimmedName);
   }
 
-  if (description !== undefined) folder.description = String(description).trim();
+  if (description !== undefined)
+    folder.description = String(description).trim();
   if (icon !== undefined) folder.icon = icon;
   if (color !== undefined) folder.color = color;
   if (isPublic !== undefined) folder.isPublic = Boolean(isPublic);
@@ -339,8 +376,8 @@ exports.deleteFolder = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -356,8 +393,8 @@ exports.addCandidate = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -365,7 +402,10 @@ exports.addCandidate = asyncHandler(async (req, res) => {
   const { candidateId } = req.body;
   if (!candidateId) throw createHttpError(400, "candidateId is required");
 
-  const existing = await FolderCandidate.findOne({ folderId: folder._id, candidateId });
+  const existing = await FolderCandidate.findOne({
+    folderId: folder._id,
+    candidateId,
+  });
   if (existing) {
     return res.json({ success: true, message: "Candidate already in folder" });
   }
@@ -376,10 +416,12 @@ exports.addCandidate = asyncHandler(async (req, res) => {
     addedBy: req.user._id,
   });
 
-  folder.candidateCount = await FolderCandidate.countDocuments({ folderId: folder._id });
-  folder.contactedCount = await FolderCandidate.countDocuments({ 
-    folderId: folder._id, 
-    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  folder.candidateCount = await FolderCandidate.countDocuments({
+    folderId: folder._id,
+  });
+  folder.contactedCount = await FolderCandidate.countDocuments({
+    folderId: folder._id,
+    callStatus: { $in: ["Called", "Messaged", "Not picked", "Not reachable"] },
   });
   folder.lastActivityAt = new Date();
   await folder.save();
@@ -404,8 +446,8 @@ exports.removeCandidate = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -415,10 +457,12 @@ exports.removeCandidate = asyncHandler(async (req, res) => {
     candidateId: req.params.candidateId,
   });
 
-  folder.candidateCount = await FolderCandidate.countDocuments({ folderId: folder._id });
-  folder.contactedCount = await FolderCandidate.countDocuments({ 
-    folderId: folder._id, 
-    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  folder.candidateCount = await FolderCandidate.countDocuments({
+    folderId: folder._id,
+  });
+  folder.contactedCount = await FolderCandidate.countDocuments({
+    folderId: folder._id,
+    callStatus: { $in: ["Called", "Messaged", "Not picked", "Not reachable"] },
   });
   folder.lastActivityAt = new Date();
   await folder.save();
@@ -438,16 +482,21 @@ exports.updateCandidate = asyncHandler(async (req, res) => {
   if (!fc) throw createHttpError(404, "Folder candidate not found");
 
   if (notes !== undefined) fc.notes = String(notes).trim();
-  if (tags !== undefined) fc.tags = Array.isArray(tags) ? tags.map((t) => String(t).trim()).filter(Boolean) : [];
+  if (tags !== undefined)
+    fc.tags = Array.isArray(tags)
+      ? tags.map((t) => String(t).trim()).filter(Boolean)
+      : [];
   if (callStatus !== undefined) fc.callStatus = String(callStatus).trim();
 
   await fc.save();
 
   const folder = await Folder.findById(fc.folderId);
   if (folder) {
-    folder.contactedCount = await FolderCandidate.countDocuments({ 
-      folderId: folder._id, 
-      callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+    folder.contactedCount = await FolderCandidate.countDocuments({
+      folderId: folder._id,
+      callStatus: {
+        $in: ["Called", "Messaged", "Not picked", "Not reachable"],
+      },
     });
     folder.lastActivityAt = new Date();
     await folder.save();
@@ -467,8 +516,8 @@ exports.bulkRemoveCandidates = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   });
 
   if (!folder) throw createHttpError(404, "Folder not found");
@@ -478,13 +527,15 @@ exports.bulkRemoveCandidates = asyncHandler(async (req, res) => {
     candidateId: { $in: candidateIds },
   });
 
-    folder.candidateCount = await FolderCandidate.countDocuments({ folderId: folder._id });
-    folder.contactedCount = await FolderCandidate.countDocuments({ 
-      folderId: folder._id, 
-      callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
-    });
-    folder.lastActivityAt = new Date();
-    await folder.save();
+  folder.candidateCount = await FolderCandidate.countDocuments({
+    folderId: folder._id,
+  });
+  folder.contactedCount = await FolderCandidate.countDocuments({
+    folderId: folder._id,
+    callStatus: { $in: ["Called", "Messaged", "Not picked", "Not reachable"] },
+  });
+  folder.lastActivityAt = new Date();
+  await folder.save();
 
   res.json({ success: true, message: "Candidates removed" });
 });
@@ -493,18 +544,32 @@ exports.bulkRemoveCandidates = asyncHandler(async (req, res) => {
 exports.moveCandidates = asyncHandler(async (req, res) => {
   const { fromFolderId, toFolderId, candidateIds } = req.body;
 
-  if (!fromFolderId || !toFolderId || !Array.isArray(candidateIds) || candidateIds.length === 0) {
-    throw createHttpError(400, "fromFolderId, toFolderId, and candidateIds are required");
+  if (
+    !fromFolderId ||
+    !toFolderId ||
+    !Array.isArray(candidateIds) ||
+    candidateIds.length === 0
+  ) {
+    throw createHttpError(
+      400,
+      "fromFolderId, toFolderId, and candidateIds are required",
+    );
   }
 
   const [fromFolder, toFolder] = await Promise.all([
-    Folder.findOne({ 
-      _id: fromFolderId, 
-      $or: [ { companyId: req.company._id, employerId: req.user._id }, { sharedWith: req.user.email } ] 
+    Folder.findOne({
+      _id: fromFolderId,
+      $or: [
+        { companyId: req.company._id, employerId: req.user._id },
+        { sharedWith: req.user.email },
+      ],
     }),
-    Folder.findOne({ 
-      _id: toFolderId, 
-      $or: [ { companyId: req.company._id, employerId: req.user._id }, { sharedWith: req.user.email } ] 
+    Folder.findOne({
+      _id: toFolderId,
+      $or: [
+        { companyId: req.company._id, employerId: req.user._id },
+        { sharedWith: req.user.email },
+      ],
     }),
   ]);
 
@@ -512,26 +577,36 @@ exports.moveCandidates = asyncHandler(async (req, res) => {
   if (!toFolder) throw createHttpError(404, "Target folder not found");
 
   for (const candidateId of candidateIds) {
-    const existing = await FolderCandidate.findOne({ folderId: toFolderId, candidateId });
+    const existing = await FolderCandidate.findOne({
+      folderId: toFolderId,
+      candidateId,
+    });
     if (existing) continue;
 
-    const fc = await FolderCandidate.findOne({ folderId: fromFolderId, candidateId });
+    const fc = await FolderCandidate.findOne({
+      folderId: fromFolderId,
+      candidateId,
+    });
     if (!fc) continue;
 
     fc.folderId = toFolderId;
     await fc.save();
   }
 
-  fromFolder.candidateCount = await FolderCandidate.countDocuments({ folderId: fromFolder._id });
-  fromFolder.contactedCount = await FolderCandidate.countDocuments({ 
-    folderId: fromFolder._id, 
-    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  fromFolder.candidateCount = await FolderCandidate.countDocuments({
+    folderId: fromFolder._id,
+  });
+  fromFolder.contactedCount = await FolderCandidate.countDocuments({
+    folderId: fromFolder._id,
+    callStatus: { $in: ["Called", "Messaged", "Not picked", "Not reachable"] },
   });
   fromFolder.lastActivityAt = new Date();
-  toFolder.candidateCount = await FolderCandidate.countDocuments({ folderId: toFolder._id });
-  toFolder.contactedCount = await FolderCandidate.countDocuments({ 
-    folderId: toFolder._id, 
-    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  toFolder.candidateCount = await FolderCandidate.countDocuments({
+    folderId: toFolder._id,
+  });
+  toFolder.contactedCount = await FolderCandidate.countDocuments({
+    folderId: toFolder._id,
+    callStatus: { $in: ["Called", "Messaged", "Not picked", "Not reachable"] },
   });
   toFolder.lastActivityAt = new Date();
   await Promise.all([fromFolder.save(), toFolder.save()]);
@@ -543,7 +618,11 @@ exports.moveCandidates = asyncHandler(async (req, res) => {
 exports.copyCandidates = asyncHandler(async (req, res) => {
   const { toFolderId, candidateIds } = req.body;
 
-  if (!toFolderId || !Array.isArray(candidateIds) || candidateIds.length === 0) {
+  if (
+    !toFolderId ||
+    !Array.isArray(candidateIds) ||
+    candidateIds.length === 0
+  ) {
     throw createHttpError(400, "toFolderId and candidateIds are required");
   }
 
@@ -551,14 +630,17 @@ exports.copyCandidates = asyncHandler(async (req, res) => {
     _id: toFolderId,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   });
 
   if (!toFolder) throw createHttpError(404, "Target folder not found");
 
   for (const candidateId of candidateIds) {
-    const existing = await FolderCandidate.findOne({ folderId: toFolderId, candidateId });
+    const existing = await FolderCandidate.findOne({
+      folderId: toFolderId,
+      candidateId,
+    });
     if (existing) continue;
 
     await FolderCandidate.create({
@@ -568,10 +650,12 @@ exports.copyCandidates = asyncHandler(async (req, res) => {
     });
   }
 
-  toFolder.candidateCount = await FolderCandidate.countDocuments({ folderId: toFolder._id });
-  toFolder.contactedCount = await FolderCandidate.countDocuments({ 
-    folderId: toFolder._id, 
-    callStatus: { $in: ['Called', 'Messaged', 'Not picked', 'Not reachable'] } 
+  toFolder.candidateCount = await FolderCandidate.countDocuments({
+    folderId: toFolder._id,
+  });
+  toFolder.contactedCount = await FolderCandidate.countDocuments({
+    folderId: toFolder._id,
+    callStatus: { $in: ["Called", "Messaged", "Not picked", "Not reachable"] },
   });
   toFolder.lastActivityAt = new Date();
   await toFolder.save();
@@ -585,8 +669,8 @@ exports.duplicateFolder = asyncHandler(async (req, res) => {
     _id: req.params.id,
     $or: [
       { companyId: req.company._id, employerId: req.user._id },
-      { sharedWith: req.user.email }
-    ]
+      { sharedWith: req.user.email },
+    ],
   });
 
   if (!source) throw createHttpError(404, "Folder not found");
@@ -603,7 +687,10 @@ exports.duplicateFolder = asyncHandler(async (req, res) => {
     icon: source.icon,
     color: source.color,
     isPublic: source.isPublic,
-    createdBy: req.user.name || req.user.email || "Unknown",
+    createdBy: {
+      id: req.user._id,
+      name: req.user.name || req.user.email || "Unknown",
+    },
     lastActivityAt: new Date(),
   });
 
@@ -618,7 +705,11 @@ exports.duplicateFolder = asyncHandler(async (req, res) => {
     }));
     await FolderCandidate.insertMany(docs);
     folder.candidateCount = docs.length;
-    folder.contactedCount = docs.filter(d => ['Called', 'Messaged', 'Not picked', 'Not reachable'].includes(d.callStatus)).length;
+    folder.contactedCount = docs.filter((d) =>
+      ["Called", "Messaged", "Not picked", "Not reachable"].includes(
+        d.callStatus,
+      ),
+    ).length;
     await folder.save();
   }
 

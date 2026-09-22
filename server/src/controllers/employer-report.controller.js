@@ -68,6 +68,12 @@ exports.getJobPostingReport = asyncHandler(async (req, res) => {
 
   const baseMatch = { companyId, actionDate: { $gte: start, $lte: end } };
 
+  // Only restrict to logged-in user if they are NOT a CLIENT.
+  // CLIENTs will see all jobs for the company.
+  if (req.user && req.user.role !== "CLIENT") {
+    baseMatch.userId = req.user._id;
+  }
+
   // ── User-wise (default for one_click and customised user_wise) ──────────
   if (mode === "one_click" || type === "user_wise") {
     const rows = await JobPostingReportLog.aggregate([
@@ -75,6 +81,7 @@ exports.getJobPostingReport = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: { $ifNull: ["$userId", "$userName"] },
+          userId: { $first: "$userId" },
           userName: { $first: "$userName" },
           userEmail: { $first: "$userEmail" },
           alias: { $first: "$alias" },
@@ -102,9 +109,33 @@ exports.getJobPostingReport = asyncHandler(async (req, res) => {
         },
       },
       {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userDetails"
+        }
+      },
+      {
+        $addFields: {
+          userRole: { $arrayElemAt: ["$userDetails.role", 0] }
+        }
+      },
+      {
+        $match: {
+          userRole: { $in: ["RECRUITER", "CLIENT"] }
+        }
+      },
+      {
         $addFields: {
           totalJobExpense: { $add: ["$jobPostExpense", "$jobEditExpense", "$jobRefreshExpense"] },
         },
+      },
+      {
+        $project: {
+          userDetails: 0,
+          userRole: 0,
+        }
       },
       { $sort: { userName: 1 } },
     ]);
@@ -126,6 +157,24 @@ exports.getJobPostingReport = asyncHandler(async (req, res) => {
         ...baseMatch,
         actionType: "JOB_POST", // anchor each job at its POST event
       },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "userDetails"
+      }
+    },
+    {
+      $addFields: {
+        userRole: { $arrayElemAt: ["$userDetails.role", 0] }
+      }
+    },
+    {
+      $match: {
+        userRole: { $in: ["RECRUITER", "CLIENT"] }
+      }
     },
     {
       $lookup: {
@@ -405,8 +454,15 @@ exports.getResdexReport = asyncHandler(async (req, res) => {
     ({ start, end } = buildDateRange(from, to));
   }
 
+  const mongoose = require("mongoose");
   const parsedUserIds = typeof userIds === "string" && userIds.trim().length > 0
-    ? userIds.split(",").map((s) => s.trim()).filter(Boolean)
+    ? userIds.split(",").map((s) => {
+        try {
+          return new mongoose.Types.ObjectId(s.trim());
+        } catch (e) {
+          return null;
+        }
+      }).filter(Boolean)
     : [];
 
   const { headers, rows } = await getResdexAggregatedData({
@@ -501,7 +557,12 @@ exports.sendResdexReportEmail = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "Company context not found." });
   }
 
-  const { tab = "database-usage", period = "weekly", emailList } = req.body;
+  let { tab = "database-usage", period = "weekly", emailList } = req.body;
+
+  // Force daily for search-report because the UI only supports daily and disable
+  if (tab === "search-report") {
+    period = "daily";
+  }
 
   let targetEmails = Array.isArray(emailList)
     ? emailList.map((e) => (typeof e === "string" ? e.trim().toLowerCase() : "")).filter((e) => e.includes("@"))

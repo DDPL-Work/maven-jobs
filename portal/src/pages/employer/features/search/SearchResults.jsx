@@ -147,7 +147,7 @@ export default function SearchResults() {
     >
       <EmployerBreadcrumb items={[
         { label: 'Employer Dashboard', path: '/employer-dashboard' },
-        { label: 'Resdex', path: '/resdex' },
+        { label: 'Resdex', path: '/resume-search' },
         { label: 'Search Results' },
       ]} />
 
@@ -173,7 +173,7 @@ export default function SearchResults() {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <Link to="/resdex" className="sr-btn">
+          <Link to="/resume-search" className="sr-btn">
             <FiRefreshCw size={14} /> New Search
           </Link>
         </div>
@@ -231,7 +231,7 @@ export default function SearchResults() {
                 <p style={{ fontSize: '0.85rem', color: C.s500, maxWidth: 400, margin: '0 auto 20px' }}>
                   Try broadening your search criteria, removing some filters, or using the AI assistant to build a better query.
                 </p>
-                <Link to="/resdex" className="sr-btn sr-btn-primary" style={{ textDecoration: 'none' }}>
+                <Link to="/resume-search" className="sr-btn sr-btn-primary" style={{ textDecoration: 'none' }}>
                   <FiSearch size={14} /> Back to Search
                 </Link>
               </div>

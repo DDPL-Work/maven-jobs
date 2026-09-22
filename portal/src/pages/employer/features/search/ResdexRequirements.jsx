@@ -1,17 +1,33 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiFilter, FiSearch, FiBriefcase, FiMoreVertical, FiClock, FiPlus, FiFolder } from 'react-icons/fi';
+import { FiFilter, FiSearch, FiBriefcase, FiMoreVertical, FiClock, FiPlus, FiFolder, FiEdit2, FiCopy, FiTrash2, FiX } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
-import { useFolders } from '../../../../hooks/useFolderQueries';
+import { useFolders, useCreateFolder, useDeleteFolder, useDuplicateFolder, useUpdateFolder } from '../../../../hooks/useFolderQueries';
+import CreateFolderModal from '../../../../components/employer/CreateFolderModal';
 
 export default function ResdexRequirements() {
   const navigate = useNavigate();
-  const { data: requirements = [], isLoading, isError } = useFolders({ limit: 100, folderType: 'REQUIREMENT' });
   const [searchName, setSearchName] = useState('');
   const [filterBy, setFilterBy] = useState('me'); // 'me' or 'anyone'
   const [statusFilter, setStatusFilter] = useState({ open: true, closed: false });
   const [tagsFilter, setTagsFilter] = useState({ prospect: false, shortlisted: false, rejected: false });
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [editFolderData, setEditFolderData] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState(null);
+
+  const { data: requirements = [], isLoading, isError } = useFolders({ 
+    limit: 100, 
+    folderType: 'REQUIREMENT',
+    ...(filterBy === 'anyone' ? { scope: 'company' } : {})
+  });
+  const createFolder = useCreateFolder();
+  const deleteFolder = useDeleteFolder();
+  const duplicateFolder = useDuplicateFolder();
+  const updateFolder = useUpdateFolder();
 
   const filteredRequirements = useMemo(() => {
     return requirements.filter(req => {
@@ -34,12 +50,7 @@ export default function ResdexRequirements() {
         if (!hasMatch) return false;
       }
 
-      // Filter by (Created by me vs Anyone)
-      // Since we don't have the current user context directly here, we'll approximate:
-      // 'me' -> mostly private folders (not shared/public) or we just assume all fetched are 'me' normally unless public
-      // In a real app, you'd check `req.createdBy === currentUser.id`
-      if (filterBy === 'me' && req.isPublic) return false;
-
+      // Filter by (Created by me vs Anyone) is now fully handled by the backend via the 'scope' parameter.
       return true;
     });
   }, [requirements, searchName, filterBy, statusFilter, tagsFilter]);
@@ -59,13 +70,58 @@ export default function ResdexRequirements() {
     setTagsFilter({ prospect: false, shortlisted: false, rejected: false });
   };
 
+  const handleCreateRequirement = async (data) => {
+    try {
+      if (editFolderData) {
+        await updateFolder.mutateAsync({ id: editFolderData._id, ...data });
+      } else {
+        const res = await createFolder.mutateAsync({
+          ...data,
+          folderType: 'REQUIREMENT'
+        });
+        if (res.data?._id) {
+          navigate(`/employer-dashboard/folders/${res.data._id}`);
+        }
+      }
+      setCreateModalOpen(false);
+      setEditFolderData(null);
+    } catch (err) {
+      console.error('Failed to create/update requirement:', err);
+    }
+  };
+
+  const handleDelete = (req) => {
+    setFolderToDelete(req);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (folderToDelete) {
+      try {
+        await deleteFolder.mutateAsync(folderToDelete._id);
+        setDeleteModalOpen(false);
+        setFolderToDelete(null);
+      } catch (err) {
+        console.error('Failed to delete:', err);
+      }
+    }
+  };
+
+  const handleDuplicate = async (req) => {
+    try {
+      await duplicateFolder.mutateAsync(req._id);
+    } catch (err) {
+      console.error('Failed to duplicate:', err);
+    }
+  };
+
   return (
     <EmployerLayout>
       <div style={{ background: '#f8fafc', minHeight: 'calc(100vh - 70px)' }}>
         <EmployerBreadcrumb
           items={[
             { label: 'Dashboard', path: '/employer-dashboard' },
-            { label: 'Resdex', path: '/resdex' },
+            { label: 'Resdex', path: '/resume-search' },
             { label: 'Resdex Requirements', path: null },
           ]}
         />
@@ -73,10 +129,13 @@ export default function ResdexRequirements() {
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, background: '#fff', padding: '16px 24px', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>Resdex Requirements</h1>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8,
-              background: '#002366', color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer'
-            }}>
+            <button 
+              onClick={() => setCreateModalOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8,
+                background: '#002366', color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer'
+              }}
+            >
               <FiPlus size={16} /> Create Requirement
             </button>
           </div>
@@ -215,7 +274,47 @@ export default function ResdexRequirements() {
                             </div>
                           </div>
                         </div>
-                        <button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}><FiMoreVertical size={18} /></button>
+                        <div style={{ position: 'relative' }}>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveDropdown(activeDropdown === req._id ? null : req._id);
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+                          >
+                            <FiMoreVertical size={18} />
+                          </button>
+                          {activeDropdown === req._id && (
+                            <div 
+                              style={{
+                                position: 'absolute', top: '100%', right: 0, marginTop: 4, 
+                                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, 
+                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', zIndex: 10, width: 140, overflow: 'hidden'
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button 
+                                onClick={() => { setEditFolderData(req); setCreateModalOpen(true); setActiveDropdown(null); }}
+                                style={{ width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', color: '#334155', cursor: 'pointer', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
+                              >
+                                <FiEdit2 size={14} /> Rename
+                              </button>
+                              <button 
+                                onClick={() => { handleDuplicate(req); setActiveDropdown(null); }}
+                                style={{ width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', color: '#334155', cursor: 'pointer', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
+                              >
+                                <FiCopy size={14} /> Duplicate
+                              </button>
+                              <div style={{ height: 1, background: '#f1f5f9' }} />
+                              <button 
+                                onClick={() => { handleDelete(req); setActiveDropdown(null); }}
+                                style={{ width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontWeight: 500, textAlign: 'left' }}
+                              >
+                                <FiTrash2 size={14} /> Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 13 }}>
@@ -233,6 +332,75 @@ export default function ResdexRequirements() {
           </div>
         </div>
       </div>
+      
+      <CreateFolderModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => { setCreateModalOpen(false); setEditFolderData(null); }}
+        onSubmit={handleCreateRequirement}
+        initialData={editFolderData}
+      />
+
+      <AnimatePresence>
+        {deleteModalOpen && folderToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15, 23, 42, 0.45)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              padding: 20,
+            }}
+            onClick={() => setDeleteModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: 400,
+                background: "#fff",
+                borderRadius: 18,
+                boxShadow: "0 24px 60px rgba(15, 23, 42, 0.20)",
+                overflow: "hidden",
+                padding: 24,
+                textAlign: 'center'
+              }}
+            >
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <FiTrash2 size={24} />
+              </div>
+              <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#0f172a' }}>Delete Requirement?</h3>
+              <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 14 }}>
+                Are you sure you want to delete "{folderToDelete.name}"? This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  style={{ flex: 1, padding: '10px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  style={{ flex: 1, padding: '10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </EmployerLayout>
   );
 }

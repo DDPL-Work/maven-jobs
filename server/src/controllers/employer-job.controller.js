@@ -1069,6 +1069,71 @@ exports.bulkRefreshJobs = asyncHandler(async (req, res) => {
 });
 
 /**
+ * GET /api/v1/company-panel/jobs-responses/:jobId/nvite-recipients
+ * Fetch candidate profiles who received NVites for a specific job
+ */
+exports.getJobNviteRecipients = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const jobId = toTrimmedString(req.params.jobId);
+
+  if (!mongoose.Types.ObjectId.isValid(jobId)) {
+    throw createHttpError(400, "Invalid Job ID");
+  }
+
+  const nvites = await Nvite.find({ 
+    companyId: company._id, 
+    jobIds: jobId 
+  }).lean();
+
+  const candidateIds = [];
+  nvites.forEach(nvite => {
+    if (nvite.recipients && Array.isArray(nvite.recipients)) {
+      nvite.recipients.forEach(r => {
+        if (r.userId) {
+          candidateIds.push(r.userId);
+        }
+      });
+    }
+  });
+
+  const uniqueCandidateIds = [...new Set(candidateIds.map(String))];
+
+  let candidateProfiles = [];
+  let userDocs = [];
+  
+  if (uniqueCandidateIds.length > 0) {
+    [candidateProfiles, userDocs] = await Promise.all([
+      CandidateProfile.find({ userId: { $in: uniqueCandidateIds } }).lean(),
+      User.find({ _id: { $in: uniqueCandidateIds } }).select("name email phone profilePic").lean()
+    ]);
+  }
+
+  const userMap = new Map();
+  userDocs.forEach(u => userMap.set(String(u._id), u));
+
+  const responseList = candidateProfiles.map(profile => {
+    const user = userMap.get(String(profile.userId)) || {};
+    return {
+      candidateName: user.name || profile.name || "Unknown",
+      candidateEmail: user.email || profile.email,
+      phone: user.phone || profile.phone,
+      avatar: user.profilePic || profile.profilePic || null,
+      designation: profile.currentJobTitle || profile.designation || null,
+      experience: profile.totalExperienceYears ? `${profile.totalExperienceYears} years` : null,
+      location: profile.currentLocation?.city || profile.location || null,
+      resumeUrl: profile.resumeFile || profile.resumeUrl || null,
+      status: "NVITE SENT",
+      userId: profile.userId
+    };
+  });
+
+  res.json({
+    success: true,
+    data: responseList
+  });
+});
+
+/**
  * GET /api/v1/company-panel/jobs-responses/:jobId/detail
  * Full job details + insights + candidate responses for the dedicated tab page
  */
@@ -1136,6 +1201,7 @@ exports.getJobDetailWithResponses = asyncHandler(async (req, res) => {
     success: true,
     data: {
       job: {
+        ...job,
         id: String(job._id),
         title: job.title || "",
         location: job.location || "",

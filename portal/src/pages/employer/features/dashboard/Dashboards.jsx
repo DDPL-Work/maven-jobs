@@ -5535,7 +5535,7 @@ export default function EmployerProfile() {
                           }}
                         >
                           <button
-                            onClick={() => navigate("/resdex")}
+                            onClick={() => navigate("/resume-search")}
                             style={{
                               flex: "0 0 auto",
                               padding: "8px 12px",
@@ -7289,7 +7289,7 @@ export default function EmployerProfile() {
                   variant="ghost"
                   style={{ fontSize: 12, padding: "7px 13px" }}
                 >
-                  <FiDownload size={12} /> Export CSV
+                  <FiDownload size={12} /> Export Excel
                 </Btn>
               </div>
             </div>

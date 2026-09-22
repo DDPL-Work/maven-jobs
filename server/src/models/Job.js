@@ -30,7 +30,10 @@ const jobSchema = new mongoose.Schema(
 
     deadline: Date,
 
-    description: String,
+    description: String,        // Role Description
+    responsibilities: String,   // Key Responsibilities
+    qualifications: String,     // Required Skills & Qualifications
+
     approvalStatus: {
       type: String,
       enum: ["PENDING", "APPROVED", "REJECTED"],
@@ -77,21 +80,18 @@ const jobSchema = new mongoose.Schema(
         question: { type: String, required: true },
         type: {
           type: String,
+          // Must match uiTypeToSchemaType in PostJob.jsx
           enum: [
-            "TEXT",
-            "PARAGRAPH",
-            "MULTIPLE_CHOICE",
-            "CHECKBOX",
-            "YES_NO",
-            "DROPDOWN",
-            "NUMERIC",
-            "URL",
-            "DATE",
-            "FILE_UPLOAD",
+            "YES_NO",         // "Yes/No"
+            "DROPDOWN",       // "Single Choice"
+            "CHECKBOX",       // "Multiple Choice"
+            "TEXT",           // "Text Answer"
+            "NUMERIC",        // "Number"
           ],
-          default: "TEXT",
+          default: "YES_NO",  // frontend default question type is "Yes/No"
         },
-        required: { type: Boolean, default: true },
+        required: { type: Boolean, default: false }, // frontend adds questions with required:false
+
         options: [String],
         maxLength: { type: Number, default: 500 },
         order: { type: Number, default: 0 },

@@ -243,7 +243,7 @@ export default function PublicCandidateProfile() {
         {/* 1. Top Breadcrumb & Profile Navigation Bar */}
         <div className="pcp-topbar">
           <div className="pcp-topbar-left">
-            <Link to="/resdex" className="pcp-crumb-link">
+            <Link to="/resume-search" className="pcp-crumb-link">
               <FiUser size={14} />
               <span>View more</span>
             </Link>
@@ -314,7 +314,7 @@ export default function PublicCandidateProfile() {
         <button
           type="button"
           className="pcp-act-btn"
-          onClick={() => navigate("/resdex?tab=mivites", { state: { preSelectedCandidate: profile, startAtJobStep: true } })}
+          onClick={() => navigate("/resume-search?tab=mivites", { state: { preSelectedCandidate: profile, startAtJobStep: true } })}
         >
           <FiSend size={14} /> Send MIvites
         </button>
@@ -601,22 +601,53 @@ export default function PublicCandidateProfile() {
                     })}
                   </div>
 
-                  {profile.itSkills && (
-                    <>
-                      <div className="pcp-detail-subtitle">May also know</div>
-                      <div className="pcp-skills-cloud">
-                        {profile.itSkills.split(/[,|]/).map((item, idx) => {
-                          const s = item.trim();
-                          const isMatch = searchKeywords.length > 0 && searchKeywords.some((k) => s.toLowerCase().includes(k));
-                          return (
-                            <span key={idx} className={`pcp-skill-tag ${isMatch ? "highlight" : ""}`}>
-                              {s}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+                  {(() => {
+                    // itSkills is a JSON string: [{id, name, version, lastUsed, expYears, expMonths}]
+                    const itSkillsList = parseJSON(profile.itSkills).filter(sk => sk.name && sk.name.trim());
+                    if (!itSkillsList.length) return null;
+
+
+                    const fmtExp = (years, months) => {
+                      const y = years ? `${years}y` : '';
+                      const m = months ? `${months}m` : '';
+                      return [y, m].filter(Boolean).join(' ') || '–';
+                    };
+
+                    return (
+                      <>
+                        <div className="pcp-detail-subtitle" style={{ marginTop: 20 }}>IT Skills</div>
+                        <div className="pcp-it-skills-table-wrap">
+                          <table className="pcp-it-skills-table">
+                            <thead>
+                              <tr>
+                                <th>Skills</th>
+                                <th>Version</th>
+                                <th>Last Used</th>
+                                <th>Experience</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {itSkillsList.map((sk, idx) => {
+                                const isMatch = searchKeywords.length > 0 && searchKeywords.some((k) => (sk.name || '').toLowerCase().includes(k));
+                                return (
+                                  <tr key={sk.id || idx}>
+                                    <td>
+                                      <span className={`pcp-it-skill-name ${isMatch ? 'highlight' : ''}`}>
+                                        {sk.name || '–'}
+                                      </span>
+                                    </td>
+                                    <td>{sk.version || '– –'}</td>
+                                    <td>{sk.lastUsed || '–'}</td>
+                                    <td>{fmtExp(sk.expYears, sk.expMonths)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Work Summary */}

@@ -70,8 +70,17 @@ const INDUSTRIES = [
   "EdTech",
   "Manufacturing",
   "Media",
+  "Real Estate",
+  "Retail",
+  "Logistics & Supply Chain",
+  "Consulting",
+  "Automotive",
+  "Telecommunications",
+  "Education",
+  "Hospitality",
+  "Energy",
 ];
-const EXPERIENCE = ["Fresher", "[Manually]", "1", "2", "3", "4", "5+"];
+const EXPERIENCE = ["Fresher", "1", "2", "3", "4", "5+"];
 const PERKS_LIST = [
   "Health Insurance",
   "Office Cab/Shuttle",
@@ -89,12 +98,27 @@ const EDUCATION = [
   "10th Pass",
   "12th Pass",
   "Diploma",
-  "Bachelor's",
-  "Master's",
-  "MBA",
-  "PhD",
+  "B.Tech / B.E.",
+  "B.Sc",
+  "B.Com",
+  "B.A.",
+  "BBA / BMS",
+  "BCA",
+  "B.Arch",
+  "B.Pharma",
+  "MBBS / BDS",
+  "LLB",
+  "M.Tech / M.E.",
+  "M.Sc",
+  "M.Com",
+  "M.A.",
+  "MBA / PGDM",
+  "MCA",
+  "LLM",
+  "CA / CMA / CS",
+  "PhD / Doctorate",
 ];
-const Q_TYPES = ["Yes/No", "Single Choice", "Text Answer", "Number"];
+const Q_TYPES = ["Yes/No", "Single Choice", "Multiple Choice", "Text Answer", "Number"];
 
 /* ─────────────────────── STYLED INPUT ─────────────────────── */
 const Input = ({ label, required, hint, error, ...props }) => {
@@ -250,10 +274,31 @@ const Select = ({
   value,
   onChange,
   placeholder,
+  creatable = false,
 }) => {
   const [focused, setFocused] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const filteredOptions = creatable && value
+    ? options.filter((o) => o.toLowerCase().includes(value.toLowerCase()))
+    : options;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }} ref={containerRef}>
       {label && (
         <label
           style={{
@@ -284,47 +329,171 @@ const Select = ({
         </label>
       )}
       <div style={{ position: "relative" }}>
-        <select
-          value={value}
-          onChange={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+        <div
+          onClick={() => {
+            if (!isOpen) setIsOpen(true);
+            setFocused(true);
+          }}
           style={{
             padding: "11px 36px 11px 14px",
             fontSize: 14,
             fontWeight: 500,
-            color: value ? "#0F172A" : "#94A3B8",
+            color: (creatable || value) ? "#0F172A" : "#94A3B8",
             background: "#fff",
-            border: `1.5px solid ${focused ? "#002366" : "#E2E8F0"}`,
+            border: `1.5px solid ${focused || isOpen ? "#002366" : "#E2E8F0"}`,
             borderRadius: 12,
             outline: "none",
             fontFamily: "inherit",
-            appearance: "none",
-            cursor: "pointer",
+            cursor: creatable ? "text" : "pointer",
             transition: "border-color 0.18s, box-shadow 0.18s",
-            boxShadow: focused ? "0 0 0 3px rgba(0,35,102,0.08)" : "none",
+            boxShadow: focused || isOpen ? "0 0 0 3px rgba(0,35,102,0.08)" : "none",
             width: "100%",
             boxSizing: "border-box",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            minHeight: "44px",
           }}
         >
-          {placeholder && <option value="">{placeholder}</option>}
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-        <FiChevronDown
-          size={15}
-          style={{
-            position: "absolute",
-            right: 12,
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "#64748B",
-            pointerEvents: "none",
-          }}
-        />
+          {creatable ? (
+            <input
+              value={value || ""}
+              onChange={(e) => {
+                onChange({ target: { value: e.target.value } });
+                if (!isOpen) setIsOpen(true);
+              }}
+              onFocus={() => {
+                setIsOpen(true);
+                setFocused(true);
+              }}
+              placeholder={placeholder}
+              style={{
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                width: "100%",
+                fontSize: 14,
+                fontWeight: 500,
+                color: "#0F172A",
+                fontFamily: "inherit",
+                padding: 0,
+              }}
+            />
+          ) : (
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {value || placeholder}
+            </span>
+          )}
+          <div
+            onClick={(e) => {
+              if (creatable) {
+                e.stopPropagation();
+                setIsOpen(!isOpen);
+                setFocused(true);
+              }
+            }}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              marginTop: "-7.5px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <FiChevronDown
+              size={15}
+              style={{
+                color: "#64748B",
+                transition: "transform 0.2s",
+                transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            />
+          </div>
+        </div>
+        
+        {isOpen && (
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              marginTop: 6,
+              background: "#fff",
+              border: "1.5px solid #E2E8F0",
+              borderRadius: 12,
+              boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+              zIndex: 999,
+              maxHeight: 220,
+              overflowY: "auto",
+              padding: "6px",
+            }}
+          >
+            {(!creatable && placeholder) && (
+              <div
+                onClick={() => {
+                  onChange({ target: { value: "" } });
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#94A3B8",
+                  cursor: "pointer",
+                  borderRadius: 8,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                {placeholder}
+              </div>
+            )}
+            {filteredOptions.length > 0 ? filteredOptions.map((o) => (
+              <div
+                key={o}
+                onClick={() => {
+                  onChange({ target: { value: o } });
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  fontWeight: value === o ? 600 : 500,
+                  color: value === o ? "#002366" : "#0F172A",
+                  background: value === o ? "#EEF2FF" : "transparent",
+                  cursor: "pointer",
+                  borderRadius: 8,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (value !== o) e.currentTarget.style.background = "#F8FAFC";
+                }}
+                onMouseLeave={(e) => {
+                  if (value !== o) e.currentTarget.style.background = "transparent";
+                }}
+              >
+                {o}
+              </div>
+            )) : (
+              <div
+                style={{
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: "#94A3B8",
+                  textAlign: "center",
+                }}
+              >
+                No options found
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -347,7 +516,7 @@ const SectionCard = ({
       background: "#fff",
       borderRadius: 20,
       border: "1px solid #E8EDF5",
-      overflow: "hidden",
+      overflow: "visible",
       boxShadow: "0 2px 16px rgba(0,35,102,0.05)",
     }}
   >
@@ -360,6 +529,8 @@ const SectionCard = ({
         padding: "20px 28px",
         borderBottom: "1px solid #F1F5F9",
         background: `linear-gradient(135deg, ${accentColor}06 0%, transparent 100%)`,
+        borderTopLeftRadius: 19,
+        borderTopRightRadius: 19,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -534,16 +705,19 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
               setData((p) => ({ ...p, jobTitle: e.target.value }))
             }
           />
-          <Select
-            label="Industry"
-            required
-            options={INDUSTRIES}
-            placeholder="Select industry"
-            value={data.industry || ""}
-            onChange={(e) =>
-              setData((p) => ({ ...p, industry: e.target.value }))
-            }
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Select
+              label="Industry"
+              required
+              creatable
+              options={INDUSTRIES}
+              placeholder="Select or type industry"
+              value={data.industry || ""}
+              onChange={(e) =>
+                setData((p) => ({ ...p, industry: e.target.value }))
+              }
+            />
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <label
               style={{
@@ -675,9 +849,10 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
               <input
                 placeholder="e.g. 800000"
                 value={data.salaryMin || ""}
-                onChange={(e) =>
-                  setData((p) => ({ ...p, salaryMin: e.target.value }))
-                }
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setData((p) => ({ ...p, salaryMin: val }));
+                }}
                 style={{
                   padding: "11px 14px",
                   fontSize: 14,
@@ -728,9 +903,10 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
               <input
                 placeholder="e.g. 1500000"
                 value={data.salaryMax || ""}
-                onChange={(e) =>
-                  setData((p) => ({ ...p, salaryMax: e.target.value }))
-                }
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setData((p) => ({ ...p, salaryMax: val }));
+                }}
                 style={{
                   padding: "11px 14px",
                   fontSize: 14,
@@ -1076,8 +1252,6 @@ function StepCandidatePreferences({
 }) {
   const [skills, setSkills] = useState(data.requiredSkills || []);
   const [skillInput, setSkillInput] = useState("");
-  const [minExpCustom, setMinExpCustom] = useState(false);
-  const [maxExpCustom, setMaxExpCustom] = useState(false);
 
   const addSkill = (s) => {
     const skill = (s || skillInput).trim();
@@ -1127,113 +1301,34 @@ function StepCandidatePreferences({
             <Select
               label="Minimum Experience"
               required
+              creatable
               options={EXPERIENCE}
-              placeholder="Select min experience"
-              value={minExpCustom ? "[Manually]" : data.minExp || ""}
-              onChange={(e) => {
-                if (e.target.value === "[Manually]") {
-                  setMinExpCustom(true);
-                  setData((p) => ({ ...p, minExp: "" }));
-                } else {
-                  setMinExpCustom(false);
-                  setData((p) => ({ ...p, minExp: e.target.value }));
-                }
-              }}
+              placeholder="Select or type min experience"
+              value={data.minExp || ""}
+              onChange={(e) =>
+                setData((p) => ({ ...p, minExp: e.target.value }))
+              }
             />
-            {minExpCustom && (
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Enter years"
-                  value={data.minExp || ""}
-                  onChange={(e) =>
-                    setData((p) => ({ ...p, minExp: e.target.value }))
-                  }
-                  style={{
-                    flex: 1,
-                    padding: "11px 14px",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "#0F172A",
-                    background: "#fff",
-                    border: "1.5px solid #E2E8F0",
-                    borderRadius: 12,
-                    outline: "none",
-                    fontFamily: "inherit",
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "#64748B",
-                    fontWeight: 500,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  years
-                </span>
-              </div>
-            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <Select
               label="Maximum Experience"
               required
+              creatable
               options={EXPERIENCE}
-              placeholder="Select max experience"
-              value={maxExpCustom ? "[Manually]" : data.maxExp || ""}
-              onChange={(e) => {
-                if (e.target.value === "[Manually]") {
-                  setMaxExpCustom(true);
-                  setData((p) => ({ ...p, maxExp: "" }));
-                } else {
-                  setMaxExpCustom(false);
-                  setData((p) => ({ ...p, maxExp: e.target.value }));
-                }
-              }}
+              placeholder="Select or type max experience"
+              value={data.maxExp || ""}
+              onChange={(e) =>
+                setData((p) => ({ ...p, maxExp: e.target.value }))
+              }
             />
-            {maxExpCustom && (
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Enter years"
-                  value={data.maxExp || ""}
-                  onChange={(e) =>
-                    setData((p) => ({ ...p, maxExp: e.target.value }))
-                  }
-                  style={{
-                    flex: 1,
-                    padding: "11px 14px",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "#0F172A",
-                    background: "#fff",
-                    border: "1.5px solid #E2E8F0",
-                    borderRadius: 12,
-                    outline: "none",
-                    fontFamily: "inherit",
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "#64748B",
-                    fontWeight: 500,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  years
-                </span>
-              </div>
-            )}
           </div>
           <Select
             label="Minimum Education"
             required
+            creatable
             options={EDUCATION}
-            placeholder="Select education"
+            placeholder="Select or type education"
             value={data.minEducation || ""}
             onChange={(e) =>
               setData((p) => ({ ...p, minEducation: e.target.value }))
@@ -1578,7 +1673,7 @@ function StepScreening({ data, setData }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 140px 120px 80px 40px",
+              gridTemplateColumns: "1fr 190px 120px 80px 40px",
               gap: 12,
               padding: "10px 14px",
               background: "#F8FAFC",
@@ -1609,107 +1704,190 @@ function StepScreening({ data, setData }) {
             <div
               key={q.id}
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 140px 120px 80px 40px",
-                gap: 12,
-                alignItems: "center",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
                 padding: "14px",
                 background: "#fff",
                 border: "1.5px solid #E8EDF5",
                 borderRadius: 12,
               }}
             >
-              <input
-                value={q.question}
-                onChange={(e) =>
-                  updateQuestion(q.id, "question", e.target.value)
-                }
-                placeholder={`Question ${i + 1}...`}
+              <div
                 style={{
-                  padding: "9px 12px",
-                  fontSize: 13.5,
-                  fontWeight: 500,
-                  color: "#0F172A",
-                  border: "1.5px solid #E2E8F0",
-                  borderRadius: 10,
-                  outline: "none",
-                  fontFamily: "inherit",
-                  width: "100%",
-                  boxSizing: "border-box",
-                }}
-              />
-              <select
-                value={q.type}
-                onChange={(e) => updateQuestion(q.id, "type", e.target.value)}
-                style={{
-                  padding: "9px 10px",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "#0F172A",
-                  border: "1.5px solid #E2E8F0",
-                  borderRadius: 10,
-                  outline: "none",
-                  fontFamily: "inherit",
-                  background: "#fff",
-                }}
-              >
-                {Q_TYPES.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
-              <select
-                value={q.scoring}
-                onChange={(e) =>
-                  updateQuestion(q.id, "scoring", e.target.value)
-                }
-                style={{
-                  padding: "9px 10px",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: q.scoring === "Must" ? "#B91C1C" : "#166534",
-                  border: `1.5px solid ${q.scoring === "Must" ? "#FECACA" : "#A7F3D0"}`,
-                  borderRadius: 10,
-                  outline: "none",
-                  fontFamily: "inherit",
-                  background: q.scoring === "Must" ? "#FEF2F2" : "#ECFDF5",
-                }}
-              >
-                <option>Preferred</option>
-                <option>Must</option>
-              </select>
-              <label
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  cursor: "pointer",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 190px 120px 80px 40px",
+                  gap: 12,
+                  alignItems: "center",
                 }}
               >
                 <input
-                  type="checkbox"
-                  checked={q.required}
+                  value={q.question}
                   onChange={(e) =>
-                    updateQuestion(q.id, "required", e.target.checked)
+                    updateQuestion(q.id, "question", e.target.value)
                   }
-                  style={{ width: 18, height: 18, accentColor: "#002366" }}
+                  placeholder={`Question ${i + 1}...`}
+                  style={{
+                    padding: "9px 12px",
+                    fontSize: 13.5,
+                    fontWeight: 500,
+                    color: "#0F172A",
+                    border: "1.5px solid #E2E8F0",
+                    borderRadius: 10,
+                    outline: "none",
+                    fontFamily: "inherit",
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}
                 />
-              </label>
-              <button
-                onClick={() => removeQuestion(q.id)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 9,
-                  background: "#FEF2F2",
-                  border: "1px solid #FECACA",
-                  color: "#EF4444",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <FiTrash2 size={14} />
-              </button>
+                <Select
+                  options={Q_TYPES}
+                  value={q.type}
+                  onChange={(e) => updateQuestion(q.id, "type", e.target.value)}
+                 
+                />
+                <select
+                  value={q.scoring}
+                  onChange={(e) =>
+                    updateQuestion(q.id, "scoring", e.target.value)
+                  }
+                  style={{
+                    padding: "9px 10px",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: q.scoring === "Must" ? "#B91C1C" : "#166534",
+                    border: `1.5px solid ${q.scoring === "Must" ? "#FECACA" : "#A7F3D0"}`,
+                    borderRadius: 10,
+                    outline: "none",
+                    fontFamily: "inherit",
+                    background: q.scoring === "Must" ? "#FEF2F2" : "#ECFDF5",
+                  }}
+                >
+                  <option>Preferred</option>
+                  <option>Must</option>
+                </select>
+                <label
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={q.required}
+                    onChange={(e) =>
+                      updateQuestion(q.id, "required", e.target.checked)
+                    }
+                    style={{ width: 18, height: 18, accentColor: "#002366" }}
+                  />
+                </label>
+                <button
+                  onClick={() => removeQuestion(q.id)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 9,
+                    background: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    color: "#EF4444",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FiTrash2 size={14} />
+                </button>
+              </div>
+
+              {(q.type === "Single Choice" || q.type === "Multiple Choice") && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                  {(q.options && q.options.length > 0 ? q.options : ["", ""]).map((opt, optIndex, arr) => (
+                    <div key={optIndex} style={{ display: "flex", gap: 8, alignItems: "center", paddingLeft: 10 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#CBD5E1" }} />
+                      <input
+                        value={opt}
+                        onChange={(e) => {
+                          const newOptions = [...arr];
+                          newOptions[optIndex] = e.target.value;
+                          const next = questions.map((x) =>
+                            x.id === q.id ? { ...x, options: newOptions } : x
+                          );
+                          setQuestions(next);
+                          setData((p) => ({ ...p, questions: next }));
+                        }}
+                        placeholder={`Option ${optIndex + 1}`}
+                        style={{
+                          padding: "8px 12px",
+                          fontSize: 13.5,
+                          fontWeight: 500,
+                          color: "#0F172A",
+                          border: "1.5px solid #E2E8F0",
+                          borderRadius: 8,
+                          outline: "none",
+                          fontFamily: "inherit",
+                          flex: 1,
+                        }}
+                      />
+                      {arr.length > 2 && (
+                        <button
+                          onClick={() => {
+                            const newOptions = arr.filter((_, i) => i !== optIndex);
+                            const next = questions.map((x) =>
+                              x.id === q.id ? { ...x, options: newOptions } : x
+                            );
+                            setQuestions(next);
+                            setData((p) => ({ ...p, questions: next }));
+                          }}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            background: "#FEF2F2",
+                            border: "1px solid #FECACA",
+                            color: "#EF4444",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <FiTrash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const currentOptions = q.options && q.options.length > 0 ? q.options : ["", ""];
+                      const newOptions = [...currentOptions, ""];
+                      const next = questions.map((x) =>
+                        x.id === q.id ? { ...x, options: newOptions } : x
+                      );
+                      setQuestions(next);
+                      setData((p) => ({ ...p, questions: next }));
+                    }}
+                    style={{
+                      alignSelf: "flex-start",
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#002366",
+                      background: "#EEF2FF",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      marginLeft: 24,
+                    }}
+                  >
+                    <FiPlus size={12} /> Add Option
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1766,134 +1944,7 @@ function StepScreening({ data, setData }) {
         </button>
       </SectionCard>
 
-      {/* Campaign Plan */}
-      <SectionCard
-        icon={<FiZap size={20} />}
-        title="Campaign Plan"
-        subtitle="Choose how long your job posting stays active."
-        accentColor="#84CC16"
-      >
-        <div
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
-        >
-          {[
-            {
-              plan: "Standard",
-              price: "₹400",
-              days: 45,
-              desc: "Standard visibility, 45-day retention",
-              color: "#002366",
-            },
-            {
-              plan: "Premium",
-              price: "₹850",
-              days: 90,
-              desc: "Top placement, 90-day retention, AI boost",
-              color: "#84CC16",
-              badge: "Popular",
-            },
-          ].map(({ plan, price, days, desc, color, badge }) => (
-            <button
-              key={plan}
-              onClick={() => setData((p) => ({ ...p, campaignPlan: plan }))}
-              style={{
-                padding: "20px",
-                borderRadius: 16,
-                cursor: "pointer",
-                textAlign: "left",
-                border:
-                  data.campaignPlan === plan
-                    ? `2px solid ${color}`
-                    : "2px solid #E2E8F0",
-                background: data.campaignPlan === plan ? `${color}08` : "#fff",
-                transition: "all 0.2s",
-                position: "relative",
-                fontFamily: "inherit",
-              }}
-            >
-              {badge && (
-                <span
-                  style={{
-                    position: "absolute",
-                    top: -10,
-                    right: 16,
-                    padding: "3px 10px",
-                    borderRadius: 100,
-                    background: "#84CC16",
-                    color: "#fff",
-                    fontSize: 11,
-                    fontWeight: 800,
-                  }}
-                >
-                  {badge}
-                </span>
-              )}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: 8,
-                }}
-              >
-                <span
-                  style={{ fontSize: 15, fontWeight: 800, color: "#0F172A" }}
-                >
-                  {plan}
-                </span>
-                <span style={{ fontSize: 18, fontWeight: 900, color }}>
-                  {price}
-                  <span
-                    style={{ fontSize: 12, fontWeight: 600, color: "#64748B" }}
-                  >
-                    /post
-                  </span>
-                </span>
-              </div>
-              <div style={{ fontSize: 13, color: "#64748B", fontWeight: 500 }}>
-                {desc}
-              </div>
-              <div
-                style={{
-                  marginTop: 12,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  color: data.campaignPlan === plan ? color : "#94A3B8",
-                }}
-              >
-                <div
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    border: `2px solid ${data.campaignPlan === plan ? color : "#CBD5E1"}`,
-                    background:
-                      data.campaignPlan === plan ? color : "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {data.campaignPlan === plan && (
-                    <div
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: "50%",
-                        background: "#fff",
-                      }}
-                    />
-                  )}
-                </div>
-                {days}-day retention
-              </div>
-            </button>
-          ))}
-        </div>
-      </SectionCard>
+
     </div>
   );
 }
@@ -2065,10 +2116,6 @@ function StepReview({ data }) {
           value={`${(data.questions || []).length} question(s)`}
         />
         <ReviewRow label="External Link" value={data.externalLink || "—"} />
-        <ReviewRow
-          label="Campaign Plan"
-          value={data.campaignPlan || "Standard"}
-        />
       </SectionCard>
 
       {/* Role Description Preview */}
@@ -2226,8 +2273,14 @@ function ProgressBar({ currentStep, totalSteps }) {
 }
 
 /* ─────────────────────── MAIN PAGE ─────────────────────── */
-export default function PostJob() {
+export default function PostJob({ isEmbedded = false, onJobCreated = null, onCancel = null }) {
   const navigate = useNavigate();
+  const LayoutWrapper = useCallback(({ children, ...props }) => {
+    if (isEmbedded) {
+      return <div className="embedded-post-job" style={{ minHeight: 'auto', padding: '10px 0' }}>{children}</div>;
+    }
+    return <EmployerLayout {...props}>{children}</EmployerLayout>;
+  }, [isEmbedded]);
   const [step, setStep] = useState(1);
   const [launched, setLaunched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -2462,6 +2515,7 @@ export default function PostJob() {
     setAiError("");
     animateStepOut(() => {
       setStep((s) => Math.min(s + 1, STEPS.length));
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setTimeout(animateStepIn, 30);
     });
   };
@@ -2471,6 +2525,7 @@ export default function PostJob() {
     setAiError("");
     animateStepOut(() => {
       setStep((s) => Math.max(s - 1, 1));
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setTimeout(animateStepIn, 30);
     });
   };
@@ -2560,32 +2615,36 @@ export default function PostJob() {
               ? "Contract"
               : "Full-time";
 
+      // Maps UI question type labels → DB enum values (Job.js schema)
       const uiTypeToSchemaType = {
-        "Yes/No": "YES_NO",
-        "Single Choice": "MULTIPLE_CHOICE",
-        "Text Answer": "TEXT",
-        Number: "NUMERIC",
+        "Yes/No":          "YES_NO",         // DB: YES_NO
+        "Single Choice":   "DROPDOWN",       // DB: DROPDOWN  (single-select)
+        "Multiple Choice": "CHECKBOX",       // DB: CHECKBOX  (multi-select)
+        "Text Answer":     "TEXT",           // DB: TEXT
+        "Number":          "NUMERIC",        // DB: NUMERIC
       };
 
-      const screeningQuestions = (formData.questions || []).map((q, idx) => ({
-        question: q.question,
-        type: uiTypeToSchemaType[q.type] || "TEXT",
-        required: q.required,
-        options: [],
-        maxLength: 500,
-        order: idx,
-      }));
+      const screeningQuestions = (formData.questions || [])
+        .filter((q) => q.question && q.question.trim()) // skip empty questions
+        .map((q, idx) => ({
+          question: q.question.trim(),
+          type: uiTypeToSchemaType[q.type] || "TEXT",
+          required: Boolean(q.required),
+          // pass user-entered options for Single/Multiple Choice; empty for others
+          options: (q.type === "Single Choice" || q.type === "Multiple Choice")
+            ? (Array.isArray(q.options) ? q.options.map((o) => String(o).trim()).filter(Boolean) : [])
+            : [],
+          maxLength: 500,
+          order: idx,
+        }));
+
 
       const payload = {
         title: formData.jobTitle,
-        summary: formData.roleDescription || formData.responsibilities || "",
-        description: [
-          formData.roleDescription,
-          formData.responsibilities,
-          formData.skills,
-        ]
-          .filter(Boolean)
-          .join("\n\n"),
+        summary:         formData.roleDescription   || "",  // short overview shown in cards
+        description:     formData.roleDescription   || "",  // Role Description → DB: description
+        responsibilities: formData.responsibilities || "",  // Key Responsibilities → DB: responsibilities
+        qualifications:  formData.skills            || "",  // Required Skills & Qualifications → DB: qualifications
         department: formData.industry || "General",
         jobType: formData.jobTypes?.[0] || "Full-time",
         workplaceType,
@@ -2598,6 +2657,7 @@ export default function PostJob() {
         screeningQuestions,
         externalLink: formData.externalLink || "",
       };
+
 
       const response = await authService.employerCreateJob(payload);
       setCreatedJob(response?.data || null);
@@ -2639,13 +2699,17 @@ export default function PostJob() {
   const handleExit = useCallback(() => {
     const saved = autoSaveDraft(formData, draftIdRef.current);
     if (saved) draftIdRef.current = saved.draftId;
-    navigate("/employer-dashboard");
-  }, [formData, navigate]);
+    if (isEmbedded && onCancel) {
+      onCancel();
+    } else {
+      navigate("/employer-dashboard");
+    }
+  }, [formData, navigate, isEmbedded, onCancel]);
 
   /* ── SUCCESS STATE ── */
   if (launched) {
     return (
-      <EmployerLayout activeTab="jobs" hideFooter>
+      <LayoutWrapper activeTab="jobs" hideFooter>
         <div
           style={{
             minHeight: "80vh",
@@ -2732,53 +2796,76 @@ export default function PostJob() {
                 flexWrap: "wrap",
               }}
             >
-              <button
-                onClick={() => navigate("/employer-dashboard")}
-                style={{
-                  padding: "13px 28px",
-                  borderRadius: 14,
-                  background: "linear-gradient(135deg,#001a50,#0F3DB5)",
-                  color: "#fff",
-                  fontSize: 14.5,
-                  fontWeight: 700,
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  boxShadow: "0 6px 20px rgba(0,35,102,0.3)",
-                }}
-              >
-                Go to Dashboard
-              </button>
-              <button
-                onClick={() => {
-                  setLaunched(false);
-                  setStep(1);
-                  setFormData({ campaignPlan: "Standard", cvEnabled: true });
-                }}
-                style={{
-                  padding: "13px 28px",
-                  borderRadius: 14,
-                  background: "#F1F5F9",
-                  border: "1.5px solid #E2E8F0",
-                  color: "#002366",
-                  fontSize: 14.5,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                Post Another Job
-              </button>
+              {isEmbedded ? (
+                <button
+                  className="primary-btn"
+                  onClick={() => onJobCreated && onJobCreated(createdJob)}
+                  style={{
+                    padding: "13px 28px",
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg,#001a50,#0F3DB5)",
+                    color: "#fff",
+                    fontSize: 14.5,
+                    fontWeight: 700,
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    boxShadow: "0 6px 20px rgba(0,35,102,0.3)",
+                  }}
+                >
+                  Continue to Select Candidates
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate("/employer-dashboard")}
+                    style={{
+                      padding: "13px 28px",
+                      borderRadius: 14,
+                      background: "linear-gradient(135deg,#001a50,#0F3DB5)",
+                      color: "#fff",
+                      fontSize: 14.5,
+                      fontWeight: 700,
+                      border: "none",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      boxShadow: "0 6px 20px rgba(0,35,102,0.3)",
+                    }}
+                  >
+                    Go to Dashboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLaunched(false);
+                      setStep(1);
+                      setFormData({ campaignPlan: "Standard", cvEnabled: true });
+                    }}
+                    style={{
+                      padding: "13px 28px",
+                      borderRadius: 14,
+                      background: "#F1F5F9",
+                      border: "1.5px solid #E2E8F0",
+                      color: "#002366",
+                      fontSize: 14.5,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Post Another Job
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
-      </EmployerLayout>
+      </LayoutWrapper>
     );
   }
 
   if (quotaLoading) {
     return (
-      <EmployerLayout activeTab="jobs" hideFooter>
+      <LayoutWrapper activeTab="jobs" hideFooter>
         <div
           style={{
             display: "flex",
@@ -2791,7 +2878,7 @@ export default function PostJob() {
             Loading {jobTypeLabel.toLowerCase()} quotas...
           </div>
         </div>
-      </EmployerLayout>
+      </LayoutWrapper>
     );
   }
 
@@ -2805,7 +2892,7 @@ export default function PostJob() {
   }
 
   return (
-    <EmployerLayout activeTab="jobs" hideFooter>
+    <LayoutWrapper activeTab="jobs" hideFooter>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
@@ -3197,6 +3284,6 @@ export default function PostJob() {
           </div>
         </div>
       )}
-    </EmployerLayout>
+    </LayoutWrapper>
   );
 }

@@ -55,6 +55,7 @@ router.patch("/jobs/:id", controller.updateJob);
 router.get("/jobs-responses", employerJobController.getEmployerJobs);
 router.get("/jobs-responses/filters", employerJobController.getEmployerJobFilters);
 router.get("/jobs-responses/:jobId/detail", employerJobController.getJobDetailWithResponses);
+router.get("/jobs-responses/:jobId/nvite-recipients", employerJobController.getJobNviteRecipients);
 router.get("/jobs-responses/:jobId/responses", employerJobController.getJobResponses);
 router.patch("/jobs-responses/:jobId/applications/:applicationId/status", employerJobController.updateCandidateJobStatus);
 router.post("/jobs-responses/:jobId/applications/:applicationId/comments", employerJobController.addCandidateComment);

@@ -112,6 +112,7 @@ export default function JobListingPage() {
   const [draftFilters, setDraftFilters] = useState({});
   const [modalSearch, setModalSearch] = useState("");
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [expandedSkills, setExpandedSkills] = useState({});
 
   const {
     filters,
@@ -345,7 +346,11 @@ export default function JobListingPage() {
         company,
         rating: j.rating,
         reviews: j.reviews,
-        exp: j.experience || j.exp || "1–4 Yrs",
+        exp: (() => {
+          let e = String(j.experience || j.exp || "1–4 Yrs").trim();
+          if (/^\d+(\s*[-–]\s*\d+)?$/.test(e)) return e + " Yrs";
+          return e;
+        })(),
         salary: salStr,
         salaryMin: j.salaryMin || 0,
         salaryMax: j.salaryMax || 0,
@@ -1201,7 +1206,7 @@ export default function JobListingPage() {
                   </div>
                 </div>
 
-                <div className="jlp-card-details">
+                <div className="jlp-card-details" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                   <div className="jlp-detail-item">
                     <div className="jlp-detail-icon">
                       <FiBriefcase size={15} />
@@ -1220,23 +1225,36 @@ export default function JobListingPage() {
                     </div>
                     <span className="jlp-detail-text">{job.location}</span>
                   </div>
-                  <div className="jlp-detail-item">
-                    <div className="jlp-detail-icon">
-                      <FiClock size={15} />
-                    </div>
-                    <span className="jlp-detail-text">{job.posted}</span>
-                  </div>
                 </div>
 
                 <p className="jlp-card-desc">{job.desc}</p>
 
-                <div className="jlp-card-footer">
-                  <div className="jlp-tags">
-                    {job.tags.map((tag) => (
-                      <span key={tag} className="jlp-tag">
-                        {tag}
-                      </span>
-                    ))}
+                <div className="jlp-tags" style={{ marginBottom: "20px" }}>
+                  {(expandedSkills[job.id] ? job.tags : job.tags.slice(0, 5)).map((tag) => (
+                    <span key={tag} className="jlp-tag">
+                      {tag}
+                    </span>
+                  ))}
+                  {job.tags.length > 5 && (
+                    <button 
+                      className="jlp-tag"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedSkills(prev => ({...prev, [job.id]: !prev[job.id]}));
+                      }}
+                      style={{ background: "transparent", border: "1px dashed var(--brand-blue)", color: "var(--brand-blue)" }}
+                    >
+                      {expandedSkills[job.id] ? "- Less" : `+${job.tags.length - 5} more`}
+                    </button>
+                  )}
+                </div>
+
+                <div className="jlp-card-footer" style={{ justifyContent: "space-between" }}>
+                  <div className="jlp-detail-item" style={{ flexShrink: 0 }}>
+                    <div className="jlp-detail-icon">
+                      <FiClock size={15} />
+                    </div>
+                    <span className="jlp-detail-text">{job.posted}</span>
                   </div>
                   <div className="jlp-card-actions">
                     {user ? (

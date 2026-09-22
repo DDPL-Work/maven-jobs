@@ -13,6 +13,7 @@ const nviteSchema = new mongoose.Schema({
   subject: { type: String, required: true },
   body: { type: String, required: true },
   templateId: { type: String, default: null },
+  jobIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }],
   totalCount: { type: Number, default: 0 },
   unknownCount: { type: Number, default: 0 },
 }, {

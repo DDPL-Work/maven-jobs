@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { FiFolder, FiEdit2, FiTrash2, FiShare2, FiSearch, FiX, FiArrowLeft, FiUsers, FiBriefcase, FiMapPin, FiPhone, FiChevronDown, FiSmartphone, FiArrowRight, FiMail, FiSend, FiMessageSquare, FiCheck, FiUser, FiCopy, FiClock } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
-import CandidateCard from '../../../../components/employer/CandidateCard';
 import { useFolder, useDeleteFolder, useUpdateFolder, useRemoveCandidateFromFolder, useBulkRemoveCandidates, useUpdateFolderCandidate } from '../../../../hooks/useFolderQueries';
 import CreateFolderModal from '../../../../components/employer/CreateFolderModal';
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';

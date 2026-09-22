@@ -159,7 +159,7 @@ const EmployerLandingPage = () => {
       icon: <FiSearch />,
       color: "#7c3aed",
       bg: "#f5f3ff",
-      path: "/resdex",
+      path: "/resume-search",
     },
     {
       title: "Expert Assist",

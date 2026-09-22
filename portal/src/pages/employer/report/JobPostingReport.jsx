@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import {
   FiCalendar, FiDownload, FiCheckCircle, FiAlertCircle,
@@ -14,15 +16,15 @@ import './JobPostingReport.css';
 //  Constants
 // -------------------------------------------------------------
 const USER_WISE_HEADERS = [
-  'Username', 'Alias',
-  'Job Post Expense', 'Job Edit Expense', 'Job Refresh Expense',
+  'Username', 'Alias', 'Jobs Posted',
+  'Job Post Expense', 'Job Edit Expense',
   'Jobs Deleted', 'Total Job Expense',
 ];
 
 const JOB_WISE_HEADERS = [
   'Job Title', 'Posted By', 'Alias',
   'Department', 'Location', 'Status', 'Posted On',
-  'Job Post Expense', 'Job Edit Expense', 'Job Refresh Expense',
+  'Job Post Expense', 'Job Edit Expense',
   'Applications', 'Views', 'Total Job Expense',
 ];
 
@@ -47,32 +49,39 @@ const formatDateLabel = (isoStr) => {
 };
 
 // Map API user-wise row ───────────────────────────────────────────────────────────── table row array matching USER_WISE_HEADERS
-const mapUserWiseRow = (r) => [
-  r.userName   || r.userEmail || 'Unknown',
-  r.alias      || '',
-  r.jobPostExpense    ?? 0,
-  r.jobEditExpense    ?? 0,
-  r.jobRefreshExpense ?? 0,
-  r.jobsDeleted       ?? 0,
-  r.totalJobExpense   ?? 0,
-];
+const mapUserWiseRow = (r) => {
+  const postCredit = r.jobsPosted ?? 0;
+  const editCredit = r.jobEditExpense ?? 0;
+  return [
+    r.userName   || r.userEmail || 'Unknown',
+    r.userEmail  || '',
+    r.jobsPosted ?? 0,
+    postCredit,
+    editCredit,
+    r.jobsDeleted       ?? 0,
+    postCredit + editCredit,
+  ];
+};
 
 // Map API job-wise row ───────────────────────────────────────────────────────────── table row array matching JOB_WISE_HEADERS
-const mapJobWiseRow = (r) => [
-  r.jobTitle   || 'Untitled',
-  r.userName   || r.userEmail || 'Unknown',
-  r.alias      || '',
-  r.department || 'General',
-  r.location   || '─────────────────────────────────────────────────────────────',
-  r.status     || 'Active',
-  r.actionDate ? formatDateLabel(r.actionDate) : '─────────────────────────────────────────────────────────────',
-  r.jobPostExpense    ?? 0,
-  r.jobEditExpense    ?? 0,
-  r.jobRefreshExpense ?? 0,
-  r.applicationsReceived ?? 0,
-  r.jobViews   ?? 0,
-  r.totalJobExpense ?? 0,
-];
+const mapJobWiseRow = (r) => {
+  const postCredit = 1;
+  const editCredit = r.jobEditExpense ?? 0;
+  return [
+    r.jobTitle   || 'Untitled',
+    r.userName   || r.userEmail || 'Unknown',
+    r.userEmail  || '',
+    r.department || 'General',
+    r.location   || '',
+    r.status     || 'Active',
+    r.actionDate ? formatDateLabel(r.actionDate) : '',
+    postCredit,
+    editCredit,
+    r.applicationsReceived ?? 0,
+    r.jobViews   ?? 0,
+    postCredit + editCredit,
+  ];
+};
 
 // -------------------------------------------------------------
 //  Component
@@ -187,17 +196,14 @@ export default function JobPostingReport() {
   }, []);
 
 
-  // ------------------------------------------------------------- CSV export (for customised excel mode) ─────────────────────────────────────────────────────────────
-  const exportToCSV = useCallback((rows, headers, filename) => {
+  // ------------------------------------------------------------- Excel export (for customised excel mode) ─────────────────────────────────────────────────────────────
+  const exportToExcel = useCallback((rows, headers, filename) => {
     if (!rows?.length) { showToast('No records to export.'); return; }
-    const esc = (v) => { const s = String(v ?? ''); return /[,"\n]/.test(s) ? `"${s.replace(/"/g,`""`)}"` : s; };
-    const csv = [headers.join(','), ...rows.map(r => r.map(esc).join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `${filename}_${formatYMD(new Date())}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const allLines = [headers, ...rows];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(allLines);
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    XLSX.writeFile(wb, `${filename}_${formatYMD(new Date())}.xlsx`);
     showToast('Report downloaded successfully!');
   }, [showToast]);
 
@@ -237,11 +243,11 @@ export default function JobPostingReport() {
       const mapFn      = isJobWise ? mapJobWiseRow : mapUserWiseRow;
       const rows       = (res.data || []).map(mapFn);
       const emptyRow   = isJobWise
-        ? ['No data', '', '', '', '', '', '', 0, 0, 0, 0, 0, 0]
+        ? ['No data', '', '', '', '', '', '', 0, 0, 0, 0, 0]
         : ['No data', '', 0, 0, 0, 0, 0];
 
       if (displayFormat === 'excel') {
-        exportToCSV(rows.length ? rows : [emptyRow], headers, `Job_Posting_${isJobWise ? 'Job' : 'User'}_Wise`);
+        exportToExcel(rows.length ? rows : [emptyRow], headers, `Job_Posting_${isJobWise ? 'Job' : 'User'}_Wise`);
         return;
       }
 
