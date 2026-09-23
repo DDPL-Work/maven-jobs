@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useParams, useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   FiMapPin,
   FiMail,
@@ -13,6 +13,7 @@ import {
   FiFlag,
   FiChevronLeft,
   FiChevronRight,
+  FiChevronDown,
   FiPlus,
   FiSend,
   FiShare2,
@@ -28,6 +29,8 @@ import { HiSparkles } from "react-icons/hi2";
 import authService from "../../../../services/authService";
 import EmployerHeader from "../../../../components/employer/EmployerHeader";
 import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
+import ForwardCVModal from "../../../../components/employer/ForwardCVModal";
+import SetReminderModal from "../../../../components/employer/SetReminderModal";
 import "./PublicCandidateProfile.css";
 
 const parseJSON = (str) => {
@@ -43,13 +46,37 @@ const parseJSON = (str) => {
 
 const parseSalary = (str) => {
   if (!str) return null;
-  try {
-    const p = JSON.parse(str);
-    if (p.amount) {
-      return `₹ ${parseInt(p.amount).toLocaleString('en-IN')}${p.period ? ` / ${p.period}` : ''}`;
+  
+  // If it's already an object (not a string)
+  if (typeof str === 'object') {
+    if (str.amount) {
+      return `₹ ${parseInt(str.amount).toLocaleString('en-IN')}${str.period ? ` / ${str.period}` : ''}`;
     }
-    return str;
+    try { return JSON.stringify(str); } catch { return String(str); }
+  }
+  
+  try {
+    let cleanStr = String(str).trim();
+    // Strip leading non-json characters (e.g. ₹ )
+    const jsonStart = cleanStr.indexOf('{');
+    if (jsonStart !== -1) {
+      cleanStr = cleanStr.slice(jsonStart);
+    }
+    
+    // Attempt to parse JSON
+    if (cleanStr.startsWith('{')) {
+      const p = JSON.parse(cleanStr);
+      if (p.amount) {
+        return `₹ ${parseInt(p.amount).toLocaleString('en-IN')}${p.period ? ` / ${p.period}` : ''}`;
+      }
+    }
+    return str; // Fallback to original string if no amount
   } catch {
+    // If it's not valid JSON, check if it contains a number
+    const num = parseInt(String(str).replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(num) && num > 0) {
+      return `₹ ${num.toLocaleString('en-IN')}`;
+    }
     return str;
   }
 };
@@ -57,11 +84,23 @@ const parseSalary = (str) => {
 export default function PublicCandidateProfile() {
   const { candidateId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("profile_detail"); // 'profile_detail' | 'attached_cv'
+
+  const shouldShowAttachedCV = useMemo(() => {
+    const isFromSharedCV = location.state?.fromSharedCV || searchParams.get('fromSharedCV') === 'true';
+    const hasResumeAttached = location.state?.isResumeAttached || searchParams.get('isResumeAttached') === 'true';
+    
+    if (isFromSharedCV) {
+      return hasResumeAttached;
+    }
+    return true; // Default behavior
+  }, [location.state, searchParams]);
   const [similarTab, setSimilarTab] = useState("profile_details"); // 'profile_details' | 'recruiters_viewed'
   const [similarCandidates, setSimilarCandidates] = useState([]);
   const [similarLoading, setSimilarLoading] = useState(false);
@@ -69,11 +108,27 @@ export default function PublicCandidateProfile() {
   const [alsoViewedLoading, setAlsoViewedLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  const [reminderMenuOpen, setReminderMenuOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderType, setReminderType] = useState("");
+  const reminderMenuRef = useRef(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (reminderMenuRef.current && !reminderMenuRef.current.contains(event.target)) {
+        setReminderMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const [showFullPhone, setShowFullPhone] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState("");
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [isVideoCallModalOpen, setIsVideoCallModalOpen] = useState(false);
+  const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
 
   // List Context State
   const [listIds, setListIds] = useState([]);
@@ -209,6 +264,19 @@ export default function PublicCandidateProfile() {
     ? totalSearchCount.toLocaleString() 
     : (listIds.length > 0 ? listIds.length.toLocaleString() : "1");
 
+  const handleSetReminder = async (data) => {
+    try {
+      await authService.setCandidateReminder({
+        candidateId,
+        ...data
+      });
+      alert("Reminder set successfully!");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to set reminder.");
+    }
+  };
+
   const searchKeywords = searchText.toLowerCase().split(/\s+/).filter(Boolean);
   const displayedSimilar = similarCandidates;
 
@@ -319,21 +387,53 @@ export default function PublicCandidateProfile() {
           <FiSend size={14} /> Send MIvites
         </button>
 
-        <button
-          type="button"
-          className="pcp-act-btn"
-          onClick={() => alert("Reminder scheduled.")}
-        >
-          <FiClock size={14} /> Set reminder
-        </button>
+        <div style={{ position: "relative" }} ref={reminderMenuRef}>
+          <button
+            type="button"
+            className="pcp-act-btn"
+            onClick={() => setReminderMenuOpen(!reminderMenuOpen)}
+          >
+            <FiClock size={14} /> Set reminder <FiChevronDown size={14} style={{ marginLeft: 2 }} />
+          </button>
+          
+          {reminderMenuOpen && (
+            <div style={{
+              position: "absolute", top: "100%", left: 0, marginTop: 4,
+              background: "#fff", borderRadius: 8, boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+              border: "1px solid #e2e8f0", padding: "4px 0", zIndex: 50, minWidth: 180
+            }}>
+              {[
+                "For call later",
+                "For interview follow up",
+                "For sending JD",
+                "For other task"
+              ].map((label, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => { 
+                    setReminderType(label); 
+                    setIsReminderModalOpen(true);
+                    setReminderMenuOpen(false); 
+                  }}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left", padding: "8px 16px",
+                    background: "none", border: "none", cursor: "pointer", fontSize: "0.85rem",
+                    color: "#334155"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
           className="pcp-act-btn"
-          onClick={() => {
-            navigator.clipboard?.writeText(window.location.href);
-            alert("Profile link copied to clipboard!");
-          }}
+          onClick={() => setIsForwardModalOpen(true)}
         >
           <FiShare2 size={14} /> Forward
         </button>
@@ -569,13 +669,15 @@ export default function PublicCandidateProfile() {
               >
                 Profile detail
               </button>
-              <button
-                type="button"
-                className={`pcp-tab-btn ${activeTab === "attached_cv" ? "active" : ""}`}
-                onClick={() => setActiveTab("attached_cv")}
-              >
-                Attached CV
-              </button>
+              {shouldShowAttachedCV && (
+                <button
+                  type="button"
+                  className={`pcp-tab-btn ${activeTab === "attached_cv" ? "active" : ""}`}
+                  onClick={() => setActiveTab("attached_cv")}
+                >
+                  Attached CV
+                </button>
+              )}
             </div>
 
             {activeTab === "profile_detail" ? (
@@ -1120,11 +1222,21 @@ export default function PublicCandidateProfile() {
                     </div>
 
                     <div className="pcp-sim-meta">
-                      <span>
-                        <FiBriefcase size={12} /> {c.experience || (c.totalExperience ? `${c.totalExperience}y` : "Exp N/A")}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                        <FiBriefcase size={12} /> 
+                        {(() => {
+                          const expStr = c.experience || c.totalExperience;
+                          if (!expStr) return "Exp N/A";
+                          let cleanExp = String(expStr).toLowerCase();
+                          // Fix common typos or redundant suffixes from backend
+                          if (cleanExp.includes('yeary')) cleanExp = cleanExp.replace('yeary', 'years');
+                          if (cleanExp.match(/^\d+$/)) cleanExp = `${cleanExp}y`;
+                          return cleanExp;
+                        })()}
                       </span>
-                      <span>
-                        <FiDollarSign size={12} /> {c.salary || c.currentSalary || c.expectedSalary || "Salary N/A"}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <FiDollarSign size={12} /> 
+                        {parseSalary(c.salary || c.currentSalary || c.expectedSalary) || "Salary N/A"}
                       </span>
                     </div>
 
@@ -1167,6 +1279,18 @@ export default function PublicCandidateProfile() {
         isOpen={isVideoCallModalOpen} 
         onClose={() => setIsVideoCallModalOpen(false)} 
         candidateId={candidateId} 
+      />
+      <ForwardCVModal
+        isOpen={isForwardModalOpen}
+        onClose={() => setIsForwardModalOpen(false)}
+        candidateId={candidateId}
+        candidateName={candidateName}
+      />
+      <SetReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        initialType={reminderType}
+        onSubmit={handleSetReminder}
       />
     </div>
     </>

@@ -228,6 +228,7 @@
   cursor: pointer;
   position: relative;
   transition: color 0.15s;
+  white-space: nowrap;
 }
 
 .flp-tab-btn:hover {

@@ -906,7 +906,20 @@ export default function ResdexReport() {
                                     />
                                     NVites
                                   </label>
-                                   <label className="rxr-checkbox-label">
+                                        <label className="rxr-checkbox-label">
+                                          <input
+                                            type="checkbox"
+                                            checked={dbFields.totalCvExcel}
+                                            onChange={(e) =>
+                                              setDbFields({
+                                                ...dbFields,
+                                                totalCvExcel: e.target.checked,
+                                              })
+                                            }
+                                          />
+                                          Total CVs downloaded
+                                        </label>
+                              {/*     <label className="rxr-checkbox-label">
                                     <input
                                       type="checkbox"
                                       checked={dbFields.totalCvViews}
@@ -919,20 +932,7 @@ export default function ResdexReport() {
                                     />
                                     Total CV views
                                   </label>
-                                  <label className="rxr-checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={dbFields.totalCvExcel}
-                                      onChange={(e) =>
-                                        setDbFields({
-                                          ...dbFields,
-                                          totalCvExcel: e.target.checked,
-                                        })
-                                      }
-                                    />
-                                    Total CVs downloaded
-                                  </label>
-                                  {/* <label className="rxr-checkbox-label">
+                                   <label className="rxr-checkbox-label">
                                     <input
                                       type="checkbox"
                                       checked={dbFields.resumeWord}

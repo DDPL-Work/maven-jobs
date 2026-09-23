@@ -1151,6 +1151,42 @@ const authService = {
       throw error.response?.data || { message: 'Failed to fetch similar candidates' };
     }
   },
+
+  getCompanyUsers: async () => {
+    try {
+      const response = await api.get('/company-panel/user-management/users');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch company users' };
+    }
+  },
+
+  forwardCandidateCV: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/resdex/forward-cv', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to forward CV' };
+    }
+  },
+
+  getSharedCVs: async () => {
+    try {
+      const response = await api.get('/company-panel/resdex/shared-cvs');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch shared CVs' };
+    }
+  },
+
+  setCandidateReminder: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/resdex/reminders', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to set reminder' };
+    }
+  },
 };
 
 

@@ -154,6 +154,7 @@ process.on("exit", (code) => {
 const { initJobPostingReportScheduler } = require("./src/scheduler/jobPostingReport.scheduler");
 const { initResdexReportScheduler } = require("./src/scheduler/resdexReport.scheduler");
 const { initSearchLogsScheduler } = require("./src/scheduler/searchLogs.scheduler");
+const { initRemindersScheduler } = require("./src/scheduler/reminders.scheduler");
 
 connectDB()
   .then(() => {
@@ -161,6 +162,7 @@ connectDB()
     initJobPostingReportScheduler();
     initResdexReportScheduler();
     initSearchLogsScheduler();
+    initRemindersScheduler();
   })
   .catch((error) => {
     console.error("[server] Failed to connect to database:", error);

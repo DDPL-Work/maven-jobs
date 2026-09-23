@@ -146,6 +146,8 @@ const CandidateCard = memo(function CandidateCard({
   isInFolder,
   searchKeyword = "",
   jobId,
+  profileQueryParams = "",
+  customFooter = null,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showResume, setShowResume] = useState(false);
@@ -211,9 +213,10 @@ const CandidateCard = memo(function CandidateCard({
   const handleViewProfile = useCallback(() => {
     if (!candidateId) return;
     setProfileLoading(true);
-    window.open(`/candidates/${candidateId}`, "_blank", "noopener,noreferrer");
+    const url = `/candidates/${candidateId}${profileQueryParams ? `?${profileQueryParams}` : ''}`;
+    window.open(url, "_blank", "noopener,noreferrer");
     setTimeout(() => setProfileLoading(false), 1000);
-  }, [candidateId]);
+  }, [candidateId, profileQueryParams]);
 
   const handleEmail = useCallback(() => {
     if (candidate.email) {
@@ -495,6 +498,12 @@ const CandidateCard = memo(function CandidateCard({
             <FiEye size={13} /> {profileLoading ? "Opening..." : "View Profile"}
           </button>
         </div>
+
+        {customFooter && (
+          <div style={{ padding: "0 16px 16px" }}>
+            {customFooter}
+          </div>
+        )}
       </div>
     </motion.div>
   );

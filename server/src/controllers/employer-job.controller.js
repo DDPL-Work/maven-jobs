@@ -1704,6 +1704,14 @@ exports.getAlsoViewedCandidates = asyncHandler(async (req, res) => {
       avatar: profile.profilePic?.url || profile.userId?.avatar || "",
       headline: profile.headline || profile.currentTitle || "",
       location: [profile.currentCity, profile.currentState].filter(Boolean).join(", ") || profile.currentCountry || "",
+      totalExperience: profile.totalExperience,
+      experience: profile.totalExperience ? `${profile.totalExperience}y` : "",
+      salary: profile.currentSalary || profile.expectedSalary || "",
+      currentSalary: profile.currentSalary,
+      expectedSalary: profile.expectedSalary,
+      skills: profile.skills || [],
+      hasCv: !!profile.resume?.url,
+      activeStatus: profile.activeStatus,
     };
   });
 

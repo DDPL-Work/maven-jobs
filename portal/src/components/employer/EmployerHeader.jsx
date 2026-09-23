@@ -471,6 +471,7 @@ export default function EmployerHeader({
                           border: "none", background: "transparent",
                           color: "#1E293B", fontSize: 13, fontWeight: 600, fontFamily: C.dm,
                           cursor: "pointer", textAlign: "left",
+                          whiteSpace: "nowrap",
                           transition: "all 0.12s"
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = "#F1F5F9"; }}

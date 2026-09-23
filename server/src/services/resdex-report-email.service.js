@@ -203,7 +203,7 @@ async function getResdexAggregatedData({
       headers: [
         "Subuser",
         "Total Searches",
-        "Total CV Views",
+        // "Total CV Views",
         "Total CVs Downloaded (in Resdex)",
         "NVites",
         "Resumes Forwarded",
