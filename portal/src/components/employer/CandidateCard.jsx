@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import {
   FiBriefcase, FiMapPin, FiCalendar, FiMail, FiEye,
   FiBook, FiAward, FiX, FiFileText, FiCheck, FiFolderPlus,
@@ -212,11 +213,12 @@ const CandidateCard = memo(function CandidateCard({
 
   const handleViewProfile = useCallback(() => {
     if (!candidateId) return;
-    setProfileLoading(true);
-    const url = `/candidates/${candidateId}${profileQueryParams ? `?${profileQueryParams}` : ''}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => setProfileLoading(false), 1000);
-  }, [candidateId, profileQueryParams]);
+    // View profile is handled by the Link component — no window.open needed
+  }, [candidateId]);
+
+  const profileUrl = candidateId
+    ? `/candidates/${candidateId}${profileQueryParams ? `?${profileQueryParams}` : ''}`
+    : null;
 
   const handleEmail = useCallback(() => {
     if (candidate.email) {
@@ -489,14 +491,18 @@ const CandidateCard = memo(function CandidateCard({
             </button>
           )}
 
-          <button
-            className="sr-btn"
-            onClick={handleViewProfile}
-            disabled={profileLoading}
-            style={{ marginLeft: "auto", ...(profileLoading ? { opacity: 0.7 } : {}) }}
-          >
-            <FiEye size={13} /> {profileLoading ? "Opening..." : "View Profile"}
-          </button>
+          {profileUrl ? (
+            <Link
+              to={profileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sr-btn"
+              style={{ marginLeft: "auto", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FiEye size={13} /> View Profile
+            </Link>
+          ) : null}
         </div>
 
         {customFooter && (
