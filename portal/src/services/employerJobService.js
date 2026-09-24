@@ -139,6 +139,19 @@ export const employerJobService = {
   },
 
   /**
+   * Re-open an employer job
+   */
+  openEmployerJob: async (jobId) => {
+    try {
+      const response = await api.patch(`/company-panel/jobs-responses/${jobId}/open`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to open job ${jobId}:`, error);
+      throw error.response?.data || { message: 'Failed to open job' };
+    }
+  },
+
+  /**
    * Bulk close multiple jobs
    * @param {string[]} jobIds
    */
@@ -163,6 +176,21 @@ export const employerJobService = {
     } catch (error) {
       console.error('Failed to bulk refresh jobs:', error);
       throw error.response?.data || { message: 'Failed to bulk refresh jobs' };
+    }
+  },
+
+  /**
+   * Update collaborators for multiple jobs
+   * @param {string[]} jobIds
+   * @param {string[]} userIds
+   */
+  updateCollaborators: async (jobIds, userIds) => {
+    try {
+      const response = await api.post('/company-panel/jobs-responses/bulk-collaborators', { jobIds, userIds });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update collaborators:', error);
+      throw error.response?.data || { message: 'Failed to update collaborators' };
     }
   },
 

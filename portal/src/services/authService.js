@@ -373,9 +373,12 @@ const authService = {
     }
   },
 
-  getEmployerAnalytics: async (range = '12m') => {
+  getEmployerAnalytics: async (range = '12m', startDate = null, endDate = null) => {
     try {
-      const response = await api.get('/company-panel/analytics', { params: { range } });
+      const params = { range };
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      const response = await api.get('/company-panel/analytics', { params });
       return response.data;
     } catch {
       return { success: false, data: null };
@@ -1187,6 +1190,15 @@ const authService = {
       throw error.response?.data || { message: 'Failed to set reminder' };
     }
   },
+  
+  employerChangePassword: async (currentPassword, newPassword) => {
+    try {
+      const response = await api.patch('/company-panel/auth/change-password', { currentPassword, newPassword });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to change password' };
+    }
+  }
 };
 
 

@@ -128,6 +128,34 @@ const userManagementService = {
     } catch (error) {
       throw error.response?.data || { message: 'Failed to update security settings' };
     }
+  },
+
+  // Product Settings
+  getProductSettings: async () => {
+    try {
+      const response = await api.get('/company-panel/product-settings');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch product settings' };
+    }
+  },
+
+  updateProductSettings: async (settings) => {
+    try {
+      const response = await api.put('/company-panel/product-settings', settings);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update product settings' };
+    }
+  },
+
+  resetSubusersResdexLogin: async () => {
+    try {
+      const response = await api.post('/company-panel/product-settings/reset-resdex-logins');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to reset subusers login' };
+    }
   }
 };
 

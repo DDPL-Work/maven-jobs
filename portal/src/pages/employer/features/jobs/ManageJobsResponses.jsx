@@ -13,6 +13,8 @@ import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcru
 import { getDrafts, deleteDraft } from '../../../../services/draftJobService';
 import employerJobService from '../../../../services/employerJobService';
 import PreviewMiviteModal from './components/PreviewMiviteModal';
+import CollaborateModal from './components/CollaborateModal';
+import notAllowedImg from '../../../../../assets/notAllowed.png';
 import './ManageJobsResponses.css';
 
 
@@ -198,6 +200,7 @@ export default function ManageJobsResponses() {
   // Row Action Menu Dropdown (job id)
   const [openRowMenuId, setOpenRowMenuId] = useState(null);
   const [previewMiviteJobId, setPreviewMiviteJobId] = useState(null);
+  const [collaborateModalJobs, setCollaborateModalJobs] = useState(null);
 
   // Selected Jobs for Bulk Actions
   const [selectedJobIds, setSelectedJobIds] = useState([]);
@@ -311,6 +314,18 @@ export default function ManageJobsResponses() {
     }
   };
 
+  // Single Job Open
+  const handleOpenJob = async (job) => {
+    try {
+      await employerJobService.openEmployerJob(job.id || job._id);
+      showToast(`Opened job "${job.title}".`);
+      setOpenRowMenuId(null);
+      fetchAllData();
+    } catch (err) {
+      showToast(err?.message || `Failed to open job.`);
+    }
+  };
+
   // Bulk Selection Handlers
   const handleSelectAll = () => {
     if (selectedJobIds.length === jobs.length && jobs.length > 0) {
@@ -347,7 +362,13 @@ export default function ManageJobsResponses() {
       showToast('Please select at least one job to collaborate.');
       return;
     }
-    showToast(`Shared ${selectedJobIds.length} job(s) with team members.`);
+    const selectedJobs = jobs.filter(j => selectedJobIds.includes(j.id || j._id));
+    const hasClosedJob = selectedJobs.some(j => j.status === 'closed');
+    if (hasClosedJob) {
+      showToast('Cannot collaborate on closed jobs. Please re-open them first.');
+      return;
+    }
+    setCollaborateModalJobs(selectedJobs);
   };
 
   const handleBulkClose = async () => {
@@ -793,7 +814,8 @@ export default function ManageJobsResponses() {
                     <p style={{ marginTop: 14, fontSize: 14, color: '#64748b' }}>Loading employer jobs...</p>
                   </div>
                 ) : jobs.length === 0 ? (
-                  <div className="mjr-draft-empty-card" style={{ padding: '40px 20px' }}>
+                  <div className="mjr-draft-empty-card" style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <img src={notAllowedImg} alt="No jobs found" style={{ maxWidth: '150px', marginBottom: '16px' }} />
                     <p className="mjr-draft-empty-title">No jobs match your filter</p>
                     <p className="mjr-draft-empty-subtitle">Try adjusting your filters or search keywords</p>
                     <button
@@ -894,23 +916,35 @@ export default function ManageJobsResponses() {
                                 >
                                   View Responses ({job.totalResponses ?? 0})
                                 </button>
-                                <button
-                                  type="button"
-                                  className="mjr-row-action-btn"
-                                  onClick={() => handleCloseJob(job)}
-                                >
-                                  Close
-                                </button>
-                                <button
-                                  type="button"
-                                  className="mjr-row-action-btn"
-                                  onClick={() => {
-                                    setOpenRowMenuId(null);
-                                    showToast(`Opening collaboration for ${job.title}`);
-                                  }}
-                                >
-                                  Collaborate
-                                </button>
+                                {job.status === 'closed' ? (
+                                  <button
+                                    type="button"
+                                    className="mjr-row-action-btn"
+                                    onClick={() => handleOpenJob(job)}
+                                  >
+                                    Open
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="mjr-row-action-btn"
+                                    onClick={() => handleCloseJob(job)}
+                                  >
+                                    Close
+                                  </button>
+                                )}
+                                {job.status !== 'closed' && (
+                                  <button
+                                    type="button"
+                                    className="mjr-row-action-btn"
+                                    onClick={() => {
+                                      setOpenRowMenuId(null);
+                                      setCollaborateModalJobs([job]);
+                                    }}
+                                  >
+                                    Collaborate
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   className="mjr-row-action-btn"
@@ -1182,6 +1216,24 @@ export default function ManageJobsResponses() {
         <PreviewMiviteModal
           jobId={previewMiviteJobId}
           onClose={() => setPreviewMiviteJobId(null)}
+        />
+      )}
+
+      {collaborateModalJobs && (
+        <CollaborateModal
+          jobs={collaborateModalJobs}
+          onClose={() => setCollaborateModalJobs(null)}
+          onSave={async (savedJobs, users) => {
+            try {
+              const jobIds = savedJobs.map(j => j.id || j._id);
+              const userIds = users.filter(u => !u.locked).map(u => u.id || u._id);
+              await employerJobService.updateCollaborators(jobIds, userIds);
+              showToast(`Shared ${savedJobs.length} job(s) with ${users.length} user(s).`);
+              fetchAllData(); // Refresh to potentially show new collaborators if UI supports it
+            } catch (err) {
+              showToast(err?.message || 'Failed to add collaborators.');
+            }
+          }}
         />
       )}
     </EmployerLayout>

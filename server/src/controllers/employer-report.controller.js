@@ -34,12 +34,6 @@ const periodToDates = (period) => {
 
 // ─────────────────────────────────────────────────────────────
 //  GET /reports/job-posting
-//  Query params:
-//    mode   = "one_click" | "customised"
-//    period = "yesterday" | "week" | "month"   (for one_click)
-//    from   = YYYY-MM-DD                        (for customised)
-//    to     = YYYY-MM-DD                        (for customised)
-//    type   = "user_wise" | "job_wise"          (for customised)
 // ─────────────────────────────────────────────────────────────
 exports.getJobPostingReport = asyncHandler(async (req, res) => {
   const companyId = req.company?._id;
@@ -417,15 +411,6 @@ const {
 
 // ─────────────────────────────────────────────────────────────
 //  GET /reports/resdex
-//  Query params:
-//    tab       = "database-usage" | "search-report" | "user-login" | ...
-//    mode      = "one_click" | "customised"
-//    period    = "yesterday" | "week" | "month"
-//    from      = YYYY-MM-DD
-//    to        = YYYY-MM-DD
-//    userIds   = comma-separated string
-//    keyword   = search keyword
-//    sortType  = "date_wise" | "subuser_wise"
 // ─────────────────────────────────────────────────────────────
 exports.getResdexReport = asyncHandler(async (req, res) => {
   const companyId = req.company?._id;
@@ -535,7 +520,7 @@ exports.saveResdexReportSubscription = asyncHandler(async (req, res) => {
       emailList: cleanedEmails,
       updatedBy: req.user?._id || null,
     },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
   );
 
   return res.status(200).json({

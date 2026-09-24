@@ -62,6 +62,10 @@ const jobSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    collaborators: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }],
     packageSlotCount: {
       type: Number,
       default: 1,

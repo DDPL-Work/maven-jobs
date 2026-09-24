@@ -37,83 +37,6 @@ const TIME_SLOTS = [
   '09:00 PM', '09:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM'
 ];
 
-// Separate controlled modal component for Change Restrictions
-function ChangeRestrictionsModal({ isOpen, onClose, selectedIds, onSaved }) {
-  const [policy, setPolicy] = useState('all-day');
-  const [ipRestriction, setIpRestriction] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleApply = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      await userManagementService.updateRestrictions({
-        ids: selectedIds,
-        policy,
-        ipRestriction,
-      });
-      onSaved();
-      onClose();
-    } catch (err) {
-      setError(err?.message || 'Failed to update restrictions');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="um-modal-overlay" onClick={onClose}>
-      <div className="um-modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="um-modal-header">
-          <h2 className="um-modal-title">Change Restrictions</h2>
-          <button type="button" className="um-modal-close-btn" onClick={onClose}>
-            <FiX size={20} />
-          </button>
-        </div>
-        <div className="um-modal-body">
-          {selectedIds?.length > 0 && (
-            <div style={{ padding: '8px 12px', background: '#f0f7ff', borderRadius: 8, fontSize: 13, color: '#0369a1', marginBottom: 12 }}>
-              Applying to <strong>{selectedIds.length}</strong> selected user(s).
-            </div>
-          )}
-          <div className="um-form-group">
-            <label className="um-form-label">Time Restriction Policy</label>
-            <select className="um-input-text" value={policy} onChange={(e) => setPolicy(e.target.value)}>
-              <option value="all-day">Allow access 24/7 (No restriction)</option>
-              <option value="office-hours">Office hours only (9:00 AM – 7:00 PM IST)</option>
-              <option value="custom">Custom schedule (Weekdays only)</option>
-            </select>
-          </div>
-          <div className="um-form-group">
-            <label className="um-form-label">IP Address Restriction</label>
-            <input
-              type="text"
-              className="um-input-text"
-              placeholder="e.g. 192.168.1.0/24 (Leave blank for unrestricted)"
-              value={ipRestriction}
-              onChange={(e) => setIpRestriction(e.target.value)}
-            />
-          </div>
-          {error && <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>{error}</div>}
-        </div>
-        <div className="um-modal-footer">
-          <button type="button" className="um-btn-link-action" onClick={onClose}>Cancel</button>
-          <button
-            type="button"
-            className="um-btn-modal-save"
-            disabled={saving}
-            onClick={handleApply}
-          >
-            {saving ? 'Saving…' : 'Apply Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function UserManagement() {
   const navigate = useNavigate();
@@ -153,7 +76,7 @@ export default function UserManagement() {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDomainModal, setShowDomainModal] = useState(false);
-  const [showRestrictionsModal, setShowRestrictionsModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   // Allowed Domains & OTP Verification state
   const [allowedDomains, setAllowedDomains] = useState([]);
@@ -531,31 +454,41 @@ export default function UserManagement() {
       showToast('CLIENT cannot be deleted');
       return;
     }
-    if (window.confirm(`Are you sure you want to delete RECRUITER "${target?.name || 'this user'}"?`)) {
-      try {
-        await userManagementService.deleteUsers([userId]);
-        setUsers((prev) => prev.filter((u) => u.id !== userId));
-        setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
-        showToast(`RECRUITER "${target?.name || ''}" deleted successfully.`);
-      } catch (err) {
-        showToast(err?.message || 'Failed to delete user');
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete User',
+      message: `Are you sure you want to delete RECRUITER "${target?.name || 'this user'}"?`,
+      onConfirm: async () => {
+        try {
+          await userManagementService.deleteUsers([userId]);
+          setUsers((prev) => prev.filter((u) => u.id !== userId));
+          setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
+          showToast(`RECRUITER "${target?.name || ''}" deleted successfully.`);
+        } catch (err) {
+          showToast(err?.message || 'Failed to delete user');
+        }
       }
-    }
+    });
   };
 
   // Delete Selected Users
   const handleDeleteSelected = async () => {
     if (selectedUserIds.length === 0) return;
-    if (window.confirm(`Are you sure you want to remove ${selectedUserIds.length} RECRUITER(s)?`)) {
-      try {
-        await userManagementService.deleteUsers(selectedUserIds);
-        setUsers((prev) => prev.filter((u) => !selectedUserIds.includes(u.id)));
-        setSelectedUserIds([]);
-        showToast('Selected user(s) removed successfully.');
-      } catch (err) {
-        showToast(err?.message || 'Failed to delete users');
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Selected Users',
+      message: `Are you sure you want to remove ${selectedUserIds.length} RECRUITER(s)?`,
+      onConfirm: async () => {
+        try {
+          await userManagementService.deleteUsers(selectedUserIds);
+          setUsers((prev) => prev.filter((u) => !selectedUserIds.includes(u.id)));
+          setSelectedUserIds([]);
+          showToast('Selected user(s) removed successfully.');
+        } catch (err) {
+          showToast(err?.message || 'Failed to delete users');
+        }
       }
-    }
+    });
   };
 
   // --- Allowed Domain Flow: First verify OTP -> then enter new domain ---
@@ -1195,15 +1128,6 @@ export default function UserManagement() {
 
         {/* Action & Filter Toolbar */}
         <div className="um-table-toolbar">
-          <div>
-            <button
-              type="button"
-              className="um-btn-outline"
-              onClick={() => setShowRestrictionsModal(true)}
-            >
-              Change Restrictions
-            </button>
-          </div>
 
           <div className="um-search-container">
             <input
@@ -1231,21 +1155,7 @@ export default function UserManagement() {
               {selectedUserIds.length} user{selectedUserIds.length > 1 ? 's' : ''} selected
             </span>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                type="button"
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #475569',
-                  color: '#ffffff',
-                  padding: '5px 12px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
-                onClick={() => setShowRestrictionsModal(true)}
-              >
-                Change Restrictions
-              </button>
+              
               <button
                 type="button"
                 style={{
@@ -2003,17 +1913,33 @@ export default function UserManagement() {
           </div>
         )}
 
-        {/* --- CHANGE RESTRICTIONS MODAL --- */}
-        {showRestrictionsModal && (
-          <ChangeRestrictionsModal
-            isOpen={showRestrictionsModal}
-            onClose={() => setShowRestrictionsModal(false)}
-            selectedIds={selectedUserIds}
-            onSaved={() => {
-              showToast('Restrictions updated successfully.');
-              fetchUsers();
-            }}
-          />
+
+        {/* --- CONFIRMATION MODAL --- */}
+        {confirmModal.isOpen && (
+          <div className="um-modal-overlay" onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}>
+            <div className="um-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+              <div className="um-modal-header">
+                <h2 className="um-modal-title">{confirmModal.title}</h2>
+                <button type="button" className="um-modal-close-btn" onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}>
+                  <FiX size={20} />
+                </button>
+              </div>
+              <div className="um-modal-body">
+                <p style={{ fontSize: 14, color: '#334155' }}>{confirmModal.message}</p>
+              </div>
+              <div className="um-modal-footer">
+                <button type="button" className="um-btn-link-action" onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}>
+                  Cancel
+                </button>
+                <button type="button" className="um-btn-modal-save" style={{ backgroundColor: '#ef4444' }} onClick={() => {
+                  if (confirmModal.onConfirm) confirmModal.onConfirm();
+                  setConfirmModal({ ...confirmModal, isOpen: false });
+                }}>
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
         )}
         </>)}
       </div>

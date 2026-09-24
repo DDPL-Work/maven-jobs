@@ -71,6 +71,7 @@ import ManageQuota from "./pages/employer/features/manageQuota/ManageQuota";
 import ManageJobsResponses from "./pages/employer/features/jobs/ManageJobsResponses";
 import JobResponsesDetail from "./pages/employer/features/jobs/JobResponsesDetail";
 import CandidateFullProfile from "./pages/employer/features/jobs/CandidateFullProfile";
+import ProductSettings from "./pages/employer/features/productSettings/ProductSettings";
 import LearningCenter from "./pages/employer/features/learning/LearningCenter";
 import PublicProfileByShareId from "./pages/candidates/features/profile/PublicProfileByShareId";
 import PublicCandidateProfile from "./pages/candidates/features/profile/PublicCandidateProfile";
@@ -249,6 +250,8 @@ function AppContent() {
         <Route path="/employer-dashboard/manage-users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />
         <Route path="/manage-quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/manage-quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
+        <Route path="/product-settings" element={<ProtectedEmployerRoute><ProductSettings /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/product-settings" element={<ProtectedEmployerRoute><ProductSettings /></ProtectedEmployerRoute>} />
         <Route path="/employer/jobs-responses" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><ManageJobsResponses /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/jobs-responses" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><ManageJobsResponses /></ProtectedEmployerRoute>} />
         <Route path="/employer/job-responses/:jobId" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><JobResponsesDetail /></ProtectedEmployerRoute>} />

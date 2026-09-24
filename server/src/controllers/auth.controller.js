@@ -23,6 +23,7 @@ const {
   validateSession,
 } = require("../services/auth.service");
 const { verifyGoogleToken } = require("../services/google.service");
+const UserLoginLog = require("../models/UserLoginLog");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -184,13 +185,15 @@ exports.refresh = asyncHandler(async (req, res) => {
 
 exports.logout = asyncHandler(async (req, res) => {
   const refreshToken = extractRefreshToken(req);
+  let loggedOutUser = null;
 
   if (refreshToken) {
     try {
-      await revokeSessionFromRefreshToken({
+      const session = await revokeSessionFromRefreshToken({
         refreshToken,
         reason: "logout",
       });
+      loggedOutUser = session?.user || null;
     } catch {
       // Intentionally ignore validation errors during logout so the cookie is still cleared.
     }
@@ -199,6 +202,7 @@ exports.logout = asyncHandler(async (req, res) => {
     if (accessToken) {
       try {
         const session = await validateSession({ accessToken });
+        loggedOutUser = session?.user || null;
         if (session?.session?.sessionId) {
           await revokeSession({
             sessionId: session.session.sessionId,
@@ -208,6 +212,26 @@ exports.logout = asyncHandler(async (req, res) => {
       } catch {
         // Intentionally ignore validation errors during logout so the client can still clear local state.
       }
+    }
+  }
+
+  // Log logout event for CLIENT/RECRUITER (fire-and-forget)
+  if (loggedOutUser && ["CLIENT", "RECRUITER"].includes(loggedOutUser.role) && loggedOutUser.companyId) {
+    const fullUser = await User.findById(loggedOutUser._id || loggedOutUser.id).select("name email role companyId").lean().catch(() => null);
+    if (fullUser) {
+      UserLoginLog.create({
+        userId: fullUser._id,
+        companyId: fullUser.companyId,
+        userName: fullUser.name || "",
+        userEmail: fullUser.email || "",
+        role: fullUser.role,
+        event: "LOGOUT",
+        logoutTime: new Date(),
+        ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+        userAgent: req.headers["user-agent"] || "",
+        platform: "WEB",
+        timestamp: new Date(),
+      }).catch(() => {}); // ignore errors — don't break logout flow
     }
   }
 

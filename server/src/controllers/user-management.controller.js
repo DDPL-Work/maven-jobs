@@ -578,3 +578,98 @@ exports.updateSecuritySettings = asyncHandler(async (req, res) => {
     data: company.securitySettings
   });
 });
+
+exports.getProductSettings = asyncHandler(async (req, res) => {
+  const company = await Company.findById(req.user.companyId);
+  if (!company) throw createHttpError(404, "Company not found");
+
+  res.status(200).json({
+    success: true,
+    data: company.productSettings || {
+      resdex: {
+        allowSubuserResetLogin: true,
+        displayAvailableUsernames: true,
+      },
+      jobPosting: {
+        photos: [],
+        presentations: [],
+        videoUrls: [],
+        addresses: [],
+        emailIds: [],
+      },
+    },
+  });
+});
+
+exports.updateProductSettings = asyncHandler(async (req, res) => {
+  const company = await Company.findById(req.user.companyId);
+  if (!company) throw createHttpError(404, "Company not found");
+
+  const { resdex, jobPosting } = req.body;
+
+  if (!company.productSettings) {
+    company.productSettings = {
+      resdex: {
+        allowSubuserResetLogin: true,
+        displayAvailableUsernames: true,
+      },
+      jobPosting: {
+        photos: [],
+        presentations: [],
+        videoUrls: [],
+        addresses: [],
+        emailIds: [],
+      },
+    };
+  }
+
+  if (resdex) {
+    company.productSettings.resdex = {
+      ...company.productSettings.resdex,
+      ...resdex,
+    };
+  }
+
+  if (jobPosting) {
+    company.productSettings.jobPosting = {
+      ...company.productSettings.jobPosting,
+      ...jobPosting,
+    };
+  }
+
+  company.markModified("productSettings");
+  await company.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Product settings saved successfully",
+    data: company.productSettings,
+  });
+});
+
+exports.resetSubusersResdexLogin = asyncHandler(async (req, res) => {
+  const companyId = req.user.companyId;
+  const company = await Company.findById(companyId);
+  if (!company) throw createHttpError(404, "Company not found");
+
+  const User = require("../models/User");
+  const subusers = await User.find({
+    companyId,
+    role: { $in: ["RECRUITER", "CLIENT"] },
+  });
+
+  const UserLoginLog = require("../models/UserLoginLog");
+  await UserLoginLog.updateMany(
+    { companyId, event: "LOGIN", logoutTime: null },
+    { $set: { logoutTime: new Date(), logoutReason: "ADMIN_RESDEX_RESET" } }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Subuser(s) logged in Resdex have been reset successfully.",
+    data: {
+      affectedCount: subusers.length,
+    },
+  });
+});
+

@@ -125,6 +125,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Skip fetching candidate data on employer/client routes to prevent 401 errors
+    const path = window.location.pathname;
+    if (
+      path.startsWith('/employer') || 
+      path.startsWith('/manage-') ||
+      path.startsWith('/post-job') ||
+      path.startsWith('/company-profile') ||
+      path.startsWith('/buy-online') ||
+      path.startsWith('/resume-search') ||
+      path.startsWith('/resdex-requirements') ||
+      path.startsWith('/recruit') ||
+      path.startsWith('/review')
+    ) {
+      return;
+    }
+
     // Rely solely on HTTP-only cookies to validate the session
     authService.getMe().then((data) => {
       if (data?.user) {
