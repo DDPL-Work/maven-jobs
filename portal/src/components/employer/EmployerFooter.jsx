@@ -121,10 +121,10 @@ export default function EmployerFooter() {
               <FooterLink to="/maven-jobs/about">About Us</FooterLink>
               <FooterLink to="/employer-dashboard">Clients</FooterLink>
               <FooterLink to="/maven-jobs/careers">Careers</FooterLink>
-              <FooterLink to="/maven-jobs/terms">Terms & Conditions</FooterLink>
-              <FooterLink to="/maven-jobs/privacy">Privacy policy</FooterLink>
+              
               <FooterLink to="/employers/learning-center" target="_blank" rel="noopener noreferrer">Learning Center</FooterLink>
               <FooterLink to="/sitemap">Site Map</FooterLink>
+          <FooterLink to="/maven-jobs/zones">Find Your Zone</FooterLink>
             </div>
           </div>
 
@@ -144,6 +144,9 @@ export default function EmployerFooter() {
               <FooterLink to="/maven-jobs/summons">Summons and Notice</FooterLink>
               <FooterLink to="/maven-jobs/trust-safety">Trust and Safety</FooterLink>
               <FooterLink to="/maven-jobs/whitehat">Whitehat</FooterLink>
+              <FooterLink to="/maven-jobs/terms">Terms & Conditions</FooterLink>
+              <FooterLink to="/maven-jobs/privacy">Privacy policy</FooterLink>
+                  
             </div>
           </div>
         </div>

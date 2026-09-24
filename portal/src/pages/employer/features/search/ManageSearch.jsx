@@ -208,14 +208,14 @@ function SearchCard({ search, view, onOpen, onPin, onRename, onDuplicate, onDele
           <div className="ms-card-stat-value">{formatNumber(search.resultCount)}</div>
           <div className="ms-card-stat-label">Candidates</div>
         </div>
-        <div className="ms-card-stat">
+        {/* <div className="ms-card-stat">
           <div className="ms-card-stat-value">{Math.floor((search.timesUsed || 1) * 2.3)}</div>
           <div className="ms-card-stat-label">Profile Views</div>
         </div>
         <div className="ms-card-stat">
           <div className="ms-card-stat-value">{Math.max(1, Math.floor((search.timesUsed || 1) * 0.3))}</div>
           <div className="ms-card-stat-label">Interviews</div>
-        </div>
+        </div> */}
       </div>
       <div className="ms-card-chips">
         {visibleChips.map((s, i) => <span key={i} className="ms-chip" title={s}>{s}</span>)}
@@ -542,12 +542,14 @@ export default function ManageSearch() {
             </button>
           </div>
 
+          {searches.length > 0 && (
           <div className="ms-summary" ref={summaryRef}>
             <SummaryCard icon={FiBookmark} label="Saved Searches" value={computedStats.savedSearches} color="#2563eb" gradient="linear-gradient(90deg, #2563eb, #1e40af)" delay={0} />
             <SummaryCard icon={FiTrendingUp} label="Searches This Week" value={computedStats.searchesThisWeek} color="#059669" gradient="linear-gradient(90deg, #059669, #047857)" delay={1} />
             <SummaryCard icon={FiEye} label="Profiles Viewed" value={computedStats.profilesViewed} color="#7c3aed" gradient="linear-gradient(90deg, #7c3aed, #5b21b6)" delay={2} />
             <SummaryCard icon={PinIcon} label="Pinned" value={computedStats.successfulHires} color="#d97706" gradient="linear-gradient(90deg, #d97706, #b45309)" delay={3} />
           </div>
+          )}
 
           <div className="ms-layout">
             <aside className="ms-sidebar" aria-label="Search filters">
@@ -729,12 +731,11 @@ export default function ManageSearch() {
               )}
             </main>
 
+            {(computedInsights.topSkills.length > 0 || computedInsights.topLocations.length > 0) && (
             <aside className="ms-insights" aria-label="Search insights">
+              {computedInsights.topSkills.length > 0 && (
               <div className="ms-insight-card">
                 <h4 className="ms-insight-title"><FiBarChart2 size={14} /> Most Searched Skills</h4>
-                {computedInsights.topSkills.length === 0 ? (
-                  <p style={{ fontSize: '0.75rem', color: C.s400, fontStyle: 'italic' }}>No skills data yet</p>
-                ) : (
                   <div className="ms-insight-list">
                     {computedInsights.topSkills.map((skill, i) => {
                       const max = computedInsights.topSkills[0].count;
@@ -753,14 +754,12 @@ export default function ManageSearch() {
                       );
                     })}
                   </div>
-                )}
               </div>
+              )}
 
+              {computedInsights.topLocations.length > 0 && (
               <div className="ms-insight-card">
                 <h4 className="ms-insight-title"><FiMapPin size={14} /> Most Active Locations</h4>
-                {computedInsights.topLocations.length === 0 ? (
-                  <p style={{ fontSize: '0.75rem', color: C.s400, fontStyle: 'italic' }}>No location data yet</p>
-                ) : (
                   <div className="ms-insight-list">
                     {computedInsights.topLocations.map(loc => {
                       const max = computedInsights.topLocations[0].count;
@@ -778,10 +777,10 @@ export default function ManageSearch() {
                       );
                     })}
                   </div>
-                )}
               </div>
+              )}
 
-              <div className="ms-insight-card">
+              {/* <div className="ms-insight-card">
                 <h4 className="ms-insight-title"><FiZap size={14} /> Quick Actions</h4>
                 <div className="ms-quick-actions">
                   <button className="ms-quick-btn ms-quick-btn-primary" onClick={() => navigate('/resume-search')}>
@@ -794,8 +793,9 @@ export default function ManageSearch() {
                     <FiBell size={14} /> Manage Alerts
                   </button>
                 </div>
-              </div>
+              </div> */}
             </aside>
+            )}
           </div>
         </div>
       </EmployerLayout>

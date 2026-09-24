@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   FiChevronDown, FiChevronUp, FiSearch, FiRefreshCw,
   FiUsers, FiSlash, FiMoreVertical, FiChevronsLeft,
@@ -847,13 +847,16 @@ export default function ManageJobsResponses() {
 
                         {/* Title & Location & Tag */}
                         <div className="mjr-job-info">
-                          <span
+                          <Link
+                            to={`/employer/job-responses/${jobId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="mjr-job-title"
-                            onClick={() => handleOpenResponses(job)}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
                             title="Click to view candidate responses"
                           >
                             {job.title}
-                          </span>
+                          </Link>
                           <span className="mjr-job-location">{job.location}</span>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                             <span className="mjr-job-tag">{job.category}</span>
@@ -865,10 +868,12 @@ export default function ManageJobsResponses() {
 
                         {/* Middle Stats */}
                         <div className="mjr-job-stats">
-                          <div
+                          <Link
+                            to={`/employer/job-responses/${jobId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="mjr-stat-item"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleOpenResponses(job)}
+                            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
                             title="View responses"
                           >
                             <div className="mjr-stat-num-row">
@@ -878,7 +883,7 @@ export default function ManageJobsResponses() {
                               )}
                             </div>
                             <span className="mjr-stat-label">Total Responses</span>
-                          </div>
+                          </Link>
 
                           <div className="mjr-stat-item">
                             <span className="mjr-stat-number" style={{ color: '#0f172a' }}>
@@ -909,13 +914,15 @@ export default function ManageJobsResponses() {
                             {/* 3-Dots Row Action Dropdown Menu */}
                             {isMenuOpen && (
                               <div className="mjr-row-dropdown">
-                                <button
-                                  type="button"
+                                <Link
+                                  to={`/employer/job-responses/${jobId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                   className="mjr-row-action-btn"
-                                  onClick={() => handleOpenResponses(job)}
+                                  style={{ textDecoration: 'none', display: 'block', textAlign: 'left', color: 'inherit' }}
                                 >
                                   View Responses ({job.totalResponses ?? 0})
-                                </button>
+                                </Link>
                                 {job.status === 'closed' ? (
                                   <button
                                     type="button"

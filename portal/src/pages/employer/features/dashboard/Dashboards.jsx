@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { io } from "socket.io-client";
 import {
   FiBriefcase,
@@ -5380,12 +5380,11 @@ export default function EmployerProfile() {
                       {(aiTopCandidates || topMatches)
                         .slice(0, 3)
                         .map((c, i) => (
-                          <div
+                          <Link
                             key={c.id}
-                            onClick={() =>
-                              !c.isPlaceholder &&
-                              window.open(`/candidates/${c.id}`, "_blank")
-                            }
+                            to={!c.isPlaceholder ? `/candidates/${c.id}` : '#'}
+                            target={!c.isPlaceholder ? "_blank" : undefined}
+                            rel={!c.isPlaceholder ? "noopener noreferrer" : undefined}
                             style={{
                               display: "flex",
                               alignItems: "center",
@@ -5523,7 +5522,7 @@ export default function EmployerProfile() {
                             >
                               <FiMail size={15} />
                             </button>
-                          </div>
+                          </Link>
                         ))}
                       {(aiTopCandidates || topMatches).length > 0 && (
                         <div

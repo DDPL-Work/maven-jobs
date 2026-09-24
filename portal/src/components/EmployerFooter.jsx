@@ -34,6 +34,8 @@ export default function EmployerFooter() {
             <Link to="/maven-jobs/summons">Summons and Notice</Link>
             <Link to="/maven-jobs/trust-safety">Trust and Safety</Link>
             <Link to="/maven-jobs/whitehat">Whitehat</Link>
+            <Link to="/maven-jobs/zones">Find Your Zone</Link>
+
           </div>
           
           <div className="emp-footer-col">
@@ -50,7 +52,7 @@ export default function EmployerFooter() {
           
           <div className="emp-footer-sales-grid">
             <div className="emp-footer-sales-item">
-              <strong>North Zone</strong>
+              <strong><Link to="/maven-jobs/zones#north" style={{ color: 'inherit', textDecoration: 'none' }}>North Zone</Link></strong>
               <p>Toll Free: 1800 102 2558</p>
               <p>(10:00 AM to 6:00 PM)</p>
               <p>+91 - 9818882211</p>
@@ -58,7 +60,7 @@ export default function EmployerFooter() {
             </div>
 
             <div className="emp-footer-sales-item">
-              <strong>South Zone</strong>
+              <strong><Link to="/maven-jobs/zones#south" style={{ color: 'inherit', textDecoration: 'none' }}>South Zone</Link></strong>
               <p>Toll Free: 1800 102 2559</p>
               <p>(10:00 AM to 6:00 PM)</p>
               <p>+91 - 9818882212</p>
@@ -66,7 +68,7 @@ export default function EmployerFooter() {
             </div>
 
             <div className="emp-footer-sales-item">
-              <strong>East Zone</strong>
+              <strong><Link to="/maven-jobs/zones#east" style={{ color: 'inherit', textDecoration: 'none' }}>East Zone</Link></strong>
               <p>Toll Free: 1800 102 2560</p>
               <p>(10:00 AM to 6:00 PM)</p>
               <p>+91 - 9818882213</p>
@@ -74,7 +76,7 @@ export default function EmployerFooter() {
             </div>
 
             <div className="emp-footer-sales-item">
-              <strong>West Zone</strong>
+              <strong><Link to="/maven-jobs/zones#west" style={{ color: 'inherit', textDecoration: 'none' }}>West Zone</Link></strong>
               <p>Toll Free: 1800 102 2561</p>
               <p>(10:00 AM to 6:00 PM)</p>
               <p>+91 - 9818882214</p>

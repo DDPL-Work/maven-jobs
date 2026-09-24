@@ -652,6 +652,9 @@ const InfoBox = ({ children }) => (
 
 /* ─────────────────────── STEP 1: JOB DETAILS ─────────────────────── */
 function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
+  const typeParam = new URLSearchParams(window.location.search).get("type");
+  const entityName = typeParam === "internship" ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
+  
   const [selectedTypes, setSelectedTypes] = useState(data.jobTypes || []);
   const [selectedPerks, setSelectedPerks] = useState(data.perks || []);
 
@@ -697,7 +700,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
             }
           />
           <Input
-            label="Job Title"
+            label={`${entityName} Title`}
             required
             placeholder="e.g. Senior Product Manager"
             value={data.jobTitle || ""}
@@ -957,7 +960,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
       {/* Description */}
       <SectionCard
         icon={<FiFileText size={20} />}
-        title="Job Description"
+        title={`${entityName} Description`}
         subtitle="Tell candidates about the role, responsibilities, and what success looks like."
         accentColor="#002366"
       >
@@ -1951,6 +1954,8 @@ function StepScreening({ data, setData }) {
 
 /* ─────────────────────── STEP 4: REVIEW & LAUNCH ─────────────────────── */
 function StepReview({ data }) {
+  const typeParam = new URLSearchParams(window.location.search).get("type");
+  const entityName = typeParam === "internship" ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
   const ReviewRow = ({ label, value }) => (
     <div
       style={{
@@ -2076,7 +2081,7 @@ function StepReview({ data }) {
         accentColor="#002366"
       >
         <ReviewRow label="Company Name" value={data.companyName} />
-        <ReviewRow label="Job Title" value={data.jobTitle} />
+        <ReviewRow label={`${entityName} Title`} value={data.jobTitle} />
         <ReviewRow label="Industry" value={data.industry} />
         <ReviewRow label="Location" value={data.location} />
         <ReviewRow label="Job Type" value={(data.jobTypes || []).join(", ")} />
@@ -2147,6 +2152,8 @@ function StepReview({ data }) {
 
 /* ─────────────────────── PROGRESS BAR ─────────────────────── */
 function ProgressBar({ currentStep, totalSteps }) {
+  const typeParam = new URLSearchParams(window.location.search).get("type");
+  const entityName = typeParam === "internship" ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
   const progressRef = useRef(null);
   const pct = ((currentStep - 1) / (totalSteps - 1)) * 100;
 
@@ -2260,7 +2267,7 @@ function ProgressBar({ currentStep, totalSteps }) {
                       transition: "color 0.2s",
                     }}
                   >
-                    {step.label}
+                    {step.key === "job" ? `${entityName} Details` : step.label}
                   </div>
                 </div>
               </div>
@@ -2301,10 +2308,12 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const launchedRef = useRef(launched);
   launchedRef.current = launched;
 
-  // QUOTA CHECK LOGIC
   const location = useLocation();
   const typeParam = new URLSearchParams(location.search).get("type");
   const isSMB = typeParam === "management";
+  const isInternship = typeParam === "internship";
+  const isHot = typeParam === "hot";
+  const entityName = isInternship ? "Internship" : isHot ? "Hot Vacancy" : isSMB ? "SMB Job" : "Job";
   const jobTypeLabel = isSMB ? "SMB Job" : "Standard Job";
 
   const [quotaLoading, setQuotaLoading] = useState(true);
@@ -3168,7 +3177,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
                 }}
               >
                 <FiZap size={17} />{" "}
-                {submitting ? "Posting job..." : "Launch Job Campaign"}
+                {submitting ? `Posting ${entityName.toLowerCase()}...` : `Launch ${entityName} Campaign`}
               </button>
             )}
           </div>
