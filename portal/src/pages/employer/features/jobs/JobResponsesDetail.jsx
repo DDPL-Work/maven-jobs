@@ -1382,24 +1382,27 @@ export default function JobResponsesDetail() {
                         <div className="jrd-card-profile-col">
                           {/* Name & Recommended Badge */}
                           <div className="jrd-card-name-row">
-                            <span
+                            <Link
                               className="jrd-candidate-name jrd-candidate-name--link"
-                              onClick={() => {
+                              to={candidate.candidateId ? `/employer/candidate/${candidate.candidateId}${(() => {
+                                const query = new URLSearchParams();
+                                if (candidate.applicationId) query.set('applicationId', candidate.applicationId);
+                                if (jobId) query.set('jobId', jobId);
+                                return query.toString() ? `?${query.toString()}` : '';
+                              })()}` : '#'}
+                              target={candidate.candidateId ? '_blank' : undefined}
+                              rel={candidate.candidateId ? 'noopener noreferrer' : undefined}
+                              onClick={(e) => {
                                 handleMarkAsViewed(candidate.applicationId);
-                                if (candidate.candidateId) {
-                                  const query = new URLSearchParams();
-                                  if (candidate.applicationId) query.set('applicationId', candidate.applicationId);
-                                  if (jobId) query.set('jobId', jobId);
-                                  const qs = query.toString() ? `?${query.toString()}` : '';
-                                  window.open(`/employer/candidate/${candidate.candidateId}${qs}`, '_blank', 'noopener,noreferrer');
-                                } else {
+                                if (!candidate.candidateId) {
+                                  e.preventDefault();
                                   showToast(`No profile ID found for ${candidate.name}`);
                                 }
                               }}
                               title={`View full profile of ${candidate.name}`}
                             >
                               {candidate.name}
-                            </span>
+                            </Link>
                             {!candidate.isViewed && (
                               <span className="jrd-badge-new-response">New</span>
                             )}

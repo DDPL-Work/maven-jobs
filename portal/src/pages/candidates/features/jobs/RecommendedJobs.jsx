@@ -406,13 +406,13 @@ export default function RecommendedJobs({ onBack, recommendedJobs = {}, candidat
               const isApplied = appliedJobIds.includes(jobId) || Boolean(job.hasApplied);
 
               return (
-                <div 
+                <Link 
                   key={jobId} 
+                  to={job.id || job._id ? `/job/${job.id || job._id}` : '#'}
+                  target={job.id || job._id ? "_blank" : undefined}
+                  rel={job.id || job._id ? "noopener noreferrer" : undefined}
                   className={`rj-job-card ${selectedJobs.includes(jobId) ? 'selected' : ''} ${isApplied ? 'applied' : ''}`}
-                  onClick={() => {
-                    const jid = job.id || job._id;
-                    if (jid) window.open(`/job/${jid}`, "_blank", "noopener,noreferrer");
-                  }}
+                  style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                 >
                   <div className="rj-job-row">
                     <div className="rj-check-col">
@@ -493,7 +493,7 @@ export default function RecommendedJobs({ onBack, recommendedJobs = {}, candidat
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
               })
             )}

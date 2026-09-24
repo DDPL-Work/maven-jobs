@@ -31,6 +31,7 @@ import EmployerPrivacyPolicy from "./pages/employer/features/legal/EmployerPriva
 import SummonsAndNotice from "./pages/employer/features/legal/SummonsAndNotice";
 import TrustAndSafety from "./pages/employer/features/legal/TrustAndSafety";
 import Whitehat from "./pages/employer/features/legal/Whitehat";
+import ZoneMapPage from "./pages/employer/features/legal/ZoneMapPage";
 import SalaryInsights from "./pages/candidates/features/jobs/SalaryInsights";
 import Blogs from "./pages/candidates/features/blog/Blogs";
 import BlogAIRex from "./pages/candidates/features/blog/Blogsx";
@@ -172,6 +173,7 @@ function AppContent() {
         <Route path="/maven-jobs/summons" element={<SummonsAndNotice />} />
         <Route path="/maven-jobs/trust-safety" element={<TrustAndSafety />} />
         <Route path="/maven-jobs/whitehat" element={<Whitehat />} />
+        <Route path="/maven-jobs/zones" element={<ZoneMapPage />} />
         <Route path="/maven-jobs/:slug" element={<FooterPage />} />
 
         {/* --- Candidate Routes --- */}

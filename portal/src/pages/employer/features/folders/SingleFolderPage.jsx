@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiFolder, FiEdit2, FiTrash2, FiShare2, FiSearch, FiX, FiArrowLeft, FiUsers, FiBriefcase, FiMapPin, FiPhone, FiChevronDown, FiSmartphone, FiArrowRight, FiMail, FiSend, FiMessageSquare, FiCheck, FiUser, FiCopy, FiClock } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
@@ -344,9 +344,15 @@ export default function SingleFolderPage() {
                     </div>
                     <div className="jrd-card-profile-col">
                       <div className="jrd-card-name-row">
-                        <span className="jrd-candidate-name jrd-candidate-name--link" onClick={() => window.open(`/candidates/${candidate.userId || candidate.id}`, '_blank')}>
+                        <Link 
+                          className="jrd-candidate-name jrd-candidate-name--link" 
+                          to={`/candidates/${candidate.userId || candidate.id}`} 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: 'none' }}
+                        >
                           {candidate.name || 'Unknown Candidate'}
-                        </span>
+                        </Link>
                         {candidate.isNew && <span className="jrd-badge-new-response">New</span>}
                         {candidate.isRecommended && <span className="jrd-badge-recommended">Recommended</span>}
                       </div>

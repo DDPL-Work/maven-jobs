@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   FiHome, FiBriefcase, FiTrendingUp, FiMessageSquare, FiBell,
   FiChevronDown, FiChevronUp, FiSearch, FiGrid, FiSend, FiLogOut,
@@ -1017,11 +1017,11 @@ export default function EmployerHeader({
                       </div>
 
                       {/* Learning Center */}
-                      <button
-                        onClick={() => {
-                          setShowProfileSidebar(false);
-                          window.open('/employers/learning-center', '_blank', 'noopener,noreferrer');
-                        }}
+                      <Link
+                        to="/employers/learning-center"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setShowProfileSidebar(false)}
                         className="ep-sidebar-btn"
                         style={{
                           display: "flex",
@@ -1038,11 +1038,12 @@ export default function EmployerHeader({
                           cursor: "pointer",
                           textAlign: "left",
                           transition: "all 0.14s",
+                          textDecoration: "none"
                         }}
                       >
                         <FiBookOpen size={18} color="#64748b" />
                         <span>Learning Center</span>
-                      </button>
+                      </Link>
 
                       {/* Feedback */}
                       <button
