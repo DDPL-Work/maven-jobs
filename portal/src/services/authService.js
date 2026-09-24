@@ -373,9 +373,12 @@ const authService = {
     }
   },
 
-  getEmployerAnalytics: async (range = '12m') => {
+  getEmployerAnalytics: async (range = '12m', startDate = null, endDate = null) => {
     try {
-      const response = await api.get('/company-panel/analytics', { params: { range } });
+      const params = { range };
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      const response = await api.get('/company-panel/analytics', { params });
       return response.data;
     } catch {
       return { success: false, data: null };
@@ -1151,6 +1154,51 @@ const authService = {
       throw error.response?.data || { message: 'Failed to fetch similar candidates' };
     }
   },
+
+  getCompanyUsers: async () => {
+    try {
+      const response = await api.get('/company-panel/user-management/users');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch company users' };
+    }
+  },
+
+  forwardCandidateCV: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/resdex/forward-cv', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to forward CV' };
+    }
+  },
+
+  getSharedCVs: async () => {
+    try {
+      const response = await api.get('/company-panel/resdex/shared-cvs');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch shared CVs' };
+    }
+  },
+
+  setCandidateReminder: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/resdex/reminders', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to set reminder' };
+    }
+  },
+  
+  employerChangePassword: async (currentPassword, newPassword) => {
+    try {
+      const response = await api.patch('/company-panel/auth/change-password', { currentPassword, newPassword });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to change password' };
+    }
+  }
 };
 
 

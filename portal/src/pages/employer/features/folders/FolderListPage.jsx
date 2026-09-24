@@ -13,12 +13,15 @@ import {
   useFolders, useCreateFolder, useUpdateFolder, useDeleteFolder, useDuplicateFolder
 } from '../../../../hooks/useFolderQueries';
 import { useEmployerAuth } from '../../../../hooks/useEmployerAuth';
+import authService from '../../../../services/authService';
+import CandidateCard from '../../../../components/employer/CandidateCard';
 import './FolderListPage.css';
 
 const TABS = [
   { id: 'my-folders', label: 'My folders' },
   { id: 'shared-with-me', label: 'Folders shared with me' },
   { id: 'contacted-candidates', label: 'Contacted candidates' },
+  { id: 'cv-shared-with-me', label: 'CV shared with me' },
 ];
 
 const DATE_FILTERS = [
@@ -92,6 +95,24 @@ export default function FolderListPage() {
   const updateFolder = useUpdateFolder();
   const deleteFolder = useDeleteFolder();
   const duplicateFolder = useDuplicateFolder();
+
+  // Fetch Shared CVs
+  const [sharedCVs, setSharedCVs] = useState([]);
+  const [sharedCVsLoading, setSharedCVsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'cv-shared-with-me') {
+      setSharedCVsLoading(true);
+      authService.getSharedCVs()
+        .then(res => {
+          if (res && res.data) {
+            setSharedCVs(res.data);
+          }
+        })
+        .catch(err => console.error("Error fetching shared CVs:", err))
+        .finally(() => setSharedCVsLoading(false));
+    }
+  }, [activeTab]);
 
   // Filter server folders dynamically based on date filter (My Folders only)
   const filteredFolders = useMemo(() => {
@@ -252,13 +273,47 @@ export default function FolderListPage() {
           {/* Header row: Manage Folders & Create folder button */}
           <div className="flp-header">
             <h1 className="flp-title">Manage Folders</h1>
-            <button
-              type="button"
-              className="flp-create-folder-btn"
-              onClick={() => setShowCreate(true)}
-            >
-              Create folder
-            </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {/* Top Pagination Controls */}
+              <div className="flp-top-pagination">
+                <span>Show</span>
+                <select
+                  className="flp-page-size-select"
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                >
+                  <option value={20}>20</option>
+                  <option value={40}>40</option>
+                  <option value={60}>60</option>
+                  <option value={100}>100</option>
+                </select>
+
+                <button type="button" className="flp-nav-arrow" disabled title="First page">
+                  &laquo;
+                </button>
+                <button type="button" className="flp-nav-arrow" disabled title="Previous page">
+                  &lsaquo;
+                </button>
+                <div className="flp-page-badge">
+                  Page 1 of 1
+                </div>
+                <button type="button" className="flp-nav-arrow" disabled title="Next page">
+                  &rsaquo;
+                </button>
+                <button type="button" className="flp-nav-arrow" disabled title="Last page">
+                  &raquo;
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="flp-create-folder-btn"
+                onClick={() => setShowCreate(true)}
+              >
+                Create folder
+              </button>
+            </div>
           </div>
 
           {/* Main layout (full-width when on Contacted candidates tab) */}
@@ -337,36 +392,6 @@ export default function FolderListPage() {
                   ))}
                 </div>
 
-                {/* Top Pagination Controls */}
-                <div className="flp-top-pagination">
-                  <span>Show</span>
-                  <select
-                    className="flp-page-size-select"
-                    value={pageSize}
-                    onChange={(e) => setPageSize(Number(e.target.value))}
-                  >
-                    <option value={20}>20</option>
-                    <option value={40}>40</option>
-                    <option value={60}>60</option>
-                    <option value={100}>100</option>
-                  </select>
-
-                  <button type="button" className="flp-nav-arrow" disabled title="First page">
-                    &laquo;
-                  </button>
-                  <button type="button" className="flp-nav-arrow" disabled title="Previous page">
-                    &lsaquo;
-                  </button>
-                  <div className="flp-page-badge">
-                    Page 1 of 1
-                  </div>
-                  <button type="button" className="flp-nav-arrow" disabled title="Next page">
-                    &rsaquo;
-                  </button>
-                  <button type="button" className="flp-nav-arrow" disabled title="Last page">
-                    &raquo;
-                  </button>
-                </div>
               </div>
 
               {/* ─────────────────────────────────────────────────────────────
@@ -807,6 +832,126 @@ export default function FolderListPage() {
                       </button>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* ─────────────────────────────────────────────────────────────
+                  TAB 4: CV shared with me
+                 ───────────────────────────────────────────────────────────── */}
+              {activeTab === 'cv-shared-with-me' && (
+                <div className="flp-tab-panel">
+                  {sharedCVsLoading ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>Loading...</div>
+                  ) : sharedCVs.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      {sharedCVs.map((cv) => {
+                        const c = cv.candidateId || {};
+                        const p = cv.profileId || {};
+                        const candidateData = {
+                          userId: c._id,
+                          name: c.name || "Unknown Candidate",
+                          email: c.email,
+                          phone: c.phone,
+                          avatar: c.avatar,
+                          profilePic: c.profilePic,
+                          
+                          currentTitle: p.currentTitle || "",
+                          headline: p.headline || "",
+                          currentCompany: p.currentCompany || "",
+                          currentCity: p.currentCity || "",
+                          totalExperience: p.totalExperience,
+                          expectedSalary: p.expectedSalary,
+                          resume: cv.isResumeAttached ? p.resume : null,
+                          skills: p.skills || [],
+                          education: p.education || [],
+                        };
+
+                        const customFooter = (
+                          <div style={{ 
+                            background: '#f8fafc', padding: 12, borderRadius: 8, 
+                            border: '1px solid #e2e8f0', display: 'flex', 
+                            justifyContent: 'space-between', alignItems: 'center' 
+                          }}>
+                            <div style={{ fontSize: '0.85rem', color: '#475569' }}>
+                              <div><strong>Forwarded by:</strong> {cv.senderId?.name || cv.senderId?.email || "Unknown"}</div>
+                              <div style={{ marginTop: 2 }}><strong>Date:</strong> {new Date(cv.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            {cv.isResumeAttached && (
+                              <div style={{ 
+                                background: '#eef2ff', color: '#4338ca', 
+                                padding: '4px 10px', borderRadius: 99, 
+                                fontSize: '0.75rem', fontWeight: 600 
+                              }}>
+                                Resume Attached
+                              </div>
+                            )}
+                          </div>
+                        );
+
+                        return (
+                          <CandidateCard
+                            key={cv._id}
+                            candidate={candidateData}
+                            profileQueryParams={`fromSharedCV=true&isResumeAttached=${cv.isResumeAttached}`}
+                            customFooter={customFooter}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flp-shared-empty-card">
+                      <svg width="280" height="200" viewBox="0 0 280 200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 18px', display: 'block' }}>
+                        <path d="M70 120C50 70 90 20 160 30C230 40 240 100 220 140C200 180 100 170 70 120Z" fill="#fef3c7" opacity="0.65" />
+                        <g opacity="0.85">
+                          <rect x="175" y="85" width="8" height="65" rx="2" fill="#d97706" opacity="0.5" />
+                          <rect x="195" y="85" width="8" height="65" rx="2" fill="#d97706" opacity="0.5" />
+                          <rect x="215" y="85" width="8" height="65" rx="2" fill="#d97706" opacity="0.5" />
+                          <rect x="235" y="85" width="8" height="65" rx="2" fill="#d97706" opacity="0.5" />
+                          <rect x="170" y="100" width="75" height="6" rx="1.5" fill="#b45309" opacity="0.6" />
+                          <rect x="170" y="130" width="75" height="6" rx="1.5" fill="#b45309" opacity="0.6" />
+                        </g>
+                        <path d="M90 142H106L103 158H93L90 142Z" fill="#14b8a6" />
+                        <ellipse cx="98" cy="142" rx="8" ry="2" fill="#0d9488" />
+                        <path d="M98 142C92 135 84 136 85 128C88 128 95 134 98 142Z" fill="#10b981" />
+                        <path d="M98 142C102 133 112 134 110 126C106 126 100 133 98 142Z" fill="#059669" />
+                        <path d="M98 142C96 130 100 122 98 118C96 122 96 132 98 142Z" fill="#34d399" />
+                        <rect x="122" y="125" width="40" height="32" rx="4" fill="#e11d48" />
+                        <rect x="122" y="123" width="40" height="6" rx="3" fill="#f43f5e" />
+                        <path d="M205 135C200 135 195 140 195 148C195 156 200 160 208 160C215 160 220 155 220 148C220 143 218 139 214 136L216 130L211 133C209 133 207 134 205 135Z" fill="#1e293b" />
+                        <polygon points="208,134 205,127 203,134" fill="#1e293b" />
+                        <polygon points="214,134 212,127 210,134" fill="#1e293b" />
+                        <path d="M218 155C224 155 228 150 228 142C228 137 225 136 223 138" stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+                        <path d="M126 118L120 152H130L135 130L145 130L150 152H160L154 118Z" fill="#1e293b" />
+                        <ellipse cx="125" cy="154" rx="6" ry="2.5" fill="#0f172a" />
+                        <ellipse cx="155" cy="154" rx="6" ry="2.5" fill="#0f172a" />
+                        <path d="M125 90C125 85 155 85 155 90L157 122H123L125 90Z" fill="#0284c7" />
+                        <path d="M136 88L140 94L144 88" fill="#ffffff" />
+                        <circle cx="132" cy="100" r="1.2" fill="#bae6fd" />
+                        <circle cx="140" cy="102" r="1.2" fill="#bae6fd" />
+                        <circle cx="148" cy="100" r="1.2" fill="#bae6fd" />
+                        <circle cx="135" cy="112" r="1.2" fill="#bae6fd" />
+                        <circle cx="145" cy="112" r="1.2" fill="#bae6fd" />
+                        <path d="M125 96L134 108L138 98" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M155 96L146 108L142 98" stroke="#0284c7" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                        <ellipse cx="137" cy="94" rx="3" ry="4" fill="#fcd34d" />
+                        <ellipse cx="143" cy="94" rx="3" ry="4" fill="#fcd34d" />
+                        <circle cx="140" cy="80" r="8" fill="#fcd34d" />
+                        <ellipse cx="140" cy="74" rx="10" ry="8" fill="#1e293b" />
+                        <circle cx="140" cy="65" r="5" fill="#1e293b" />
+                        <circle cx="137" cy="79" r="1" fill="#0f172a" />
+                        <circle cx="143" cy="79" r="1" fill="#0f172a" />
+                        <path d="M138 83Q140 84 142 83" stroke="#0f172a" strokeWidth="0.8" fill="none" />
+                        <ellipse cx="145" cy="162" rx="65" ry="3.5" fill="#e2e8f0" />
+                      </svg>
+
+                      <h2 className="flp-shared-empty-title">
+                        Oops! No CVs have been shared with you
+                      </h2>
+                      <p className="flp-shared-empty-desc">
+                        When someone forwards a candidate to you, you can access their CVs here.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </main>

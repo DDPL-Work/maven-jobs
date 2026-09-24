@@ -44,6 +44,7 @@ const smsService = require("../services/sms.service");
 const emailService = require("../services/email.service");
 const RegistrationOTP = require("../models/RegistrationOTP");
 const CompanySubUser = require("../models/CompanySubUser");
+const UserLoginLog = require("../models/UserLoginLog");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -408,6 +409,22 @@ exports.login = asyncHandler(async (req, res) => {
     },
     company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
   });
+
+  // Log login event (fire-and-forget)
+  UserLoginLog.create({
+    userId: user._id,
+    companyId: company._id,
+    userName: user.name || "",
+    userEmail: user.email || "",
+    role: user.role,
+    event: "LOGIN",
+    loginTime: new Date(),
+    sessionId: tokenPair.sessionId || "",
+    ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+    userAgent: req.headers["user-agent"] || "",
+    platform: "WEB",
+    timestamp: new Date(),
+  }).catch(() => {}); // ignore errors — don't break login flow
 });
 
 exports.sendMobileOtp = asyncHandler(async (req, res) => {
@@ -2030,32 +2047,51 @@ const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "K" : n;
 exports.getAnalytics = asyncHandler(async (req, res) => {
   const { company } = await resolveClientUserAndCompany(req.user._id);
   const range = req.query.range || "12m";
+  const startParam = req.query.startDate;
+  const endParam = req.query.endDate;
 
-  let cutoffDate = null;
+  let startDate = null;
+  let endDate = null;
   let trailingMonths = 12;
-  switch (range) {
-    case "7d":
-      cutoffDate = new Date(Date.now() - 7 * 86400000);
-      trailingMonths = 1;
-      break;
-    case "30d":
-      cutoffDate = new Date(Date.now() - 30 * 86400000);
-      trailingMonths = 3;
-      break;
-    case "90d":
-      cutoffDate = new Date(Date.now() - 90 * 86400000);
-      trailingMonths = 6;
-      break;
+
+  if (range === "7d") {
+    startDate = new Date(Date.now() - 7 * 86400000);
+    trailingMonths = 1;
+  } else if (range === "30d") {
+    startDate = new Date(Date.now() - 30 * 86400000);
+    trailingMonths = 3;
+  } else if (range === "90d") {
+    startDate = new Date(Date.now() - 90 * 86400000);
+    trailingMonths = 6;
+  } else if (range === "custom" && startParam && endParam) {
+    startDate = new Date(startParam);
+    endDate = new Date(endParam);
+    endDate.setHours(23, 59, 59, 999);
+    const diffDays = (endDate - startDate) / 86400000;
+    if (diffDays <= 31) trailingMonths = 1;
+    else if (diffDays <= 100) trailingMonths = 3;
+    else trailingMonths = 12;
   }
 
   const isRecruiter = req.user.role === "RECRUITER";
   const jobQuery = { companyId: company._id };
   const appQuery = { companyId: company._id };
   const deptMatch = { companyId: company._id };
-  if (cutoffDate) {
-    jobQuery.createdAt = { $gte: cutoffDate };
-    appQuery.createdAt = { $gte: cutoffDate };
-    deptMatch.createdAt = { $gte: cutoffDate };
+  
+  if (startDate || endDate) {
+    jobQuery.createdAt = {};
+    appQuery.createdAt = {};
+    deptMatch.createdAt = {};
+    if (startDate) {
+      jobQuery.createdAt.$gte = startDate;
+      appQuery.createdAt.$gte = startDate;
+      deptMatch.createdAt.$gte = startDate;
+    }
+    if (endDate) {
+      jobQuery.createdAt.$lte = endDate;
+      appQuery.createdAt.$lte = endDate;
+      deptMatch.createdAt.$lte = endDate;
+    }
   }
 
   // For recruiters, scope to only their own jobs
@@ -2661,3 +2697,21 @@ exports.updateQuotaManagement = asyncHandler(async (req, res) => {
     message: "Quota configuration saved successfully"
   });
 });
+
+exports.changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    throw createHttpError(400, "Please provide current and new password");
+  }
+  const user = await User.findById(req.user._id).select("+password");
+  if (!user) throw createHttpError(404, "User not found");
+  
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) throw createHttpError(401, "Invalid current password");
+  
+  user.password = await bcrypt.hash(newPassword, 10);
+  await user.save();
+  
+  res.status(200).json({ success: true, message: "Password updated successfully" });
+});
+

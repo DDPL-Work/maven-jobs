@@ -51,6 +51,32 @@ const companySchema = new mongoose.Schema(
       useOtpOnPatternChange: { type: Boolean, default: false },
     },
 
+    // Product Settings (Resdex & Job Posting preferences)
+    productSettings: {
+      resdex: {
+        allowSubuserResetLogin: { type: Boolean, default: true },
+        displayAvailableUsernames: { type: Boolean, default: true },
+      },
+      jobPosting: {
+        photos: [{ type: String }],
+        presentations: [{ title: String, url: String, uploadedAt: { type: Date, default: Date.now } }],
+        videoUrls: [{ title: String, url: String }],
+        addresses: [{
+          title: String,
+          addressLine: String,
+          city: String,
+          state: String,
+          pincode: String,
+          isDefault: { type: Boolean, default: false }
+        }],
+        emailIds: [{
+          email: String,
+          label: String,
+          isDefault: { type: Boolean, default: false }
+        }]
+      }
+    },
+
     // ✅ NEW CONTENT FIELDS
     about: String,
     mission: String,

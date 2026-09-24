@@ -102,6 +102,24 @@ export default function ResdexReport() {
   const handleTabChange = (tabId) => {
     setSearchParams({ tab: tabId });
     setGeneratedReport(null);
+
+    // ── Reset all common/shared filters so they never bleed between tabs ──
+    setFromDate(yesterdayStr);
+    setToDate(yesterdayStr);
+    setDisplayFormat("browser");
+    setOneClickPeriod("yesterday");
+    setSelectedUserIds(companyUsers.map((u) => u.id)); // re-select all users
+    setUserDropdownOpen(false);
+    setSearchTerm("");
+
+    // Reset tab-specific filters too
+    setSearchFilterKeyword("");
+    setLoginSortType("date_wise");
+    setDbReportType("Summary");
+    setUsageSubscriptionType("all");
+    setCallReportType("Summary");
+    setCommentsFolder("All Folders");
+    setContactChannel("All Channels");
   };
 
   // Company and Session state
@@ -169,11 +187,11 @@ export default function ResdexReport() {
   const [callFields, setCallFields] = useState({
     cvViews: true,
     cvViewsAppPercent: true,
-    callsInitiated: false,
-    callsConnected: false,
-    uniqueJobSeekers: false,
-    totalDuration: false,
-    avgDuration: false,
+    callsInitiated: true,
+    callsConnected: true,
+    uniqueJobSeekers: true,
+    totalDuration: true,
+    avgDuration: true,
   });
 
   // Auto Emailing Subscriptions state per tab
@@ -483,6 +501,8 @@ export default function ResdexReport() {
         userIds: selectedUserIds.join(","),
         keyword: searchFilterKeyword,
         sortType: loginSortType,
+        reportType: activeTab === "database-usage" || activeTab === "call-report" ? (activeTab === "call-report" ? callReportType : dbReportType) : undefined,
+        subscriptionType: activeTab === "database-usage" ? usageSubscriptionType : undefined,
       };
 
       const res = await authService.getResdexReport(params);
@@ -500,15 +520,38 @@ export default function ResdexReport() {
       if (activeTab === "database-usage") {
         const keepIndices = [0]; // always keep Subuser
         if (dbFields.searches) keepIndices.push(1);
-        if (dbFields.totalCvViews) keepIndices.push(2);
-        if (dbFields.totalCvExcel) keepIndices.push(3);
-        if (dbFields.nvites) keepIndices.push(4);
-        if (dbFields.resumesForwarded) keepIndices.push(5);
-        if (dbFields.smsSent) keepIndices.push(6);
-        if (dbFields.viewPhone) keepIndices.push(7);
-        if (dbFields.totalCvViews || dbFields.viewPhone) keepIndices.push(8);
+        if (dbFields.totalCvExcel) keepIndices.push(2);
+        if (dbFields.nvites) keepIndices.push(3);
+        if (dbFields.resumesForwarded) keepIndices.push(4);
+        if (dbFields.smsSent) keepIndices.push(5);
+        if (dbFields.viewPhone) keepIndices.push(6);
+        if (dbFields.viewPhone) keepIndices.push(7); // Unique CV Views or View Phone
 
-        if (finalHeaders.length === 9) {
+        if (finalHeaders.length === 8) {
+          finalHeaders = finalHeaders.filter((_, i) => keepIndices.includes(i));
+          finalRows = finalRows.map(r => Array.isArray(r) ? r.filter((_, i) => keepIndices.includes(i)) : r);
+        }
+      }
+
+      if (activeTab === "call-report") {
+        if (finalHeaders.length === 4) {
+          const keepIndices = [0]; // always keep Subuser
+          if (callFields.cvViews) keepIndices.push(1);
+          if (callFields.cvViewsAppPercent) keepIndices.push(2);
+          if (callFields.callsInitiated || callFields.callsConnected) keepIndices.push(3);
+
+          finalHeaders = finalHeaders.filter((_, i) => keepIndices.includes(i));
+          finalRows = finalRows.map(r => Array.isArray(r) ? r.filter((_, i) => keepIndices.includes(i)) : r);
+        } else if (finalHeaders.length === 8) {
+          const keepIndices = [0]; // always keep Subuser
+          if (callFields.cvViews) keepIndices.push(1);
+          if (callFields.cvViewsAppPercent) keepIndices.push(2);
+          if (callFields.callsInitiated) keepIndices.push(3);
+          if (callFields.callsConnected) keepIndices.push(4);
+          if (callFields.uniqueJobSeekers) keepIndices.push(5);
+          if (callFields.totalDuration) keepIndices.push(6);
+          if (callFields.avgDuration) keepIndices.push(7);
+
           finalHeaders = finalHeaders.filter((_, i) => keepIndices.includes(i));
           finalRows = finalRows.map(r => Array.isArray(r) ? r.filter((_, i) => keepIndices.includes(i)) : r);
         }
@@ -906,71 +949,19 @@ export default function ResdexReport() {
                                     />
                                     NVites
                                   </label>
-                                   <label className="rxr-checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={dbFields.totalCvViews}
-                                      onChange={(e) =>
-                                        setDbFields({
-                                          ...dbFields,
-                                          totalCvViews: e.target.checked,
-                                        })
-                                      }
-                                    />
-                                    Total CV views
-                                  </label>
-                                  <label className="rxr-checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={dbFields.totalCvExcel}
-                                      onChange={(e) =>
-                                        setDbFields({
-                                          ...dbFields,
-                                          totalCvExcel: e.target.checked,
-                                        })
-                                      }
-                                    />
-                                    Total CVs downloaded
-                                  </label>
-                                  {/* <label className="rxr-checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={dbFields.resumeWord}
-                                      onChange={(e) =>
-                                        setDbFields({
-                                          ...dbFields,
-                                          resumeWord: e.target.checked,
-                                        })
-                                      }
-                                    />
-                                    Resume downloaded in Word
-                                  </label> 
-                                  <label className="rxr-checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={dbFields.duplicateCandidates}
-                                      onChange={(e) =>
-                                        setDbFields({
-                                          ...dbFields,
-                                          duplicateCandidates: e.target.checked,
-                                        })
-                                      }
-                                    />
-                                    Duplicate Candidates detected
-                                  </label>
-                                  <label className="rxr-checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={dbFields.cvAccess}
-                                      onChange={(e) =>
-                                        setDbFields({
-                                          ...dbFields,
-                                          cvAccess: e.target.checked,
-                                        })
-                                      }
-                                    />
-                                    CV access
-                                  </label>*/}
+                                        <label className="rxr-checkbox-label">
+                                          <input
+                                            type="checkbox"
+                                            checked={dbFields.totalCvExcel}
+                                            onChange={(e) =>
+                                              setDbFields({
+                                                ...dbFields,
+                                                totalCvExcel: e.target.checked,
+                                              })
+                                            }
+                                          />
+                                          Total CVs downloaded
+                                        </label>
                                 </div>
 
                                 {/* Column 2 */}
@@ -1168,7 +1159,7 @@ export default function ResdexReport() {
                                   />
                                   % of CV Views on App
                                 </label>
-                                {/* <label className="rxr-checkbox-label">
+                                <label className="rxr-checkbox-label">
                                   <input
                                     type="checkbox"
                                     checked={callFields.callsInitiated}
@@ -1179,60 +1170,8 @@ export default function ResdexReport() {
                                       })
                                     }
                                   />
-                                  Total calls initiated
-                                </label> */}
-                                <label className="rxr-checkbox-label">
-                                  <input
-                                    type="checkbox"
-                                    checked={callFields.callsConnected}
-                                    onChange={(e) =>
-                                      setCallFields({
-                                        ...callFields,
-                                        callsConnected: e.target.checked,
-                                      })
-                                    }
-                                  />
                                   Total calls connected
                                 </label>
-                                {/* <label className="rxr-checkbox-label">
-                                  <input
-                                    type="checkbox"
-                                    checked={callFields.uniqueJobSeekers}
-                                    onChange={(e) =>
-                                      setCallFields({
-                                        ...callFields,
-                                        uniqueJobSeekers: e.target.checked,
-                                      })
-                                    }
-                                  />
-                                  Unique Job Seekers contacted
-                                </label> */}
-                                {/* <label className="rxr-checkbox-label">
-                                  <input
-                                    type="checkbox"
-                                    checked={callFields.totalDuration}
-                                    onChange={(e) =>
-                                      setCallFields({
-                                        ...callFields,
-                                        totalDuration: e.target.checked,
-                                      })
-                                    }
-                                  />
-                                  Total call duration(in mins)
-                                </label>
-                                <label className="rxr-checkbox-label">
-                                  <input
-                                    type="checkbox"
-                                    checked={callFields.avgDuration}
-                                    onChange={(e) =>
-                                      setCallFields({
-                                        ...callFields,
-                                        avgDuration: e.target.checked,
-                                      })
-                                    }
-                                  />
-                                  Average call duration(in mins)
-                                </label> */}
                               </div>
                             </div>
                           </div>

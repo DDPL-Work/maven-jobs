@@ -1,4 +1,6 @@
 const ResdexReportLog = require("../models/ResdexReportLog");
+const UserLoginLog = require("../models/UserLoginLog");
+
 const emailModule = require("../email");
 const logger = require("../config/logger");
 const XLSX = require("xlsx");
@@ -203,7 +205,7 @@ async function getResdexAggregatedData({
       headers: [
         "Subuser",
         "Total Searches",
-        "Total CV Views",
+        // "Total CV Views",
         "Total CVs Downloaded (in Resdex)",
         "NVites",
         "Resumes Forwarded",
@@ -214,7 +216,7 @@ async function getResdexAggregatedData({
       rows: finalRows.map((r) => [
         `${r.subuserName} | ${r.subuserEmail}`,
         r.searches,
-        r.cvViews,
+        // r.cvViews,
         r.excelDl,
         r.nvites,
         r.fwd,
@@ -227,12 +229,34 @@ async function getResdexAggregatedData({
   }
 
   if (tab === "user-login") {
-    const logs = await ResdexReportLog.find({
-      ...baseMatch,
-      actionType: "USER_LOGIN",
-    })
-      .sort(sortType === "subuser_wise" ? { subuserName: 1, actionDate: -1 } : { actionDate: -1 })
-      .limit(500);
+    const loginMatch = {
+      companyId,
+      event: "LOGIN",
+      timestamp: { $gte: start, $lte: end },
+    };
+
+    if (Array.isArray(userIds) && userIds.length > 0) {
+      loginMatch.userId = { $in: userIds };
+    }
+
+    const loginLogs = await UserLoginLog.find(loginMatch)
+      .sort(sortType === "subuser_wise" ? { userName: 1, timestamp: -1 } : { timestamp: -1 })
+      .limit(500)
+      .lean();
+
+    // For each login event, try to find the matching logout event by userId + sessionId
+    const sessionIds = loginLogs.map((l) => l.sessionId).filter(Boolean);
+    const logoutMap = {};
+    if (sessionIds.length > 0) {
+      const logoutLogs = await UserLoginLog.find({
+        companyId,
+        event: "LOGOUT",
+        sessionId: { $in: sessionIds },
+      }).lean();
+      logoutLogs.forEach((l) => {
+        if (l.sessionId) logoutMap[l.sessionId] = l;
+      });
+    }
 
     const formatDate = (d) => {
       if (!d) return "";
@@ -246,17 +270,34 @@ async function getResdexAggregatedData({
       return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
     };
 
-    return {
-      headers: ["Date", "Name", "Login Time", "Logout Time", "Usage in Min", "IP Address"],
-      rows: logs.map((l) => [
-        formatDate(l.loginTime || l.actionDate),
-        l.subuserName || "Recruiter",
-        formatTime(l.loginTime || l.actionDate),
-        formatTime(l.logoutTime),
-        l.sessionDurationMinutes ? String(l.sessionDurationMinutes) : "-",
+    const rows = loginLogs.map((l) => {
+      const matchedLogout = l.sessionId ? logoutMap[l.sessionId] : null;
+      const logoutTime = matchedLogout?.logoutTime || l.logoutTime || null;
+      let durationMin = l.sessionDurationMinutes || "-";
+      if (!durationMin || durationMin === "-") {
+        if (l.loginTime && logoutTime) {
+          const diffMs = new Date(logoutTime) - new Date(l.loginTime);
+          if (diffMs > 0) durationMin = Math.round(diffMs / 60000);
+        }
+      }
+
+      return [
+        formatDate(l.loginTime || l.timestamp),
+        `${l.userName || "Recruiter"} | ${l.userEmail || ""}`,
+        l.role || "-",
+        formatTime(l.loginTime || l.timestamp),
+        formatTime(logoutTime),
+        durationMin !== null && durationMin !== undefined && durationMin !== "-"
+          ? String(durationMin)
+          : "-",
         l.ipAddress || "-",
-      ]),
-      rawRows: logs,
+      ];
+    });
+
+    return {
+      headers: ["Date", "Name", "Role", "Login Time", "Logout Time", "Usage in Min", "IP Address"],
+      rows,
+      rawRows: loginLogs,
     };
   }
 
@@ -268,11 +309,46 @@ async function getResdexAggregatedData({
           _id: { $ifNull: ["$userId", "$subuserName"] },
           subuserName: { $first: "$subuserName" },
           subuserEmail: { $first: "$subuserEmail" },
-          views: { $sum: { $cond: [{ $eq: ["$actionType", "CV_VIEW"] }, 1, 0] } },
+          views: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$actionType",
+                    [
+                      "CV_VIEW",
+                      "CV_DOWNLOAD_EXCEL",
+                      "CV_DOWNLOAD_WORD",
+                      "RESUME_DOWNLOAD",
+                      "CV_DOWNLOAD",
+                    ],
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
           appViews: {
             $sum: {
               $cond: [
-                { $and: [{ $eq: ["$actionType", "CV_VIEW"] }, { $eq: ["$platform", "APP"] }] },
+                {
+                  $and: [
+                    {
+                      $in: [
+                        "$actionType",
+                        [
+                          "CV_VIEW",
+                          "CV_DOWNLOAD_EXCEL",
+                          "CV_DOWNLOAD_WORD",
+                          "RESUME_DOWNLOAD",
+                          "CV_DOWNLOAD",
+                        ],
+                      ],
+                    },
+                    { $eq: ["$platform", "APP"] },
+                  ],
+                },
                 1,
                 0,
               ],
@@ -337,21 +413,21 @@ async function getResdexAggregatedData({
         "Subuser",
         "Total CV Views (Web + App)",
         "% of CV Views on App",
-        "Total calls initiated",
         "Total calls connected",
-        "Unique Job Seekers contacted",
-        "Total call duration(in mins)",
-        "Average call duration(in mins)",
+        // "Total calls initiated",
+        // "Unique Job Seekers contacted",
+        // "Total call duration(in mins)",
+        // "Average call duration(in mins)",
       ],
       rows: rows.map((r) => [
         `${r.subuserName} | ${r.subuserEmail}`,
         r.views,
         r.appPct,
-        r.callsInit,
-        r.callsConn,
         r.uniqContacted,
-        r.totDuration,
-        r.avgDuration,
+        // r.callsInit,
+        // r.callsConn,
+        // r.totDuration,
+        // r.avgDuration,
       ]),
       rawRows: rows,
     };
@@ -459,6 +535,36 @@ function buildResdexReportExcel({ headers, rows, tab, period, start, end, compan
   } else {
     for (const r of rows) {
       data.push(r);
+    }
+
+    if (tab === "database-usage") {
+      const totalRow = ["Total"];
+      for (let colIdx = 1; colIdx < headers.length; colIdx++) {
+        let sum = 0;
+        let isNumeric = true;
+        let hasValue = false;
+        
+        for (const r of rows) {
+          const val = r[colIdx];
+          if (val === null || val === undefined || val === '') continue;
+          
+          const num = Number(val);
+          if (Number.isFinite(num)) {
+            sum += num;
+            hasValue = true;
+          } else {
+            isNumeric = false;
+            break;
+          }
+        }
+        
+        if (isNumeric && hasValue) {
+          totalRow.push(sum);
+        } else {
+          totalRow.push("");
+        }
+      }
+      data.push(totalRow);
     }
   }
 

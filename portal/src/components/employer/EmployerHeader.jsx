@@ -4,7 +4,8 @@ import {
   FiHome, FiBriefcase, FiTrendingUp, FiMessageSquare, FiBell,
   FiChevronDown, FiChevronUp, FiSearch, FiGrid, FiSend, FiLogOut,
   FiBarChart2, FiUsers, FiStar, FiFolder, FiFileText,
-  FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck, FiBookOpen, FiMessageCircle
+  FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck, FiBookOpen, FiMessageCircle,
+  FiEye, FiEyeOff
 } from 'react-icons/fi';
 import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
@@ -42,6 +43,9 @@ export default function EmployerHeader({
   const [cpConfirm, setCpConfirm] = useState("");
   const [cpMsg, setCpMsg] = useState(null);
   const [cpLoading, setCpLoading] = useState(false);
+  const [showCpCurrent, setShowCpCurrent] = useState(false);
+  const [showCpNew, setShowCpNew] = useState(false);
+  const [showCpConfirm, setShowCpConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -471,6 +475,7 @@ export default function EmployerHeader({
                           border: "none", background: "transparent",
                           color: "#1E293B", fontSize: 13, fontWeight: 600, fontFamily: C.dm,
                           cursor: "pointer", textAlign: "left",
+                          whiteSpace: "nowrap",
                           transition: "all 0.12s"
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = "#F1F5F9"; }}
@@ -757,7 +762,7 @@ export default function EmployerHeader({
                     </div>
 
                     {/* Credits Card (if available) */}
-                    {isSuperUser && creditData && (
+                    {/* {isSuperUser && creditData && (
                       <div style={{
                         margin: "14px 16px 4px",
                         padding: "12px 14px",
@@ -800,7 +805,7 @@ export default function EmployerHeader({
                           <FiShoppingCart size={11} /> Top Up
                         </button>
                       </div>
-                    )}
+                    )} */}
 
                     {/* Navigation Items */}
                     <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px", display: "flex", flexDirection: "column", gap: 3 }}>
@@ -915,17 +920,21 @@ export default function EmployerHeader({
                             <button
                               onClick={() => {
                                 setShowProfileSidebar(false);
-                                navigate("/employer-dashboard");
+                                navigate("/product-settings");
                               }}
                               className="ep-sidebar-subbtn"
                               style={{
                                 padding: "9px 12px",
                                 borderRadius: 8,
                                 border: "none",
-                                background: "transparent",
-                                color: "#334155",
+                                background: location.pathname.includes("product-settings")
+                                  ? "#e0f2fe"
+                                  : "transparent",
+                                color: location.pathname.includes("product-settings")
+                                  ? "#0284c7"
+                                  : "#334155",
                                 fontSize: 14,
-                                fontWeight: 500,
+                                fontWeight: location.pathname.includes("product-settings") ? 600 : 500,
                                 cursor: "pointer",
                                 textAlign: "left",
                                 transition: "all 0.14s",
@@ -1192,7 +1201,7 @@ export default function EmployerHeader({
                     )}
 
                     <form
-                      onSubmit={(e) => {
+                      onSubmit={async (e) => {
                         e.preventDefault();
                         setCpMsg(null);
                         if (!cpCurrent) {
@@ -1208,8 +1217,8 @@ export default function EmployerHeader({
                           return;
                         }
                         setCpLoading(true);
-                        setTimeout(() => {
-                          setCpLoading(false);
+                        try {
+                          await authService.employerChangePassword(cpCurrent, cpNew);
                           setCpMsg({ type: "success", text: "Password updated successfully!" });
                           setTimeout(() => {
                             setShowChangePassword(false);
@@ -1218,7 +1227,11 @@ export default function EmployerHeader({
                             setCpConfirm("");
                             setCpMsg(null);
                           }, 1200);
-                        }, 500);
+                        } catch (err) {
+                          setCpMsg({ type: "error", text: err?.message || "Failed to change password." });
+                        } finally {
+                          setCpLoading(false);
+                        }
                       }}
                       style={{ display: "flex", flexDirection: "column", gap: 14 }}
                     >
@@ -1226,64 +1239,127 @@ export default function EmployerHeader({
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
                           Current Password
                         </label>
-                        <input
-                          type="password"
-                          required
-                          value={cpCurrent}
-                          onChange={(e) => setCpCurrent(e.target.value)}
-                          placeholder="Enter current password"
-                          style={{
-                            width: "100%",
-                            padding: "10px 12px",
-                            borderRadius: 8,
-                            border: `1px solid ${C.s300}`,
-                            fontSize: 13,
-                            outline: "none",
-                            boxSizing: "border-box",
-                          }}
-                        />
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type={showCpCurrent ? "text" : "password"}
+                            required
+                            value={cpCurrent}
+                            onChange={(e) => setCpCurrent(e.target.value)}
+                            placeholder="Enter current password"
+                            style={{
+                              width: "100%",
+                              padding: "10px 40px 10px 12px",
+                              borderRadius: 8,
+                              border: `1px solid ${C.s300}`,
+                              fontSize: 13,
+                              outline: "none",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCpCurrent(!showCpCurrent)}
+                            style={{
+                              position: "absolute",
+                              right: 12,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#64748b",
+                              padding: 0,
+                              display: "flex",
+                              alignItems: "center"
+                            }}
+                          >
+                            {showCpCurrent ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
                           New Password
                         </label>
-                        <input
-                          type="password"
-                          required
-                          value={cpNew}
-                          onChange={(e) => setCpNew(e.target.value)}
-                          placeholder="At least 6 characters"
-                          style={{
-                            width: "100%",
-                            padding: "10px 12px",
-                            borderRadius: 8,
-                            border: `1px solid ${C.s300}`,
-                            fontSize: 13,
-                            outline: "none",
-                            boxSizing: "border-box",
-                          }}
-                        />
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type={showCpNew ? "text" : "password"}
+                            required
+                            value={cpNew}
+                            onChange={(e) => setCpNew(e.target.value)}
+                            placeholder="At least 6 characters"
+                            style={{
+                              width: "100%",
+                              padding: "10px 40px 10px 12px",
+                              borderRadius: 8,
+                              border: `1px solid ${C.s300}`,
+                              fontSize: 13,
+                              outline: "none",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCpNew(!showCpNew)}
+                            style={{
+                              position: "absolute",
+                              right: 12,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#64748b",
+                              padding: 0,
+                              display: "flex",
+                              alignItems: "center"
+                            }}
+                          >
+                            {showCpNew ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
                           Confirm New Password
                         </label>
-                        <input
-                          type="password"
-                          required
-                          value={cpConfirm}
-                          onChange={(e) => setCpConfirm(e.target.value)}
-                          placeholder="Re-enter new password"
-                          style={{
-                            width: "100%",
-                            padding: "10px 12px",
-                            borderRadius: 8,
-                            border: `1px solid ${C.s300}`,
-                            fontSize: 13,
-                            outline: "none",
-                            boxSizing: "border-box",
-                          }}
-                        />
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type={showCpConfirm ? "text" : "password"}
+                            required
+                            value={cpConfirm}
+                            onChange={(e) => setCpConfirm(e.target.value)}
+                            placeholder="Re-enter new password"
+                            style={{
+                              width: "100%",
+                              padding: "10px 40px 10px 12px",
+                              borderRadius: 8,
+                              border: `1px solid ${C.s300}`,
+                              fontSize: 13,
+                              outline: "none",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCpConfirm(!showCpConfirm)}
+                            style={{
+                              position: "absolute",
+                              right: 12,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#64748b",
+                              padding: 0,
+                              display: "flex",
+                              alignItems: "center"
+                            }}
+                          >
+                            {showCpConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                          </button>
+                        </div>
                       </div>
 
                       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>

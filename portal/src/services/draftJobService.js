@@ -1,16 +1,37 @@
 const DRAFT_KEY = 'employerJobDrafts';
 
+function getCurrentUserId() {
+  try {
+    const userStored = localStorage.getItem("employerUser") || localStorage.getItem("user");
+    if (!userStored) return null;
+    const user = JSON.parse(userStored);
+    return user?._id || user?.id || user?.userId || null;
+  } catch {
+    return null;
+  }
+}
+
 export function getDrafts() {
   try {
-    return JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]');
+    const drafts = JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]');
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) return [];
+    return drafts.filter(d => d.userId === currentUserId);
   } catch {
     return [];
   }
 }
 
 export function saveDraft(data) {
-  const drafts = getDrafts();
-  const existing = drafts.findIndex(
+  // Read raw drafts from local storage to not overwrite others' drafts
+  let allDrafts = [];
+  try {
+    allDrafts = JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]');
+  } catch {}
+  
+  const currentUserId = getCurrentUserId();
+  
+  const existing = allDrafts.findIndex(
     (d) => d.draftId === data.draftId
   );
 
@@ -19,21 +40,26 @@ export function saveDraft(data) {
     draftId: data.draftId || crypto.randomUUID(),
     savedAt: Date.now(),
     savedAtISO: new Date().toISOString(),
+    userId: currentUserId,
   };
 
   if (existing >= 0) {
-    drafts[existing] = entry;
+    allDrafts[existing] = { ...allDrafts[existing], ...entry };
   } else {
-    drafts.unshift(entry);
+    allDrafts.unshift(entry);
   }
 
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(allDrafts));
   return entry;
 }
 
 export function deleteDraft(draftId) {
-  const drafts = getDrafts().filter((d) => d.draftId !== draftId);
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+  let allDrafts = [];
+  try {
+    allDrafts = JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]');
+  } catch {}
+  allDrafts = allDrafts.filter((d) => d.draftId !== draftId);
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(allDrafts));
 }
 
 export function getDraft(draftId) {

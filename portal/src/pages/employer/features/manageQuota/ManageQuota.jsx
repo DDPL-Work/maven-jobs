@@ -661,27 +661,41 @@ export default function ManageQuota() {
 
             {/* Quick Visual Gauges */}
             <div className="mq-gauge-section">
-              <div className="mq-gauge-box">
-                <div className="mq-gauge-label-row">
-                  <span className="mq-gauge-label">CV Access Utilization</span>
-                  <span className="mq-gauge-val">86.3%</span>
-                </div>
-                <div className="mq-gauge-bar">
-                  <div className="mq-gauge-fill cv" style={{ width: '86.3%' }} />
-                </div>
-                <div className="mq-gauge-foot">21,582 of 25,000 used</div>
-              </div>
+              {(() => {
+                const cvTotal = policyAllocations.full?.cvAccess?.total || 0;
+                const cvUsed = policyAllocations.full?.cvAccess?.used || 0;
+                const cvPercent = cvTotal > 0 ? ((cvUsed / cvTotal) * 100).toFixed(1) : '0.0';
 
-              <div className="mq-gauge-box">
-                <div className="mq-gauge-label-row">
-                  <span className="mq-gauge-label">NVite Credits Utilization</span>
-                  <span className="mq-gauge-val">27.5%</span>
-                </div>
-                <div className="mq-gauge-bar">
-                  <div className="mq-gauge-fill nvite" style={{ width: '27.5%' }} />
-                </div>
-                <div className="mq-gauge-foot">68,860 of 250,000 used</div>
-              </div>
+                const nviteTotal = policyAllocations.full?.nvite?.total || 0;
+                const nviteUsed = policyAllocations.full?.nvite?.used || 0;
+                const nvitePercent = nviteTotal > 0 ? ((nviteUsed / nviteTotal) * 100).toFixed(1) : '0.0';
+
+                return (
+                  <>
+                    <div className="mq-gauge-box">
+                      <div className="mq-gauge-label-row">
+                        <span className="mq-gauge-label">CV Access Utilization</span>
+                        <span className="mq-gauge-val">{cvPercent}%</span>
+                      </div>
+                      <div className="mq-gauge-bar">
+                        <div className="mq-gauge-fill cv" style={{ width: `${cvPercent}%` }} />
+                      </div>
+                      <div className="mq-gauge-foot">{cvUsed.toLocaleString()} of {cvTotal.toLocaleString()} used</div>
+                    </div>
+
+                    <div className="mq-gauge-box">
+                      <div className="mq-gauge-label-row">
+                        <span className="mq-gauge-label">NVite Credits Utilization</span>
+                        <span className="mq-gauge-val">{nvitePercent}%</span>
+                      </div>
+                      <div className="mq-gauge-bar">
+                        <div className="mq-gauge-fill nvite" style={{ width: `${nvitePercent}%` }} />
+                      </div>
+                      <div className="mq-gauge-foot">{nviteUsed.toLocaleString()} of {nviteTotal.toLocaleString()} used</div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Usage Breakdown Table (Exact fields matching Screenshot) */}

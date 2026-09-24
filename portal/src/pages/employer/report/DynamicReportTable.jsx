@@ -2,21 +2,7 @@ import React, { useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import './DynamicReportTable.css';
 
-/**
- * DynamicReportTable component
- * 
- * Props:
- * - reportType: string (e.g. "User Wise", "Summary")
- * - durationLabel: string (e.g. "09-Sep-26 To 09-Sep-26")
- * - headers: Array<string | { key: string, label: string, align?: string }>
- * - rows: Array<Record<string, any> | Array<any>>
- * - showTotalRow: boolean (default true for numeric tables)
- * - showNote: boolean (default true)
- * - theme: 'blue' | 'gray' (default 'blue')
- * - onNewReport: () => void (handler to navigate back to configuration form)
- * - onDownloadExcel?: () => void (optional custom export handler, otherwise uses default Excel export)
- * - filename?: string (name for downloaded file)
- */
+
 export default function DynamicReportTable({
   reportType = 'Summary',
   durationLabel = '',

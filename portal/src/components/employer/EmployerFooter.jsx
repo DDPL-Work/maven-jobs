@@ -123,7 +123,7 @@ export default function EmployerFooter() {
               <FooterLink to="/maven-jobs/careers">Careers</FooterLink>
               <FooterLink to="/maven-jobs/terms">Terms & Conditions</FooterLink>
               <FooterLink to="/maven-jobs/privacy">Privacy policy</FooterLink>
-              <FooterLink to="/blogs">Learning Center</FooterLink>
+              <FooterLink to="/employers/learning-center" target="_blank" rel="noopener noreferrer">Learning Center</FooterLink>
               <FooterLink to="/sitemap">Site Map</FooterLink>
             </div>
           </div>
@@ -169,10 +169,12 @@ export default function EmployerFooter() {
   );
 }
 
-function FooterLink({ to, children }) {
+function FooterLink({ to, children, target, rel }) {
   return (
     <Link
       to={to}
+      target={target}
+      rel={rel}
       style={{
         fontSize: 13.5,
         color: '#475569',

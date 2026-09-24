@@ -60,8 +60,10 @@ router.get("/jobs-responses/:jobId/responses", employerJobController.getJobRespo
 router.patch("/jobs-responses/:jobId/applications/:applicationId/status", employerJobController.updateCandidateJobStatus);
 router.post("/jobs-responses/:jobId/applications/:applicationId/comments", employerJobController.addCandidateComment);
 router.patch("/jobs-responses/:jobId/close", employerJobController.closeEmployerJob);
+router.patch("/jobs-responses/:jobId/open", employerJobController.openEmployerJob);
 router.post("/jobs-responses/bulk-close", employerJobController.bulkCloseJobs);
 router.post("/jobs-responses/bulk-refresh", employerJobController.bulkRefreshJobs);
+router.post("/jobs-responses/bulk-collaborators", employerJobController.updateCollaborators);
 
 // Full Candidate Profile (for employer view when clicking candidate name)
 router.get("/candidates/:candidateId/full-profile", employerJobController.getCandidateFullProfile);
@@ -111,7 +113,9 @@ router.get("/resdex/searches/recent", resdexController.recentSearches);
 router.patch("/resdex/searches/:id", resdexController.updateSearch);
 router.delete("/resdex/searches/:id", resdexController.deleteSearch);
 router.patch("/resdex/searches/:id/pin", resdexController.togglePin);
-
+router.post("/resdex/forward-cv", resdexController.forwardCV);
+router.get("/resdex/shared-cvs", resdexController.getSharedCVs);
+router.post("/resdex/reminders", resdexController.setCandidateReminder);
 // NVite — Send MIvites
 router.post("/resdex/nvite/send", nviteController.sendNvite);
 router.get("/resdex/nvite/list", nviteController.listNvites);
@@ -170,5 +174,12 @@ router.put("/user-management/users/time-restrictions", userManagementController.
 // Security Settings
 router.get("/user-management/security-settings", userManagementController.getSecuritySettings);
 router.put("/user-management/security-settings", userManagementController.updateSecuritySettings);
+
+// Product Settings
+router.get("/product-settings", userManagementController.getProductSettings);
+router.put("/product-settings", userManagementController.updateProductSettings);
+router.post("/product-settings/reset-resdex-logins", userManagementController.resetSubusersResdexLogin);
+
+router.patch("/auth/change-password", controller.changePassword);
 
 module.exports = router;

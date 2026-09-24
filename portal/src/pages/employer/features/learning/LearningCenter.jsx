@@ -9,6 +9,7 @@ import hero5 from '../../../../../assets/hero5.png';
 import mentor1 from '../../../../../assets/mentor1.png';
 import mentor2 from '../../../../../assets/mentor2.png';
 import mentor3 from '../../../../../assets/mentor3.png';
+import mavenVideo from '../../../../../assets/Maven.mp4';
 import {
   FiBook, FiVideo, FiAward, FiUsers, FiChevronRight,
   FiChevronLeft, FiPlay, FiCalendar, FiClock, FiStar,
@@ -209,6 +210,7 @@ export default function LearningCenter() {
   const [activeFaqTab, setActiveFaqTab] = useState(FAQ_CATEGORIES[0].id);
   const [heroVisible, setHeroVisible] = useState(false);
   const [activeSection, setActiveSection] = useState('');
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   // Drag to scroll for experts
   const expertsRef = useRef(null);
@@ -377,16 +379,16 @@ export default function LearningCenter() {
       {/* ── CERTIFICATION ── */}
       <section id="lc-section-cert" className="lc-section lc-cert-section">
         <div className="lc-cert-card">
-          <div className="lc-cert-visual">
-            <div className="lc-cert-badge-wrap">
-              <div className="lc-cert-badge">
-                <FiAward size={48} color="#fff" />
-                <div className="lc-cert-shine" />
+          <div className="lc-cert-visual" style={{ cursor: 'pointer', padding: 0, position: 'relative', overflow: 'hidden', borderRadius: 16 }} onClick={() => setShowVideoModal(true)}>
+            <video 
+              src={mavenVideo} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,35,102,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="lc-play-btn" style={{ position: 'relative', margin: 0, transform: 'none', top: 'auto', left: 'auto' }}>
+                <FiPlay size={20} color="#002366" style={{ marginLeft: 3 }} />
               </div>
-              <div className="lc-cert-label-top">MAVEN MAESTRO</div>
-              <div className="lc-cert-label-bot">RECRUITER CERTIFIED</div>
             </div>
-            <div className="lc-play-btn"><FiPlay size={20} color="#002366" /></div>
           </div>
           <div className="lc-cert-content">
             <div className="lc-free-badge">FREE</div>
@@ -551,6 +553,26 @@ export default function LearningCenter() {
           </section>
 
           <EmployerFooter />
+
+          {showVideoModal && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.8)' }}>
+              <div style={{ position: 'absolute', inset: 0 }} onClick={() => setShowVideoModal(false)} />
+              <div style={{ position: 'relative', width: '90%', maxWidth: 800, backgroundColor: '#000', borderRadius: 8, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <button 
+                  onClick={() => setShowVideoModal(false)}
+                  style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 16, cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  ✕
+                </button>
+                <video 
+                  src={mavenVideo} 
+                  autoPlay 
+                  controls 
+                  style={{ width: '100%', display: 'block' }} 
+                />
+              </div>
+            </div>
+          )}
     </div>
   );
 }

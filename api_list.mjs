@@ -1652,5 +1652,167 @@ export const apiList = [
     "usedInPortalPages": [
       "UserManagement.jsx"
     ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/ai:endpoint",
+    "description": "This endpoint is used to interact with /ai:endpoint via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "aiService.js"
+    ]
+  },
+  {
+    "method": "GET",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/folders/candidates/contacted",
+    "description": "This endpoint is used to interact with /company-panel/folders/candidates/contacted via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/candidates/:candidateId/schedule-video-call",
+    "description": "This endpoint is used to interact with /company-panel/candidates/:candidateId/schedule-video-call via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "GET",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/candidates/:candidateId/also-viewed",
+    "description": "This endpoint is used to interact with /company-panel/candidates/:candidateId/also-viewed via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "GET",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/candidate/:candidateId/similar",
+    "description": "This endpoint is used to interact with /candidate/:candidateId/similar via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/resdex/forward-cv",
+    "description": "This endpoint is used to interact with /company-panel/resdex/forward-cv via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "GET",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/resdex/shared-cvs",
+    "description": "This endpoint is used to interact with /company-panel/resdex/shared-cvs via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/resdex/reminders",
+    "description": "This endpoint is used to interact with /company-panel/resdex/reminders via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/auth/change-password",
+    "description": "This endpoint is used to interact with /company-panel/auth/change-password via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "authService.js"
+    ]
+  },
+  {
+    "method": "GET",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/jobs-responses/:jobId/nvite-recipients",
+    "description": "This endpoint is used to interact with /company-panel/jobs-responses/:jobId/nvite-recipients via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "employerJobService.js"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/jobs-responses/:jobId/open",
+    "description": "This endpoint is used to interact with /company-panel/jobs-responses/:jobId/open via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "employerJobService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/jobs-responses/bulk-collaborators",
+    "description": "This endpoint is used to interact with /company-panel/jobs-responses/bulk-collaborators via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "employerJobService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/candidate/resume/enhance",
+    "description": "This endpoint is used to interact with /candidate/resume/enhance via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "resumeService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/candidate/resume/ats-score",
+    "description": "This endpoint is used to interact with /candidate/resume/ats-score via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "resumeService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/candidate/resume/analyze",
+    "description": "This endpoint is used to interact with /candidate/resume/analyze via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "resumeService.js"
+    ]
+  },
+  {
+    "method": "GET",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/product-settings",
+    "description": "This endpoint is used to interact with /company-panel/product-settings via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "userManagementService.js"
+    ]
+  },
+  {
+    "method": "PUT",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/product-settings",
+    "description": "This endpoint is used to interact with /company-panel/product-settings via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "userManagementService.js"
+    ]
+  },
+  {
+    "method": "POST",
+    "fullUrl": "https://maven-jobs.onrender.com/api/v1/company-panel/product-settings/reset-resdex-logins",
+    "description": "This endpoint is used to interact with /company-panel/product-settings/reset-resdex-logins via the portal application.",
+    "internalFunction": "extractedFunction",
+    "usedInPortalPages": [
+      "userManagementService.js"
+    ]
   }
 ];

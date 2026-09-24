@@ -8,6 +8,9 @@ const OpenAIService = require("../services/openai/OpenAIService");
 const activityService = require("../services/recruiter-activity.service");
 const { esAvailable } = require("../config/opensearch");
 const esService = require("../services/opensearch.service");
+const ForwardedCV = require("../models/ForwardedCV");
+const ResdexReportLog = require("../models/ResdexReportLog");
+const emailService = require("../services/email.service");
 
 const SEARCH_DEFAULTS = { page: 1, limit: 20, sort: "relevance" };
 const MAX_LIMIT = 100;
@@ -930,4 +933,184 @@ exports.aiParseQuery = asyncHandler(async (req, res) => {
       },
     });
   }
+});
+
+exports.forwardCV = asyncHandler(async (req, res) => {
+  const company = req.company;
+  const user = req.user;
+
+  const { toEmail, candidateId, subject, message, isResumeAttached } = req.body;
+
+  if (!toEmail || !candidateId || !message) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  // Check if already forwarded to this specific email by this user
+  const existingForward = await ForwardedCV.findOne({
+    senderId: user._id,
+    candidateId,
+    toEmail: toEmail.toLowerCase()
+  });
+
+  if (existingForward) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "You have already forwarded this candidate to this user." 
+    });
+  }
+
+  // Find candidate and profile
+  const candidate = await User.findById(candidateId);
+  const profile = await CandidateProfile.findOne({ userId: candidateId });
+
+  if (!candidate && !profile) {
+    return res.status(404).json({ success: false, message: "Candidate not found" });
+  }
+
+  const CompanySubUser = require("../models/CompanySubUser");
+  
+  // Try to find if recipient is a subuser
+  const receiverSubUser = await CompanySubUser.findOne({ companyId: company._id }).populate({
+    path: "userId",
+    match: { email: toEmail.toLowerCase() },
+  });
+
+  const receiverId = receiverSubUser && receiverSubUser.userId ? receiverSubUser.userId._id : null;
+
+  let resumeLink = "";
+  if (isResumeAttached && profile && profile.resume && profile.resume.url) {
+    resumeLink = profile.resume.url;
+  }
+
+  // Create record
+  const forwardedCV = await ForwardedCV.create({
+    companyId: company._id,
+    senderId: user._id,
+    candidateId,
+    profileId: profile ? profile._id : null,
+    toEmail: toEmail.toLowerCase(),
+    receiverId,
+    subject: subject || "Candidate CV Forwarded",
+    message,
+    isResumeAttached: Boolean(isResumeAttached),
+    resumeLink,
+  });
+
+  // Log action
+  await ResdexReportLog.create({
+    companyId: company._id,
+    userId: user._id,
+    subuserName: user.name || user.email || "Recruiter",
+    subuserEmail: user.email || "",
+    actionType: "RESUME_FORWARDED",
+    candidateId,
+    candidateName: profile?.userId?.name || candidate?.name || "Candidate",
+    candidateRole: profile?.currentTitle || profile?.headline || "",
+    section: "DATABASE_USAGE",
+    platform: "WEB",
+  });
+
+  // Send Email
+  try {
+    const senderName = user.name || user.email || "A colleague";
+    const candidateName = profile?.userId?.name || candidate?.name || "Candidate";
+    const dynamicSubject = `${senderName} has forwarded this ${candidateName} to you`;
+
+    const htmlMessage = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #2563eb; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;">Candidate Profile Shared</h2>
+        <p style="font-size: 16px; color: #333;">Hello,</p>
+        <p style="font-size: 16px; color: #333;"><strong>${senderName}</strong> has shared a candidate profile with you from Maven.</p>
+        
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #0f172a;">Candidate Details</h3>
+          <p style="margin: 5px 0;"><strong>Name:</strong> ${candidateName}</p>
+          <p style="margin: 5px 0;"><strong>Role:</strong> ${profile?.currentTitle || profile?.headline || 'N/A'}</p>
+          ${isResumeAttached && resumeLink ? `<p style="margin: 15px 0 5px 0;"><a href="${resumeLink}" style="background-color: #1d68bd; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">View Attached Resume</a></p>` : ''}
+        </div>
+
+        <div style="margin-top: 20px;">
+          <h4 style="margin-bottom: 5px; color: #333;">Message from Sender:</h4>
+          <p style="background: #f1f5f9; padding: 10px; border-left: 4px solid #94a3b8; color: #475569; font-style: italic;">
+            ${message.replace(/\n/g, '<br>') || "No additional message provided."}
+          </p>
+        </div>
+
+        <p style="margin-top: 30px; font-size: 14px; color: #64748b;">Log in to your Maven employer dashboard to view this candidate in the "CV shared with me" folder.</p>
+      </div>
+    `;
+
+    await emailService.sendEmail({
+      to: toEmail,
+      subject: subject || dynamicSubject,
+      html: htmlMessage,
+      text: `${senderName} has forwarded ${candidateName}'s profile.\n\nMessage:\n${message}\n\n${isResumeAttached && resumeLink ? `Attached CV Link: ${resumeLink}` : ''}`,
+    });
+  } catch (err) {
+    console.error("[ForwardCV] Email send failed:", err);
+    // Continue even if email fails
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "CV forwarded successfully",
+    data: forwardedCV,
+  });
+});
+
+exports.getSharedCVs = asyncHandler(async (req, res) => {
+  const user = req.user;
+
+  // Find CVs forwarded to this user either by receiverId or toEmail
+  const sharedCVs = await ForwardedCV.find({
+    $or: [
+      { receiverId: user._id },
+      { toEmail: user.email.toLowerCase() }
+    ]
+  })
+  .populate({
+    path: "candidateId",
+    select: "name email phone avatar profilePic",
+  })
+  .populate({
+    path: "profileId",
+    select: "currentTitle headline currentCompany currentCity totalExperience expectedSalary resume",
+  })
+  .populate({
+    path: "senderId",
+    select: "name email",
+  })
+  .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    data: sharedCVs,
+  });
+});
+
+exports.setCandidateReminder = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const { candidateId, type, description, date, mailCalendarEvent } = req.body;
+
+  if (!candidateId || !date) {
+    return res.status(400).json({ success: false, message: "Candidate ID and date are required" });
+  }
+
+  const CandidateReminder = require("../models/CandidateReminder");
+
+  const reminder = await CandidateReminder.create({
+    userId: user._id,
+    candidateId,
+    type: type || "Other",
+    description,
+    date: new Date(date),
+    mailCalendarEvent: mailCalendarEvent || false,
+    status: "pending"
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Reminder set successfully",
+    data: reminder
+  });
 });

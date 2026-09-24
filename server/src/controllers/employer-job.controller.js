@@ -9,10 +9,10 @@ const Nvite = require("../models/Nvite");
 const ScheduledCall = require("../models/ScheduledCall");
 const jobReportService = require("../services/job-posting-report.service");
 const cacheService = require("../services/cache/cache.service");
-
 const recruiterActivityService = require("../services/recruiter-activity.service");
 const RecruiterActivity = require("../models/RecruiterActivity");
 const emailService = require("../services/email.service");
+const ResdexReportLog = require("../models/ResdexReportLog");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -529,6 +529,7 @@ const formatJobItem = (job, statsMap, posterMap, nviteMap, currentUser) => {
       : "—",
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
+    collaborators: Array.isArray(job.collaborators) ? job.collaborators.map(c => String(c)) : [],
     totalResponses: stats.total,
     newResponses: stats.new,
     shortlisted: stats.shortlisted,
@@ -565,17 +566,31 @@ exports.getEmployerJobs = asyncHandler(async (req, res) => {
 
   const now = new Date();
   const query = { companyId: company._id };
+  const andConditions = [];
+
+  // Role-based visibility
+  if (user.role === "RECRUITER") {
+    andConditions.push({
+      $or: [
+        { createdByClient: user._id },
+        { collaborators: user._id },
+        { collaborators: String(user._id) }
+      ]
+    });
+  }
 
   // Search by Title, Location, or Job ID
   if (search) {
     const searchRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     const idQuery = mongoose.Types.ObjectId.isValid(search) ? [{ _id: new mongoose.Types.ObjectId(search) }] : [];
-    query.$or = [
-      { title: searchRegex },
-      { location: searchRegex },
-      { department: searchRegex },
-      ...idQuery,
-    ];
+    andConditions.push({
+      $or: [
+        { title: searchRegex },
+        { location: searchRegex },
+        { department: searchRegex },
+        ...idQuery,
+      ]
+    });
   }
 
   // Status Filter
@@ -601,32 +616,19 @@ exports.getEmployerJobs = asyncHandler(async (req, res) => {
     }
 
     if (statusConditions.length > 0) {
-      if (query.$or) {
-        query.$and = [{ $or: query.$or }, { $or: statusConditions }];
-        delete query.$or;
-      } else {
-        query.$or = statusConditions;
-      }
+      andConditions.push({ $or: statusConditions });
     }
   }
 
   // Category Filter
   if (categories.length > 0) {
     const catRegexes = categories.map((c) => new RegExp(c, "i"));
-    const catCondition = {
+    andConditions.push({
       $or: [
         { jobType: { $in: catRegexes } },
         { department: { $in: catRegexes } },
       ],
-    };
-    if (query.$and) {
-      query.$and.push(catCondition);
-    } else if (query.$or) {
-      query.$and = [{ $or: query.$or }, catCondition];
-      delete query.$or;
-    } else {
-      query.$and = [catCondition];
-    }
+    });
   }
 
   // Posted By Filter
@@ -654,16 +656,12 @@ exports.getEmployerJobs = asyncHandler(async (req, res) => {
     }
 
     if (posterUserConditions.length > 0) {
-      const posterOr = { $or: posterUserConditions };
-      if (query.$and) {
-        query.$and.push(posterOr);
-      } else if (query.$or) {
-        query.$and = [{ $or: query.$or }, posterOr];
-        delete query.$or;
-      } else {
-        query.$and = [posterOr];
-      }
+      andConditions.push({ $or: posterUserConditions });
     }
+  }
+
+  if (andConditions.length > 0) {
+    query.$and = andConditions;
   }
 
   // Sort definition
@@ -777,9 +775,18 @@ exports.getEmployerJobFilters = asyncHandler(async (req, res) => {
     ttl: 300,
     fetch: async () => {
       const now = new Date();
+      
+      const filterQuery = { companyId: company._id };
+      if (user.role === "RECRUITER") {
+        filterQuery.$or = [
+          { createdByClient: user._id },
+          { collaborators: user._id },
+          { collaborators: String(user._id) }
+        ];
+      }
 
       const [allJobs, teamUsers] = await Promise.all([
-        Job.find({ companyId: company._id }).select("jobType department isActive deadline approvalStatus createdByClient").lean(),
+        Job.find(filterQuery).select("jobType department isActive deadline approvalStatus createdByClient").lean(),
         User.find({ companyId: company._id }).select("_id name email").lean(),
       ]);
 
@@ -977,6 +984,35 @@ exports.closeEmployerJob = asyncHandler(async (req, res) => {
     success: true,
     message: `Job "${job.title}" has been closed.`,
     data: { id: String(job._id), isActive: false },
+  });
+});
+
+/**
+ * PATCH /api/v1/company-panel/jobs-responses/:jobId/open
+ * Re-open a closed job
+ */
+exports.openEmployerJob = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const jobId = toTrimmedString(req.params.jobId);
+
+  const job = await Job.findOne({ _id: jobId, companyId: company._id });
+  if (!job) {
+    throw createHttpError(404, "Job not found");
+  }
+
+  job.isActive = true;
+  await job.save();
+
+  // Log JOB_OPEN if needed
+  try {
+    const { scheduleReindex } = require("../services/opensearch.service");
+    scheduleReindex(1500);
+  } catch (_) {}
+
+  res.status(200).json({
+    success: true,
+    message: `Job "${job.title}" has been opened.`,
+    data: { id: String(job._id), isActive: true },
   });
 });
 
@@ -1260,7 +1296,7 @@ exports.updateCandidateJobStatus = asyncHandler(async (req, res) => {
  * POST /api/v1/company-panel/jobs-responses/:jobId/applications/:applicationId/comments
  */
 exports.addCandidateComment = asyncHandler(async (req, res) => {
-  const { user } = await resolveClientUserAndCompany(req.user._id);
+  const { user, company } = await resolveClientUserAndCompany(req.user._id);
   const { applicationId } = req.params;
   const { text } = req.body;
 
@@ -1294,6 +1330,46 @@ exports.addCandidateComment = asyncHandler(async (req, res) => {
     message: "Comment added successfully",
     data: savedComment,
   });
+
+  // Fire-and-forget: log CANDIDATE_COMMENT to ResdexReportLog for Comments Reports tab
+  try {
+    let candidateName = "";
+    let candidateRole = "";
+    let candidateId = null;
+
+    if (mongoose.Types.ObjectId.isValid(applicationId)) {
+      const savedApp = await Application.findById(applicationId).select("candidateId").lean().catch(() => null);
+      if (savedApp?.candidateId) {
+        candidateId = savedApp.candidateId;
+        const CandidateProfile = require("../models/CandidateProfile");
+        const profile = await CandidateProfile.findOne({ candidate: savedApp.candidateId })
+          .select("personalInfo jobPreferences")
+          .lean()
+          .catch(() => null);
+        if (profile) {
+          candidateName = profile.personalInfo?.name || "";
+          candidateRole = profile.jobPreferences?.currentDesignation || profile.jobPreferences?.preferredRoles?.[0] || "";
+        }
+      }
+    }
+
+    ResdexReportLog.create({
+      companyId: company._id,
+      userId: user._id,
+      subuserName: user.name || user.fullName || "Recruiter",
+      subuserEmail: user.email || "",
+      actionType: "CANDIDATE_COMMENT",
+      section: "COMMENTS_REPORTS",
+      candidateId: candidateId || null,
+      candidateName,
+      candidateRole,
+      commentText: text.trim(),
+      platform: "WEB",
+      actionDate: new Date(),
+    }).catch(() => {}); // ignore log errors — don't break comment flow
+  } catch (_) {
+    // silently ignore logging failures
+  }
 });
 
 /**
@@ -1704,6 +1780,14 @@ exports.getAlsoViewedCandidates = asyncHandler(async (req, res) => {
       avatar: profile.profilePic?.url || profile.userId?.avatar || "",
       headline: profile.headline || profile.currentTitle || "",
       location: [profile.currentCity, profile.currentState].filter(Boolean).join(", ") || profile.currentCountry || "",
+      totalExperience: profile.totalExperience,
+      experience: profile.totalExperience ? `${profile.totalExperience}y` : "",
+      salary: profile.currentSalary || profile.expectedSalary || "",
+      currentSalary: profile.currentSalary,
+      expectedSalary: profile.expectedSalary,
+      skills: profile.skills || [],
+      hasCv: !!profile.resume?.url,
+      activeStatus: profile.activeStatus,
     };
   });
 
@@ -1717,5 +1801,34 @@ exports.getAlsoViewedCandidates = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: orderedResult
+  });
+});
+
+exports.updateCollaborators = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const { jobIds, userIds } = req.body;
+
+  if (!Array.isArray(jobIds) || !Array.isArray(userIds)) {
+    return res.status(400).json({ success: false, message: "jobIds and userIds must be arrays" });
+  }
+
+  // Verify that all jobs belong to this company
+  const jobs = await Job.find({ _id: { $in: jobIds }, companyId: company._id });
+  if (jobs.length !== jobIds.length) {
+    return res.status(403).json({ success: false, message: "One or more jobs not found or access denied" });
+  }
+
+  const mongoose = require("mongoose");
+  const objectIdUserIds = userIds.map(id => new mongoose.Types.ObjectId(id));
+
+  // Update collaborators
+  await Job.updateMany(
+    { _id: { $in: jobIds }, companyId: company._id },
+    { $set: { collaborators: objectIdUserIds } }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: `Updated collaborators for ${jobIds.length} job(s)`
   });
 });
