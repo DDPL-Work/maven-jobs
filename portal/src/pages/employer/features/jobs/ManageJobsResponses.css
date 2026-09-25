@@ -299,6 +299,30 @@
   margin-bottom: 14px;
 }
 
+.mjr-clear-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  background: #fff1f2;
+  color: #dc2626;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.mjr-clear-filters-btn:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #b91c1c;
+}
+
+
 .mjr-search-box {
   position: relative;
   margin-bottom: 18px;
@@ -554,6 +578,40 @@
   border: 1px solid #fecaca;
   padding: 1px 6px; /* slightly smaller padding to account for border */
 }
+
+/* Internship – purple */
+.mjr-job-tag--internship {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+  padding: 1px 6px;
+}
+
+/* Hot Vacancy – orange */
+.mjr-job-tag--hot,
+.mjr-job-tag--hot-vacancy {
+  background: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+  padding: 1px 6px;
+}
+
+/* SMB Job – blue */
+.mjr-job-tag--smb-job,
+.mjr-job-tag--management {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  padding: 1px 6px;
+}
+
+/* Private / standard – slate */
+.mjr-job-tag--private,
+.mjr-job-tag--standard {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 
 /* Stats Columns */
 .mjr-job-stats {

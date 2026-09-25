@@ -19,7 +19,7 @@ function PlainTextContent({ text }) {
       nodes.push(
         <ul key={`ul-${key}`} style={{ margin: '0 0 14px 0', paddingLeft: '20px', listStyle: 'disc' }}>
           {bulletBuffer.map((b, i) => (
-            <li key={i} style={{ marginBottom: '5px', color: '#374151', fontSize: '14px', lineHeight: '1.65' }}>{b}</li>
+            <li key={i} style={{ marginBottom: '5px', color: '#64748b', fontSize: '14px', lineHeight: '1.65' }}>{b}</li>
           ))}
         </ul>
       );
@@ -33,7 +33,7 @@ function PlainTextContent({ text }) {
     } else {
       flushBullets(i);
       nodes.push(
-        <p key={`p-${i}`} style={{ margin: '0 0 12px 0', color: '#374151', fontSize: '14px', lineHeight: '1.65' }}>
+        <p key={`p-${i}`} style={{ margin: '0 0 12px 0', color: '#64748b', fontSize: '14px', lineHeight: '1.65' }}>
           {line}
         </p>
       );
@@ -113,6 +113,22 @@ export default function PreviewMiviteModal({ jobId, onClose }) {
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
 
+  // Auto-split description if responsibilities and qualifications were merged into it
+  let displayDescription = jobDetail?.description || '';
+  let displayResponsibilities = jobDetail?.responsibilities || '';
+  let displayQualifications = jobDetail?.qualifications || '';
+
+  if (displayDescription && !displayResponsibilities && !displayQualifications) {
+    const parts = displayDescription.split(/\n\n(?=[•\-])/);
+    if (parts.length >= 2) {
+      displayDescription = parts[0].trim();
+      displayResponsibilities = parts[1].trim();
+      if (parts.length >= 3) {
+        displayQualifications = parts.slice(2).join('\n\n').trim();
+      }
+    }
+  }
+
   return (
     <div className="pmm-modal-overlay" onClick={onClose}>
       <div className="pmm-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -159,21 +175,23 @@ export default function PreviewMiviteModal({ jobId, onClose }) {
                     </span>
                   </div>
 
-                  {/* 2. Summary – short one-liner overview */}
-                  {jobDetail.summary && (
-                    <p className="pmm-summary">{jobDetail.summary}</p>
+                  {/* 2. Job Description (Top) */}
+                  {displayDescription && (
+                    <div className="pmm-summary">
+                      <PlainTextContent text={displayDescription} />
+                    </div>
                   )}
 
                   {/* 3. Key Details as icon cards */}
                   <div className="pmm-meta-cards-grid">
-                    <MetaCard icon={FiBriefcase}  label="Job Type"   value={jobDetail.jobType}                                   color="#6366f1" />
-                    <MetaCard icon={FiGlobe}      label="Workplace"  value={jobDetail.workplaceType}                             color="#0ea5e9" />
-                    <MetaCard icon={FiMapPin}     label="Location"   value={jobDetail.location}                                  color="#10b981" />
-                    <MetaCard icon={FiLayers}     label="Department" value={jobDetail.department}                                color="#f59e0b" />
-                    <MetaCard icon={FiClock}      label="Experience" value={jobDetail.experience}                                color="#8b5cf6" />
-                    <MetaCard icon={FiDollarSign} label="Salary"     value={formatSalary(jobDetail.salaryMin, jobDetail.salaryMax)} color="#ec4899" />
-                    <MetaCard icon={FiCalendar}   label="Apply By"   value={formatDate(jobDetail.deadline)}                     color="#ef4444" />
-                    <MetaCard icon={FiTag}        label="Approval"   value={jobDetail.approvalStatus}                           color="#14b8a6" />
+                    <MetaCard icon={FiBriefcase}  label="Job Type"   value={jobDetail.jobType}                                   color="#2563eb" />
+                    <MetaCard icon={FiGlobe}      label="Workplace"  value={jobDetail.workplaceType}                             color="#2563eb" />
+                    <MetaCard icon={FiMapPin}     label="Location"   value={jobDetail.location}                                  color="#2563eb" />
+                    <MetaCard icon={FiLayers}     label="Department" value={jobDetail.department}                                color="#2563eb" />
+                    <MetaCard icon={FiClock}      label="Experience" value={jobDetail.experience}                                color="#2563eb" />
+                    <MetaCard icon={FiDollarSign} label="Salary"     value={formatSalary(jobDetail.salaryMin, jobDetail.salaryMax)} color="#2563eb" />
+                    <MetaCard icon={FiCalendar}   label="Apply By"   value={formatDate(jobDetail.deadline)}                     color="#2563eb" />
+                    <MetaCard icon={FiTag}        label="Approval"   value={jobDetail.approvalStatus}                           color="#2563eb" />
                   </div>
 
                   {/* 4. Skills */}
@@ -188,12 +206,22 @@ export default function PreviewMiviteModal({ jobId, onClose }) {
                     </div>
                   )}
 
-                  {/* 5. Description – plain text rendered as structured list */}
-                  {jobDetail.description && (
+                  {/* 5. Responsibilities */}
+                  {displayResponsibilities && (
                     <div className="pmm-section">
-                      <h4 className="pmm-section-title">Job Description</h4>
+                      <h4 className="pmm-section-title">Responsibilities</h4>
                       <div className="pmm-description-body">
-                        <PlainTextContent text={jobDetail.description} />
+                        <PlainTextContent text={displayResponsibilities} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 6. Requirements & Qualifications */}
+                  {displayQualifications && (
+                    <div className="pmm-section">
+                      <h4 className="pmm-section-title">Requirements & Qualifications</h4>
+                      <div className="pmm-description-body">
+                        <PlainTextContent text={displayQualifications} />
                       </div>
                     </div>
                   )}

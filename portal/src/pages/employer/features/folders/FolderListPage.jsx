@@ -61,6 +61,14 @@ export default function FolderListPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
+  const handleClearFilters = () => {
+    setDateFilter('all');
+    setCustomFrom('');
+    setCustomTo('');
+  };
+
+  const isFilterActive = dateFilter !== 'all';
+
   // Pagination & Sorting
   const [pageSize, setPageSize] = useState(40);
   const [page, setPage] = useState(1);
@@ -326,6 +334,17 @@ export default function FolderListPage() {
                 <div className="flp-sidebar-header">
                   <FiSliders size={17} color="#64748b" />
                   <span>Filters</span>
+                  {isFilterActive && (
+                    <button
+                      type="button"
+                      className="flp-clear-filters-btn"
+                      onClick={handleClearFilters}
+                      title="Clear all filters"
+                    >
+                      <FiX size={12} />
+                      Clear
+                    </button>
+                  )}
                 </div>
 
                 <div className="flp-filter-section">

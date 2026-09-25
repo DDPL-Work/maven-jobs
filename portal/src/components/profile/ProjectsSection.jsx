@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { FiMonitor, FiEdit2, FiTrash2, FiPlus, FiX, FiUploadCloud, FiFolder, FiExternalLink, FiChevronDown } from 'react-icons/fi';
+import { FiMonitor, FiEdit2, FiTrash2, FiPlus, FiX, FiUploadCloud, FiFolder, FiExternalLink, FiChevronDown, FiImage } from 'react-icons/fi';
 import authService from "../../services/authService";
 import '../../pages/candidates/features/dashboard/Components/ProfileDashboard/BasicDetailsModal.css';
 import CustomSelect from '../common/CustomSelect';

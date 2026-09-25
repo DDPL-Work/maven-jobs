@@ -74,13 +74,30 @@ const formatCandidateCard = (app, candidate = {}, profile = {}, isRecommended = 
   }
 
   // 5. Resolve Salary
+  const extractSalary = (salVal) => {
+    if (!salVal) return "";
+    let s = String(salVal).trim();
+    if (s.startsWith("{") && s.endsWith("}")) {
+      try {
+        const obj = JSON.parse(s);
+        if (obj && obj.amount) return String(obj.amount);
+      } catch (e) { }
+    }
+    return s;
+  };
+
   let salary = "";
-  if (profile.expectedSalary) {
-    salary = String(profile.expectedSalary).trim();
+  let expSal = extractSalary(profile.expectedSalary);
+  let curSal = extractSalary(profile.currentSalary);
+
+  if (expSal) {
+    salary = expSal;
     if (!salary.startsWith("₹")) salary = `₹ ${salary}`;
     if (!/lacs|lac|k|pm|pa/i.test(salary)) salary = `${salary} Lacs`;
-  } else if (profile.currentSalary) {
-    salary = `₹ ${profile.currentSalary} Lacs`;
+  } else if (curSal) {
+    salary = curSal;
+    if (!salary.startsWith("₹")) salary = `₹ ${salary}`;
+    if (!/lacs|lac|k|pm|pa/i.test(salary)) salary = `${salary} Lacs`;
   }
 
   // 6. Resolve Notice Period

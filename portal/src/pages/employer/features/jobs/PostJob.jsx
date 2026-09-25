@@ -2665,6 +2665,10 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         deadline: formData.cvEndDate || undefined,
         screeningQuestions,
         externalLink: formData.externalLink || "",
+        // Map URL ?type param → DB enum: hot → "hot", management → "management", internship → "internship"
+        jobCategory: typeParam && ["hot", "management", "internship"].includes(typeParam)
+          ? typeParam
+          : "standard",
       };
 
 
@@ -2714,6 +2718,15 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       navigate("/employer-dashboard");
     }
   }, [formData, navigate, isEmbedded, onCancel]);
+
+  // Auto-redirect to jobs list after successful launch
+  useEffect(() => {
+    if (!launched || isEmbedded) return;
+    const timer = setTimeout(() => {
+      navigate('/employer/jobs-responses');
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [launched, navigate, isEmbedded]);
 
   /* ── SUCCESS STATE ── */
   if (launched) {
@@ -2788,7 +2801,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             </p>
             <p
               style={{
-                margin: "0 0 36px",
+                margin: "0 0 8px",
                 fontSize: 14,
                 color: "#94A3B8",
                 fontWeight: 500,
@@ -2797,6 +2810,22 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
               Your campaign link is being generated. You'll receive it on your
               registered email within 2 minutes.
             </p>
+            {!isEmbedded && (
+              <p
+                style={{
+                  margin: "0 0 28px",
+                  fontSize: 13,
+                  color: "#84CC16",
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                ↳ Redirecting to your jobs list in 3 seconds…
+              </p>
+            )}
             <div
               style={{
                 display: "flex",
@@ -2827,7 +2856,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
               ) : (
                 <>
                   <button
-                    onClick={() => navigate("/employer-dashboard")}
+                    onClick={() => navigate("/employer/jobs-responses")}
                     style={{
                       padding: "13px 28px",
                       borderRadius: 14,
@@ -2841,7 +2870,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
                       boxShadow: "0 6px 20px rgba(0,35,102,0.3)",
                     }}
                   >
-                    Go to Dashboard
+                    View My Jobs
                   </button>
                   <button
                     onClick={() => {

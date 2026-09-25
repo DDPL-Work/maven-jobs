@@ -175,7 +175,7 @@ export default function ManageJobsResponses() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState(['active', 'closed']);
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedPosters, setSelectedPosters] = useState([]);
 
@@ -389,6 +389,11 @@ export default function ManageJobsResponses() {
   // Filter Checkbox Toggles
   const toggleStatus = (statusId) => {
     setSelectedStatuses((prev) => {
+      // If currently showing all (empty = no filter), clicking one item → filter to just that one
+      if (prev.length === 0) {
+        setCurrentPage(1);
+        return [statusId];
+      }
       const next = prev.includes(statusId) ? prev.filter((s) => s !== statusId) : [...prev, statusId];
       setCurrentPage(1);
       return next;
@@ -416,12 +421,22 @@ export default function ManageJobsResponses() {
     setSearchTerm('');
     setDebouncedSearch('');
     setUserSearchTerm('');
-    setSelectedStatuses(['active', 'closed']);
+    setSelectedStatuses([]);
     setSelectedCategories([]);
     setSelectedPosters([]);
     setCurrentPage(1);
     showToast('Filters cleared.');
   };
+
+  const isFilterActive = useMemo(() => {
+    // default is [] (All Status), so filter is active only when a specific status subset is chosen
+    return (
+      selectedStatuses.length > 0 ||
+      selectedCategories.length > 0 ||
+      selectedPosters.length > 0 ||
+      searchTerm.trim() !== ''
+    );
+  }, [selectedStatuses, selectedCategories, selectedPosters, searchTerm]);
 
   // Filtered poster list for accordion search
   const displayedPosters = useMemo(() => {
@@ -625,6 +640,17 @@ export default function ManageJobsResponses() {
               <div className="mjr-sidebar-header">
                 <FiFilter size={16} color="#002366" />
                 <span>Filters</span>
+                {isFilterActive && (
+                  <button
+                    type="button"
+                    className="mjr-clear-filters-btn"
+                    onClick={handleClearFilters}
+                    title="Clear all filters"
+                  >
+                    <FiX size={12} />
+                    Clear
+                  </button>
+                )}
               </div>
 
               {/* Main Title/Ref Search */}
@@ -652,6 +678,27 @@ export default function ManageJobsResponses() {
 
                 {statusOpen && (
                   <div className="mjr-filter-list">
+                    {/* All Status option */}
+                    <label className="mjr-filter-item">
+                      <div className="mjr-filter-item-left">
+                        <input
+                          type="checkbox"
+                          className="mjr-filter-checkbox"
+                          checked={selectedStatuses.length === 0}
+                          onChange={() => {
+                            if (selectedStatuses.length > 0) {
+                              // select all → clear filter (show everything)
+                              setSelectedStatuses([]);
+                              setCurrentPage(1);
+                            }
+                            // already all selected → nothing to do
+                          }}
+                        />
+                        <span style={{ fontWeight: 600 }}>All Status</span>
+                      </div>
+                      <span className="mjr-filter-count">{filtersData.totalJobs ?? 0}</span>
+                    </label>
+
                     {(filtersData.statuses || []).map((s) => (
                       <label key={s.id} className="mjr-filter-item">
                         <div className="mjr-filter-item-left">
@@ -735,7 +782,7 @@ export default function ManageJobsResponses() {
                               checked={selectedPosters.includes(poster.id)}
                               onChange={() => togglePoster(poster.id)}
                             />
-                            <span>{poster.label}</span>
+                            <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }} title={poster.label}>{poster.label}</span>
                           </div>
                           <span className="mjr-filter-count">{poster.count ?? 0}</span>
                         </label>
@@ -859,7 +906,11 @@ export default function ManageJobsResponses() {
                           </Link>
                           <span className="mjr-job-location">{job.location}</span>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span className="mjr-job-tag">{job.category}</span>
+                            {job.category && (
+                              <span className={`mjr-job-tag mjr-job-tag--${job.category.toLowerCase().replace(/\s+/g, '-')}`}>
+                                {job.category}
+                              </span>
+                            )}
                             {job.status === 'closed' && (
                               <span className="mjr-job-tag closed">Closed</span>
                             )}
@@ -962,14 +1013,6 @@ export default function ManageJobsResponses() {
                                 >
                                   Preview NVite
                                 </button>
-
-                                <div className="mjr-dropdown-divider" />
-
-                                <div className="mjr-nvite-info-block">
-                                  <div className="mjr-nvite-info-title">NVite info (last 90 days)</div>
-                                  <div className="mjr-nvite-info-bullet">• {job.recipientsCount ?? 0} total recipients</div>
-                                  <div className="mjr-nvite-info-bullet">• Last sent on {job.lastSentDate || '—'}</div>
-                                </div>
                               </div>
                             )}
                           </div>
