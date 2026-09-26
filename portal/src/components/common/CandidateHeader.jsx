@@ -92,10 +92,10 @@ const navCols = [
       {
         title: "Research companies",
         links: [
-          ["Interview questions", "/interview-questions"],
-          ["Company salaries", "/salary-insights"],
-          ["Company reviews", "/companies?tab=reviews"],
-          ["Salary Calculator", "/salary-calculator"],
+          ["Interview questions", "https://www.ambitionbox.com/interviews?utm_source=maven-jobs&utm_medium=desktop&utm_campaign=gnb"],
+          ["Company salaries", "https://www.ambitionbox.com/salaries?utm_source=maven-jobs&utm_medium=desktop&utm_campaign=gnb"],
+          ["Company reviews", "https://www.ambitionbox.com/reviews?utm_source=maven-jobs&utm_medium=desktop&utm_campaign=gnb"],
+          ["Salary Calculator", "https://www.ambitionbox.com/salaries/take-home-salary-calculator?utm_source=maven-jobs&utm_medium=desktop&utm_campaign=gnb"],
         ],
       },
     ],
@@ -245,7 +245,12 @@ const CandidateHeader = () => {
 
     if (item.actionUrl) {
       setShowNotifications(false);
-      navigate(item.actionUrl);
+      let finalUrl = item.actionUrl;
+      if (finalUrl === '/mivites' || finalUrl === '/candidate/mivites') {
+        const candidateId = user?._id || user?.id;
+        finalUrl = candidateId ? `/${candidateId}/dashboard/mivites` : '/login';
+      }
+      navigate(finalUrl);
     }
   };
 
@@ -337,9 +342,13 @@ const CandidateHeader = () => {
                   to={to}
                   className={`ch-nav-link${label === "Jobs" ? " active" : ""}`}
                   onClick={(e) => {
-                    if (window.innerWidth <= 1024 && cols.length > 0) {
-                      e.preventDefault();
-                      setActiveNavDropdown(activeNavDropdown === label ? null : label);
+                    if (window.innerWidth <= 1024) {
+                      if (cols.length > 0) {
+                        e.preventDefault();
+                        setActiveNavDropdown(activeNavDropdown === label ? null : label);
+                      } else {
+                        setIsMobileMenuOpen(false);
+                      }
                     }
                   }}
                 >
@@ -371,21 +380,33 @@ const CandidateHeader = () => {
                               }}
                             >
                               <h4>{sec.title}</h4>
-                              {sec.links.map(([text, href]) => (
-                                <Link key={text} to={href}>
-                                  {text}
-                                </Link>
-                              ))}
+                              {sec.links.map(([text, href]) =>
+                                href.startsWith("http") ? (
+                                  <a key={text} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+                                    {text}
+                                  </a>
+                                ) : (
+                                  <Link key={text} to={href} onClick={() => setIsMobileMenuOpen(false)}>
+                                    {text}
+                                  </Link>
+                                )
+                              )}
                             </div>
                           ))
                         ) : (
                           <>
                             <h4>{col.title}</h4>
-                            {col.links.map(([text, href]) => (
-                              <Link key={text} to={href}>
-                                {text}
-                              </Link>
-                            ))}
+                            {col.links.map(([text, href]) =>
+                              href.startsWith("http") ? (
+                                <a key={text} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+                                  {text}
+                                </a>
+                              ) : (
+                                <Link key={text} to={href} onClick={() => setIsMobileMenuOpen(false)}>
+                                  {text}
+                                </Link>
+                              )
+                            )}
                           </>
                         )}
                       </div>
@@ -400,6 +421,7 @@ const CandidateHeader = () => {
                   to="/blogs"
                   state={{ from: "/profile-dashboard" }}
                   className="ch-nav-link"
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Blogs
                 </Link>
@@ -411,7 +433,7 @@ const CandidateHeader = () => {
             <div className="mobile-only-sidebar-actions">
               {user ? (
                 <div className="ch-user-logged">
-                  <AvatarDropdown dropdownAlign="left" />
+                  <AvatarDropdown variant="sidebar" />
                 </div>
               ) : (
                 <div className="ch-user-guest" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>

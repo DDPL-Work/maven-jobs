@@ -105,7 +105,7 @@ router.get(
 router.get(
   "/companies/:id",
   cacheRoute({
-    key: (req) => `cache:candidate:company:${req.params.id}`,
+    key: (req) => `cache:candidate:company:${req.params.id}:${req.user?._id || 'anon'}`,
     ttl: 600,
   }),
   candidateController.getCompanyDetail,

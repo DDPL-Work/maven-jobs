@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { FiUser, FiHome, FiMap, FiLogOut, FiChevronDown, FiAward } from 'react-icons/fi';
 import { useAuth } from '../../AuthContext';
@@ -13,7 +13,7 @@ const C = {
   dm: "'DM Sans', system-ui, sans-serif",
 };
 
-export default function AvatarDropdown({ dropdownAlign = 'right' }) {
+export default function AvatarDropdown({ dropdownAlign = 'right', variant = 'dropdown' }) {
   const [open, setOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const dropdownRef = useRef(null);
@@ -62,7 +62,66 @@ export default function AvatarDropdown({ dropdownAlign = 'right' }) {
 
   return (
     <>
-      <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-flex' }}>
+      {variant === 'sidebar' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Link
+            to="/dashboard"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 14px', borderRadius: 12,
+              background: '#f8fafc', border: '1px solid #e2e8f0',
+              textDecoration: 'none', color: 'inherit'
+            }}
+          >
+            <div style={{
+              width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+              overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: user?.profilePic ? 'transparent' : 'linear-gradient(135deg,#f8fafc,#e2e8f0)',
+            }}>
+              {user?.profilePic ? (
+                <img
+                  src={user.profilePic}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={e => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.parentElement.style.background = 'linear-gradient(135deg,#f8fafc,#e2e8f0)';
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: 13, fontWeight: 800, color: C.s400 }}>{initials}</span>
+              )}
+            </div>
+            <div style={{ overflow: 'hidden' }}>
+              <div style={{
+                fontSize: 14, fontWeight: 700, color: '#0f172a',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {user?.name || 'User'}
+              </div>
+              <div style={{
+                fontSize: 12, color: C.s500,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {user?.email || ''}
+              </div>
+            </div>
+          </Link>
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '12px 14px', borderRadius: 12, border: 'none',
+              background: '#FEF2F2', color: '#ef4444',
+              fontSize: 14, fontWeight: 600, fontFamily: C.dm, cursor: 'pointer'
+            }}
+          >
+            <FiLogOut size={18} />
+            Logout
+          </button>
+        </div>
+      ) : (
+        <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-flex' }}>
         <button
           onClick={() => setOpen(p => !p)}
           aria-haspopup="true"
@@ -220,6 +279,7 @@ export default function AvatarDropdown({ dropdownAlign = 'right' }) {
           </div>
         )}
       </div>
+      )}
 
       <LogoutModal
         isOpen={showLogoutModal}

@@ -1,4 +1,5 @@
 const { generateUnsubscribeToken } = require("../utils/unsubscribeToken");
+const { wrapNaukriLayout } = require("../../email/templates/layouts");
 
 const FRONTEND_URL = () => process.env.FRONTEND_URL || "https://maven-jobs.com";
 const API_BASE = () => process.env.API_BASE_URL || "https://mavenjobs.in/api/v1";
@@ -18,100 +19,92 @@ function buildRecommendationEmail(userName, recommendations, plan, userId, email
   const messageId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const unsubscribeToken = userId && email ? generateUnsubscribeToken(userId, email, "recommendations").token : "";
+  const unsubscribeUrl = userId && email
+    ? `${API_BASE()}/recommendations/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}&type=recommendations`
+    : "";
 
-  const jobCards = recommendations.map((job, i) => {
+  const jobCards = (recommendations || []).map((job, i) => {
     const clickUrl = userId ? buildClickUrl(job.jobId, userId, messageId) : (job.applyUrl || "#");
     return `
-    <tr>
-      <td style="padding:16px 24px;background:#f8fafc;border-radius:8px;margin-bottom:12px;display:block;">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td>
-              <p style="margin:0 0 4px;font-size:16px;font-weight:600;color:#1a365d;">
-                ${i + 1}. ${escapeHtml(job.title)}
-              </p>
-              <p style="margin:0 0 4px;font-size:14px;color:#475569;">
-                ${escapeHtml(job.companyName || "")}
-              </p>
-              <p style="margin:0 0 2px;font-size:13px;color:#64748b;">
-                📍 ${escapeHtml(job.location || "Various")}
-                ${job.salaryRange ? `&nbsp;|&nbsp;💰 ${escapeHtml(job.salaryRange)}` : ""}
-                ${job.experience ? `&nbsp;|&nbsp;⚡ ${escapeHtml(job.experience)}` : ""}
-              </p>
-              <p style="margin:0;font-size:12px;color:#94a3b8;">
-                Match Score: ${job.score}%
-              </p>
-            </td>
-            <td width="120" style="text-align:right;vertical-align:middle;">
-              <a href="${escapeHtml(clickUrl)}" target="_blank"
-                 style="display:inline-block;padding:8px 20px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;font-weight:500;">
-                Apply Now →
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>`;
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+      <tr>
+        <td style="padding: 18px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td valign="top">
+                <p style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #0f172a; line-height: 1.3;">
+                  ${i + 1}. ${escapeHtml(job.title)}
+                </p>
+                <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 500; color: #475569;">
+                  ${escapeHtml(job.companyName || "")}
+                </p>
+                <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">
+                  📍 ${escapeHtml(job.location || "Various")}
+                  ${job.salaryRange ? `&nbsp;|&nbsp;💰 ${escapeHtml(job.salaryRange)}` : ""}
+                  ${job.experience ? `&nbsp;|&nbsp;⚡ ${escapeHtml(job.experience)}` : ""}
+                </p>
+                <p style="margin: 0; font-size: 12px; font-weight: 600; color: #16a34a;">
+                  Match Score: ${job.score}%
+                </p>
+              </td>
+              <td width="130" align="right" valign="middle" style="padding-left: 12px;">
+                <a href="${escapeHtml(clickUrl)}" target="_blank"
+                   style="display: inline-block; padding: 9px 20px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 9999px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);">
+                  Apply Now &rarr;
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
   }).join("\n");
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-</head>
-<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center" style="padding:24px 16px;">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;">
-          <tr>
-            <td style="background:#1a365d;padding:24px 32px;">
-              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Maven Jobs</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:32px;">
-              <p style="margin:0 0 4px;font-size:22px;font-weight:600;color:#1a365d;">Hi ${escapeHtml(userName)},</p>
-              <p style="margin:0 0 20px;font-size:15px;color:#475569;">
-                Based on your profile, here are today's ${isElite ? "exclusive elite " : ""}recommendations:
-              </p>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                ${jobCards}
-              </table>
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
-                <tr>
-                  <td align="center">
-                    <a href="${escapeHtml(FRONTEND_URL())}/jobs"
-                       target="_blank"
-                       style="display:inline-block;padding:12px 32px;background:#1a365d;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:500;">
-                      Explore More Jobs →
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;">
-              <p style="margin:0 0 8px;font-size:12px;color:#94a3b8;">
-                You are receiving this because you are a ${isElite ? "Maven Jobs Elite" : "Maven Jobs Pro"} member.
-                <a href="${escapeHtml(FRONTEND_URL())}/notifications/preferences"
-                   target="_blank" style="color:#2563eb;text-decoration:underline;">Manage preferences</a>
-              </p>
-              <p style="margin:0 0 8px;font-size:12px;color:#94a3b8;">
-                <a href="${escapeHtml(API_BASE())}/recommendations/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}&type=recommendations"
-                   target="_blank" style="color:#94a3b8;text-decoration:underline;">Unsubscribe from recommendation emails</a>
-              </p>
-              <p style="margin:0;font-size:12px;color:#94a3b8;">&copy; ${new Date().getFullYear()} Maven Jobs. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const content = `
+    <!-- Naukri Quote Highlight Card -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 24px 28px;">
+          <div style="font-size: 40px; line-height: 20px; font-weight: 700; color: #f59e0b; font-family: Georgia, serif; margin-bottom: 8px;">&ldquo;</div>
+          <h2 style="margin: 0 0 10px 0; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.4;">${heading}</h2>
+          <p style="margin: 0 0 8px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+            Hi ${escapeHtml(userName)},
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.6;">
+            Based on your profile, here are today's ${isElite ? "exclusive elite " : ""}recommendations:
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Job Cards -->
+    ${jobCards}
+
+    <!-- Explore More Jobs Pill Button -->
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px auto 20px auto;">
+      <tr>
+        <td align="center" style="background-color: #163060; border-radius: 9999px; box-shadow: 0 4px 14px rgba(22, 48, 96, 0.25);">
+          <a href="${escapeHtml(FRONTEND_URL())}/jobs"
+             target="_blank"
+             style="display: inline-block; padding: 13px 40px; color: #ffffff; text-decoration: none; border-radius: 9999px; font-size: 15px; font-weight: 600;">
+            Explore More Jobs &rarr;
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 12px 0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.6;">
+      You are receiving this because you are a ${isElite ? "Maven Jobs Elite" : "Maven Jobs Pro"} member.<br />
+      <a href="${escapeHtml(FRONTEND_URL())}/notifications/preferences" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 500;">Manage preferences</a>
+    </p>
+  `;
+
+  const html = wrapNaukriLayout(content, {
+    title: heading,
+    showFeatureGrid: true,
+    showAppBanner: true,
+    unsubscribeUrl,
+  });
 
   return { subject, html, messageId };
 }

@@ -45,6 +45,7 @@ const jobReportService = require("../services/job-posting-report.service");
 const smsService = require("../services/sms.service");
 const emailService = require("../services/email.service");
 const RegistrationOTP = require("../models/RegistrationOTP");
+const { buildOTPHtml } = require("../email/templates/layouts");
 const CompanySubUser = require("../models/CompanySubUser");
 const UserLoginLog = require("../models/UserLoginLog");
 
@@ -466,7 +467,7 @@ exports.sendEmailOtp = asyncHandler(async (req, res) => {
     expiresAt: new Date(Date.now() + 3 * 60 * 1000),
   });
 
-  const html = `<p>Your verification code for MavenJobs is: <b>${otp}</b></p><p>This code will expire in 3 minutes.</p>`;
+  const html = buildOTPHtml({ name: "Employer", otp, purpose: "email verification", expiryMinutes: 3 });
   await emailService.sendEmail({ to: email, subject: "Verify your email - MavenJobs", html });
 
   res.status(200).json({ success: true, message: "OTP sent" });
@@ -1198,6 +1199,8 @@ exports.getJob = asyncHandler(async (req, res) => {
       department: job.department || "",
       location: job.location || "",
       description: job.description || "",
+      responsibilities: job.responsibilities || "",
+      qualifications: job.qualifications || "",
       jobType: job.jobType || "",
       experience: job.experience || "",
       salaryMin: job.salaryMin || 0,

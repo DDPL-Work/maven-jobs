@@ -75,6 +75,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(compression());
 
+const path = require("path");
+
 app.use(
   "/api/v1/payment/webhook",
   express.raw({ type: "application/json" }),
@@ -83,6 +85,7 @@ app.use(
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use("/public", express.static(path.join(__dirname, "../public")));
 
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
@@ -132,6 +135,21 @@ app.use(`${BASE_ROUTE}/notifications/preferences`, notificationPreferencesRoutes
 app.use(`${BASE_ROUTE}/recommendations`, recommendationsRoutes);
 app.use(`${BASE_ROUTE}/chatbot`, chatbotRoutes);
 app.use(`${BASE_ROUTE}/payment`, paymentRoutes);
+
+app.get(["/download", `${BASE_ROUTE}/download`, `${BASE_ROUTE}/app/download`], (req, res) => {
+  const ua = req.headers["user-agent"] || "";
+  const PLAY_STORE_URL = process.env.PLAY_STORE_URL || "https://play.google.com/store/apps/details?id=com.mavenjobs";
+  const APP_STORE_URL = process.env.APP_STORE_URL || "https://apps.apple.com/app/maven-jobs/id6440000000";
+  const WEB_DOWNLOAD_URL = (process.env.CANDIDATE_WEB_URL || process.env.FRONTEND_URL || "https://naukri-3.vercel.app") + "/download";
+
+  if (/android/i.test(ua)) {
+    return res.redirect(PLAY_STORE_URL);
+  }
+  if (/iphone|ipad|ipod/i.test(ua)) {
+    return res.redirect(APP_STORE_URL);
+  }
+  return res.redirect(WEB_DOWNLOAD_URL);
+});
 
 app.get("/", (req, res) => {
   res.json({

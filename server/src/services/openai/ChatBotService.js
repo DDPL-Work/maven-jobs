@@ -60,6 +60,24 @@ class ChatBotService {
     }
   }
 
+  _isOutOfScope(text) {
+    const lower = String(text || "").toLowerCase();
+    const rejectPatterns = [
+      /\bwrite (python|html|css|javascript|react|nextjs|nodejs|java|c\+\+|php|go|sql|code|script|component|function|class)\b/i,
+      /\bgenerate (python|html|css|javascript|react|nextjs|nodejs|java|c\+\+|php|go|sql|code|script|component|function|class)\b/i,
+      /\bbuild a (website|application|dashboard|program)\b/i,
+      /\bdebug (my|this) code\b/i,
+      /\bfix (my|this) code\b/i,
+      /\bteach me (python|javascript|react|html|css|java|go|c\+\+)\b/i,
+      /\btell me a joke\b/i,
+      /\bwrite a (poem|story)\b/i,
+      /\bwhat is the (weather|capital of)\b/i,
+      /\bwho is (elon|president|prime minister)\b/i,
+      /\bexplain quantum\b/i
+    ];
+    return rejectPatterns.some(pattern => pattern.test(lower));
+  }
+
   async sendMessage({ threadId, user, text }) {
     const trimmed = String(text || "").trim();
     if (!trimmed) {
@@ -83,6 +101,48 @@ class ChatBotService {
     });
 
     await this.checkDailyLimit(thread, capabilities);
+
+    // --- Fast Rejection Layer / Intent Gate ---
+    if (this._isOutOfScope(trimmed)) {
+      const userMsg = await ChatBotMessage.create({
+        threadId: thread._id,
+        userId: user.id,
+        senderRole: "USER",
+        senderId: user.id,
+        senderModel: "User",
+        type: "TEXT",
+        text: trimmed,
+        metadata: { tier: userTierName, role: user.role },
+      });
+
+      const botReply = "I'm MavenAI, a recruitment-focused assistant. I can help with jobs, candidates, resumes, hiring, applications, and career-related tasks. I can't help with that request.";
+      const botMsg = await ChatBotMessage.create({
+        threadId: thread._id,
+        userId: user.id,
+        senderRole: "BOT",
+        senderId: null,
+        senderModel: "User",
+        type: "TEXT",
+        text: botReply,
+        metadata: { model: "LocalIntentGate", tier: userTierName, role: user.role },
+      });
+
+      await ChatBotThread.findByIdAndUpdate(thread._id, {
+        $inc: { messageCount: 1 },
+        lastActivityAt: new Date(),
+      });
+
+      return {
+        threadId: String(thread._id),
+        userMessage: { id: String(userMsg._id), role: "USER", text: userMsg.text, createdAt: userMsg.createdAt },
+        botMessage: { id: String(botMsg._id), role: "BOT", text: botMsg.text, createdAt: botMsg.createdAt },
+        tier: userTierName,
+        usage: {
+          dailyMessages: await this._getDailyCount(thread._id),
+          dailyLimit: capabilities.dailyMessageLimit,
+        },
+      };
+    }
 
     const contextWindow = capabilities.contextWindowSize || 5;
     const recentMessages = await ChatBotMessage.find({ threadId: thread._id })

@@ -15,6 +15,7 @@ import { useCandidateApplications, useCandidateSavedJobs } from '../../../../hoo
 import { useSaveJob } from '../../../../hooks/useCandidateMutations';
 import { SkeletonStatsRow, SkeletonTable } from '../../../../components/Skeleton';
 import LandingFooter from '../../../../components/LandingFooter';
+import CandidateHeader from '../../../../components/common/CandidateHeader';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -447,6 +448,7 @@ export default function Info() {
         }
       `}</style>
 
+<CandidateHeader />
             {/* ── TOP HEADER BAR ── */}
             <div className="info-header-bar" style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '18px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, position: 'sticky', top: 0, zIndex: 100 }}>
                 <div>
