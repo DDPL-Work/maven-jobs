@@ -8,6 +8,7 @@ const logger = require("../config/logger");
 const activityService = require("../services/recruiter-activity.service");
 const { checkAndEnforceQuota } = require("../services/quota-enforcement.service");
 const ResdexReportLog = require("../models/ResdexReportLog");
+const notificationService = require("../services/notification.service");
 
 exports.sendNvite = asyncHandler(async (req, res) => {
   const company = req.company;
@@ -149,6 +150,20 @@ exports.sendNvite = asyncHandler(async (req, res) => {
 
       sentResults.push({ email: recipient.email, success: true, messageId: emailResult.messageId });
       logger.info("[nvite] Sent invitation email", { email: recipient.email, nviteId: nvite._id });
+
+      // Send in-app notification to candidate (strictly candidate only)
+      if (candidateUser?._id) {
+        notificationService.sendCandidateNotification({
+          candidateId: candidateUser._id,
+          companyId: company._id,
+          jobId: (Array.isArray(jobIds) && jobIds.length > 0) ? jobIds[0] : null,
+          title: "Interview Invitation (NVite)",
+          message: `${companyName} invited you: "${subject.trim()}".`,
+          category: "INVITATION",
+          actionUrl: "/candidate/mivites",
+          metadata: { nviteId: String(nvite._id), companyName, recruiterName },
+        }).catch(() => {});
+      }
     } catch (err) {
       logger.error("[nvite] Failed to send email", { email: recipient.email, error: err.message });
       failedEmails.push({ email: recipient.email, error: err.message });

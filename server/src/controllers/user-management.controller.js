@@ -4,6 +4,7 @@ const Company = require("../models/Company");
 const CompanySubUser = require("../models/CompanySubUser");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const notificationService = require("../services/notification.service");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -129,6 +130,26 @@ exports.createUser = asyncHandler(async (req, res) => {
       resdex,
     },
   });
+
+  // Notify company admin of new team member
+  notificationService.sendCompanyNotification({
+    companyId,
+    recipientUserId: createdBy,
+    title: "New Team Member Added",
+    message: `${newUser.name} has been added as a Recruiter.`,
+    category: "TEAM",
+    actionUrl: "/user-management",
+  }).catch(() => {});
+
+  // Notify new recruiter
+  notificationService.sendRecruiterNotification({
+    companyId,
+    recruiterUserId: newUser._id,
+    title: "Welcome to the Team",
+    message: "You have been added to the recruiting team on MavenJobs.",
+    category: "TEAM",
+    actionUrl: "/employer-dashboard",
+  }).catch(() => {});
 
   res.status(201).json({
     success: true,

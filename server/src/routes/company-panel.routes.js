@@ -102,6 +102,7 @@ router.post("/ai/suggest-skills", controller.suggestSkills);
 // Notifications
 router.get("/notifications", controller.getNotifications);
 router.patch("/notifications/:id/read", controller.markNotificationRead);
+router.patch("/notifications/read-all", controller.markAllNotificationsRead);
 
 // Resdex — Resume Search & Database
 router.get("/resdex/search", resdexController.searchCandidates);

@@ -13,6 +13,9 @@ const recruiterActivityService = require("../services/recruiter-activity.service
 const RecruiterActivity = require("../models/RecruiterActivity");
 const emailService = require("../services/email.service");
 const ResdexReportLog = require("../models/ResdexReportLog");
+const notificationService = require("../services/notification.service");
+const EventBus = require("../events/EventBus");
+const { EVENTS } = require("../events/events");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -1298,8 +1301,63 @@ exports.updateCandidateJobStatus = asyncHandler(async (req, res) => {
   if (status) updateFields.status = String(status).toUpperCase();
   if (callStatus) updateFields.callStatus = String(callStatus);
 
+  let updatedApp = null;
   if (mongoose.Types.ObjectId.isValid(applicationId) && Object.keys(updateFields).length > 0) {
-    await Application.findByIdAndUpdate(applicationId, updateFields);
+    updatedApp = await Application.findByIdAndUpdate(applicationId, updateFields, { new: true })
+      .populate("candidateId", "name email")
+      .populate("jobId", "title");
+  }
+
+  // If application status changed, notify candidate (strictly candidate only)
+  if (status && updatedApp?.candidateId?._id) {
+    const candidateUser = updatedApp.candidateId;
+    const jobTitle = updatedApp.jobId?.title || "the role";
+    const companyName = company.name || "The company";
+    const statusUpper = String(status).toUpperCase();
+
+    await notificationService.sendCandidateNotification({
+      candidateId: candidateUser._id,
+      companyId: company._id,
+      jobId: updatedApp.jobId?._id || updatedApp.jobId,
+      applicationId: updatedApp._id,
+      title: "Application status updated",
+      message: `${companyName} updated your application status for ${jobTitle} to ${statusUpper}.`,
+      category: "APPLICATION",
+      actionUrl: "/candidate/applications",
+      metadata: { source: "EMPLOYER_JOB_RESPONSES", status: statusUpper },
+    });
+
+    const eventPayload = {
+      email: candidateUser.email,
+      fullName: candidateUser.name,
+      jobTitle,
+      companyName,
+      candidateId: candidateUser._id,
+    };
+
+    switch (statusUpper) {
+      case "SHORTLISTED":
+        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
+        break;
+      case "REJECTED":
+        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
+        break;
+      case "INTERVIEW":
+        EventBus.emit(EVENTS.CANDIDATE_INTERVIEW_SCHEDULED, {
+          ...eventPayload,
+          interviewDate: "",
+          interviewTime: "",
+          interviewMode: "",
+          interviewLink: "",
+        });
+        break;
+      case "OFFERED":
+        EventBus.emit(EVENTS.CANDIDATE_OFFER_ISSUED, {
+          ...eventPayload,
+          offerLink: "",
+        });
+        break;
+    }
   }
 
   res.status(200).json({

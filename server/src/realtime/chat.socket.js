@@ -95,6 +95,17 @@ const initChatSocket = (server) => {
   io.on("connection", (socket) => {
     const currentUser = socket.data.user;
 
+    // Auto-join personal and company notification rooms
+    if (currentUser?.id) {
+      socket.join(`user:${String(currentUser.id)}`);
+      if (currentUser.role === "CANDIDATE") {
+        socket.join(`candidate:${String(currentUser.id)}`);
+      }
+    }
+    if (currentUser?.companyId) {
+      socket.join(`company:${String(currentUser.companyId)}`);
+    }
+
     socket.on("thread:join", async ({ threadId }, ack = () => {}) => {
       try {
         const thread = await ensureThreadAccess({ user: currentUser, threadId });

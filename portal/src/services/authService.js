@@ -704,6 +704,27 @@ const authService = {
     }
   },
 
+  markAllEmployerNotificationsRead: async () => {
+    try {
+      const response = await api.patch('/company-panel/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to mark all employer notifications as read' };
+    }
+  },
+
+  getRecruiterNotifications: async () => {
+    return authService.getEmployerNotifications();
+  },
+
+  markRecruiterNotificationRead: async (notificationId) => {
+    return authService.markEmployerNotificationRead(notificationId);
+  },
+
+  markAllRecruiterNotificationsRead: async () => {
+    return authService.markAllEmployerNotificationsRead();
+  },
+
   getCandidateNotifications: async () => {
     try {
       const response = await api.get('/candidate/notifications');
@@ -719,6 +740,15 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to mark notification as read' };
+    }
+  },
+
+  markAllCandidateNotificationsRead: async () => {
+    try {
+      const response = await api.patch('/candidate/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to mark all candidate notifications as read' };
     }
   },
 

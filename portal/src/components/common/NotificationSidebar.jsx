@@ -7,7 +7,8 @@ const NotificationSidebar = ({
   notifications,
   unreadCount,
   onMarkAllRead,
-  readIds
+  onNotificationClick,
+  readIds = []
 }) => {
   return (
     <>
@@ -29,24 +30,31 @@ const NotificationSidebar = ({
         </div>
         <div className="pd-notif-body">
           <div className="pd-notif-date">Today</div>
-          {notifications.map((n) => (
-            <div
-              className={`pd-notif-item ${n.unread && !readIds.includes(n.id) ? "unread" : ""}`}
-              key={n.id}
-            >
+          {notifications.map((n) => {
+            const isUnread = n.unread && !readIds.includes(n.id);
+            return (
               <div
-                className="pd-notif-icon"
-                style={{ background: n.bg, color: n.color }}
+                className={`pd-notif-item ${isUnread ? "unread" : ""}`}
+                key={n.id}
+                onClick={() => onNotificationClick?.(n)}
+                style={{ cursor: "pointer" }}
               >
-                {n.icon}
+                <div
+                  className="pd-notif-icon"
+                  style={{ background: n.bg, color: n.color }}
+                >
+                  {n.icon}
+                </div>
+                <div className="pd-notif-content">
+                  <div className="pd-notif-title" style={{ fontWeight: isUnread ? 700 : 500 }}>
+                    {n.title}
+                  </div>
+                  <div className="pd-notif-desc">{n.desc}</div>
+                  <div className="pd-notif-time">{n.time}</div>
+                </div>
               </div>
-              <div className="pd-notif-content">
-                <div className="pd-notif-title">{n.title}</div>
-                <div className="pd-notif-desc">{n.desc}</div>
-                <div className="pd-notif-time">{n.time}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </>

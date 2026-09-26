@@ -1,17 +1,27 @@
-// candidateNotification.js
 const mongoose = require("mongoose");
 
-const candidateNotificationSchema = new mongoose.Schema(
+const companyNotificationSchema = new mongoose.Schema(
   {
-    candidateId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
+      required: true,
+      index: true,
+    },
+    recipientUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    targetRole: {
+      type: String,
+      enum: ["ALL", "CLIENT", "RECRUITER"],
+      default: "ALL",
+    },
+    candidateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       default: null,
     },
     jobId: {
@@ -36,7 +46,17 @@ const candidateNotificationSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["APPLICATION", "JOB_ALERT", "SYSTEM", "CAMPAIGN", "CHAT", "INTERVIEW", "OFFER", "INVITATION"],
+      enum: [
+        "APPLICATION",
+        "JOB",
+        "INTERVIEW",
+        "OFFER",
+        "CHAT",
+        "SYSTEM",
+        "CAMPAIGN",
+        "QUOTA",
+        "TEAM",
+      ],
       default: "SYSTEM",
     },
     status: {
@@ -54,12 +74,10 @@ const candidateNotificationSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-candidateNotificationSchema.index({ candidateId: 1, createdAt: -1 });
+companyNotificationSchema.index({ companyId: 1, createdAt: -1 });
+companyNotificationSchema.index({ companyId: 1, recipientUserId: 1, status: 1 });
 
-module.exports = mongoose.model(
-  "CandidateNotification",
-  candidateNotificationSchema,
-);
+module.exports = mongoose.model("CompanyNotification", companyNotificationSchema);

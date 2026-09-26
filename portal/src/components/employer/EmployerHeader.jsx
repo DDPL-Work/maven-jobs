@@ -1580,6 +1580,33 @@ export default function EmployerHeader({
         <div className={`pd-notif-sidebar ${showNotifications ? 'show' : ''}`}>
           <div className="pd-notif-head">
             <h3>Notifications</h3>
+            {unreadNotificationsCount > 0 && (
+              <button
+                type="button"
+                className="pd-notif-mark-read"
+                onClick={async () => {
+                  if (unreadNotificationsCount === 0) return;
+                  try {
+                    await authService.markAllEmployerNotificationsRead();
+                  } catch {}
+                  setEmployerNotifications((curr) =>
+                    curr.map((x) => ({ ...x, status: "READ" }))
+                  );
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: C.navy,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  marginRight: "auto",
+                  marginLeft: 12,
+                }}
+              >
+                Mark all read
+              </button>
+            )}
             <button
               className="pd-notif-close"
               onClick={() => setShowNotifications(false)}
@@ -1625,17 +1652,20 @@ export default function EmployerHeader({
                   key={id || title + time}
                   onClick={async () => {
                     if (!id) return;
-                    try {
-                      await authService.markEmployerNotificationRead(id);
-                    } catch {}
+                    // If not already read, call API and mark in local state
+                    if (!isRead) {
+                      try {
+                        await authService.markEmployerNotificationRead(id);
+                      } catch {}
 
-                    setEmployerNotifications((current) =>
-                      current.map((x) => {
-                        const xid = String(x?.id || x?._id || "");
-                        if (!xid || xid !== id) return x;
-                        return { ...x, status: "READ" };
-                      })
-                    );
+                      setEmployerNotifications((current) =>
+                        current.map((x) => {
+                          const xid = String(x?.id || x?._id || "");
+                          if (!xid || xid !== id) return x;
+                          return { ...x, status: "READ" };
+                        })
+                      );
+                    }
 
                     if (n?.actionUrl) {
                       setShowNotifications(false);

@@ -17,6 +17,7 @@ const CandidateProfileHistory = require("../models/CandidateProfileHistory");
 const CandidateNotification = require("../models/CandidateNotification");
 const CandidateQuizResult = require("../models/CandidateQuizResult");
 const Nvite = require("../models/Nvite");
+const notificationService = require("../services/notification.service");
 const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
 const activityService = require("../services/recruiter-activity.service");
@@ -1689,17 +1690,62 @@ exports.createApplication = asyncHandler(async (req, res) => {
     await profile.save();
   }
 
-  await CandidateNotification.create({
+  // Send isolated notification to candidate
+  await notificationService.sendCandidateNotification({
     candidateId: req.user._id,
     companyId: job.companyId?._id || job.companyId,
     jobId: job._id,
     applicationId: application._id,
     title: "Application submitted",
-    message: `Your application for ${job.title} at ${job.companyId?.name || "the company"
-      } has been submitted successfully.`,
+    message: `Your application for ${job.title} at ${
+      job.companyId?.name || "the company"
+    } has been submitted successfully.`,
     category: "APPLICATION",
     actionUrl: "/candidate/applications",
   });
+
+  // Send isolated notification to company (client & recruiters)
+  const resolvedCompanyId = job.companyId?._id || job.companyId;
+  if (resolvedCompanyId) {
+    const candidateDisplayName = req.user.name || "A candidate";
+    await notificationService.sendCompanyNotification({
+      companyId: resolvedCompanyId,
+      candidateId: req.user._id,
+      jobId: job._id,
+      applicationId: application._id,
+      title: "New Application Received",
+      message: `${candidateDisplayName} applied for ${job.title}.`,
+      category: "APPLICATION",
+      actionUrl: `/employer/job-responses/${job._id}`,
+      metadata: {
+        candidateName: req.user.name,
+        candidateEmail: req.user.email,
+        jobTitle: job.title,
+      },
+    });
+
+    // If job has specific collaborators (recruiters), notify them as well
+    if (Array.isArray(job.collaborators) && job.collaborators.length > 0) {
+      for (const collaboratorId of job.collaborators) {
+        notificationService.sendRecruiterNotification({
+          companyId: resolvedCompanyId,
+          recruiterUserId: collaboratorId,
+          candidateId: req.user._id,
+          jobId: job._id,
+          applicationId: application._id,
+          title: "New Application Received",
+          message: `${candidateDisplayName} applied for ${job.title}.`,
+          category: "APPLICATION",
+          actionUrl: `/employer/job-responses/${job._id}`,
+          metadata: {
+            candidateName: req.user.name,
+            candidateEmail: req.user.email,
+            jobTitle: job.title,
+          },
+        }).catch(() => {});
+      }
+    }
+  }
 
   EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SUBMITTED, {
     email: req.user.email,
@@ -1821,7 +1867,7 @@ exports.toggleCompanyFollow = asyncHandler(async (req, res) => {
   if (follow) {
     if (!followedIds.has(String(company._id))) {
       followedIds.add(String(company._id));
-      await CandidateNotification.create({
+      await notificationService.sendCandidateNotification({
         candidateId: req.user._id,
         companyId: company._id,
         title: `Following ${company.name || "Company"}`,
@@ -1829,6 +1875,15 @@ exports.toggleCompanyFollow = asyncHandler(async (req, res) => {
         category: "SYSTEM",
         actionUrl: `/company/${company._id}`,
       });
+
+      notificationService.sendCompanyNotification({
+        companyId: company._id,
+        candidateId: req.user._id,
+        title: "New Follower",
+        message: `${req.user.name || "A candidate"} is now following your company profile.`,
+        category: "SYSTEM",
+        actionUrl: "/employer-dashboard",
+      }).catch(() => {});
     }
   } else {
     followedIds.delete(String(company._id));
@@ -2196,7 +2251,7 @@ exports.uploadResume = asyncHandler(async (req, res) => {
     actorId: req.user._id,
   });
 
-  await CandidateNotification.create({
+  await notificationService.sendCandidateNotification({
     candidateId: req.user._id,
     title: "Resume updated",
     message: "Your latest resume is securely stored and ready for future applications.",
@@ -2224,7 +2279,7 @@ exports.deleteResume = asyncHandler(async (req, res) => {
     sizeBytes: 0, mimeType: "", uploadedAt: null,
   };
   await profile.save();
-  await CandidateNotification.create({
+  await notificationService.sendCandidateNotification({
     candidateId: req.user._id,
     title: "Resume deleted",
     message: "Your resume has been removed from your profile.",
@@ -2268,13 +2323,20 @@ exports.serveResume = asyncHandler(async (req, res) => {
 });
 
 exports.getNotifications = asyncHandler(async (req, res) => {
-  const notifications = await CandidateNotification.find({ candidateId: req.user._id }).sort({
-    createdAt: -1,
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.max(1, Math.min(100, Number.parseInt(req.query.limit, 10) || 50));
+
+  const result = await notificationService.getCandidateNotifications(req.user._id, {
+    page,
+    limit,
   });
 
   res.status(200).json({
     success: true,
-    data: notifications.map((item) => formatNotification(item)),
+    data: result.notifications,
+    notifications: result.notifications,
+    pagination: result.pagination,
+    unreadCount: result.unreadCount,
   });
 });
 
@@ -2299,7 +2361,7 @@ exports.submitTodayQuiz = asyncHandler(async (req, res) => {
 
   const data = await QuizService.submitQuiz(req.user._id, answers);
 
-  await CandidateNotification.create({
+  await notificationService.sendCandidateNotification({
     candidateId: req.user._id,
     title: `${data.xpEarned} XP earned`,
     message: `You scored ${data.score}/${data.totalQuestions} in today's quiz.`,
@@ -2328,21 +2390,33 @@ exports.getQuizRanking = asyncHandler(async (req, res) => {
 });
 
 exports.markNotificationRead = asyncHandler(async (req, res) => {
-  const notification = await CandidateNotification.findOne({
-    _id: req.params.id,
-    candidateId: req.user._id,
-  });
+  const updated = await notificationService.markCandidateNotificationRead(
+    req.user._id,
+    req.params.id
+  );
 
-  if (!notification) {
+  if (!updated) {
     throw createHttpError(404, "Notification not found");
   }
 
-  notification.status = "READ";
-  await notification.save();
+  res.status(200).json({
+    success: true,
+    message: updated.alreadyRead ? "Notification already marked as read" : "Notification marked as read",
+    data: updated,
+    notification: updated,
+    alreadyRead: !!updated.alreadyRead,
+  });
+});
+
+exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
+  const result = await notificationService.markAllCandidateNotificationsRead(req.user._id);
 
   res.status(200).json({
     success: true,
-    data: formatNotification(notification),
+    message: result.modifiedCount > 0 ? "All notifications marked as read" : "All notifications are already marked as read",
+    data: result,
+    modifiedCount: result.modifiedCount,
+    alreadyRead: result.alreadyRead,
   });
 });
 

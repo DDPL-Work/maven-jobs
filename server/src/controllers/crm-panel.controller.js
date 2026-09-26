@@ -13,6 +13,8 @@ const Application = require("../models/Application");
 const CandidateProfile = require("../models/CandidateProfile");
 const CrmCampaign = require("../models/CrmCampaign");
 const CandidateNotification = require("../models/CandidateNotification");
+const CompanyNotification = require("../models/CompanyNotification");
+const notificationService = require("../services/notification.service");
 const PackageChangeRequest = require("../models/PackageChangeRequest");
 const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
@@ -2041,33 +2043,52 @@ exports.updateApplicationStatus = asyncHandler(async (req, res) => {
   ]);
 
   if (candidateUser) {
-    await CandidateNotification.create({
+    const newStatus = application.status;
+    const jobTitle = application.jobId?.title || "the role";
+    const companyName = application.companyId?.name || "The company";
+    const resolvedCompanyId = application.companyId?._id || application.companyId;
+
+    // Send isolated notification to candidate
+    await notificationService.sendCandidateNotification({
       candidateId: candidateUser._id,
-      companyId: application.companyId?._id || application.companyId,
+      companyId: resolvedCompanyId,
       jobId: application.jobId?._id || application.jobId,
       applicationId: application._id,
       title: "Application status updated",
-      message: `${application.jobId?.title || "Your application"} is now marked as ${application.status}.`,
+      message: `${jobTitle} is now marked as ${newStatus}.`,
       category: "APPLICATION",
       actionUrl: "/candidate/applications",
     });
 
-    const newStatus = application.status;
-    const jobTitle = application.jobId?.title || "the role";
-    const companyName = application.companyId?.name || "The company";
+    // Send isolated notification to employer/company
+    if (resolvedCompanyId) {
+      await notificationService.sendCompanyNotification({
+        companyId: resolvedCompanyId,
+        candidateId: candidateUser._id,
+        jobId: application.jobId?._id || application.jobId,
+        applicationId: application._id,
+        title: "Application Status Updated",
+        message: `Status of ${candidateUser.name || "a candidate"} for ${jobTitle} was updated to ${newStatus}.`,
+        category: "APPLICATION",
+        actionUrl: `/employer/job-responses/${application.jobId?._id || application.jobId}`,
+        metadata: { source: "CRM_PANEL", status: newStatus },
+      });
+    }
+
     const basePayload = {
       email: candidateUser.email,
       fullName: candidateUser.name,
       jobTitle,
       companyName,
+      candidateId: candidateUser._id,
     };
 
     switch (newStatus) {
       case "SHORTLISTED":
-        EventBus.emit(EVENTS.CANDIDATE_SHORTLISTED, basePayload);
+        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, basePayload);
         break;
       case "REJECTED":
-        EventBus.emit(EVENTS.CANDIDATE_REJECTED, basePayload);
+        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, basePayload);
         break;
       case "INTERVIEW":
         EventBus.emit(EVENTS.CANDIDATE_INTERVIEW_SCHEDULED, {
@@ -2148,11 +2169,40 @@ exports.createNotification = asyncHandler(async (req, res) => {
           message: campaign.message,
           category: "CAMPAIGN",
           actionUrl: "/candidate/notifications",
+          status: "UNREAD",
           metadata: {
             channel: campaign.channel,
             campaignId: String(campaign._id),
           },
         })),
+      );
+
+      try {
+        const cacheService = require("../services/cache/cache.service");
+        cacheService.delPattern("cache:candidate:notifications:*").catch(() => {});
+      } catch {}
+    }
+  } else if (audience === "CLIENTS") {
+    const companyQuery = { status: "ACTIVE" };
+    if (Array.isArray(campaign.companyIds) && campaign.companyIds.length > 0) {
+      companyQuery._id = { $in: campaign.companyIds };
+    }
+    const companies = await Company.find(companyQuery).select("_id");
+    if (companies.length) {
+      await CompanyNotification.insertMany(
+        companies.map((comp) => ({
+          companyId: comp._id,
+          targetRole: "ALL",
+          title: campaign.title,
+          message: campaign.message,
+          category: "CAMPAIGN",
+          actionUrl: "/employer-dashboard",
+          status: "UNREAD",
+          metadata: {
+            channel: campaign.channel,
+            campaignId: String(campaign._id),
+          },
+        }))
       );
     }
   }
