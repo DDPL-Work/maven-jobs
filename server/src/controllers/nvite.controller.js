@@ -4,6 +4,7 @@ const Nvite = require("../models/Nvite");
 const User = require("../models/User");
 const CandidateProfile = require("../models/CandidateProfile");
 const emailModule = require("../email");
+const { wrapNaukriLayout, escapeHtml } = require("../email/templates/layouts");
 const logger = require("../config/logger");
 const activityService = require("../services/recruiter-activity.service");
 const { checkAndEnforceQuota } = require("../services/quota-enforcement.service");
@@ -107,33 +108,40 @@ exports.sendNvite = asyncHandler(async (req, res) => {
       .map(line => `<p style="margin:0 0 6px;font-family:system-ui,sans-serif;font-size:14px;color:#334155;">${line}</p>`)
       .join("");
 
-    const fullHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8" /></head>
-<body style="margin:0;padding:0;background:#f4f7fb;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:24px 0;">
-    <tr>
-      <td align="center">
-        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);">
-          <tr>
-            <td style="padding:32px 32px 0;">
-              <p style="margin:0 0 20px;font-size:13px;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">${companyName}</p>
-              ${htmlBody}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 32px 24px;">
-              <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:16px;">
-                You received this message because a recruiter from ${companyName} found your profile on MavenJobs.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+    const content = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+        <tr>
+          <td style="padding: 24px 28px;">
+            <p style="margin: 0 0 10px 0; font-size: 13px; color: #2563eb; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;">
+              ${escapeHtml(companyName)} &bull; Interview Invitation
+            </p>
+            <div style="font-size: 40px; line-height: 20px; font-weight: 700; color: #f59e0b; font-family: Georgia, serif; margin-bottom: 8px;">&ldquo;</div>
+            <h2 style="margin: 0 0 14px 0; font-size: 18px; font-weight: 700; color: #0f172a; line-height: 1.4;">${escapeHtml(personalizedSubject)}</h2>
+            ${htmlBody}
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 28px auto;">
+        <tr>
+          <td align="center" style="background-color: #2563eb; border-radius: 9999px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);">
+            <a href="${process.env.CANDIDATE_WEB_URL || process.env.FRONTEND_URL || "https://naukri-3.vercel.app"}${candidateUser?._id ? `/${candidateUser._id}/dashboard/mivites` : '/login'}" target="_blank" style="display: inline-block; padding: 13px 40px; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 9999px;">
+              View Invitation on Maven &rarr;
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin: 0 0 12px 0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.6;">
+        You received this message because a recruiter from ${escapeHtml(companyName)} found your profile on Maven Jobs.
+      </p>
+    `;
+
+    const fullHtml = wrapNaukriLayout(content, {
+      title: personalizedSubject,
+      showFeatureGrid: false,
+      showAppBanner: true,
+    });
 
     try {
       const emailResult = await emailModule.sendEmail({
@@ -160,7 +168,7 @@ exports.sendNvite = asyncHandler(async (req, res) => {
           title: "Interview Invitation (NVite)",
           message: `${companyName} invited you: "${subject.trim()}".`,
           category: "INVITATION",
-          actionUrl: "/candidate/mivites",
+          actionUrl: `/${candidateUser._id}/dashboard/mivites`,
           metadata: { nviteId: String(nvite._id), companyName, recruiterName },
         }).catch(() => {});
       }

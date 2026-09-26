@@ -11,6 +11,7 @@ const esService = require("../services/opensearch.service");
 const ForwardedCV = require("../models/ForwardedCV");
 const ResdexReportLog = require("../models/ResdexReportLog");
 const emailService = require("../services/email.service");
+const { wrapNaukriLayout, escapeHtml, safeUrl } = require("../email/templates/layouts");
 
 const SEARCH_DEFAULTS = { page: 1, limit: 20, sort: "relevance" };
 const MAX_LIMIT = 100;
@@ -1016,29 +1017,60 @@ exports.forwardCV = asyncHandler(async (req, res) => {
     const candidateName = profile?.userId?.name || candidate?.name || "Candidate";
     const dynamicSubject = `${senderName} has forwarded this ${candidateName} to you`;
 
-    const htmlMessage = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-        <h2 style="color: #2563eb; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;">Candidate Profile Shared</h2>
-        <p style="font-size: 16px; color: #333;">Hello,</p>
-        <p style="font-size: 16px; color: #333;"><strong>${senderName}</strong> has shared a candidate profile with you from Maven.</p>
-        
-        <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0;">
-          <h3 style="margin-top: 0; color: #0f172a;">Candidate Details</h3>
-          <p style="margin: 5px 0;"><strong>Name:</strong> ${candidateName}</p>
-          <p style="margin: 5px 0;"><strong>Role:</strong> ${profile?.currentTitle || profile?.headline || 'N/A'}</p>
-          ${isResumeAttached && resumeLink ? `<p style="margin: 15px 0 5px 0;"><a href="${resumeLink}" style="background-color: #1d68bd; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">View Attached Resume</a></p>` : ''}
-        </div>
+    const content = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+        <tr>
+          <td style="padding: 24px 28px;">
+            <p style="margin: 0 0 10px 0; font-size: 13px; color: #2563eb; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;">
+              Shared Candidate Profile
+            </p>
+            <div style="font-size: 40px; line-height: 20px; font-weight: 700; color: #f59e0b; font-family: Georgia, serif; margin-bottom: 8px;">&ldquo;</div>
+            <h2 style="margin: 0 0 10px 0; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.4;">${escapeHtml(candidateName)}</h2>
+            <p style="margin: 0 0 14px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+              Hello,<br /><strong>${escapeHtml(senderName)}</strong> has shared a candidate profile with you from Maven Jobs.
+            </p>
 
-        <div style="margin-top: 20px;">
-          <h4 style="margin-bottom: 5px; color: #333;">Message from Sender:</h4>
-          <p style="background: #f1f5f9; padding: 10px; border-left: 4px solid #94a3b8; color: #475569; font-style: italic;">
-            ${message.replace(/\n/g, '<br>') || "No additional message provided."}
-          </p>
-        </div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 14px 16px; margin-bottom: 14px;">
+              <tr>
+                <td>
+                  <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #1e293b;">Candidate Details</p>
+                  <p style="margin: 0 0 4px 0; font-size: 13px; color: #64748b;"><strong>Name:</strong> ${escapeHtml(candidateName)}</p>
+                  <p style="margin: 0; font-size: 13px; color: #64748b;"><strong>Role:</strong> ${escapeHtml(profile?.currentTitle || profile?.headline || 'N/A')}</p>
+                  ${isResumeAttached && resumeLink ? `
+                  <p style="margin: 12px 0 0 0;">
+                    <a href="${safeUrl(resumeLink)}" target="_blank" style="display: inline-block; padding: 8px 18px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                      View Attached Resume &rarr;
+                    </a>
+                  </p>
+                  ` : ''}
+                </td>
+              </tr>
+            </table>
 
-        <p style="margin-top: 30px; font-size: 14px; color: #64748b;">Log in to your Maven employer dashboard to view this candidate in the "CV shared with me" folder.</p>
-      </div>
+            ${message ? `
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-left: 4px solid #94a3b8; border-radius: 4px; padding: 12px 16px; margin-bottom: 8px;">
+              <tr>
+                <td>
+                  <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase;">Message from Sender:</p>
+                  <p style="margin: 0; font-size: 13px; color: #334155; font-style: italic; line-height: 1.5;">${escapeHtml(message).replace(/\n/g, '<br>')}</p>
+                </td>
+              </tr>
+            </table>
+            ` : ''}
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin: 0 0 12px 0; text-align: center; font-size: 12px; color: #64748b;">
+        Log in to your Maven employer dashboard to view this candidate in the &ldquo;CV shared with me&rdquo; folder.
+      </p>
     `;
+
+    const htmlMessage = wrapNaukriLayout(content, {
+      title: subject || dynamicSubject,
+      showFeatureGrid: false,
+      showAppBanner: true,
+    });
 
     await emailService.sendEmail({
       to: toEmail,

@@ -1085,6 +1085,8 @@ exports.createJob = asyncHandler(async (req, res) => {
     skills = [],
     deadline = null,
     description = "",
+    responsibilities = "",
+    qualifications = "",
     createAsClient = false,
   } = req.body;
 
@@ -1128,6 +1130,8 @@ exports.createJob = asyncHandler(async (req, res) => {
     skills,
     deadline,
     description: description.trim(),
+    responsibilities: responsibilities.trim(),
+    qualifications: qualifications.trim(),
     approvalStatus: createAsClient ? "PENDING" : "APPROVED",
     createdBySource: createAsClient ? "CLIENT" : "CRM",
     createdByCRM: createAsClient ? null : req.user._id,
@@ -1191,6 +1195,8 @@ exports.updateJob = asyncHandler(async (req, res) => {
   job.skills = req.body.skills ?? job.skills;
   job.deadline = req.body.deadline ?? job.deadline;
   job.description = req.body.description?.trim() ?? job.description;
+  job.responsibilities = req.body.responsibilities?.trim() ?? job.responsibilities;
+  job.qualifications = req.body.qualifications?.trim() ?? job.qualifications;
 
   const nextIsActive =
     typeof req.body.isActive === "boolean" ? req.body.isActive : job.isActive;

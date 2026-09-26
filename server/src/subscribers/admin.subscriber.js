@@ -4,6 +4,7 @@ const logger = require("../config/logger");
 const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
 const { sendEmailSafe, maskEmail } = require("./subscriberUtils");
+const { wrapNaukriLayout } = require("../email/templates/layouts");
 const { incrementCounter } = require("../email/metrics/metrics");
 
 function registerAdminSubscribers() {
@@ -25,13 +26,14 @@ function registerAdminSubscribers() {
 }
 
 async function sendAdminEmailWithQueue({ to, subject, html, metadata }) {
+  const wrappedHtml = wrapNaukriLayout(html, { title: subject, showAppBanner: true });
   const queueEnabled = process.env.EMAIL_QUEUE_ENABLED === "true";
   if (queueEnabled) {
     try {
       const bull = require("bullmq");
       const queue = new EmailQueue({ processor: null });
       await queue.initialize();
-      const result = await queue.add({ to, subject, html, metadata });
+      const result = await queue.add({ to, subject, html: wrappedHtml, metadata });
       incrementCounter("emails_queued_total");
       logger.info("[admin:notif] Email queued", {
         recipient: maskEmail(to),
@@ -44,7 +46,7 @@ async function sendAdminEmailWithQueue({ to, subject, html, metadata }) {
       logger.warn("[admin:notif] Queue unavailable, sending inline");
     }
   }
-  return sendEmailSafe({ eventName: "admin_notification", to, subject, html, metadata });
+  return sendEmailSafe({ eventName: "admin_notification", to, subject, html: wrappedHtml, metadata });
 }
 
 async function handleNewRecruiterRegistration(payload) {

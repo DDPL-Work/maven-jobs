@@ -10,7 +10,7 @@ const smsService = require("../services/sms.service");
 const Job = require("../models/Job");
 const Company = require("../models/Company");
 const CompanyReview = require("../models/CompanyReview");
-const QRCode = require("../models/QRCode");                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+const QRCode = require("../models/QRCode");
 const Application = require("../models/Application");
 const CandidateProfile = require("../models/CandidateProfile");
 const CandidateProfileHistory = require("../models/CandidateProfileHistory");
@@ -22,8 +22,13 @@ const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
 const activityService = require("../services/recruiter-activity.service");
 const jobReportService = require("../services/job-posting-report.service");
-const { uploadResumeFile, deleteResumeFile } = require("../services/resume-storage.service");
-const { replaceCandidateImage } = require("../services/candidate-image-storage.service");
+const {
+  uploadResumeFile,
+  deleteResumeFile,
+} = require("../services/resume-storage.service");
+const {
+  replaceCandidateImage,
+} = require("../services/candidate-image-storage.service");
 const cacheService = require("../services/cache/cache.service");
 const {
   issueTokenPair,
@@ -58,9 +63,7 @@ function timeAgo(date) {
   return Math.floor(months / 12) + "y ago";
 }
 
-const supportedResumeMimeTypes = new Set([
-  "application/pdf"
-]);
+const supportedResumeMimeTypes = new Set(["application/pdf"]);
 
 const isPdfResumeUpload = (file = null) => {
   if (!file) {
@@ -79,7 +82,9 @@ const generateToken = (id) =>
 
 const formatCompanyReview = (review) => ({
   id: String(review._id),
-  candidateName: review.isAnonymous ? "Anonymous Candidate" : (review.candidateName || "Candidate"),
+  candidateName: review.isAnonymous
+    ? "Anonymous Candidate"
+    : review.candidateName || "Candidate",
   candidateTitle: review.candidateTitle || "Verified candidate",
   candidateCity: review.candidateCity || "",
   rating: Number(review.rating || 0),
@@ -194,7 +199,7 @@ const computeProfileCompletion = (profile, user) => {
   ];
 
   const filledCount = checkpoints.filter((item) => {
-    if (typeof item === 'boolean') return item;
+    if (typeof item === "boolean") return item;
     return Boolean(item);
   }).length;
 
@@ -216,9 +221,12 @@ const formatCandidateUser = (user = null) => ({
 const formatProfile = (profile = {}, user = null) => {
   const userAvatar = user?.avatar || user?.profileImageUrl || "";
   const rawProfilePic = profile?.profilePic;
-  const profilePicUrl = (typeof rawProfilePic === "string" ? rawProfilePic : rawProfilePic?.url) || "";
+  const profilePicUrl =
+    (typeof rawProfilePic === "string" ? rawProfilePic : rawProfilePic?.url) ||
+    "";
   const rawCoverPic = profile?.coverPic;
-  const coverPicUrl = (typeof rawCoverPic === "string" ? rawCoverPic : rawCoverPic?.url) || "";
+  const coverPicUrl =
+    (typeof rawCoverPic === "string" ? rawCoverPic : rawCoverPic?.url) || "";
 
   let totalExpYears = "";
   let totalExpMonths = "";
@@ -265,20 +273,36 @@ const formatProfile = (profile = {}, user = null) => {
     education: profile?.education || "",
     itSkills: profile?.itSkills || "",
     workExperiences: (() => {
-      try { const parsed = JSON.parse(profile?.workExperiences || "[]"); return Array.isArray(parsed) ? parsed : []; }
-      catch { return []; }
+      try {
+        const parsed = JSON.parse(profile?.workExperiences || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
     })(),
     educations: (() => {
-      try { const parsed = JSON.parse(profile?.educations || "[]"); return Array.isArray(parsed) ? parsed : []; }
-      catch { return []; }
+      try {
+        const parsed = JSON.parse(profile?.educations || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
     })(),
     projects: (() => {
-      try { const parsed = JSON.parse(profile?.projects || "[]"); return Array.isArray(parsed) ? parsed : []; }
-      catch { return []; }
+      try {
+        const parsed = JSON.parse(profile?.projects || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
     })(),
     accomplishments: (() => {
-      try { const parsed = JSON.parse(profile?.accomplishments || "[]"); return Array.isArray(parsed) ? parsed : []; }
-      catch { return []; }
+      try {
+        const parsed = JSON.parse(profile?.accomplishments || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
     })(),
     projectTitle: profile?.projectTitle || "",
     projectLink: profile?.projectLink || "",
@@ -287,7 +311,9 @@ const formatProfile = (profile = {}, user = null) => {
     recruiterActions: profile?.recruiterActions || 0,
     lastScannedQrToken: profile?.lastScannedQrToken || "",
     savedJobIds: (profile?.savedJobIds || []).map((id) => String(id)),
-    followedCompanyIds: (profile?.followedCompanyIds || []).map((id) => String(id)),
+    followedCompanyIds: (profile?.followedCompanyIds || []).map((id) =>
+      String(id),
+    ),
     resume: {
       fileName: profile?.resume?.fileName || "",
       url: profile?.resume?.url || "",
@@ -297,9 +323,13 @@ const formatProfile = (profile = {}, user = null) => {
       uploadedAt: profile?.resume?.uploadedAt || null,
     },
     profileCompletion: computeProfileCompletion(profile || {}, user || {}),
-    profilePic: profilePicUrl || userAvatar
-      ? { url: profilePicUrl || userAvatar, publicId: rawProfilePic?.publicId || "" }
-      : { url: "", publicId: "" },
+    profilePic:
+      profilePicUrl || userAvatar
+        ? {
+            url: profilePicUrl || userAvatar,
+            publicId: rawProfilePic?.publicId || "",
+          }
+        : { url: "", publicId: "" },
     coverPic: coverPicUrl
       ? { url: coverPicUrl, publicId: rawCoverPic?.publicId || "" }
       : { url: "", publicId: "" },
@@ -310,8 +340,12 @@ const formatProfile = (profile = {}, user = null) => {
 
 const parseExperienceRange = (expStr) => {
   if (!expStr) return { min: 0, max: 99 };
-  const cleaned = String(expStr).toLowerCase().replace(/yrs?|years?/gi, "").trim();
-  const parts = cleaned.split(/[-–]/)
+  const cleaned = String(expStr)
+    .toLowerCase()
+    .replace(/yrs?|years?/gi, "")
+    .trim();
+  const parts = cleaned
+    .split(/[-–]/)
     .map((p) => parseFloat(p.trim()))
     .filter((n) => !isNaN(n));
   if (parts.length >= 2) return { min: parts[0], max: parts[1] };
@@ -319,7 +353,10 @@ const parseExperienceRange = (expStr) => {
   return { min: 0, max: 99 };
 };
 
-const normalizeStr = (s) => String(s || "").toLowerCase().trim();
+const normalizeStr = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .trim();
 
 const normalizeSearchTerms = (value = "") =>
   String(value || "")
@@ -333,11 +370,14 @@ const jobMatchesKeywordSearch = (job, search = "") => {
   const terms = normalizeSearchTerms(search);
   if (!terms.length) return true;
 
-  const skills = (Array.isArray(job.skills) ? job.skills : []).map((skill) => String(skill || "").toLowerCase());
-  const stackAliases = [];
-  const hasSkillAny = (aliases) => aliases.some((alias) =>
-    skills.some((candidateSkill) => candidateSkill.includes(alias)),
+  const skills = (Array.isArray(job.skills) ? job.skills : []).map((skill) =>
+    String(skill || "").toLowerCase(),
   );
+  const stackAliases = [];
+  const hasSkillAny = (aliases) =>
+    aliases.some((alias) =>
+      skills.some((candidateSkill) => candidateSkill.includes(alias)),
+    );
 
   if (
     hasSkillAny(["mongodb", "mongo"]) &&
@@ -375,22 +415,39 @@ const jobMatchesKeywordSearch = (job, search = "") => {
 
 const computeMatchScore = (job, profile) => {
   if (!job || !profile) {
-    return { overall: 0, skillMatch: 0, locationMatch: 0, experienceMatch: 0, roleMatch: 0, matchedSkills: [], missingSkills: [] };
+    return {
+      overall: 0,
+      skillMatch: 0,
+      locationMatch: 0,
+      experienceMatch: 0,
+      roleMatch: 0,
+      matchedSkills: [],
+      missingSkills: [],
+    };
   }
 
-  const jobSkills = (Array.isArray(job.skills) ? job.skills : []).map(normalizeStr).filter(Boolean);
-  const profileSkills = (Array.isArray(profile.skills) ? profile.skills : []).map(normalizeStr).filter(Boolean);
+  const jobSkills = (Array.isArray(job.skills) ? job.skills : [])
+    .map(normalizeStr)
+    .filter(Boolean);
+  const profileSkills = (Array.isArray(profile.skills) ? profile.skills : [])
+    .map(normalizeStr)
+    .filter(Boolean);
 
   const matchedSkills = [];
   const missingSkills = [];
   jobSkills.forEach((js) => {
-    const found = profileSkills.some((ps) => ps.includes(js) || js.includes(ps));
+    const found = profileSkills.some(
+      (ps) => ps.includes(js) || js.includes(ps),
+    );
     if (found) matchedSkills.push(js);
     else missingSkills.push(js);
   });
-  const skillMatch = jobSkills.length > 0
-    ? Math.round((matchedSkills.length / jobSkills.length) * 100)
-    : profileSkills.length > 0 ? 50 : 0;
+  const skillMatch =
+    jobSkills.length > 0
+      ? Math.round((matchedSkills.length / jobSkills.length) * 100)
+      : profileSkills.length > 0
+        ? 50
+        : 0;
 
   const jobLoc = normalizeStr(job.location);
   const candidateCity = normalizeStr(profile.currentCity);
@@ -398,7 +455,8 @@ const computeMatchScore = (job, profile) => {
   let locationMatch = 0;
   if (jobLoc) {
     if (candidateCity && jobLoc.includes(candidateCity)) locationMatch = 100;
-    else if (prefLocs.some((pl) => jobLoc.includes(pl) || pl.includes(jobLoc))) locationMatch = 85;
+    else if (prefLocs.some((pl) => jobLoc.includes(pl) || pl.includes(jobLoc)))
+      locationMatch = 85;
     else if (jobLoc.includes("remote")) locationMatch = 90;
     else locationMatch = 20;
   } else {
@@ -423,8 +481,12 @@ const computeMatchScore = (job, profile) => {
   const jobDept = normalizeStr(job.department);
   let roleMatch = 0;
   if (prefRoles.length > 0) {
-    const titleMatch = prefRoles.some((r) => jobTitle.includes(r) || r.includes(jobTitle));
-    const deptMatch = prefRoles.some((r) => jobDept.includes(r) || r.includes(jobDept));
+    const titleMatch = prefRoles.some(
+      (r) => jobTitle.includes(r) || r.includes(jobTitle),
+    );
+    const deptMatch = prefRoles.some(
+      (r) => jobDept.includes(r) || r.includes(jobDept),
+    );
     if (titleMatch) roleMatch = 100;
     else if (deptMatch) roleMatch = 70;
     else roleMatch = 15;
@@ -433,10 +495,10 @@ const computeMatchScore = (job, profile) => {
   }
 
   const overall = Math.round(
-    skillMatch * 0.40 +
-    locationMatch * 0.25 +
-    experienceMatch * 0.25 +
-    roleMatch * 0.10
+    skillMatch * 0.4 +
+      locationMatch * 0.25 +
+      experienceMatch * 0.25 +
+      roleMatch * 0.1,
   );
 
   return {
@@ -445,18 +507,34 @@ const computeMatchScore = (job, profile) => {
     locationMatch: Math.min(100, Math.max(0, locationMatch)),
     experienceMatch: Math.min(100, Math.max(0, experienceMatch)),
     roleMatch: Math.min(100, Math.max(0, roleMatch)),
-    matchedSkills: matchedSkills.map((s) => s.charAt(0).toUpperCase() + s.slice(1)),
-    missingSkills: missingSkills.map((s) => s.charAt(0).toUpperCase() + s.slice(1)),
+    matchedSkills: matchedSkills.map(
+      (s) => s.charAt(0).toUpperCase() + s.slice(1),
+    ),
+    missingSkills: missingSkills.map(
+      (s) => s.charAt(0).toUpperCase() + s.slice(1),
+    ),
   };
 };
 
 const computeAIMatchScore = async (job, profile) => {
   if (!job || !profile) {
-    return { overall: 0, skillMatch: 0, locationMatch: 0, experienceMatch: 0, roleMatch: 0, matchedSkills: [], missingSkills: [] };
+    return {
+      overall: 0,
+      skillMatch: 0,
+      locationMatch: 0,
+      experienceMatch: 0,
+      roleMatch: 0,
+      matchedSkills: [],
+      missingSkills: [],
+    };
   }
 
-  const jobSkills = (Array.isArray(job.skills) ? job.skills : []).filter(Boolean);
-  const profileSkills = (Array.isArray(profile.skills) ? profile.skills : []).filter(Boolean);
+  const jobSkills = (Array.isArray(job.skills) ? job.skills : []).filter(
+    Boolean,
+  );
+  const profileSkills = (
+    Array.isArray(profile.skills) ? profile.skills : []
+  ).filter(Boolean);
 
   const profileSummary = [
     `Title: ${profile.currentTitle || "N/A"}`,
@@ -494,26 +572,56 @@ Return ONLY valid JSON with these fields:
 Be strict — a developer profile should NOT get high match for a sales/CRM/HR job. No extra text.`;
 
   try {
-    const model = process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
+    const model =
+      process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
     const response = await OpenAIService.createChatCompletion({
       model,
-      systemPrompt: "You are a precise career match scorer. Respond only with valid JSON.",
+      systemPrompt:
+        "You are a precise career match scorer. Respond only with valid JSON.",
       userPrompt: prompt,
       maxOutputTokens: 1000,
     });
 
-    const rawText = response?.output_text || response?.output?.[0]?.content?.[0]?.text || response?.output?.[0]?.text || "";
-    const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*$/gm, "").trim();
+    const rawText =
+      response?.output_text ||
+      response?.output?.[0]?.content?.[0]?.text ||
+      response?.output?.[0]?.text ||
+      "";
+    const cleaned = rawText
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*$/gm, "")
+      .trim();
     const result = JSON.parse(cleaned);
 
     return {
-      overall: Math.min(100, Math.max(0, Math.round(Number(result.overall) || 0))),
-      skillMatch: Math.min(100, Math.max(0, Math.round(Number(result.skillMatch) || 0))),
-      experienceMatch: Math.min(100, Math.max(0, Math.round(Number(result.experienceMatch) || 0))),
-      locationMatch: Math.min(100, Math.max(0, Math.round(Number(result.locationMatch) || 0))),
-      roleMatch: Math.min(100, Math.max(0, Math.round(Number(result.roleMatch) || 0))),
-      matchedSkills: (Array.isArray(result.matchedSkills) ? result.matchedSkills : []).map(s => s.charAt(0).toUpperCase() + s.slice(1)),
-      missingSkills: (Array.isArray(result.missingSkills) ? result.missingSkills : []).map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+      overall: Math.min(
+        100,
+        Math.max(0, Math.round(Number(result.overall) || 0)),
+      ),
+      skillMatch: Math.min(
+        100,
+        Math.max(0, Math.round(Number(result.skillMatch) || 0)),
+      ),
+      experienceMatch: Math.min(
+        100,
+        Math.max(0, Math.round(Number(result.experienceMatch) || 0)),
+      ),
+      locationMatch: Math.min(
+        100,
+        Math.max(0, Math.round(Number(result.locationMatch) || 0)),
+      ),
+      roleMatch: Math.min(
+        100,
+        Math.max(0, Math.round(Number(result.roleMatch) || 0)),
+      ),
+      matchedSkills: (Array.isArray(result.matchedSkills)
+        ? result.matchedSkills
+        : []
+      ).map((s) => s.charAt(0).toUpperCase() + s.slice(1)),
+      missingSkills: (Array.isArray(result.missingSkills)
+        ? result.missingSkills
+        : []
+      ).map((s) => s.charAt(0).toUpperCase() + s.slice(1)),
     };
   } catch {
     return computeMatchScore(job, profile);
@@ -524,14 +632,67 @@ const getCompanyRatingsMap = async (companyIds) => {
   const ids = [...new Set(companyIds.filter(Boolean))];
   if (!ids.length) return new Map();
   const stats = await CompanyReview.aggregate([
-    { $match: { companyId: { $in: ids.map((id) => (typeof id === "string" ? new mongoose.Types.ObjectId(id) : id)) }, status: "PUBLISHED" } },
-    { $group: { _id: "$companyId", avgRating: { $avg: "$rating" }, reviewCount: { $sum: 1 } } },
+    {
+      $match: {
+        companyId: {
+          $in: ids.map((id) =>
+            typeof id === "string" ? new mongoose.Types.ObjectId(id) : id,
+          ),
+        },
+        status: "PUBLISHED",
+      },
+    },
+    {
+      $group: {
+        _id: "$companyId",
+        avgRating: { $avg: "$rating" },
+        reviewCount: { $sum: 1 },
+      },
+    },
   ]);
-  return new Map(stats.map((s) => [String(s._id), { avgRating: Math.round(s.avgRating * 10) / 10, reviewCount: s.reviewCount }]));
+  return new Map(
+    stats.map((s) => [
+      String(s._id),
+      {
+        avgRating: Math.round(s.avgRating * 10) / 10,
+        reviewCount: s.reviewCount,
+      },
+    ]),
+  );
 };
 
-const formatJob = (job, applicationMap = new Map(), matchData = null, companyRating = null) => {
+const parseDescriptionFallback = (desc) => {
+  if (!desc) return { description: "", responsibilities: "", qualifications: "" };
+  
+  const parts = desc.split(/\n\s*\n(?=[•\-])/);
+  if (parts.length >= 3) {
+    return {
+      description: parts[0].trim(),
+      responsibilities: parts[1].trim(),
+      qualifications: parts.slice(2).join('\n\n').trim(),
+    };
+  }
+  return { description: desc.trim(), responsibilities: "", qualifications: "" };
+};
+
+const formatJob = (
+  job,
+  applicationMap = new Map(),
+  matchData = null,
+  companyRating = null,
+) => {
   const application = applicationMap.get(String(job._id));
+
+  let desc = job.description || "";
+  let resp = job.responsibilities || "";
+  let qual = job.qualifications || "";
+
+  if (desc && !resp && !qual) {
+    const parsed = parseDescriptionFallback(desc);
+    desc = parsed.description;
+    resp = parsed.responsibilities;
+    qual = parsed.qualifications;
+  }
 
   return {
     id: String(job._id),
@@ -550,9 +711,9 @@ const formatJob = (job, applicationMap = new Map(), matchData = null, companyRat
     salaryMin: Number(job.salaryMin || 0),
     salaryMax: Number(job.salaryMax || 0),
     summary: job.summary || "",
-    description: job.description || "",
-    responsibilities: job.responsibilities || "",
-    qualifications: job.qualifications || "",
+    description: desc,
+    responsibilities: resp,
+    qualifications: qual,
     externalLink: job.externalLink || "",
     skills: Array.isArray(job.skills) ? job.skills : [],
     deadline: job.deadline || null,
@@ -583,7 +744,18 @@ const formatJob = (job, applicationMap = new Map(), matchData = null, companyRat
   };
 };
 
-const PERSONAL_JOB_FIELDS = ["applicationStatus","hasApplied","hasSaved","matchScore","skillMatch","locationMatch","experienceMatch","roleMatch","matchedSkills","missingSkills"];
+const PERSONAL_JOB_FIELDS = [
+  "applicationStatus",
+  "hasApplied",
+  "hasSaved",
+  "matchScore",
+  "skillMatch",
+  "locationMatch",
+  "experienceMatch",
+  "roleMatch",
+  "matchedSkills",
+  "missingSkills",
+];
 
 const publicJobData = (formatted) => {
   const out = { ...formatted };
@@ -615,7 +787,9 @@ const formatApplication = (application, matchData = null) => ({
   missingSkills: matchData?.missingSkills || [],
   jobLocation: application.jobId?.location || "",
   jobExperience: application.jobId?.experience || "",
-  jobSkills: Array.isArray(application.jobId?.skills) ? application.jobId.skills : [],
+  jobSkills: Array.isArray(application.jobId?.skills)
+    ? application.jobId.skills
+    : [],
   answers: Array.isArray(application.answers)
     ? application.answers.map((a) => ({
         questionId: String(a.questionId || ""),
@@ -672,7 +846,10 @@ const ensureCandidateProfile = async (user) => {
     profile.publicShareId = `${deterministicPart}_${randomPart}`;
   }
 
-  if (!String(profile.currentTitle || "").trim() && String(user.department || "").trim()) {
+  if (
+    !String(profile.currentTitle || "").trim() &&
+    String(user.department || "").trim()
+  ) {
     profile.currentTitle = String(user.department).trim();
   }
 
@@ -687,7 +864,9 @@ const resolveQrContext = async (
   token,
   { expandToCompanyJobs = false, limit = 24 } = {},
 ) => {
-  const qrCode = await QRCode.findOne({ token, isActive: true }).populate("companyId");
+  const qrCode = await QRCode.findOne({ token, isActive: true }).populate(
+    "companyId",
+  );
 
   if (!qrCode || !qrCode.companyId) {
     throw createHttpError(404, "Invalid or expired QR code");
@@ -698,16 +877,16 @@ const resolveQrContext = async (
   const jobs = await Job.find(
     mappedJobId && !expandToCompanyJobs
       ? {
-        _id: qrCode.jobId,
-        companyId: qrCode.companyId._id,
-        isActive: true,
-        approvalStatus: "APPROVED",
-      }
+          _id: qrCode.jobId,
+          companyId: qrCode.companyId._id,
+          isActive: true,
+          approvalStatus: "APPROVED",
+        }
       : {
-        companyId: qrCode.companyId._id,
-        isActive: true,
-        approvalStatus: "APPROVED",
-      },
+          companyId: qrCode.companyId._id,
+          isActive: true,
+          approvalStatus: "APPROVED",
+        },
   )
     .sort({ updatedAt: -1 })
     .limit(limit)
@@ -743,7 +922,9 @@ const buildApplicationMap = async (candidateId, jobIds) => {
     jobId: { $in: jobIds },
   });
 
-  return new Map(applications.map((application) => [String(application.jobId), application]));
+  return new Map(
+    applications.map((application) => [String(application.jobId), application]),
+  );
 };
 
 const getRecommendedJobs = async (profile, candidateId) => {
@@ -773,7 +954,9 @@ const getRecommendedJobs = async (profile, candidateId) => {
     allJobs.map((job) => job._id),
   );
 
-  const companyIds = allJobs.map((j) => String(j.companyId?._id || j.companyId || "")).filter(Boolean);
+  const companyIds = allJobs
+    .map((j) => String(j.companyId?._id || j.companyId || ""))
+    .filter(Boolean);
   const ratingsMap = await getCompanyRatingsMap(companyIds);
   const formattedJobs = allJobs.map((job) => {
     const cid = String(job.companyId?._id || job.companyId || "");
@@ -784,7 +967,7 @@ const getRecommendedJobs = async (profile, candidateId) => {
     Profile: [],
     Applies: [],
     Preferences: [],
-    'You might like': []
+    "You might like": [],
   };
 
   const profileSkills = profile.skills || [];
@@ -800,7 +983,7 @@ const getRecommendedJobs = async (profile, candidateId) => {
         (scoreMap.get(String(b.id)) || 0) - (scoreMap.get(String(a.id)) || 0),
     );
 
-  formattedJobs.forEach(job => {
+  formattedJobs.forEach((job) => {
     if (job.hasApplied) {
       categories.Applies.push(job);
       return;
@@ -808,15 +991,19 @@ const getRecommendedJobs = async (profile, candidateId) => {
 
     let categorized = false;
 
-    const hasSkillMatch = job.skills && job.skills.some(skill => profileSkills.includes(skill));
+    const hasSkillMatch =
+      job.skills && job.skills.some((skill) => profileSkills.includes(skill));
     if (hasSkillMatch) {
       categories.Profile.push(job);
       categorized = true;
     }
 
-    const hasRoleMatch = preferredRoles.some(role => job.title?.toLowerCase().includes(role.toLowerCase()));
-    const hasLocationMatch = preferredLocations.some(loc =>
-      job.location && job.location.toLowerCase().includes(loc.toLowerCase()),
+    const hasRoleMatch = preferredRoles.some((role) =>
+      job.title?.toLowerCase().includes(role.toLowerCase()),
+    );
+    const hasLocationMatch = preferredLocations.some(
+      (loc) =>
+        job.location && job.location.toLowerCase().includes(loc.toLowerCase()),
     );
     if (hasRoleMatch || hasLocationMatch) {
       categories.Preferences.push(job);
@@ -824,30 +1011,31 @@ const getRecommendedJobs = async (profile, candidateId) => {
     }
 
     if (!categorized) {
-      categories['You might like'].push(job);
+      categories["You might like"].push(job);
     }
   });
 
   sortByScoreDesc(categories.Profile);
   sortByScoreDesc(categories.Preferences);
-  sortByScoreDesc(categories['You might like']);
+  sortByScoreDesc(categories["You might like"]);
 
   const categorizedJobs = {
     [`Profile (${categories.Profile.length})`]: categories.Profile,
     [`Applies (${categories.Applies.length})`]: categories.Applies,
     [`Preferences (${categories.Preferences.length})`]: categories.Preferences,
-    [`You might like (${categories['You might like'].length})`]: categories['You might like']
+    [`You might like (${categories["You might like"].length})`]:
+      categories["You might like"],
   };
 
   return {
     mappedCompany: mappedCompany
       ? {
-        id: String(mappedCompany._id),
-        name: mappedCompany.name,
-        industry: mappedCompany.industry || "General",
-        city: mappedCompany.location?.city || "",
-        region: mappedCompany.location?.region || "",
-      }
+          id: String(mappedCompany._id),
+          name: mappedCompany.name,
+          industry: mappedCompany.industry || "General",
+          city: mappedCompany.location?.city || "",
+          region: mappedCompany.location?.region || "",
+        }
       : null,
     jobs: categorizedJobs,
   };
@@ -861,7 +1049,9 @@ const buildSimilarJobs = async (job, candidateId) => {
     $or: [
       { companyId: job.companyId?._id || job.companyId },
       job.department ? { department: job.department } : null,
-      Array.isArray(job.skills) && job.skills.length ? { skills: { $in: job.skills } } : null,
+      Array.isArray(job.skills) && job.skills.length
+        ? { skills: { $in: job.skills } }
+        : null,
     ].filter(Boolean),
   })
     .sort({ updatedAt: -1 })
@@ -869,7 +1059,10 @@ const buildSimilarJobs = async (job, candidateId) => {
     .populate("companyId", "name logoUrl coverImageUrl");
 
   const applicationMap = candidateId
-    ? await buildApplicationMap(candidateId, similarJobs.map((item) => item._id))
+    ? await buildApplicationMap(
+        candidateId,
+        similarJobs.map((item) => item._id),
+      )
     : new Map();
 
   return similarJobs.map((item) => {
@@ -909,7 +1102,8 @@ exports.register = asyncHandler(async (req, res) => {
   const qrToken = String(requestBody.qrToken || "").trim();
   const preferredLocation = String(requestBody.preferredLocation || "").trim();
   const expectedSalary = String(requestBody.expectedSalary || "").trim();
-  const termsAccepted = requestBody.termsAccepted === "true" || requestBody.termsAccepted === true;
+  const termsAccepted =
+    requestBody.termsAccepted === "true" || requestBody.termsAccepted === true;
 
   if (!Object.keys(requestBody).length) {
     throw createHttpError(
@@ -941,7 +1135,8 @@ exports.register = asyncHandler(async (req, res) => {
     throw createHttpError(409, "Email already exists");
   }
 
-  const resolvedPassword = String(password || "").trim() || generateTemporaryPassword();
+  const resolvedPassword =
+    String(password || "").trim() || generateTemporaryPassword();
 
   let user = null;
 
@@ -1076,7 +1271,9 @@ exports.register = asyncHandler(async (req, res) => {
   } catch (error) {
     if (user?._id) {
       await CandidateProfile.deleteOne({ userId: user._id }).catch(() => null);
-      await CandidateProfileHistory.deleteMany({ candidateId: user._id }).catch(() => null);
+      await CandidateProfileHistory.deleteMany({ candidateId: user._id }).catch(
+        () => null,
+      );
       await User.deleteOne({ _id: user._id }).catch(() => null);
     }
     throw error;
@@ -1184,7 +1381,9 @@ exports.getLandingByToken = asyncHandler(async (req, res) => {
         website: context.company.website || "",
         linkedIn: context.company.linkedIn || "",
         activelyHiring: Boolean(context.company.activelyHiring),
-        openRoles: Number(context.company.openRoles || context.company.activeJobCount || 0),
+        openRoles: Number(
+          context.company.openRoles || context.company.activeJobCount || 0,
+        ),
         about: context.company.about || "",
         mission: context.company.mission || "",
         vision: context.company.vision || "",
@@ -1201,7 +1400,19 @@ exports.getDashboard = asyncHandler(async (req, res) => {
   const profile = await ensureCandidateProfile(req.user);
   const quizKey = new Date().toISOString().slice(0, 10);
   const followedIds = profile.followedCompanyIds || [];
-  const [applications, notifications, recommended, applicationStats, companyIds, extraJobs, todayQuizResult, quizXp, followedCompanyJobs, followedCompanies, nviteRecords] = await Promise.all([
+  const [
+    applications,
+    notifications,
+    recommended,
+    applicationStats,
+    companyIds,
+    extraJobs,
+    todayQuizResult,
+    quizXp,
+    followedCompanyJobs,
+    followedCompanies,
+    nviteRecords,
+  ] = await Promise.all([
     Application.find({ candidateId: req.user._id })
       .sort({ updatedAt: -1 })
       .limit(DASHBOARD_PIPELINE_LIMIT)
@@ -1220,7 +1431,11 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     CandidateQuizResult.findOne({ candidateId: req.user._id, quizKey }),
     calculateCandidateXp(req.user._id),
     followedIds.length > 0
-      ? Job.find({ companyId: { $in: followedIds }, isActive: true, approvalStatus: "APPROVED" })
+      ? Job.find({
+          companyId: { $in: followedIds },
+          isActive: true,
+          approvalStatus: "APPROVED",
+        })
           .sort({ createdAt: -1 })
           .limit(20)
           .populate("companyId", "name industry logoUrl")
@@ -1250,26 +1465,42 @@ exports.getDashboard = asyncHandler(async (req, res) => {
 
   const historicalProfileViews = companyIds.filter(Boolean).length || 0;
 
-  const effectiveProfileViews = Math.max(profile.profileViews || 0, historicalProfileViews);
-  const effectiveRecruiterActions = Math.max(profile.recruiterActions || 0, recruiterActionCount);
+  const effectiveProfileViews = Math.max(
+    profile.profileViews || 0,
+    historicalProfileViews,
+  );
+  const effectiveRecruiterActions = Math.max(
+    profile.recruiterActions || 0,
+    recruiterActionCount,
+  );
 
   const allDashboardJobIds = [...extraJobs, ...followedCompanyJobs]
     .map((j) => String(j.companyId?._id || j.companyId || ""))
     .filter(Boolean);
   const dashboardRatingsMap = await getCompanyRatingsMap(allDashboardJobIds);
 
-  const enrichedApplications = await Promise.all(applications.map(async (item) => {
-    const matchData = item.jobId && typeof item.jobId === "object"
-      ? computeMatchScore(item.jobId, profile)
-      : null;
-    return formatApplication(item, matchData);
-  }));
+  const enrichedApplications = await Promise.all(
+    applications.map(async (item) => {
+      const matchData =
+        item.jobId && typeof item.jobId === "object"
+          ? computeMatchScore(item.jobId, profile)
+          : null;
+      return formatApplication(item, matchData);
+    }),
+  );
 
-  const enrichedExtraJobs = await Promise.all(extraJobs.map(async (job) => {
-    const matchData = computeMatchScore(job, profile);
-    const cid = String(job.companyId?._id || job.companyId || "");
-    return formatJob(job, new Map(), matchData, dashboardRatingsMap.get(cid) || null);
-  }));
+  const enrichedExtraJobs = await Promise.all(
+    extraJobs.map(async (job) => {
+      const matchData = computeMatchScore(job, profile);
+      const cid = String(job.companyId?._id || job.companyId || "");
+      return formatJob(
+        job,
+        new Map(),
+        matchData,
+        dashboardRatingsMap.get(cid) || null,
+      );
+    }),
+  );
 
   const hiringCompanyPool = extraJobs
     .filter((j) => j.companyId && j.companyId._id)
@@ -1281,7 +1512,8 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     .filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i);
 
   const enrichedExtraJobsWithHiring = enrichedExtraJobs.map((job, idx) => {
-    const ownCompany = hiringCompanyPool.find((c) => c.id === job.companyId) || null;
+    const ownCompany =
+      hiringCompanyPool.find((c) => c.id === job.companyId) || null;
     const others = hiringCompanyPool.filter((c) => c.id !== job.companyId);
     const shuffled = others.sort(() => 0.5 - Math.random()).slice(0, 4);
     const hiringCompanies = ownCompany ? [ownCompany, ...shuffled] : shuffled;
@@ -1293,15 +1525,22 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     const recruiterName = n.recruiterId?.name || "Recruiter";
     const candidateName = req.user?.name || "Candidate";
     const recipient = (n.recipients || []).find(
-      r => r.userId && String(r.userId) === String(req.user._id)
+      (r) => r.userId && String(r.userId) === String(req.user._id),
     );
-    const resolveVars = (str) => (str || "")
-      .replace(/\{\{candidate_name\}\}/g, candidateName)
-      .replace(/\{\{company_name\}\}/g, companyName)
-      .replace(/\{\{recruiter_name\}\}/g, recruiterName);
+    const resolveVars = (str) =>
+      (str || "")
+        .replace(/\{\{candidate_name\}\}/g, candidateName)
+        .replace(/\{\{company_name\}\}/g, companyName)
+        .replace(/\{\{recruiter_name\}\}/g, recruiterName);
     const resolvedSubject = resolveVars(n.subject);
     const resolvedBody = resolveVars(n.body);
-    const initials = companyName.split(/\s+/).filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    const initials = companyName
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
     const ago = timeAgo(n.createdAt);
     const hash = initials.charCodeAt(0) || 100;
     const hue = (hash * 47) % 360;
@@ -1323,14 +1562,26 @@ exports.getDashboard = asyncHandler(async (req, res) => {
 
   const followedJobAppMap = await buildApplicationMap(
     req.user._id,
-    followedCompanyJobs.filter(Boolean).map(j => j._id).filter(Boolean),
+    followedCompanyJobs
+      .filter(Boolean)
+      .map((j) => j._id)
+      .filter(Boolean),
   );
 
-  const enrichedFollowedJobs = (await Promise.all(followedCompanyJobs.map(async (job) => {
-    const matchData = computeMatchScore(job, profile);
-    const cid = String(job.companyId?._id || job.companyId || "");
-    return formatJob(job, followedJobAppMap, matchData, dashboardRatingsMap.get(cid) || null);
-  }))).filter(job => !job.hasApplied);
+  const enrichedFollowedJobs = (
+    await Promise.all(
+      followedCompanyJobs.map(async (job) => {
+        const matchData = computeMatchScore(job, profile);
+        const cid = String(job.companyId?._id || job.companyId || "");
+        return formatJob(
+          job,
+          followedJobAppMap,
+          matchData,
+          dashboardRatingsMap.get(cid) || null,
+        );
+      }),
+    )
+  ).filter((job) => !job.hasApplied);
 
   res.status(200).json({
     success: true,
@@ -1339,7 +1590,9 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       summary: {
         totalApplications: applicationStats.length,
         shortlisted: applicationStats.filter((item) =>
-          ["SHORTLISTED", "INTERVIEW", "OFFERED", "HIRED"].includes(item.status),
+          ["SHORTLISTED", "INTERVIEW", "OFFERED", "HIRED"].includes(
+            item.status,
+          ),
         ).length,
         interviews: applicationStats.filter((item) =>
           ["INTERVIEW", "OFFERED", "HIRED"].includes(item.status),
@@ -1351,9 +1604,9 @@ exports.getDashboard = asyncHandler(async (req, res) => {
         recruiterActions: effectiveRecruiterActions,
         jobMatches: recommended.jobs
           ? new Set(
-              Object.values(recommended.jobs).flatMap(arr =>
-                Array.isArray(arr) ? arr.map(j => String(j._id || j.id)) : []
-              )
+              Object.values(recommended.jobs).flatMap((arr) =>
+                Array.isArray(arr) ? arr.map((j) => String(j._id || j.id)) : [],
+              ),
             ).size
           : 0,
       },
@@ -1403,13 +1656,20 @@ exports.getNvites = asyncHandler(async (req, res) => {
     const cName = n.companyId?.name || "Unknown Company";
     const rName = n.recruiterId?.name || "Recruiter";
     const recipient = (n.recipients || []).find(
-      r => r.userId && String(r.userId) === String(req.user._id)
+      (r) => r.userId && String(r.userId) === String(req.user._id),
     );
-    const resolve = (str) => (str || "")
-      .replace(/\{\{candidate_name\}\}/g, candidateName)
-      .replace(/\{\{company_name\}\}/g, cName)
-      .replace(/\{\{recruiter_name\}\}/g, rName);
-    const initials = cName.split(/\s+/).filter(Boolean).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    const resolve = (str) =>
+      (str || "")
+        .replace(/\{\{candidate_name\}\}/g, candidateName)
+        .replace(/\{\{company_name\}\}/g, cName)
+        .replace(/\{\{recruiter_name\}\}/g, rName);
+    const initials = cName
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
     const ago = timeAgo(n.createdAt);
     const hash = initials.charCodeAt(0) || 100;
     const hue = (hash * 47) % 360;
@@ -1434,7 +1694,9 @@ exports.getNvites = asyncHandler(async (req, res) => {
 
 exports.getJobs = asyncHandler(async (req, res) => {
   const token = String(req.query.token || "").trim();
-  const search = String(req.query.search || "").trim().toLowerCase();
+  const search = String(req.query.search || "")
+    .trim()
+    .toLowerCase();
 
   let jobs = [];
   let company = null;
@@ -1489,24 +1751,33 @@ exports.getJobs = asyncHandler(async (req, res) => {
   }
 
   const applicationMap = req.user
-    ? await buildApplicationMap(req.user._id, jobs.map((job) => job._id))
+    ? await buildApplicationMap(
+        req.user._id,
+        jobs.map((job) => job._id),
+      )
     : new Map();
-  const savedJobIds = new Set((profile?.savedJobIds || []).map((id) => String(id)));
+  const savedJobIds = new Set(
+    (profile?.savedJobIds || []).map((id) => String(id)),
+  );
 
   res.status(200).json({
     success: true,
     data: {
       company: company
         ? {
-          id: String(company._id),
-          name: company.name,
-          industry: company.industry || "",
-          city: company.location?.city || "",
-          region: company.location?.region || "",
-        }
+            id: String(company._id),
+            name: company.name,
+            industry: company.industry || "",
+            city: company.location?.city || "",
+            region: company.location?.region || "",
+          }
         : null,
       jobs: jobs.map((job) => {
-        const formatted = formatJob(job, applicationMap, req.user ? { savedJobIds } : null);
+        const formatted = formatJob(
+          job,
+          applicationMap,
+          req.user ? { savedJobIds } : null,
+        );
         return req.user ? formatted : publicJobData(formatted);
       }),
     },
@@ -1514,7 +1785,9 @@ exports.getJobs = asyncHandler(async (req, res) => {
 });
 
 exports.getJobSuggestions = asyncHandler(async (req, res) => {
-  const q = String(req.query.q || "").trim().toLowerCase();
+  const q = String(req.query.q || "")
+    .trim()
+    .toLowerCase();
   if (!q) {
     return res.json({ success: true, data: { jobs: [] } });
   }
@@ -1552,41 +1825,42 @@ exports.getJobSuggestions = asyncHandler(async (req, res) => {
 });
 
 exports.getJobDetail = asyncHandler(async (req, res) => {
-  const job = await Job.findById(req.params.id).populate("companyId", "name industry location logoUrl coverImageUrl");
+  const [job, profile] = await Promise.all([
+    Job.findById(req.params.id)
+      .populate("companyId", "name industry location logoUrl coverImageUrl")
+      .lean(),
+    req.user ? ensureCandidateProfile(req.user) : Promise.resolve(null),
+  ]);
 
   if (!job || !job.isActive || job.approvalStatus !== "APPROVED") {
     throw createHttpError(404, "Job not found");
   }
 
   const companyIdStr = String(job.companyId?._id || job.companyId || "");
-  const ratingsMap = companyIdStr ? await getCompanyRatingsMap([companyIdStr]) : new Map();
+
+  const [ratingsMap, applicationMap, similarJobs] = await Promise.all([
+    companyIdStr ? getCompanyRatingsMap([companyIdStr]) : Promise.resolve(new Map()),
+    req.user ? buildApplicationMap(req.user._id, [job._id]) : Promise.resolve(new Map()),
+    buildSimilarJobs(job, req.user?._id)
+  ]);
+
   const companyRating = ratingsMap.get(companyIdStr) || null;
 
-  let applicationMap = new Map();
   let matchData = {};
   let hasFollowedCompany = false;
 
-  if (req.user) {
-    const profile = await ensureCandidateProfile(req.user);
-    applicationMap = await buildApplicationMap(req.user._id, [job._id]);
-    
-    // Try AI match score, fallback to local computation on failure
-    try {
-      const aiMatch = await AIService.computeAIMatchScore(job, profile);
-      matchData = {
-        ...aiMatch,
-        savedJobIds: new Set((profile.savedJobIds || []).map((savedJobId) => String(savedJobId))),
-      };
-    } catch (aiError) {
-      console.warn("[getJobDetail] AI match score failed, using local fallback:", aiError.message);
-      const localMatch = computeMatchScore(job, profile);
-      matchData = {
-        ...localMatch,
-        savedJobIds: new Set((profile.savedJobIds || []).map((savedJobId) => String(savedJobId))),
-      };
-    }
-    
-    hasFollowedCompany = new Set((profile.followedCompanyIds || []).map((companyId) => String(companyId))).has(String(companyIdStr));
+  if (req.user && profile) {
+    const localMatch = computeMatchScore(job, profile);
+    matchData = {
+      ...localMatch,
+      savedJobIds: new Set(
+        (profile.savedJobIds || []).map((savedJobId) => String(savedJobId)),
+      ),
+    };
+
+    hasFollowedCompany = new Set(
+      (profile.followedCompanyIds || []).map((companyId) => String(companyId)),
+    ).has(String(companyIdStr));
   }
 
   // Log JOB_VIEW to JobPostingReportLog (only for authenticated users to avoid noise)
@@ -1603,9 +1877,11 @@ exports.getJobDetail = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: {
-      job: req.user ? formatJob(job, applicationMap, matchData, companyRating) : publicJobData(formatJob(job, new Map(), null, companyRating)),
+      job: req.user
+        ? formatJob(job, applicationMap, matchData, companyRating)
+        : publicJobData(formatJob(job, new Map(), null, companyRating)),
       hasFollowedCompany: req.user ? hasFollowedCompany : undefined,
-      similarJobs: await buildSimilarJobs(job, req.user?._id),
+      similarJobs,
     },
   });
 });
@@ -1624,7 +1900,10 @@ exports.getSimilarJobs = asyncHandler(async (req, res) => {
 });
 
 exports.getJobMatchScore = asyncHandler(async (req, res) => {
-  const job = await Job.findById(req.params.id).populate("companyId", "name industry location");
+  const job = await Job.findById(req.params.id).populate(
+    "companyId",
+    "name industry location",
+  );
 
   if (!job || !job.isActive || job.approvalStatus !== "APPROVED") {
     throw createHttpError(404, "Job not found");
@@ -1641,7 +1920,13 @@ exports.getJobMatchScore = asyncHandler(async (req, res) => {
 
 exports.createApplication = asyncHandler(async (req, res) => {
   const requestBody = req.body && typeof req.body === "object" ? req.body : {};
-  const { jobId = "", qrToken = "", sourceJobId = "", answers = [], appliedFrom = "JOB_DETAILS" } = requestBody;
+  const {
+    jobId = "",
+    qrToken = "",
+    sourceJobId = "",
+    answers = [],
+    appliedFrom = "JOB_DETAILS",
+  } = requestBody;
 
   if (!jobId) {
     throw createHttpError(400, "Job is required");
@@ -1727,22 +2012,24 @@ exports.createApplication = asyncHandler(async (req, res) => {
     // If job has specific collaborators (recruiters), notify them as well
     if (Array.isArray(job.collaborators) && job.collaborators.length > 0) {
       for (const collaboratorId of job.collaborators) {
-        notificationService.sendRecruiterNotification({
-          companyId: resolvedCompanyId,
-          recruiterUserId: collaboratorId,
-          candidateId: req.user._id,
-          jobId: job._id,
-          applicationId: application._id,
-          title: "New Application Received",
-          message: `${candidateDisplayName} applied for ${job.title}.`,
-          category: "APPLICATION",
-          actionUrl: `/employer/job-responses/${job._id}`,
-          metadata: {
-            candidateName: req.user.name,
-            candidateEmail: req.user.email,
-            jobTitle: job.title,
-          },
-        }).catch(() => {});
+        notificationService
+          .sendRecruiterNotification({
+            companyId: resolvedCompanyId,
+            recruiterUserId: collaboratorId,
+            candidateId: req.user._id,
+            jobId: job._id,
+            applicationId: application._id,
+            title: "New Application Received",
+            message: `${candidateDisplayName} applied for ${job.title}.`,
+            category: "APPLICATION",
+            actionUrl: `/employer/job-responses/${job._id}`,
+            metadata: {
+              candidateName: req.user.name,
+              candidateEmail: req.user.email,
+              jobTitle: job.title,
+            },
+          })
+          .catch(() => {});
       }
     }
   }
@@ -1843,7 +2130,9 @@ exports.getSavedJobs = asyncHandler(async (req, res) => {
     .sort({ postedAt: -1 })
     .lean();
 
-  const formatted = jobs.map((job) => formatJob(job, new Map(), { savedJobIds: new Set(savedJobIds) }));
+  const formatted = jobs.map((job) =>
+    formatJob(job, new Map(), { savedJobIds: new Set(savedJobIds) }),
+  );
 
   return res.status(200).json({
     success: true,
@@ -1862,7 +2151,9 @@ exports.toggleCompanyFollow = asyncHandler(async (req, res) => {
   }
 
   const profile = await ensureCandidateProfile(req.user);
-  const followedIds = new Set((profile.followedCompanyIds || []).map((id) => String(id)));
+  const followedIds = new Set(
+    (profile.followedCompanyIds || []).map((id) => String(id)),
+  );
 
   if (follow) {
     if (!followedIds.has(String(company._id))) {
@@ -1876,14 +2167,16 @@ exports.toggleCompanyFollow = asyncHandler(async (req, res) => {
         actionUrl: `/company/${company._id}`,
       });
 
-      notificationService.sendCompanyNotification({
-        companyId: company._id,
-        candidateId: req.user._id,
-        title: "New Follower",
-        message: `${req.user.name || "A candidate"} is now following your company profile.`,
-        category: "SYSTEM",
-        actionUrl: "/employer-dashboard",
-      }).catch(() => {});
+      notificationService
+        .sendCompanyNotification({
+          companyId: company._id,
+          candidateId: req.user._id,
+          title: "New Follower",
+          message: `${req.user.name || "A candidate"} is now following your company profile.`,
+          category: "SYSTEM",
+          actionUrl: "/employer-dashboard",
+        })
+        .catch(() => {});
     }
   } else {
     followedIds.delete(String(company._id));
@@ -1905,7 +2198,9 @@ exports.toggleCompanyFollow = asyncHandler(async (req, res) => {
 exports.expressInterest = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
-    return res.status(400).json({ success: false, message: "Job ID is required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Job ID is required" });
   }
 
   const job = await Job.findById(id).select("_id title");
@@ -1915,7 +2210,9 @@ exports.expressInterest = asyncHandler(async (req, res) => {
 
   const profile = await CandidateProfile.findOne({ userId: req.user._id });
   if (!profile) {
-    return res.status(404).json({ success: false, message: "Profile not found" });
+    return res
+      .status(404)
+      .json({ success: false, message: "Profile not found" });
   }
 
   const jobIdStr = String(job._id);
@@ -1943,12 +2240,16 @@ exports.getApplications = asyncHandler(async (req, res) => {
   const applications = await Application.find({ candidateId: req.user._id })
     .sort({ updatedAt: -1 })
     .populate("companyId", "name")
-    .populate("jobId", "title skills location experience department description");
+    .populate(
+      "jobId",
+      "title skills location experience department description",
+    );
 
   const profile = await ensureCandidateProfile(req.user);
 
   const enriched = applications.map((item) => {
-    const job = item.jobId && typeof item.jobId === "object" ? item.jobId : null;
+    const job =
+      item.jobId && typeof item.jobId === "object" ? item.jobId : null;
     return formatApplication(item, computeMatchScore(job, profile));
   });
 
@@ -1965,7 +2266,9 @@ exports.getProfile = asyncHandler(async (req, res) => {
     ttl: 300,
     fetch: async () => {
       const profile = await ensureCandidateProfile(req.user);
-      const history = await CandidateProfileHistory.find({ candidateId: req.user._id })
+      const history = await CandidateProfileHistory.find({
+        candidateId: req.user._id,
+      })
         .sort({ createdAt: -1 })
         .limit(8);
 
@@ -1973,7 +2276,7 @@ exports.getProfile = asyncHandler(async (req, res) => {
         profile: formatProfile(profile, req.user),
         history: history.map((item) => formatHistoryItem(item)),
       };
-    }
+    },
   });
 
   res.status(200).json({
@@ -1988,7 +2291,9 @@ exports.getPublicProfileByShareId = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Share id is required");
   }
 
-  const profile = await CandidateProfile.findOne({ publicShareId: shareId }).populate("userId");
+  const profile = await CandidateProfile.findOne({
+    publicShareId: shareId,
+  }).populate("userId");
 
   // If we get a lean profile without user populated for some reason, fallback to manual user query
   // (keeps endpoint resilient).
@@ -1998,7 +2303,9 @@ exports.getPublicProfileByShareId = asyncHandler(async (req, res) => {
 
   let user = null;
   try {
-    user = await User.findById(profile.userId || profile._id).select("name email role department accessStatus");
+    user = await User.findById(profile.userId || profile._id).select(
+      "name email role department accessStatus",
+    );
   } catch {
     user = null;
   }
@@ -2023,13 +2330,16 @@ exports.updateProfile = asyncHandler(async (req, res) => {
 
     const nextValue = transform(value);
     const previousValue = profile[field];
-    const isObj = (val) => val !== null && typeof val === 'object' && !Array.isArray(val);
+    const isObj = (val) =>
+      val !== null && typeof val === "object" && !Array.isArray(val);
     const isEqual =
       Array.isArray(previousValue) || Array.isArray(nextValue)
-        ? JSON.stringify(previousValue || []) === JSON.stringify(nextValue || [])
+        ? JSON.stringify(previousValue || []) ===
+          JSON.stringify(nextValue || [])
         : isObj(previousValue) || isObj(nextValue)
-        ? JSON.stringify(previousValue || {}) === JSON.stringify(nextValue || {})
-        : String(previousValue ?? "") === String(nextValue ?? "");
+          ? JSON.stringify(previousValue || {}) ===
+            JSON.stringify(nextValue || {})
+          : String(previousValue ?? "") === String(nextValue ?? "");
 
     if (!isEqual) {
       changes.push({ field, previousValue, nextValue });
@@ -2053,10 +2363,15 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   }
 
   // Map Basic Details Modal payload to schema fields
-  if (requestBody.city !== undefined) requestBody.currentCity = requestBody.city;
-  if (requestBody.locationType !== undefined) requestBody.currentCountry = requestBody.locationType;
-  if (requestBody.totalExpYears !== undefined || requestBody.totalExpMonths !== undefined) {
-    requestBody.totalExperience = `${requestBody.totalExpYears || '0 Year'} ${requestBody.totalExpMonths || '0 Month'}`;
+  if (requestBody.city !== undefined)
+    requestBody.currentCity = requestBody.city;
+  if (requestBody.locationType !== undefined)
+    requestBody.currentCountry = requestBody.locationType;
+  if (
+    requestBody.totalExpYears !== undefined ||
+    requestBody.totalExpMonths !== undefined
+  ) {
+    requestBody.totalExperience = `${requestBody.totalExpYears || "0 Year"} ${requestBody.totalExpMonths || "0 Month"}`;
   }
 
   // Ensure bidirectional sync between standalone fields and careerProfileObj
@@ -2067,9 +2382,11 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   }
 
   if (requestBody.preferredLocations !== undefined) {
-    requestBody.careerProfileObj.preferredWorkLocation = requestBody.preferredLocations;
+    requestBody.careerProfileObj.preferredWorkLocation =
+      requestBody.preferredLocations;
   } else if (requestBody.careerProfileObj.preferredWorkLocation !== undefined) {
-    requestBody.preferredLocations = requestBody.careerProfileObj.preferredWorkLocation;
+    requestBody.preferredLocations =
+      requestBody.careerProfileObj.preferredWorkLocation;
   }
 
   if (requestBody.preferredRoles !== undefined) {
@@ -2088,16 +2405,36 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   syncField("altPhone", requestBody.altPhone, (value) => String(value).trim());
   syncField("headline", requestBody.headline, (value) => String(value).trim());
   syncField("summary", requestBody.summary, (value) => String(value).trim());
-  syncField("totalExperience", requestBody.totalExperience, (value) => String(value).trim());
-  syncField("currentTitle", requestBody.currentTitle, (value) => String(value).trim());
-  syncField("currentCompany", requestBody.currentCompany, (value) => String(value).trim());
-  syncField("workStatus", requestBody.workStatus, (value) => String(value).trim());
-  syncField("currentSalary", requestBody.currentSalary, (value) => String(value).trim());
-  syncField("salaryBreakdown", requestBody.salaryBreakdown, (value) => String(value).trim());
-  syncField("noticePeriod", requestBody.noticePeriod, (value) => String(value).trim());
-  syncField("currentCity", requestBody.currentCity, (value) => String(value).trim());
-  syncField("currentState", requestBody.currentState, (value) => String(value).trim());
-  syncField("currentCountry", requestBody.currentCountry, (value) => String(value).trim());
+  syncField("totalExperience", requestBody.totalExperience, (value) =>
+    String(value).trim(),
+  );
+  syncField("currentTitle", requestBody.currentTitle, (value) =>
+    String(value).trim(),
+  );
+  syncField("currentCompany", requestBody.currentCompany, (value) =>
+    String(value).trim(),
+  );
+  syncField("workStatus", requestBody.workStatus, (value) =>
+    String(value).trim(),
+  );
+  syncField("currentSalary", requestBody.currentSalary, (value) =>
+    String(value).trim(),
+  );
+  syncField("salaryBreakdown", requestBody.salaryBreakdown, (value) =>
+    String(value).trim(),
+  );
+  syncField("noticePeriod", requestBody.noticePeriod, (value) =>
+    String(value).trim(),
+  );
+  syncField("currentCity", requestBody.currentCity, (value) =>
+    String(value).trim(),
+  );
+  syncField("currentState", requestBody.currentState, (value) =>
+    String(value).trim(),
+  );
+  syncField("currentCountry", requestBody.currentCountry, (value) =>
+    String(value).trim(),
+  );
   syncField("preferredLocations", requestBody.preferredLocations, (value) =>
     sanitizePreferenceArray(value, "preferredLocations", 10),
   );
@@ -2107,60 +2444,111 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   syncField("skills", requestBody.skills, toArray);
   syncField("languages", requestBody.languages, (val) => {
     if (!Array.isArray(val)) return [];
-    return val.map(lang => {
-      if (typeof lang === 'string') return { name: lang, proficiency: "Beginner", read: false, write: false, speak: false };
-      if (typeof lang === 'object' && lang !== null) return lang;
-      return null;
-    }).filter(Boolean);
+    return val
+      .map((lang) => {
+        if (typeof lang === "string")
+          return {
+            name: lang,
+            proficiency: "Beginner",
+            read: false,
+            write: false,
+            speak: false,
+          };
+        if (typeof lang === "object" && lang !== null) return lang;
+        return null;
+      })
+      .filter(Boolean);
   });
   syncField("personalDetailsObj", requestBody.personalDetailsObj, (val) => val);
   syncField("diversityInfo", requestBody.diversityInfo, (val) => val);
   syncField("careerProfileObj", requestBody.careerProfileObj, (val) => val);
   syncField("accomplishments", requestBody.accomplishments, (value) => {
     if (typeof value === "string") {
-      try { JSON.parse(value); return value; } catch { return "[]"; }
+      try {
+        JSON.parse(value);
+        return value;
+      } catch {
+        return "[]";
+      }
     }
     if (Array.isArray(value)) return JSON.stringify(value);
     return "[]";
   });
-  syncField("linkedInUrl", requestBody.linkedInUrl, (value) => String(value).trim());
-  syncField("portfolioUrl", requestBody.portfolioUrl, (value) => String(value).trim());
-  syncField("expectedSalary", requestBody.expectedSalary, (value) => String(value).trim());
-  syncField("education", requestBody.education, (value) => String(value).trim());
+  syncField("linkedInUrl", requestBody.linkedInUrl, (value) =>
+    String(value).trim(),
+  );
+  syncField("portfolioUrl", requestBody.portfolioUrl, (value) =>
+    String(value).trim(),
+  );
+  syncField("expectedSalary", requestBody.expectedSalary, (value) =>
+    String(value).trim(),
+  );
+  syncField("education", requestBody.education, (value) =>
+    String(value).trim(),
+  );
   syncField("itSkills", requestBody.itSkills, (value) => {
     if (typeof value === "string") {
-      try { JSON.parse(value); return value; } catch { return "[]"; }
+      try {
+        JSON.parse(value);
+        return value;
+      } catch {
+        return "[]";
+      }
     }
     if (Array.isArray(value)) return JSON.stringify(value);
     return "[]";
   });
   syncField("educations", requestBody.educations, (value) => {
     if (typeof value === "string") {
-      try { JSON.parse(value); return value; } catch { return "[]"; }
+      try {
+        JSON.parse(value);
+        return value;
+      } catch {
+        return "[]";
+      }
     }
     if (Array.isArray(value)) return JSON.stringify(value);
     return "[]";
   });
   syncField("projects", requestBody.projects, (value) => {
     if (typeof value === "string") {
-      try { JSON.parse(value); return value; } catch { return "[]"; }
+      try {
+        JSON.parse(value);
+        return value;
+      } catch {
+        return "[]";
+      }
     }
     if (Array.isArray(value)) return JSON.stringify(value);
     return "[]";
   });
   syncField("workExperiences", requestBody.workExperiences, (value) => {
     if (typeof value === "string") {
-      try { JSON.parse(value); return value; } catch { return "[]"; }
+      try {
+        JSON.parse(value);
+        return value;
+      } catch {
+        return "[]";
+      }
     }
     if (Array.isArray(value)) return JSON.stringify(value);
     return "[]";
   });
-  syncField("projectTitle", requestBody.projectTitle, (value) => String(value).trim());
-  syncField("projectLink", requestBody.projectLink, (value) => String(value).trim());
-  syncField("projectDescription", requestBody.projectDescription, (value) => String(value).trim());
+  syncField("projectTitle", requestBody.projectTitle, (value) =>
+    String(value).trim(),
+  );
+  syncField("projectLink", requestBody.projectLink, (value) =>
+    String(value).trim(),
+  );
+  syncField("projectDescription", requestBody.projectDescription, (value) =>
+    String(value).trim(),
+  );
 
   const nextDesignation = String(requestBody.currentTitle || "").trim();
-  if (requestBody.currentTitle !== undefined && req.user.department !== nextDesignation) {
+  if (
+    requestBody.currentTitle !== undefined &&
+    req.user.department !== nextDesignation
+  ) {
     changes.push({
       field: "designation",
       previousValue: req.user.department || "",
@@ -2199,7 +2587,9 @@ exports.updateProfile = asyncHandler(async (req, res) => {
 });
 
 exports.getProfileHistory = asyncHandler(async (req, res) => {
-  const history = await CandidateProfileHistory.find({ candidateId: req.user._id }).sort({
+  const history = await CandidateProfileHistory.find({
+    candidateId: req.user._id,
+  }).sort({
     createdAt: -1,
   });
 
@@ -2254,7 +2644,8 @@ exports.uploadResume = asyncHandler(async (req, res) => {
   await notificationService.sendCandidateNotification({
     candidateId: req.user._id,
     title: "Resume updated",
-    message: "Your latest resume is securely stored and ready for future applications.",
+    message:
+      "Your latest resume is securely stored and ready for future applications.",
     category: "SYSTEM",
     actionUrl: "/candidate/profile",
   });
@@ -2271,12 +2662,19 @@ exports.uploadResume = asyncHandler(async (req, res) => {
 exports.deleteResume = asyncHandler(async (req, res) => {
   const profile = await ensureCandidateProfile(req.user);
   if (!profile.resume?.publicId) {
-    return res.status(200).json({ success: true, message: "No resume to delete." });
+    return res
+      .status(200)
+      .json({ success: true, message: "No resume to delete." });
   }
   await deleteResumeFile(profile.resume.publicId);
   profile.resume = {
-    fileName: "", url: "", publicId: "", storageProvider: "",
-    sizeBytes: 0, mimeType: "", uploadedAt: null,
+    fileName: "",
+    url: "",
+    publicId: "",
+    storageProvider: "",
+    sizeBytes: 0,
+    mimeType: "",
+    uploadedAt: null,
   };
   await profile.save();
   await notificationService.sendCandidateNotification({
@@ -2289,13 +2687,17 @@ exports.deleteResume = asyncHandler(async (req, res) => {
   const cacheKey = `profile_response:${req.user._id}`;
   await cacheService.del(cacheKey);
 
-  res.status(200).json({ success: true, data: formatProfile(profile, req.user) });
+  res
+    .status(200)
+    .json({ success: true, data: formatProfile(profile, req.user) });
 });
 
 exports.serveResume = asyncHandler(async (req, res) => {
   const profile = await ensureCandidateProfile(req.user);
   if (!profile.resume?.url) {
-    return res.status(404).json({ success: false, message: "No resume found." });
+    return res
+      .status(404)
+      .json({ success: false, message: "No resume found." });
   }
   const fileUrl = profile.resume.url;
   const fileName = profile.resume.fileName || "resume.pdf";
@@ -2307,29 +2709,39 @@ exports.serveResume = asyncHandler(async (req, res) => {
     rtf: "application/rtf",
   };
   const forcedType = mimeMap[ext] || "application/octet-stream";
-  https.get(fileUrl, (proxyRes) => {
-    res.writeHead(200, {
-      "Content-Type": forcedType,
-      "Content-Disposition": `inline; filename="${encodeURIComponent(fileName)}"`,
-      "Content-Length": proxyRes.headers["content-length"] || "",
-      "Cache-Control": "private, max-age=3600",
-      "X-Content-Type-Options": "nosniff",
-      "Cross-Origin-Resource-Policy": "cross-origin",
+  https
+    .get(fileUrl, (proxyRes) => {
+      res.writeHead(200, {
+        "Content-Type": forcedType,
+        "Content-Disposition": `inline; filename="${encodeURIComponent(fileName)}"`,
+        "Content-Length": proxyRes.headers["content-length"] || "",
+        "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+      });
+      proxyRes.pipe(res);
+    })
+    .on("error", () => {
+      res
+        .status(502)
+        .json({ success: false, message: "Failed to fetch resume." });
     });
-    proxyRes.pipe(res);
-  }).on("error", () => {
-    res.status(502).json({ success: false, message: "Failed to fetch resume." });
-  });
 });
 
 exports.getNotifications = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-  const limit = Math.max(1, Math.min(100, Number.parseInt(req.query.limit, 10) || 50));
+  const limit = Math.max(
+    1,
+    Math.min(100, Number.parseInt(req.query.limit, 10) || 50),
+  );
 
-  const result = await notificationService.getCandidateNotifications(req.user._id, {
-    page,
-    limit,
-  });
+  const result = await notificationService.getCandidateNotifications(
+    req.user._id,
+    {
+      page,
+      limit,
+    },
+  );
 
   res.status(200).json({
     success: true,
@@ -2367,7 +2779,11 @@ exports.submitTodayQuiz = asyncHandler(async (req, res) => {
     message: `You scored ${data.score}/${data.totalQuestions} in today's quiz.`,
     category: "SYSTEM",
     actionUrl: "/daily-quiz",
-    metadata: { type: "QUIZ_RESULT", quizKey: new Date().toISOString().slice(0, 10), xpEarned: data.xpEarned },
+    metadata: {
+      type: "QUIZ_RESULT",
+      quizKey: new Date().toISOString().slice(0, 10),
+      xpEarned: data.xpEarned,
+    },
   });
 
   res.status(201).json({
@@ -2392,7 +2808,7 @@ exports.getQuizRanking = asyncHandler(async (req, res) => {
 exports.markNotificationRead = asyncHandler(async (req, res) => {
   const updated = await notificationService.markCandidateNotificationRead(
     req.user._id,
-    req.params.id
+    req.params.id,
   );
 
   if (!updated) {
@@ -2401,7 +2817,9 @@ exports.markNotificationRead = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: updated.alreadyRead ? "Notification already marked as read" : "Notification marked as read",
+    message: updated.alreadyRead
+      ? "Notification already marked as read"
+      : "Notification marked as read",
     data: updated,
     notification: updated,
     alreadyRead: !!updated.alreadyRead,
@@ -2409,11 +2827,16 @@ exports.markNotificationRead = asyncHandler(async (req, res) => {
 });
 
 exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
-  const result = await notificationService.markAllCandidateNotificationsRead(req.user._id);
+  const result = await notificationService.markAllCandidateNotificationsRead(
+    req.user._id,
+  );
 
   res.status(200).json({
     success: true,
-    message: result.modifiedCount > 0 ? "All notifications marked as read" : "All notifications are already marked as read",
+    message:
+      result.modifiedCount > 0
+        ? "All notifications marked as read"
+        : "All notifications are already marked as read",
     data: result,
     modifiedCount: result.modifiedCount,
     alreadyRead: result.alreadyRead,
@@ -2421,7 +2844,9 @@ exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
 });
 
 exports.exportCandidateProfiles = asyncHandler(async (req, res) => {
-  const users = await User.find({ role: "CANDIDATE" }).select("name email createdAt");
+  const users = await User.find({ role: "CANDIDATE" }).select(
+    "name email createdAt",
+  );
   const profiles = await CandidateProfile.find({
     userId: { $in: users.map((user) => user._id) },
   });
@@ -2429,12 +2854,17 @@ exports.exportCandidateProfiles = asyncHandler(async (req, res) => {
     candidateId: { $in: users.map((user) => user._id) },
   });
 
-  const profileMap = new Map(profiles.map((profile) => [String(profile.userId), profile]));
+  const profileMap = new Map(
+    profiles.map((profile) => [String(profile.userId), profile]),
+  );
   const applicationCounts = new Map();
 
   applications.forEach((application) => {
     const candidateId = String(application.candidateId);
-    applicationCounts.set(candidateId, (applicationCounts.get(candidateId) || 0) + 1);
+    applicationCounts.set(
+      candidateId,
+      (applicationCounts.get(candidateId) || 0) + 1,
+    );
   });
 
   sendCsv(
@@ -2488,7 +2918,14 @@ exports.exportCandidateResumes = asyncHandler(async (req, res) => {
   sendCsv(
     res,
     "candidate-resumes.csv",
-    ["Name", "Email", "Resume File", "Storage Provider", "Resume URL", "Uploaded At"],
+    [
+      "Name",
+      "Email",
+      "Resume File",
+      "Storage Provider",
+      "Resume URL",
+      "Uploaded At",
+    ],
     profiles
       .filter((profile) => profile.resume?.url)
       .map((profile) => {
@@ -2512,7 +2949,10 @@ exports.uploadProfileImage = asyncHandler(async (req, res) => {
 
   const type = req.body.type === "cover" ? "cover" : "profile";
   const profile = await ensureCandidateProfile(req.user);
-  const previousPublicId = type === "cover" ? profile.coverPic?.publicId : profile.profilePic?.publicId;
+  const previousPublicId =
+    type === "cover"
+      ? profile.coverPic?.publicId
+      : profile.profilePic?.publicId;
 
   const uploaded = await replaceCandidateImage(req.file, {
     userId: req.user._id,
@@ -2558,12 +2998,23 @@ exports.uploadProjectMedia = asyncHandler(async (req, res) => {
 // ── Companies Directory ──────────────────────────────────────────────────────
 
 const COMPANY_PALETTE = [
-  '#1E5EFF','#7C3AED','#F59E0B','#0DBF7B','#EF4444',
-  '#0F2040','#8B5CF6','#0EA5E9','#4F46E5','#1E40AF',
+  "#1E5EFF",
+  "#7C3AED",
+  "#F59E0B",
+  "#0DBF7B",
+  "#EF4444",
+  "#0F2040",
+  "#8B5CF6",
+  "#0EA5E9",
+  "#4F46E5",
+  "#1E40AF",
 ];
 
 const companyColor = (id) => {
-  const hex = String(id).replace(/[^a-f0-9]/gi, '').slice(-4) || '0000';
+  const hex =
+    String(id)
+      .replace(/[^a-f0-9]/gi, "")
+      .slice(-4) || "0000";
   const idx = parseInt(hex, 16) % COMPANY_PALETTE.length;
   return COMPANY_PALETTE[Math.abs(idx)];
 };
@@ -2571,7 +3022,10 @@ const companyColor = (id) => {
 // ── Dynamic filter options for companies directory ──
 exports.getCompanyFilterOptions = asyncHandler(async (req, res) => {
   const [industries, cities, companyTypes] = await Promise.all([
-    Company.distinct("industry", { status: "ACTIVE", industry: { $ne: "", $exists: true } }),
+    Company.distinct("industry", {
+      status: "ACTIVE",
+      industry: { $ne: "", $exists: true },
+    }),
     Company.aggregate([
       { $match: { status: "ACTIVE" } },
       {
@@ -2580,7 +3034,12 @@ exports.getCompanyFilterOptions = asyncHandler(async (req, res) => {
           cities: {
             $addToSet: {
               $cond: [
-                { $and: [{ $ne: ["$location.city", ""] }, { $ne: ["$location.city", null] }] },
+                {
+                  $and: [
+                    { $ne: ["$location.city", ""] },
+                    { $ne: ["$location.city", null] },
+                  ],
+                },
                 "$location.city",
                 "$headquarters",
               ],
@@ -2592,16 +3051,20 @@ exports.getCompanyFilterOptions = asyncHandler(async (req, res) => {
     Company.distinct("packageType", { status: "ACTIVE" }),
   ]);
 
-  const cleanCities = (
-    (cities[0]?.cities || []).filter(Boolean).map((c) => c.trim()).filter(Boolean)
-  );
+  const cleanCities = (cities[0]?.cities || [])
+    .filter(Boolean)
+    .map((c) => c.trim())
+    .filter(Boolean);
 
   res.status(200).json({
     success: true,
     data: {
       industries: industries.filter(Boolean).sort(),
       cities: [...new Set(cleanCities)].sort(),
-      companyTypes: companyTypes.filter(Boolean).filter(t => !['ELITE', 'PREMIUM', 'STANDARD'].includes(t)).sort(),
+      companyTypes: companyTypes
+        .filter(Boolean)
+        .filter((t) => !["ELITE", "PREMIUM", "STANDARD"].includes(t))
+        .sort(),
     },
   });
 });
@@ -2618,13 +3081,26 @@ exports.getCompanyStats = asyncHandler(async (req, res) => {
     ];
   }
 
-  const [mncs, internet, manufacturing, fortune500, product] = await Promise.all([
-    Company.countDocuments({ ...baseFilter, industry: { $regex: "MNC|Corporate", $options: "i" } }),
-    Company.countDocuments({ ...baseFilter, industry: { $regex: "Internet|IT|Software", $options: "i" } }),
-    Company.countDocuments({ ...baseFilter, industry: { $regex: "Manufacturing", $options: "i" } }),
-    Company.countDocuments({ ...baseFilter, packageType: "ELITE" }),
-    Company.countDocuments({ ...baseFilter, industry: { $regex: "Product", $options: "i" } }),
-  ]);
+  const [mncs, internet, manufacturing, fortune500, product] =
+    await Promise.all([
+      Company.countDocuments({
+        ...baseFilter,
+        industry: { $regex: "MNC|Corporate", $options: "i" },
+      }),
+      Company.countDocuments({
+        ...baseFilter,
+        industry: { $regex: "Internet|IT|Software", $options: "i" },
+      }),
+      Company.countDocuments({
+        ...baseFilter,
+        industry: { $regex: "Manufacturing", $options: "i" },
+      }),
+      Company.countDocuments({ ...baseFilter, packageType: "ELITE" }),
+      Company.countDocuments({
+        ...baseFilter,
+        industry: { $regex: "Product", $options: "i" },
+      }),
+    ]);
 
   res.status(200).json({
     success: true,
@@ -2633,7 +3109,16 @@ exports.getCompanyStats = asyncHandler(async (req, res) => {
 });
 
 exports.getCompanies = asyncHandler(async (req, res) => {
-  let { q = "", sort = "popular", page = 1, limit = 20, industry = "", companyType = "", location = "", packageType = "" } = req.query;
+  let {
+    q = "",
+    sort = "popular",
+    page = 1,
+    limit = 20,
+    industry = "",
+    companyType = "",
+    location = "",
+    packageType = "",
+  } = req.query;
 
   const filter = { status: "ACTIVE" };
   const andConditions = [];
@@ -2650,16 +3135,23 @@ exports.getCompanies = asyncHandler(async (req, res) => {
   }
 
   // Industry filter (from category pills)
-  if (industry && industry !== 'All') {
+  if (industry && industry !== "All") {
     andConditions.push({ industry: { $regex: industry, $options: "i" } });
   }
 
   // Company Type filter (Corporate, Foreign MNC, Startup, Indian MNC)
   if (companyType) {
-    const types = String(companyType).split(",").map(t => t.trim()).filter(Boolean);
+    const types = String(companyType)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
     if (types.length > 0) {
-      const typePatterns = types.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-      andConditions.push({ industry: { $regex: typePatterns.join("|"), $options: "i" } });
+      const typePatterns = types.map((t) =>
+        t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      );
+      andConditions.push({
+        industry: { $regex: typePatterns.join("|"), $options: "i" },
+      });
     }
   }
 
@@ -2699,7 +3191,13 @@ exports.getCompanies = asyncHandler(async (req, res) => {
   const reviewAggs = companyIds.length
     ? await CompanyReview.aggregate([
         { $match: { companyId: { $in: companyIds } } },
-        { $group: { _id: "$companyId", avgRating: { $avg: "$rating" }, reviewCount: { $sum: 1 } } },
+        {
+          $group: {
+            _id: "$companyId",
+            avgRating: { $avg: "$rating" },
+            reviewCount: { $sum: 1 },
+          },
+        },
       ]).exec()
     : [];
 
@@ -2715,12 +3213,14 @@ exports.getCompanies = asyncHandler(async (req, res) => {
   if (req.user) {
     const profile = await ensureCandidateProfile(req.user);
     followedSet = new Set(
-      (profile?.followedCompanyIds || []).map((id) => String(id))
+      (profile?.followedCompanyIds || []).map((id) => String(id)),
     );
   }
 
   const reviewMap = new Map(reviewAggs.map((r) => [String(r._id), r]));
-  const followersMap = new Map(followersAggs.map((f) => [String(f._id), f.count]));
+  const followersMap = new Map(
+    followersAggs.map((f) => [String(f._id), f.count]),
+  );
 
   res.status(200).json({
     success: true,
@@ -2744,7 +3244,9 @@ exports.getCompanies = asyncHandler(async (req, res) => {
           logoUrl: c.logoUrl || "",
           founded: c.foundedYear || "",
           createdAt: c.createdAt,
-          rating: r.avgRating ? Math.round(Number(r.avgRating) * 10) / 10 : null,
+          rating: r.avgRating
+            ? Math.round(Number(r.avgRating) * 10) / 10
+            : null,
           reviewCount: r.reviewCount || 0,
           followers: followersMap.get(cid) || 0,
           isFollowing: followedSet.has(cid),
@@ -2758,35 +3260,54 @@ exports.getCompanies = asyncHandler(async (req, res) => {
 });
 
 exports.getCompanyDetail = asyncHandler(async (req, res) => {
-  const company = await Company.findById(req.params.id);
+  const [company, jobs, reviews, followersCount, profile] = await Promise.all([
+    Company.findById(req.params.id).lean(),
+    Job.find({
+      companyId: req.params.id,
+      isActive: true,
+      approvalStatus: "APPROVED",
+    })
+      .sort({ createdAt: -1 })
+      .lean(),
+    CompanyReview.find({
+      companyId: req.params.id,
+      status: "PUBLISHED",
+    })
+      .sort({ createdAt: -1 })
+      .limit(12)
+      .select(
+        "candidateName candidateTitle candidateCity rating headline review isAnonymous createdAt updatedAt",
+      )
+      .lean(),
+    CandidateProfile.countDocuments({
+      followedCompanyIds: req.params.id,
+    }),
+    req.user ? ensureCandidateProfile(req.user) : Promise.resolve(null),
+  ]);
+
   if (!company || company.status !== "ACTIVE") {
     throw createHttpError(404, "Company not found");
   }
 
-  const jobs = await Job.find({
-    companyId: company._id,
-    isActive: true,
-    approvalStatus: "APPROVED",
-  }).sort({ createdAt: -1 });
-  const reviews = await CompanyReview.find({
-    companyId: company._id,
-    status: "PUBLISHED",
-  })
-    .sort({ createdAt: -1 })
-    .limit(12)
-    .select("candidateName candidateTitle candidateCity rating headline review isAnonymous createdAt updatedAt");
   const totalRatings = reviews.reduce((sum, r) => sum + r.rating, 0);
-  const companyRating = reviews.length > 0 ? Math.round((totalRatings / reviews.length) * 10) / 10 : 0;
+  const companyRating =
+    reviews.length > 0
+      ? Math.round((totalRatings / reviews.length) * 10) / 10
+      : 0;
 
   const applicationMap = req.user?._id
-    ? await buildApplicationMap(req.user._id, jobs.map((j) => j._id))
+    ? await buildApplicationMap(
+        req.user._id,
+        jobs.map((j) => j._id),
+      )
     : new Map();
+
   let followedCompanyIds = new Set();
-  if (req.user) {
-    const profile = await ensureCandidateProfile(req.user);
-    followedCompanyIds = new Set((profile.followedCompanyIds || []).map((companyId) => String(companyId)));
+  if (profile) {
+    followedCompanyIds = new Set(
+      (profile.followedCompanyIds || []).map((companyId) => String(companyId)),
+    );
   }
-  const followersCount = await CandidateProfile.countDocuments({ followedCompanyIds: company._id });
 
   const formattedJobs = jobs.map((j) => ({
     id: String(j._id),
@@ -2824,9 +3345,10 @@ exports.getCompanyDetail = asyncHandler(async (req, res) => {
         website: company.website || "",
         linkedIn: company.linkedIn || "",
         location: company.location?.city || company.headquarters || "",
-        locationFull: [company.location?.city, company.location?.region]
-          .filter(Boolean)
-          .join(", ") || "",
+        locationFull:
+          [company.location?.city, company.location?.region]
+            .filter(Boolean)
+            .join(", ") || "",
         activelyHiring: company.activelyHiring !== false,
         activeJobCount: formattedJobs.length,
         followersCount,
@@ -2858,7 +3380,8 @@ exports.submitCompanyReview = asyncHandler(async (req, res) => {
   const rating = Number.parseInt(req.body.rating, 10);
   const reviewText = String(req.body.review || "").trim();
   const headline = String(req.body.headline || "").trim();
-  const isAnonymous = String(req.body.isAnonymous || "true").toLowerCase() !== "false";
+  const isAnonymous =
+    String(req.body.isAnonymous || "true").toLowerCase() !== "false";
 
   if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
     throw createHttpError(400, "Rating must be between 1 and 5");
@@ -2868,7 +3391,9 @@ exports.submitCompanyReview = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Review text is required");
   }
 
-  const profile = await CandidateProfile.findOne({ userId: req.user._id }).select("currentTitle currentCity");
+  const profile = await CandidateProfile.findOne({
+    userId: req.user._id,
+  }).select("currentTitle currentCity");
 
   const savedReview = await CompanyReview.create({
     companyId: company._id,
@@ -2896,7 +3421,9 @@ exports.enhanceResumeWithAI = asyncHandler(async (req, res) => {
   const { section, content, context } = req.body;
 
   if (!section || !content) {
-    return res.status(400).json({ success: false, message: "section and content are required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "section and content are required" });
   }
 
   const prompts = {
@@ -2960,11 +3487,14 @@ Be specific to the candidate's role, company, and current text. Never return a r
 
   const promptConfig = prompts[section];
   if (!promptConfig) {
-    return res.status(400).json({ success: false, message: `Unknown section: ${section}` });
+    return res
+      .status(400)
+      .json({ success: false, message: `Unknown section: ${section}` });
   }
 
   try {
-    const model = process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
+    const model =
+      process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
     const response = await OpenAIService.createChatCompletion({
       model,
       systemPrompt: promptConfig.system,
@@ -2972,21 +3502,45 @@ Be specific to the candidate's role, company, and current text. Never return a r
       maxOutputTokens: 1000,
     });
 
-    const rawText = response?.output_text || response?.output?.[0]?.content?.[0]?.text || response?.output?.[0]?.text || "";
-    const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const rawText =
+      response?.output_text ||
+      response?.output?.[0]?.content?.[0]?.text ||
+      response?.output?.[0]?.text ||
+      "";
+    const cleaned = rawText
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
 
     res.status(200).json({ success: true, data: { enhanced: parsed } });
   } catch (error) {
     console.error("[ResumeAI] OpenAI error:", error.message);
-    res.status(200).json({ success: true, data: { enhanced: { suggestions: ["We couldn't analyze this section right now. Try again in a moment or review it manually for impact and clarity."], keywords: [], actionVerbs: [], summary: "Temporary issue — please try your enhancement request again." } } });
+    res
+      .status(200)
+      .json({
+        success: true,
+        data: {
+          enhanced: {
+            suggestions: [
+              "We couldn't analyze this section right now. Try again in a moment or review it manually for impact and clarity.",
+            ],
+            keywords: [],
+            actionVerbs: [],
+            summary:
+              "Temporary issue — please try your enhancement request again.",
+          },
+        },
+      });
   }
 });
 
 exports.analyzeResumeATS = asyncHandler(async (req, res) => {
   const { resume } = req.body;
   if (!resume) {
-    return res.status(400).json({ success: false, message: "resume object is required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "resume object is required" });
   }
 
   const systemPrompt = `You are an expert ATS (Applicant Tracking System) analyst and senior HR recruiter with 15+ years of experience evaluating resumes. Analyze the provided resume data and return a JSON object with EXACTLY this structure — no markdown, no code fences, no extra text:
@@ -3010,7 +3564,8 @@ Score honestly based on: keyword richness, achievement quantification, section c
   const userPrompt = `Analyze this resume for ATS compatibility:\n\n${JSON.stringify(resume, null, 2)}\n\nReturn ONLY the JSON object.`;
 
   try {
-    const model = process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
+    const model =
+      process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
     const response = await OpenAIService.createChatCompletion({
       model,
       systemPrompt,
@@ -3018,17 +3573,28 @@ Score honestly based on: keyword richness, achievement quantification, section c
       maxOutputTokens: 1500,
     });
 
-    const rawText = response?.output_text || response?.output?.[0]?.content?.[0]?.text || response?.output?.[0]?.text || "";
-    const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const rawText =
+      response?.output_text ||
+      response?.output?.[0]?.content?.[0]?.text ||
+      response?.output?.[0]?.text ||
+      "";
+    const cleaned = rawText
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
 
     res.status(200).json({
       success: true,
       data: {
         score: Math.round(Math.max(0, Math.min(100, parsed.score || 0))),
-        strongPoints: Array.isArray(parsed.strongPoints) ? parsed.strongPoints : [],
+        strongPoints: Array.isArray(parsed.strongPoints)
+          ? parsed.strongPoints
+          : [],
         weakPoints: Array.isArray(parsed.weakPoints) ? parsed.weakPoints : [],
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+        recommendations: Array.isArray(parsed.recommendations)
+          ? parsed.recommendations
+          : [],
       },
     });
   } catch (error) {
@@ -3037,9 +3603,21 @@ Score honestly based on: keyword richness, achievement quantification, section c
       success: true,
       data: {
         score: 72,
-        strongPoints: ["Profile summary present and well-structured", "Work experience includes action verbs", "Education section complete with details"],
-        weakPoints: ["Limited quantified achievements in experience", "Projects section could use more technical detail", "Skills section could be more comprehensive"],
-        recommendations: ["Add specific metrics and numbers to each work experience entry", "Expand project descriptions to highlight technologies and outcomes", "Include more industry-specific keywords throughout"],
+        strongPoints: [
+          "Profile summary present and well-structured",
+          "Work experience includes action verbs",
+          "Education section complete with details",
+        ],
+        weakPoints: [
+          "Limited quantified achievements in experience",
+          "Projects section could use more technical detail",
+          "Skills section could be more comprehensive",
+        ],
+        recommendations: [
+          "Add specific metrics and numbers to each work experience entry",
+          "Expand project descriptions to highlight technologies and outcomes",
+          "Include more industry-specific keywords throughout",
+        ],
       },
     });
   }
@@ -3048,36 +3626,45 @@ Score honestly based on: keyword richness, achievement quantification, section c
 exports.analyzeResume = asyncHandler(async (req, res) => {
   const { mode, resume, content } = req.body;
   if (!mode || !resume) {
-    return res.status(400).json({ success: false, message: "mode and resume are required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "mode and resume are required" });
   }
 
   const validModes = { ats: 1, roast: 1, recruiter: 1, grammar: 1 };
   if (!validModes[mode]) {
-    return res.status(400).json({ success: false, message: `Unknown mode: ${mode}` });
+    return res
+      .status(400)
+      .json({ success: false, message: `Unknown mode: ${mode}` });
   }
 
   const prompts = {
     ats: {
-      system: "You are an expert ATS analyst. Analyze the resume and return JSON: {\"score\":0-100,\"strongPoints\":[],\"weakPoints\":[],\"recommendations\":[]}. Score honestly based on keyword richness, quantified achievements, section completeness, and formatting clarity.",
+      system:
+        'You are an expert ATS analyst. Analyze the resume and return JSON: {"score":0-100,"strongPoints":[],"weakPoints":[],"recommendations":[]}. Score honestly based on keyword richness, quantified achievements, section completeness, and formatting clarity.',
       user: `Analyze for ATS compatibility:\n${JSON.stringify(resume, null, 2)}\nReturn ONLY the JSON object.`,
     },
     roast: {
-      system: "You are a brutally honest career coach who roasts people to motivate them. Analyze the resume harshly but hilariously. Return JSON: {\"score\":0-100,\"roast\":\"burn text (2-3 sentences)\",\"mainIssues\":[],\"harshTruths\":[]}. Be savage but constructive — no insults, just tough love.",
+      system:
+        'You are a brutally honest career coach who roasts people to motivate them. Analyze the resume harshly but hilariously. Return JSON: {"score":0-100,"roast":"burn text (2-3 sentences)","mainIssues":[],"harshTruths":[]}. Be savage but constructive — no insults, just tough love.',
       user: `Roast this resume:\n${JSON.stringify(resume, null, 2)}\nReturn ONLY the JSON object.`,
     },
     recruiter: {
-      system: "You are a 60+ year old veteran recruiter who has reviewed 50,000+ resumes. You're wise, slightly old-school, but fair. Analyze this resume with decades of wisdom. Return JSON: {\"score\":0-100,\"verdict\":\"overall impression (2-3 sentences)\",\"observations\":[],\"advice\":[],\"wisdom\":\"one memorable piece of career wisdom\"}.",
+      system:
+        'You are a 60+ year old veteran recruiter who has reviewed 50,000+ resumes. You\'re wise, slightly old-school, but fair. Analyze this resume with decades of wisdom. Return JSON: {"score":0-100,"verdict":"overall impression (2-3 sentences)","observations":[],"advice":[],"wisdom":"one memorable piece of career wisdom"}.',
       user: `Review this resume with your decades of experience:\n${JSON.stringify(resume, null, 2)}\nReturn ONLY the JSON object.`,
     },
     grammar: {
-      system: "You are a meticulous copy editor. Check the resume text for grammar, spelling, punctuation, and style issues. Return JSON: {\"score\":0-100,\"corrections\":[{\"original\":\"...\",\"suggestion\":\"...\",\"explanation\":\"...\"}],\"summary\":\"brief assessment\"}. List each distinct issue as a separate correction object.",
+      system:
+        'You are a meticulous copy editor. Check the resume text for grammar, spelling, punctuation, and style issues. Return JSON: {"score":0-100,"corrections":[{"original":"...","suggestion":"...","explanation":"..."}],"summary":"brief assessment"}. List each distinct issue as a separate correction object.',
       user: `Check this resume for grammar and style issues:\n${content || JSON.stringify(resume, null, 2)}\nReturn ONLY the JSON object.`,
     },
   };
 
   const cfg = prompts[mode];
   try {
-    const model = process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
+    const model =
+      process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
     const response = await OpenAIService.createChatCompletion({
       model,
       systemPrompt: cfg.system,
@@ -3085,30 +3672,101 @@ exports.analyzeResume = asyncHandler(async (req, res) => {
       maxOutputTokens: 2000,
     });
 
-    const rawText = response?.output_text || response?.output?.[0]?.content?.[0]?.text || response?.output?.[0]?.text || "";
-    const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const rawText =
+      response?.output_text ||
+      response?.output?.[0]?.content?.[0]?.text ||
+      response?.output?.[0]?.text ||
+      "";
+    const cleaned = rawText
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
 
     const clamp = (n) => Math.round(Math.max(0, Math.min(100, n || 0)));
 
     if (mode === "ats") {
-      res.status(200).json({ success: true, data: { score: clamp(parsed.score), strongPoints: parsed.strongPoints || [], weakPoints: parsed.weakPoints || [], recommendations: parsed.recommendations || [] } });
+      res
+        .status(200)
+        .json({
+          success: true,
+          data: {
+            score: clamp(parsed.score),
+            strongPoints: parsed.strongPoints || [],
+            weakPoints: parsed.weakPoints || [],
+            recommendations: parsed.recommendations || [],
+          },
+        });
     } else if (mode === "roast") {
-      res.status(200).json({ success: true, data: { score: clamp(parsed.score), roast: parsed.roast || "", mainIssues: parsed.mainIssues || [], harshTruths: parsed.harshTruths || [] } });
+      res
+        .status(200)
+        .json({
+          success: true,
+          data: {
+            score: clamp(parsed.score),
+            roast: parsed.roast || "",
+            mainIssues: parsed.mainIssues || [],
+            harshTruths: parsed.harshTruths || [],
+          },
+        });
     } else if (mode === "recruiter") {
-      res.status(200).json({ success: true, data: { score: clamp(parsed.score), verdict: parsed.verdict || "", observations: parsed.observations || [], advice: parsed.advice || [], wisdom: parsed.wisdom || "" } });
+      res
+        .status(200)
+        .json({
+          success: true,
+          data: {
+            score: clamp(parsed.score),
+            verdict: parsed.verdict || "",
+            observations: parsed.observations || [],
+            advice: parsed.advice || [],
+            wisdom: parsed.wisdom || "",
+          },
+        });
     } else if (mode === "grammar") {
-      res.status(200).json({ success: true, data: { score: clamp(parsed.score), corrections: parsed.corrections || [], summary: parsed.summary || "" } });
+      res
+        .status(200)
+        .json({
+          success: true,
+          data: {
+            score: clamp(parsed.score),
+            corrections: parsed.corrections || [],
+            summary: parsed.summary || "",
+          },
+        });
     }
   } catch (error) {
     console.error(`[ResumeAnalyze] ${mode} error:`, error.message);
     const fallbacks = {
-      ats: { score: 72, strongPoints: ["Profile summary present"], weakPoints: ["Limited quantified achievements"], recommendations: ["Add metrics to experience"] },
-      roast: { score: 50, roast: "Your resume is… fine. Which is the problem. Fine doesn't get hired.", mainIssues: ["Needs more impact"], harshTruths: ["Recruiters scan for 6 seconds — yours doesn't pop"] },
-      recruiter: { score: 68, verdict: "I've seen thousands like these. Solid foundation, needs refinement.", observations: ["Good structure"], advice: ["Quantify your achievements"], wisdom: "A resume is not a history — it's a marketing document." },
-      grammar: { score: 85, corrections: [], summary: "No major issues detected. Consider a final proofread." },
+      ats: {
+        score: 72,
+        strongPoints: ["Profile summary present"],
+        weakPoints: ["Limited quantified achievements"],
+        recommendations: ["Add metrics to experience"],
+      },
+      roast: {
+        score: 50,
+        roast:
+          "Your resume is… fine. Which is the problem. Fine doesn't get hired.",
+        mainIssues: ["Needs more impact"],
+        harshTruths: ["Recruiters scan for 6 seconds — yours doesn't pop"],
+      },
+      recruiter: {
+        score: 68,
+        verdict:
+          "I've seen thousands like these. Solid foundation, needs refinement.",
+        observations: ["Good structure"],
+        advice: ["Quantify your achievements"],
+        wisdom: "A resume is not a history — it's a marketing document.",
+      },
+      grammar: {
+        score: 85,
+        corrections: [],
+        summary: "No major issues detected. Consider a final proofread.",
+      },
     };
-    res.status(200).json({ success: true, data: fallbacks[mode] || fallbacks.ats });
+    res
+      .status(200)
+      .json({ success: true, data: fallbacks[mode] || fallbacks.ats });
   }
 });
 
@@ -3116,7 +3774,12 @@ exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const profile = await CandidateProfile.findOne({ userId });
   if (!profile) {
-    return res.status(404).json({ success: false, message: "Profile not found. Complete your profile first." });
+    return res
+      .status(404)
+      .json({
+        success: false,
+        message: "Profile not found. Complete your profile first.",
+      });
   }
 
   const userName = req.user.name || "Candidate";
@@ -3163,15 +3826,17 @@ exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
       resumeText = pdfText.trim();
       if (resumeText.length < 80) {
         const visionText = await OpenAIService.extractPdfTextViaOpenAI(
-          Buffer.from(await new Promise((resolve, reject) => {
-            https.get(profile.resume.url, (res) => {
-              const chunks = [];
-              res.on("data", (c) => chunks.push(c));
-              res.on("end", () => resolve(Buffer.concat(chunks)));
-              res.on("error", reject);
-            });
-          })),
-          profile.resume.fileName || "resume.pdf"
+          Buffer.from(
+            await new Promise((resolve, reject) => {
+              https.get(profile.resume.url, (res) => {
+                const chunks = [];
+                res.on("data", (c) => chunks.push(c));
+                res.on("end", () => resolve(Buffer.concat(chunks)));
+                res.on("error", reject);
+              });
+            }),
+          ),
+          profile.resume.fileName || "resume.pdf",
         );
         if (visionText && visionText.length > 80) resumeText = visionText;
       }
@@ -3215,23 +3880,44 @@ exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
       maxOutputTokens: 2000,
     });
 
-    const rawText = response?.output_text || response?.output?.[0]?.content?.[0]?.text || response?.output?.[0]?.text || "";
-    const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const rawText =
+      response?.output_text ||
+      response?.output?.[0]?.content?.[0]?.text ||
+      response?.output?.[0]?.text ||
+      "";
+    const cleaned = rawText
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
 
     res.json({
       success: true,
       data: {
-        overallScore: Math.round(Math.max(0, Math.min(100, parsed.overallScore || 0))),
+        overallScore: Math.round(
+          Math.max(0, Math.min(100, parsed.overallScore || 0)),
+        ),
         strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
         weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
-        suggestedRoles: Array.isArray(parsed.suggestedRoles) ? parsed.suggestedRoles : [],
-        suggestedIndustries: Array.isArray(parsed.suggestedIndustries) ? parsed.suggestedIndustries : [],
+        suggestedRoles: Array.isArray(parsed.suggestedRoles)
+          ? parsed.suggestedRoles
+          : [],
+        suggestedIndustries: Array.isArray(parsed.suggestedIndustries)
+          ? parsed.suggestedIndustries
+          : [],
         careerStage: parsed.careerStage || parsed.careerMatch || "mid",
         skillGaps: Array.isArray(parsed.skillGaps) ? parsed.skillGaps : [],
-        topCompaniesFit: Array.isArray(parsed.topCompaniesFit || parsed.topMatchFit) ? (parsed.topCompaniesFit || parsed.topMatchFit) : [],
-        profileCompleteness: Math.round(Math.max(0, Math.min(100, parsed.profileCompleteness || 0))),
-        atsReadiness: Math.round(Math.max(0, Math.min(100, parsed.atsReadiness || 0))),
+        topCompaniesFit: Array.isArray(
+          parsed.topCompaniesFit || parsed.topMatchFit,
+        )
+          ? parsed.topCompaniesFit || parsed.topMatchFit
+          : [],
+        profileCompleteness: Math.round(
+          Math.max(0, Math.min(100, parsed.profileCompleteness || 0)),
+        ),
+        atsReadiness: Math.round(
+          Math.max(0, Math.min(100, parsed.atsReadiness || 0)),
+        ),
         summary: parsed.summary || "",
       },
     });
@@ -3243,14 +3929,19 @@ exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
         overallScore: 65,
         strengths: ["Profile exists with skills and experience"],
         weaknesses: ["Consider adding more detail to your profile"],
-        suggestedRoles: ["Software Engineer", "Full Stack Developer", "Frontend Developer"],
+        suggestedRoles: [
+          "Software Engineer",
+          "Full Stack Developer",
+          "Frontend Developer",
+        ],
         suggestedIndustries: ["IT Services", "Product Based", "Startups"],
         careerStage: "mid",
         skillGaps: [],
         topCompaniesFit: ["IT", "E-commerce", "Healthcare Technology"],
         profileCompleteness: 60,
         atsReadiness: 70,
-        summary: "Your profile shows solid foundational information. Adding more quantifiable achievements and detailed work experience would significantly improve your career prospects.",
+        summary:
+          "Your profile shows solid foundational information. Adding more quantifiable achievements and detailed work experience would significantly improve your career prospects.",
       },
     });
   }
@@ -3263,24 +3954,37 @@ exports.suggestSkillsAutocomplete = asyncHandler(async (req, res) => {
   }
 
   const q = query.trim().toLowerCase();
-  const existing = Array.isArray(existingSkills) ? existingSkills.map(s => s.toLowerCase()) : [];
+  const existing = Array.isArray(existingSkills)
+    ? existingSkills.map((s) => s.toLowerCase())
+    : [];
 
-  const systemPrompt = "You are a career skills taxonomy expert. Given a partial skill name, suggest up to 10 real, commonly-used professional skills that match or relate to the user's input. Return ONLY a JSON array of strings, no other text. Do NOT include skills the user already has (they will be excluded on our side). Focus on real, marketable skills (e.g. JavaScript, React, Python, Project Management, AWS, Figma, etc.).";
+  const systemPrompt =
+    "You are a career skills taxonomy expert. Given a partial skill name, suggest up to 10 real, commonly-used professional skills that match or relate to the user's input. Return ONLY a JSON array of strings, no other text. Do NOT include skills the user already has (they will be excluded on our side). Focus on real, marketable skills (e.g. JavaScript, React, Python, Project Management, AWS, Figma, etc.).";
   const userPrompt = `Partial skill input: "${q}"\n\nSuggest matching professional skills:`;
 
   try {
     const response = await OpenAIService.createChatCompletion({
-      model: process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model:
+        process.env.OPENAI_CHAT_MODEL ||
+        process.env.OPENAI_MODEL ||
+        "gpt-4o-mini",
       systemPrompt,
       userPrompt,
       maxOutputTokens: 300,
     });
 
-    const raw = response?.output_text || response?.outputText || response?.choices?.[0]?.message?.content || "";
-    const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const raw =
+      response?.output_text ||
+      response?.outputText ||
+      response?.choices?.[0]?.message?.content ||
+      "";
+    const cleaned = raw
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
     const suggestions = Array.isArray(parsed)
-      ? parsed.filter(s => !existing.includes(s.toLowerCase())).slice(0, 10)
+      ? parsed.filter((s) => !existing.includes(s.toLowerCase())).slice(0, 10)
       : [];
 
     res.json({ success: true, data: { suggestions } });
@@ -3296,14 +4000,19 @@ exports.getPublicCandidateById = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Invalid candidate ID");
   }
 
-  const profile = await CandidateProfile.findOne({ userId: id }).populate("userId", "name email avatar role");
+  const profile = await CandidateProfile.findOne({ userId: id }).populate(
+    "userId",
+    "name email avatar role",
+  );
   if (!profile) {
     throw createHttpError(404, "Candidate not found");
   }
 
   let user = null;
   try {
-    user = await User.findById(profile.userId || id).select("name email role department accessStatus");
+    user = await User.findById(profile.userId || id).select(
+      "name email role department accessStatus",
+    );
   } catch {
     user = null;
   }
@@ -3322,7 +4031,9 @@ exports.getPublicCandidateResume = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Invalid candidate ID");
   }
 
-  const profile = await CandidateProfile.findOne({ userId: id }).select("resume userId");
+  const profile = await CandidateProfile.findOne({ userId: id }).select(
+    "resume userId",
+  );
   if (!profile) {
     throw createHttpError(404, "Candidate not found");
   }
@@ -3348,7 +4059,9 @@ exports.downloadPublicCandidateResume = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Invalid candidate ID");
   }
 
-  const profile = await CandidateProfile.findOne({ userId: id }).select("resume userId");
+  const profile = await CandidateProfile.findOne({ userId: id }).select(
+    "resume userId",
+  );
   if (!profile) {
     throw createHttpError(404, "Candidate not found");
   }
@@ -3361,24 +4074,33 @@ exports.downloadPublicCandidateResume = asyncHandler(async (req, res) => {
   const fileName = resume.fileName || "resume.pdf";
   const fileUrl = resume.url;
 
-  https.get(fileUrl, (proxyRes) => {
-    if (proxyRes.statusCode !== 200) {
-      res.status(502).json({ success: false, message: "Failed to fetch resume from storage" });
-      return;
-    }
-    res.writeHead(200, {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`,
-      "Content-Length": proxyRes.headers["content-length"] || "",
-      "Cache-Control": "private, max-age=3600",
-      "X-Content-Type-Options": "nosniff",
+  https
+    .get(fileUrl, (proxyRes) => {
+      if (proxyRes.statusCode !== 200) {
+        res
+          .status(502)
+          .json({
+            success: false,
+            message: "Failed to fetch resume from storage",
+          });
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`,
+        "Content-Length": proxyRes.headers["content-length"] || "",
+        "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
+      });
+      proxyRes.pipe(res);
+    })
+    .on("error", () => {
+      if (!res.headersSent) {
+        res
+          .status(502)
+          .json({ success: false, message: "Failed to fetch resume" });
+      }
     });
-    proxyRes.pipe(res);
-  }).on("error", () => {
-    if (!res.headersSent) {
-      res.status(502).json({ success: false, message: "Failed to fetch resume" });
-    }
-  });
 });
 
 /**
@@ -3398,8 +4120,14 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
     throw createHttpError(404, "Candidate not found");
   }
 
-  const baseSkills = (baseProfile.skills || []).map((s) => s.trim()).filter(Boolean);
-  const baseTitle = (baseProfile.currentTitle || baseProfile.headline || "").trim();
+  const baseSkills = (baseProfile.skills || [])
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const baseTitle = (
+    baseProfile.currentTitle ||
+    baseProfile.headline ||
+    ""
+  ).trim();
   const baseCity = (baseProfile.currentCity || "").trim();
 
   // 2. Build scoring query to find other candidates
@@ -3413,8 +4141,12 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
     orConditions.push({ skills: { $in: baseSkills } });
   }
   if (baseTitle) {
-    orConditions.push({ currentTitle: { $regex: baseTitle.split(" ")[0], $options: "i" } });
-    orConditions.push({ headline: { $regex: baseTitle.split(" ")[0], $options: "i" } });
+    orConditions.push({
+      currentTitle: { $regex: baseTitle.split(" ")[0], $options: "i" },
+    });
+    orConditions.push({
+      headline: { $regex: baseTitle.split(" ")[0], $options: "i" },
+    });
   }
   if (baseCity) {
     orConditions.push({ currentCity: { $regex: baseCity, $options: "i" } });
@@ -3431,7 +4163,9 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
 
   // Fallback: If not enough matching, fetch any other candidate profiles
   if (candidates.length < 5) {
-    const more = await CandidateProfile.find({ userId: { $ne: new mongoose.Types.ObjectId(id) } })
+    const more = await CandidateProfile.find({
+      userId: { $ne: new mongoose.Types.ObjectId(id) },
+    })
       .populate("userId", "name email avatar")
       .limit(10)
       .lean();
@@ -3459,9 +4193,12 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
 
     // Boost score based on searchText
     if (searchText) {
-      const searchKeywords = searchText.toLowerCase().split(/\s+/).filter(Boolean);
+      const searchKeywords = searchText
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
       for (const kw of searchKeywords) {
-        if (candSkills.some(s => s.includes(kw))) {
+        if (candSkills.some((s) => s.includes(kw))) {
           score += 6;
           matchingSkills.push(kw); // Highlight the searched keyword
         }
@@ -3475,18 +4212,29 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
     }
 
     // Role / Title similarity
-    if (cand.currentTitle && baseTitle && cand.currentTitle.toLowerCase().includes(baseTitle.toLowerCase())) {
+    if (
+      cand.currentTitle &&
+      baseTitle &&
+      cand.currentTitle.toLowerCase().includes(baseTitle.toLowerCase())
+    ) {
       score += 5;
     }
 
     // Location similarity
-    if (cand.currentCity && baseCity && cand.currentCity.toLowerCase() === baseCity.toLowerCase()) {
+    if (
+      cand.currentCity &&
+      baseCity &&
+      cand.currentCity.toLowerCase() === baseCity.toLowerCase()
+    ) {
       score += 2;
     }
 
     // Experience closeness
     if (cand.totalExperience && baseProfile.totalExperience) {
-      const expDiff = Math.abs(parseFloat(cand.totalExperience) - parseFloat(baseProfile.totalExperience));
+      const expDiff = Math.abs(
+        parseFloat(cand.totalExperience) -
+          parseFloat(baseProfile.totalExperience),
+      );
       if (!isNaN(expDiff) && expDiff <= 2) score += 2;
     }
 
@@ -3494,7 +4242,9 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
     const title = cand.currentTitle || cand.headline || "Software Engineer";
     const company = cand.currentCompany || "";
     const experience = cand.totalExperience ? `${cand.totalExperience}y` : "2y";
-    const salary = cand.expectedSalary ? `₹ ${cand.expectedSalary}` : "₹ 4.50 Lacs";
+    const salary = cand.expectedSalary
+      ? `₹ ${cand.expectedSalary}`
+      : "₹ 4.50 Lacs";
     const location = cand.currentCity || "Delhi / NCR";
     const preferredLocations = cand.preferredLocations?.length
       ? `prefers ${cand.preferredLocations.slice(0, 3).join(", ")}`
@@ -3528,7 +4278,6 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
   });
 });
 
-
 // ------------------------------------------------------------
 // MOBILE OTP LOGIN (candidates only)
 // ------------------------------------------------------------
@@ -3539,35 +4288,45 @@ const MOBILE_OTP_RATE_LIMIT = 3; // max OTP requests per 10 minutes per phone
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 
 exports.sendMobileOtp = asyncHandler(async (req, res) => {
-  const phone = String(req.body?.phone || "").trim().replace(/\D/g, "");
+  const phone = String(req.body?.phone || "")
+    .trim()
+    .replace(/\D/g, "");
 
   if (!MOBILE_REGEX.test(phone)) {
     throw createHttpError(400, "Please enter a valid 10-digit mobile number.");
   }
 
   const profile = await CandidateProfile.findOne({
-    $or: [
-      { phone: phone },
-      { phone: `+91${phone}` },
-      { phone: `91${phone}` },
-    ],
+    $or: [{ phone: phone }, { phone: `+91${phone}` }, { phone: `91${phone}` }],
   }).lean();
 
   if (!profile) {
-    throw createHttpError(404, "No candidate account found with this mobile number.");
+    throw createHttpError(
+      404,
+      "No candidate account found with this mobile number.",
+    );
   }
 
   const user = await User.findById(profile.userId);
   if (!user) {
-    throw createHttpError(404, "No candidate account found with this mobile number.");
+    throw createHttpError(
+      404,
+      "No candidate account found with this mobile number.",
+    );
   }
 
   if (!user.isActive || user.accessStatus === "RESTRICTED") {
-    throw createHttpError(403, "This account has been restricted. Please contact support.");
+    throw createHttpError(
+      403,
+      "This account has been restricted. Please contact support.",
+    );
   }
 
   if (user.role !== "CANDIDATE") {
-    throw createHttpError(403, "Mobile OTP login is only available for candidate accounts.");
+    throw createHttpError(
+      403,
+      "Mobile OTP login is only available for candidate accounts.",
+    );
   }
 
   const redis = cacheService.getClient();
@@ -3579,9 +4338,12 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
     if (currentCount === 1) {
       await redis.expire(rateLimitKey, 600); // 10 minutes
     }
-    
+
     if (currentCount > MOBILE_OTP_RATE_LIMIT) {
-      throw createHttpError(429, "Too many OTP requests. Please wait a few minutes and try again.");
+      throw createHttpError(
+        429,
+        "Too many OTP requests. Please wait a few minutes and try again.",
+      );
     }
 
     try {
@@ -3596,9 +4358,13 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
       phone,
       userId: user._id,
       sessionId,
-      attempts: 0
+      attempts: 0,
     };
-    await redis.setex(otpKey, MOBILE_OTP_EXPIRY_MINUTES * 60, JSON.stringify(otpData));
+    await redis.setex(
+      otpKey,
+      MOBILE_OTP_EXPIRY_MINUTES * 60,
+      JSON.stringify(otpData),
+    );
   } else {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
     const recentCount = await LoginOTP.countDocuments({
@@ -3607,13 +4373,13 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
     });
 
     if (recentCount >= MOBILE_OTP_RATE_LIMIT) {
-      throw createHttpError(429, "Too many OTP requests. Please wait a few minutes and try again.");
+      throw createHttpError(
+        429,
+        "Too many OTP requests. Please wait a few minutes and try again.",
+      );
     }
 
-    await LoginOTP.updateMany(
-      { phone, used: false },
-      { $set: { used: true } }
-    );
+    await LoginOTP.updateMany({ phone, used: false }, { $set: { used: true } });
 
     try {
       sessionId = await smsService.sendOTP(phone);
@@ -3621,7 +4387,9 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
       throw createHttpError(503, "Failed to send OTP. Please try again later.");
     }
 
-    const expiresAt = new Date(Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000,
+    );
     await LoginOTP.create({
       phone,
       userId: user._id,
@@ -3640,7 +4408,9 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
 });
 
 exports.verifyMobileOtp = asyncHandler(async (req, res) => {
-  const phone = String(req.body?.phone || "").trim().replace(/\D/g, "");
+  const phone = String(req.body?.phone || "")
+    .trim()
+    .replace(/\D/g, "");
   const otp = String(req.body?.otp || "").trim();
 
   if (!MOBILE_REGEX.test(phone)) {
@@ -3665,9 +4435,14 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
   }
 
   if (!otpDoc) {
-    otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({ createdAt: -1 });
+    otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({
+      createdAt: -1,
+    });
     if (!otpDoc) {
-      throw createHttpError(400, "No active OTP found. Please request a new OTP.");
+      throw createHttpError(
+        400,
+        "No active OTP found. Please request a new OTP.",
+      );
     }
     if (new Date() > otpDoc.expiresAt) {
       throw createHttpError(400, "OTP has expired. Please request a new one.");
@@ -3675,7 +4450,10 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
   }
 
   if (otpDoc.attempts >= MOBILE_OTP_MAX_ATTEMPTS) {
-    throw createHttpError(400, "Too many failed attempts. Please request a new OTP.");
+    throw createHttpError(
+      400,
+      "Too many failed attempts. Please request a new OTP.",
+    );
   }
 
   const isValid = await smsService.verifyOTP(otpDoc.sessionId, otp);
@@ -3693,9 +4471,15 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
 
     const remaining = MOBILE_OTP_MAX_ATTEMPTS - otpDoc.attempts;
     if (remaining <= 0) {
-      throw createHttpError(400, "Invalid OTP. No attempts remaining. Please request a new OTP.");
+      throw createHttpError(
+        400,
+        "Invalid OTP. No attempts remaining. Please request a new OTP.",
+      );
     }
-    throw createHttpError(400, `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
+    throw createHttpError(
+      400,
+      `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+    );
   }
 
   if (isRedis) {
@@ -3711,7 +4495,10 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
   }
 
   if (!user.isActive || user.accessStatus === "RESTRICTED") {
-    throw createHttpError(403, "This account has been restricted. Please contact support.");
+    throw createHttpError(
+      403,
+      "This account has been restricted. Please contact support.",
+    );
   }
 
   const profile = await ensureCandidateProfile(user);
