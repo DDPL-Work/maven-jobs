@@ -138,9 +138,19 @@
   border-radius: 14px;
   margin: 0 auto 28px;
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.ap-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .ap-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 10px 24px;
   border: none;
   border-radius: 11px;
@@ -639,7 +649,8 @@
 
 @media (max-width: 768px) {
   .ap-container { padding: 16px; }
-  .ap-grid-4, .ap-grid-3, .ap-grid-2 { grid-template-columns: 1fr; }
+  .ap-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .ap-grid-3, .ap-grid-2 { grid-template-columns: 1fr; }
   .ap-header { flex-direction: column; }
   .ap-hero { height: 200px; }
   .ap-hero-slide { padding: 24px; }
@@ -648,8 +659,10 @@
   .ap-nav-inner { padding: 0 16px; }
   .ap-table-wrap { border-radius: 10px; }
   .ap-tabs { width: 100%; }
-  .ap-tab { flex: 1; text-align: center; padding: 10px 12px; font-size: 0.8rem; }
+  .ap-tab { flex: 1 0 auto; text-align: center; padding: 10px 12px; font-size: 0.8rem; }
   .ap-funnel-label { width: 70px; font-size: 0.72rem; }
+  .quota-card-slide { flex: 0 0 100% !important; }
+  .resdex-overview-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 @media (max-width: 480px) {

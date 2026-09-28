@@ -522,6 +522,7 @@ const SectionCard = ({
   >
     {/* Card header */}
     <div
+      className="pj-section-head"
       style={{
         display: "flex",
         alignItems: "center",
@@ -619,7 +620,7 @@ const SectionCard = ({
         </button>
       )}
     </div>
-    <div style={{ padding: "28px" }}>{children}</div>
+    <div className="pj-section-body" style={{ padding: "28px" }}>{children}</div>
   </div>
 );
 
@@ -688,6 +689,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
         accentColor="#002366"
       >
         <div
+          className="pj-grid-2"
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
         >
           <Input
@@ -808,6 +810,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
         accentColor="#84CC16"
       >
         <div
+          className="pj-grid-3"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr",
@@ -968,6 +971,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
           {/* Role Description */}
           <div>
             <div
+              className="pj-field-header"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1073,6 +1077,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
           {/* Key Responsibilities */}
           <div>
             <div
+              className="pj-field-header"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1159,6 +1164,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
           {/* Required Skills & Qualifications */}
           <div>
             <div
+              className="pj-field-header"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1298,6 +1304,7 @@ function StepCandidatePreferences({
         accentColor="#002366"
       >
         <div
+          className="pj-grid-2"
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1547,6 +1554,7 @@ function StepCandidatePreferences({
       >
         {data.cvEnabled !== false && (
           <div
+            className="pj-grid-2"
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
           >
             <Input
@@ -1674,6 +1682,7 @@ function StepScreening({ data, setData }) {
         {/* Table header */}
         {questions.length > 0 && (
           <div
+            className="pj-sq-header"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 190px 120px 80px 40px",
@@ -1717,6 +1726,7 @@ function StepScreening({ data, setData }) {
               }}
             >
               <div
+                className="pj-sq-row"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 190px 120px 80px 40px",
@@ -1750,6 +1760,7 @@ function StepScreening({ data, setData }) {
                  
                 />
                 <select
+                  className="pj-sq-scoring"
                   value={q.scoring}
                   onChange={(e) =>
                     updateQuestion(q.id, "scoring", e.target.value)
@@ -1958,6 +1969,7 @@ function StepReview({ data }) {
   const entityName = typeParam === "internship" ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
   const ReviewRow = ({ label, value }) => (
     <div
+      className="pj-review-row"
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -1968,6 +1980,7 @@ function StepReview({ data }) {
       }}
     >
       <span
+        className="pj-review-label"
         style={{
           fontSize: 13,
           fontWeight: 600,
@@ -2169,6 +2182,7 @@ function ProgressBar({ currentStep, totalSteps }) {
 
   return (
     <div
+      className="pj-progress-wrap"
       style={{
         background: "#fff",
         borderRadius: 20,
@@ -2180,7 +2194,7 @@ function ProgressBar({ currentStep, totalSteps }) {
         justifyContent: "center",
       }}
     >
-      <div style={{ width: 680, padding: "16px 0 0" }}>
+      <div className="pj-progress-inner" style={{ width: 680, padding: "16px 0 0" }}>
         <div
           style={{
             display: "flex",
@@ -2255,7 +2269,7 @@ function ProgressBar({ currentStep, totalSteps }) {
                     React.cloneElement(step.icon, { size: 14 })
                   )}
                 </div>
-                <div style={{ textAlign: "center" }}>
+                <div className="pj-step-label" style={{ textAlign: "center" }}>
                   <div
                     style={{
                       fontSize: 10,
@@ -2960,10 +2974,42 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
           left: 12px;
           color: #64748B;
         }
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+          .pj-main { padding: 0 16px 110px !important; }
+          .pj-progress-wrap { padding: 16px 16px !important; border-radius: 14px !important; }
+          .pj-progress-inner { width: 100% !important; padding: 8px 0 0 !important; }
+          .pj-step-label { display: none !important; }
+          .pj-grid-2 { grid-template-columns: 1fr !important; }
+          .pj-grid-3 { grid-template-columns: 1fr 1fr !important; }
+          .pj-section-head { padding: 14px 16px !important; }
+          .pj-section-body { padding: 16px !important; }
+          .pj-footer-wrap { padding: 10px 16px !important; }
+          .pj-footer-left { display: none !important; }
+          .pj-sq-header { display: none !important; }
+          .pj-sq-row { grid-template-columns: 1fr auto auto auto !important; gap: 8px !important; }
+          .pj-review-row { flex-direction: column !important; gap: 2px !important; }
+          .pj-review-label { min-width: unset !important; }
+          .pj-continue-long { display: none !important; }
+          .pj-continue-short { display: inline !important; }
+          .pj-field-header { flex-wrap: wrap !important; gap: 8px !important; }
+          .pj-field-header > div { flex-shrink: 0; }
+        }
+        @media (min-width: 769px) {
+          .pj-continue-short { display: none !important; }
+        }
+        @media (max-width: 480px) {
+          .pj-main { padding: 0 12px 110px !important; }
+          .pj-grid-3 { grid-template-columns: 1fr !important; }
+          .pj-sq-row { grid-template-columns: 1fr auto !important; }
+          .pj-sq-scoring { display: none !important; }
+          .pj-back-label { display: none !important; }
+        }
       `}</style>
 
       {/* ── CONTENT ── */}
       <main
+        className="pj-main"
         style={{ maxWidth: 900, margin: "0 auto", padding: "0px 40px 120px" }}
       >
         <ProgressBar currentStep={step} totalSteps={STEPS.length} />
@@ -3031,6 +3077,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
 
       {/* ── STICKY FOOTER NAV ── */}
       <div
+        className="pj-footer-wrap"
         style={{
           position: "fixed",
           bottom: 0,
@@ -3055,7 +3102,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
           }}
         >
           {/* Left: completion indicator */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="pj-footer-left" style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
                 width: 40,
@@ -3129,7 +3176,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
                   e.currentTarget.style.borderColor = "#E2E8F0";
                 }}
               >
-                <FiArrowLeft size={16} /> Back
+                <FiArrowLeft size={16} /> <span className="pj-back-label">Back</span>
               </button>
             )}
             {step < STEPS.length ? (
@@ -3163,7 +3210,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
                     "0 6px 20px rgba(0,35,102,0.3)";
                 }}
               >
-                Continue to {STEPS[step]?.label} <FiArrowRight size={16} />
+                <span className="pj-continue-long">Continue to {STEPS[step]?.label}</span><span className="pj-continue-short">Next</span> <FiArrowRight size={16} />
               </button>
             ) : (
               <button

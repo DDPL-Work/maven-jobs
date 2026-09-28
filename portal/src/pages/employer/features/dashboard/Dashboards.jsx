@@ -613,8 +613,16 @@ function FunnelChart({ data }) {
   );
 }
 
-/* ── Modal Shell ─────────────────────────────────────────── */
-function Modal({ open, onClose, title, width = 680, children, noPad = false }) {
+/* ── Modal Shell (Standard Centered Dialog) ───────────────── */
+function Modal({ open, onClose, title, width = 680, children, noPad = false, variant = "modal" }) {
+  if (variant === "sidebar") {
+    return (
+      <Sidebar open={open} onClose={onClose} title={title} width={width} noPad={noPad}>
+        {children}
+      </Sidebar>
+    );
+  }
+
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
@@ -622,9 +630,11 @@ function Modal({ open, onClose, title, width = 680, children, noPad = false }) {
       document.body.style.overflow = "";
     };
   }, [open]);
+
   if (!open) return null;
   return (
     <div
+      className="ep-modal-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -642,6 +652,7 @@ function Modal({ open, onClose, title, width = 680, children, noPad = false }) {
       }}
     >
       <div
+        className="ep-modal-container"
         style={{
           background: "#fff",
           borderRadius: 20,
@@ -655,6 +666,119 @@ function Modal({ open, onClose, title, width = 680, children, noPad = false }) {
         }}
       >
         {/* Modal header */}
+        <div
+          style={{
+            padding: "18px 24px",
+            borderBottom: `1px solid ${C.s100}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: C.fd,
+              fontSize: 17,
+              fontWeight: 800,
+              color: C.s900,
+            }}
+          >
+            {title}
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 9,
+              background: C.s50,
+              border: `1px solid ${C.s200}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: C.s500,
+              transition: "all .16s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = C.s100;
+              e.currentTarget.style.color = C.s900;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = C.s50;
+              e.currentTarget.style.color = C.s500;
+            }}
+          >
+            <FiX size={15} />
+          </button>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            ...(noPad ? {} : { padding: "24px" }),
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Sidebar Shell (Right Drawer for Edit Company Profile) ─ */
+function Sidebar({ open, onClose, title, width = 720, children, noPad = false }) {
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      document.body.classList.add("employer-sidebar-open");
+      window.dispatchEvent(new CustomEvent("employer-sidebar-toggle", { detail: { open: true } }));
+    } else {
+      document.body.style.overflow = "";
+      document.body.classList.remove("employer-sidebar-open");
+      window.dispatchEvent(new CustomEvent("employer-sidebar-toggle", { detail: { open: false } }));
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.classList.remove("employer-sidebar-open");
+      window.dispatchEvent(new CustomEvent("employer-sidebar-toggle", { detail: { open: false } }));
+    };
+  }, [open]);
+
+  if (!open) return null;
+  return (
+    <div
+      className="ep-sidebar-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 10000,
+        background: "rgba(15,23,42,.55)",
+        display: "flex",
+        justifyContent: "flex-end",
+        backdropFilter: "blur(4px)",
+        animation: "fadeIn .18s ease",
+      }}
+    >
+      <div
+        className="ep-sidebar-drawer"
+        style={{
+          background: "#fff",
+          width: "100%",
+          maxWidth: width,
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxShadow: "-10px 0 40px rgba(0,0,0,.12)",
+          animation: "slideInRight .25s ease-out forwards",
+        }}
+      >
+        {/* Sidebar header */}
         <div
           style={{
             padding: "18px 24px",
@@ -1256,6 +1380,7 @@ function ProgressSection({
 
       {/* ─ Summary cards ─ */}
       <div
+        className="ep-progress-summary-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(4,1fr)",
@@ -1279,6 +1404,7 @@ function ProgressSection({
         ].map((s, i) => (
           <div
             key={i}
+            className="ep-progress-stat-card"
             style={{
               padding: "16px 20px",
               borderRight: i < 3 ? `1px solid ${C.s100}` : "none",
@@ -1298,6 +1424,7 @@ function ProgressSection({
               {s.label}
             </div>
             <div
+              className="ep-progress-stat-val"
               style={{
                 fontFamily: C.fd,
                 fontSize: 26,
@@ -1329,9 +1456,9 @@ function ProgressSection({
       )}
 
       {/* ─ Table ─ */}
-      <div style={{ overflowX: "auto", width: "100%" }}>
+      <div className="ep-table-responsive" style={{ overflowX: "auto", width: "100%" }}>
         <table
-          style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
+          style={{ width: "100%", minWidth: 540, borderCollapse: "collapse", fontSize: 13 }}
         >
           <colgroup>
             <col style={{ width: 52 }} />
@@ -3148,6 +3275,7 @@ export default function EmployerProfile() {
   return (
     <>
       <style>{`
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         html{scroll-behavior:smooth}
@@ -3181,6 +3309,34 @@ export default function EmployerProfile() {
         @keyframes rmSpinEdit{to{transform:rotate(360deg)}}
         input,textarea{outline:none;font-family:'DM Sans',sans-serif}
         button{outline:none;font-family:'DM Sans',sans-serif}
+
+        /* ── Universal Cursor Pointer for Clickable / Interactive Elements ── */
+        button,
+        a,
+        select,
+        input[type="button"],
+        input[type="submit"],
+        input[type="reset"],
+        input[type="checkbox"],
+        input[type="radio"],
+        input[type="file"],
+        [role="button"],
+        .ep-nav-link,
+        .ep-job-row,
+        .ep-msg-row,
+        .ep-tag-hover,
+        .ep-ana-tab,
+        .reaction-picker button,
+        [onclick] {
+          cursor: pointer !important;
+        }
+
+        button:disabled,
+        input:disabled,
+        select:disabled {
+          cursor: not-allowed !important;
+        }
+
         .ep-nav-link{
           padding:18px 14px;font-size:13px;font-weight:600;color:${C.s500};
           cursor:pointer;border:none;background:none;border-bottom:2.5px solid transparent;
@@ -3219,6 +3375,286 @@ export default function EmployerProfile() {
           font-family:'Bricolage Grotesque',sans-serif;transition:all .16s;
         }
         .ep-ana-tab.active{background:${C.navy};color:#fff;border-color:${C.navy}}
+
+        /* ── Responsive Dashboard Classes & Breakpoints ── */
+        .ep-page-main {
+          max-width: 1160px;
+          margin: 0 auto;
+          padding: 24px 20px 60px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .ep-main-grid {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 20px;
+          align-items: start;
+          width: 100%;
+        }
+
+        .ep-cover-image {
+          height: 200px;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .ep-logo-bubble {
+          width: 88px;
+          height: 88px;
+          border-radius: 18px;
+          border: 4px solid #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: -44px;
+          margin-bottom: 12px;
+          box-shadow: 0 4px 16px rgba(0,35,102,.2);
+        }
+
+        .ep-change-logo-btn {
+          position: absolute;
+          top: -28px;
+          left: 94px;
+          border: 1px solid ${C.s200};
+          border-radius: 999px;
+          background: #fff;
+          color: ${C.s600};
+          font-size: 11px;
+          font-weight: 700;
+          padding: 6px 10px;
+          cursor: pointer !important;
+          box-shadow: 0 6px 16px rgba(15,23,42,.08);
+          transition: all 0.15s;
+        }
+        .ep-change-logo-btn:hover {
+          background: ${C.s50};
+          color: ${C.navy};
+          border-color: ${C.navy}40;
+        }
+
+        .ep-profile-title {
+          font-family: ${C.fd};
+          font-size: 22px;
+          font-weight: 800;
+          color: ${C.s900};
+          letter-spacing: -0.01em;
+          margin: 0 0 4px;
+        }
+
+        .ep-header-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+
+        .ep-nav-tabs-wrap {
+          border-top: 1px solid ${C.s100};
+          display: flex;
+          padding-left: 16px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .ep-nav-tabs-wrap::-webkit-scrollbar {
+          display: none;
+        }
+
+        .ep-candidates-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .ep-progress-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0;
+          border-bottom: 1px solid ${C.s100};
+        }
+
+        .ep-table-responsive {
+          overflow-x: auto;
+          width: 100%;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .ep-form-grid-2col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .ep-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1000;
+          background: rgba(15,23,42,.55);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          backdrop-filter: blur(4px);
+          animation: fadeIn .18s ease;
+        }
+
+        .ep-modal-container {
+          background: #fff;
+          border-radius: 20px;
+          width: 100%;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 24px 48px rgba(0,0,0,.12);
+        }
+
+        .ep-sidebar-drawer {
+          background: #fff;
+          width: 100%;
+          max-width: 720px;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: -10px 0 40px rgba(0,0,0,.12);
+          animation: slideInRight .25s ease-out forwards;
+        }
+
+        /* ── Breakpoints ── */
+        @media (max-width: 1024px) {
+          .ep-main-grid {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+          .ep-right-sidebar {
+            width: 100% !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .ep-page-main {
+            padding: 16px 14px 48px !important;
+          }
+          .ep-candidates-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .ep-progress-summary-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .ep-progress-summary-grid > div {
+            border-right: none !important;
+            border-bottom: 1px solid ${C.s100};
+          }
+          .ep-sidebar-drawer {
+            max-width: 100vw !important;
+            width: 100vw !important;
+          }
+          .ep-modal-container div[style*="repeat(4,1fr)"],
+          .ep-modal-container div[style*="repeat(4, 1fr)"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .ep-page-main {
+            padding: 12px 10px 36px !important;
+          }
+          .ep-cover-image {
+            height: 145px !important;
+          }
+          .ep-logo-bubble {
+            width: 72px !important;
+            height: 72px !important;
+            margin-top: -36px !important;
+            border-radius: 14px !important;
+          }
+          .ep-change-logo-btn {
+            top: -24px !important;
+            left: 80px !important;
+            font-size: 10px !important;
+            padding: 4px 8px !important;
+          }
+          .ep-profile-title {
+            font-size: 18px !important;
+          }
+          .ep-header-actions {
+            width: 100% !important;
+            margin-top: 10px !important;
+          }
+          .ep-header-actions button {
+            flex: 1 1 auto !important;
+            justify-content: center !important;
+          }
+          .ep-nav-link {
+            padding: 14px 10px !important;
+            font-size: 12px !important;
+          }
+          .ep-job-row > div {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+          .ep-job-row > div > div:last-child {
+            align-items: flex-start !important;
+            width: 100% !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+          }
+          .ep-modal-overlay {
+            padding: 10px !important;
+          }
+          .ep-modal-container {
+            border-radius: 14px !important;
+            max-height: 94vh !important;
+          }
+          .ep-form-grid-2col,
+          .ep-sidebar-body div[style*="gridTemplateColumns"],
+          .ep-sidebar-body div[style*="grid-template-columns"],
+          .ep-modal-container div[style*="1fr 1fr"],
+          .ep-modal-container div[style*="repeat(2, 1fr)"] {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          .ep-messages-layout {
+            flex-direction: column !important;
+            height: 72vh !important;
+          }
+          .ep-messages-sidebar {
+            width: 100% !important;
+            height: 180px !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .ep-cover-image {
+            height: 120px !important;
+          }
+          .ep-logo-bubble {
+            width: 60px !important;
+            height: 60px !important;
+            margin-top: -30px !important;
+            border-radius: 12px !important;
+          }
+          .ep-change-logo-btn {
+            top: -20px !important;
+            left: 68px !important;
+            font-size: 9px !important;
+            padding: 3px 6px !important;
+          }
+          .ep-profile-title {
+            font-size: 16px !important;
+          }
+          .ep-progress-summary-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .ep-progress-stat-card {
+            padding: 12px 14px !important;
+          }
+        }
       `}</style>
 
       {dashboardLoading ? (
@@ -3252,6 +3688,7 @@ export default function EmployerProfile() {
           />
           {/* ══ PAGE BODY ════════════════════════════════════════ */}
           <main
+            className="ep-page-main"
             style={{
               maxWidth: 1160,
               margin: "0 auto",
@@ -3259,6 +3696,7 @@ export default function EmployerProfile() {
             }}
           >
             <div
+              className="ep-main-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 320px",
@@ -3279,6 +3717,7 @@ export default function EmployerProfile() {
                 <Card className="ep-card ep-cover">
                   {/* Cover */}
                   <div
+                    className="ep-cover-image"
                     style={{
                       height: 200,
                       background: company.coverImageUrl
@@ -3339,6 +3778,7 @@ export default function EmployerProfile() {
                   <div style={{ padding: "0 24px 20px", position: "relative" }}>
                     {/* Logo bubble */}
                     <div
+                      className="ep-logo-bubble"
                       style={{
                         width: 88,
                         height: 88,
@@ -3382,6 +3822,7 @@ export default function EmployerProfile() {
                     {true && (
                       <button
                         type="button"
+                        className="ep-change-logo-btn"
                         onClick={() => logoInputRef.current?.click()}
                         disabled={mediaLoading.logo}
                         style={{
@@ -3425,6 +3866,7 @@ export default function EmployerProfile() {
                     >
                       <div>
                         <h1
+                          className="ep-profile-title"
                           style={{
                             fontFamily: C.fd,
                             fontSize: 22,
@@ -3512,6 +3954,7 @@ export default function EmployerProfile() {
                       </div>
 
                       <div
+                        className="ep-header-actions"
                         style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
                       >
                         <Btn
@@ -3663,6 +4106,7 @@ export default function EmployerProfile() {
 
                   {/* Inner nav tabs */}
                   <div
+                    className="ep-nav-tabs-wrap"
                     style={{
                       borderTop: `1px solid ${C.s100}`,
                       display: "flex",
@@ -3969,6 +4413,7 @@ export default function EmployerProfile() {
                     {/* ─ Grid ─ */}
                     <div style={{ padding: "16px 20px" }}>
                       <div
+                        className="ep-candidates-grid"
                         style={{
                           display: "grid",
                           gridTemplateColumns: "repeat(2, minmax(0,1fr))",
@@ -5190,6 +5635,7 @@ export default function EmployerProfile() {
 
               {/* ── RIGHT SIDEBAR ───────────────────────────────── */}
               <div
+                className="ep-right-sidebar"
                 style={{ display: "flex", flexDirection: "column", gap: 16 }}
               >
                 {/* ─ Quick Stats ─ */}
@@ -5830,13 +6276,13 @@ export default function EmployerProfile() {
             </Modal>
           )}
 
-          <Modal
+          <Sidebar
             open={showAboutEditor}
             onClose={() => setShowAboutEditor(false)}
             title="Edit Company Profile"
             width={720}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="ep-sidebar-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div
                 style={{
                   display: "grid",
@@ -6612,7 +7058,7 @@ export default function EmployerProfile() {
                 </Btn>
               </div>
             </div>
-          </Modal>
+          </Sidebar>
 
           {/* MODAL: HELP DESK CENTER */}
           <Modal
@@ -10617,6 +11063,7 @@ export default function EmployerProfile() {
           };
           return (
             <div
+              className="ep-modal-overlay"
               onClick={() => setShowCandidateModal(false)}
               style={{
                 position: "fixed",
@@ -10631,6 +11078,7 @@ export default function EmployerProfile() {
               }}
             >
               <div
+                className="ep-modal-container"
                 onClick={(e) => e.stopPropagation()}
                 style={{
                   background: "#fff",
@@ -10724,6 +11172,7 @@ export default function EmployerProfile() {
                 >
                   {/* Info grid */}
                   <div
+                    className="ep-form-grid-2col"
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
@@ -11257,8 +11706,8 @@ function ScheduledCallsSection({ calls, fetching, onUpdateCall }) {
   return (
     <Card className="ep-card">
       <SectionHead title="Scheduled Calls" />
-      <div style={{ padding: "0 20px 20px 20px" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="ep-table-responsive" style={{ padding: "0 20px 20px 20px", overflowX: "auto" }}>
+        <table style={{ width: "100%", minWidth: 620, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${C.s100}` }}>
               <th style={{ textAlign: "left", padding: 10, color: C.s400, fontWeight: 500, fontSize: 14 }}>Candidate</th>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FiEdit2, FiCheck, FiChevronDown } from "react-icons/fi";
+import { FiEdit2, FiCheck, FiChevronDown, FiArrowLeft } from "react-icons/fi";
 import { FaBuilding, FaMobileAlt, FaEnvelopeOpenText, FaShieldAlt } from "react-icons/fa";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -29,7 +29,11 @@ const CustomDropdown = ({ value, options, onChange, placeholder, disabled }) => 
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const selectedOption = options.find((opt) => opt.value === value);
@@ -330,8 +334,12 @@ const ClientRegistrationForm = () => {
       <Link to="/" className="crf2-header-logo">
         <img src={mavenLogo} alt="MavenJobs" />
       </Link>
-      <div className="crf2-header-help">
-        Need help? <a href="#">Contact us</a>
+      <div className="crf2-header-actions">
+        <Link to="/employer-login" className="crf2-header-back-btn">
+          <FiArrowLeft size={16} />
+          <span>Back to Login</span>
+        </Link>
+        
       </div>
     </header>
   );
@@ -371,7 +379,7 @@ const ClientRegistrationForm = () => {
 
       <main className="crf2-main">
         <div className="crf2-intro">
-          <h1>Hire smarter,<br />hire faster</h1>
+          <h1>Hire smarter,<br className="hidden md:block" />hire faster</h1>
           <p>Join 50,000+ employers already hiring on MavenJobs</p>
           <div className="crf2-stats">
             <div className="crf2-stat">
@@ -416,7 +424,7 @@ const ClientRegistrationForm = () => {
                 <p style={{ fontSize: "16px", color: "#4b5563", lineHeight: "1.6", marginBottom: "30px" }}>
                   {successMessage}
                 </p>
-                <Link to="/employer-login" className="crf2-btn" style={{ textDecoration: "none", display: "inline-block" }}>
+                <Link to="/employer-login" className="crf2-btn" style={{ textDecoration: "none", display: "inline-flex", width: "auto", minWidth: "160px", margin: "0 auto" }}>
                   Go to Login
                 </Link>
               </div>

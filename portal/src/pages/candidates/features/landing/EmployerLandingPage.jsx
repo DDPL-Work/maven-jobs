@@ -32,6 +32,7 @@ import "./EmployerLandingPage.css";
 import { SkeletonHomePage } from "../../../../components/Skeleton";
 import EmployerFooter from "../../../../components/EmployerFooter";
 import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
+import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 
 const getInitials = (value = "Company") =>
   String(value || "Company")
@@ -64,6 +65,7 @@ const EmployerLandingPage = () => {
 
   const [hiringFor, setHiringFor] = useState("company");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [rangeOpen, setRangeOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState("Select range");
   const [activeOfferingTab, setActiveOfferingTab] = useState(0);
@@ -72,6 +74,23 @@ const EmployerLandingPage = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
+
+  useEffect(() => {
+    if (isLoginModalOpen) {
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e) => {
+        if (e.key === "Escape") setIsLoginModalOpen(false);
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = "";
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [isLoginModalOpen]);
   const [formStatus, setFormStatus] = useState({
     loading: false,
     message: "",
@@ -478,6 +497,7 @@ const EmployerLandingPage = () => {
   const submitEmployerLogin = async (event) => {
     event.preventDefault();
     setLoginError("");
+    setIsLoginLoading(true);
     try {
       const response = await authService.employerLogin(
         loginEmail,
@@ -507,6 +527,8 @@ const EmployerLandingPage = () => {
       }
     } catch (error) {
       setLoginError(error.message || "Invalid employer credentials.");
+    } finally {
+      setIsLoginLoading(false);
     }
   };
 
@@ -516,7 +538,10 @@ const EmployerLandingPage = () => {
     <>
       <div className="elp-root">
         {/* ─── Navbar ─── */}
-        <LandingEmployeeHeader isLoggedIn={!!employerSession} />
+        <LandingEmployeeHeader
+          isLoggedIn={!!employerSession}
+          onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        />
 
         {/* ─── Hero ─── */}
         <section className="elp-hero">
@@ -562,9 +587,9 @@ const EmployerLandingPage = () => {
 
             </div>
 
-            {/* Callback Card / Profile Modal */}
+            {/* Desktop Callback Card / Profile Modal */}
             <div
-              className="elp-callback-card"
+              className="elp-callback-card elp-desktop-callback-card"
               style={employerSession ? { padding: 0, overflow: "hidden" } : {}}
             >
               {/* {!employerSession && (
@@ -949,8 +974,9 @@ const EmployerLandingPage = () => {
                     type="submit"
                     className="elp-btn-callback"
                     style={{ marginTop: "12px" }}
+                    disabled={isLoginLoading}
                   >
-                    Log in
+                    {isLoginLoading ? "Logging in..." : "Log in"}
                   </button>
 
                   <div className="elp-login-footer">
@@ -966,6 +992,36 @@ const EmployerLandingPage = () => {
                 </form>
               )}
             </div>
+
+            {/* Mobile Auth Buttons (visible on screens <= 1024px) */}
+            {!employerSession ? (
+              <div className="elp-mobile-auth-actions">
+                <button
+                  type="button"
+                  className="elp-mobile-btn-register"
+                  onClick={() => navigate("/recruit/client-registration-form")}
+                >
+                  Register as Employer <FiArrowRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="elp-mobile-btn-login"
+                  onClick={() => setIsLoginModalOpen(true)}
+                >
+                  Employer Login <FiArrowRight size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="elp-mobile-auth-actions">
+                <button
+                  type="button"
+                  className="elp-mobile-btn-register"
+                  onClick={() => navigate("/employer-dashboard")}
+                >
+                  Go to Dashboard <FiArrowRight size={16} />
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1205,8 +1261,144 @@ const EmployerLandingPage = () => {
 
         {/* ─── Footer ─── */}
         <EmployerFooter />
-
       </div>
+
+      {/* ─── Fullscreen Mobile Login Modal ─── */}
+      {isLoginModalOpen && (
+        <div className="elp-fullscreen-login-modal" role="dialog" aria-modal="true">
+          <div className="elp-fullscreen-modal-header">
+            <Link to="/" onClick={() => setIsLoginModalOpen(false)}>
+              <img
+                src={mavenLogo}
+                alt="Maven Jobs Logo"
+                style={{ height: "36px", objectFit: "contain" }}
+              />
+            </Link>
+            <button
+              type="button"
+              className="elp-fullscreen-modal-close"
+              onClick={() => setIsLoginModalOpen(false)}
+              aria-label="Close Login Modal"
+            >
+              <FiX size={22} />
+            </button>
+          </div>
+
+          <div className="elp-fullscreen-modal-body">
+            <div className="elp-fullscreen-modal-title">Employer Login</div>
+            <p className="elp-fullscreen-modal-sub">
+              Sign in to manage your jobs, candidates, and hiring pipeline.
+            </p>
+
+            <form
+              className="elp-callback-form elp-login-form"
+              onSubmit={async (e) => {
+                await submitEmployerLogin(e);
+              }}
+            >
+              <div className="elp-form-group">
+                <label>Work Email ID</label>
+                <input
+                  type="email"
+                  placeholder="Enter registered email ID"
+                  value={loginEmail}
+                  onChange={(e) => {
+                    setLoginEmail(e.target.value);
+                    setLoginError("");
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="elp-form-group">
+                <label>Password</label>
+                <div className="elp-password-input">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    value={loginPassword}
+                    onChange={(e) => {
+                      setLoginPassword(e.target.value);
+                      setLoginError("");
+                    }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="elp-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
+                <div style={{ textAlign: "right", marginTop: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLoginModalOpen(false);
+                      setShowEmployerForgotPassword(true);
+                    }}
+                    className="elp-forgot-link"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontFamily: "inherit",
+                      fontSize: "inherit",
+                      fontWeight: "inherit",
+                      color: "inherit",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              </div>
+
+              {loginError && (
+                <div
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    marginBottom: "8px",
+                    padding: "8px 12px",
+                    background: "rgba(239,68,68,0.1)",
+                    borderRadius: "8px",
+                  }}
+                >
+                  {loginError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="elp-btn-callback"
+                style={{ marginTop: "12px" }}
+                disabled={isLoginLoading}
+              >
+                {isLoginLoading ? "Logging in..." : "Log in"}
+              </button>
+
+              <div className="elp-login-footer">
+                Don't have an employer account?{" "}
+                <button
+                  type="button"
+                  className="elp-signup-link"
+                  onClick={() => {
+                    setIsLoginModalOpen(false);
+                    navigate("/recruit/client-registration-form");
+                  }}
+                >
+                  Register now
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <ForgotPassword
         isOpen={showEmployerForgotPassword}
