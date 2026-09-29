@@ -1,6 +1,7 @@
 // chat.controller.js
 const Application = require("../models/Application");
 const CandidateNotification = require("../models/CandidateNotification");
+const notificationService = require("../services/notification.service");
 const CandidateProfile = require("../models/CandidateProfile");
 const ChatMessage = require("../models/ChatMessage");
 const ChatThread = require("../models/ChatThread");
@@ -260,14 +261,16 @@ const recordCompanyNotification = async ({ company, candidateId, jobId, threadId
     return;
   }
 
-  await CandidateNotification.create({
+  const snippet = text ? (text.length > 80 ? text.slice(0, 80) + "..." : text) : "sent you a new chat message.";
+
+  await notificationService.sendCandidateNotification({
     candidateId,
     companyId: company._id,
     jobId: jobId || null,
-    title: `${company.name || "A company"} has texted you`,
-    message: text || `${company.name || "A company"} sent you a new chat message.`,
+    title: `${company.name || "A company"} sent you a message`,
+    message: snippet,
     category: "CHAT",
-    actionUrl: "/candidate/notifications",
+    actionUrl: `/candidate/chat/${threadId}`,
     metadata: {
       source: "COMPANY_CHAT",
       threadId: threadId ? String(threadId) : "",
@@ -481,15 +484,17 @@ exports.sendCandidateMessage = async (req, res, next) => {
 
     const company = await Company.findById(thread.companyId).select("name");
     if (company) {
-      await CandidateNotification.create({
-        candidateId: user._id,
+      const candidateName = user.name || "A candidate";
+      const snippet = text ? (text.length > 80 ? text.slice(0, 80) + "..." : text) : "sent you a new chat message.";
+      await notificationService.sendCompanyNotification({
         companyId: company._id,
+        candidateId: user._id,
         jobId: thread.jobId,
-        title: `${user.name || "A candidate"} sent you a message`,
-        message: text || "A candidate sent you a new chat message.",
+        title: `New message from ${candidateName}`,
+        message: snippet,
         category: "CHAT",
-        actionUrl: "/employer/notifications",
-        metadata: { source: "CANDIDATE_CHAT", threadId: String(thread._id) },
+        actionUrl: `/employer/chat/${thread._id}`,
+        metadata: { source: "CANDIDATE_CHAT", threadId: String(thread._id), candidateName },
       });
     }
 

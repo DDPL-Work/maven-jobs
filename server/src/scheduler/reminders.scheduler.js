@@ -3,6 +3,7 @@ const CandidateReminder = require("../models/CandidateReminder");
 const User = require("../models/User");
 const CandidateProfile = require("../models/CandidateProfile");
 const emailService = require("../services/email.service");
+const { wrapNaukriLayout, escapeHtml } = require("../email/templates/layouts");
 
 const initRemindersScheduler = () => {
   // Run every minute
@@ -41,30 +42,52 @@ const initRemindersScheduler = () => {
  || "http://localhost:5173";
           const candidateUrl = `${FRONTEND_URL}/candidates/${candidate._id}`;
 
-          const htmlMessage = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-              <h2 style="color: #2563eb; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;">Candidate Reminder: ${reminder.type}</h2>
-              <p style="font-size: 16px; color: #333;">Hello ${employer.name || 'Recruiter'},</p>
-              <p style="font-size: 16px; color: #333;">This is your scheduled reminder regarding <strong>${candidate.name}</strong>.</p>
-              
-              <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                <h3 style="margin-top: 0; color: #0f172a;">Reminder Details</h3>
-                <p style="margin: 5px 0;"><strong>Subject:</strong> ${reminder.description || "N/A"}</p>
-                <p style="margin: 5px 0;"><strong>Type:</strong> ${reminder.type}</p>
-                <h3 style="margin-top: 15px; color: #0f172a;">Candidate Details</h3>
-                <p style="margin: 5px 0;"><strong>Name:</strong> ${candidate.name}</p>
-                <p style="margin: 5px 0;"><strong>Role:</strong> ${candidateRole}</p>
-                
-                <div style="margin-top: 25px; text-align: center;">
-                  <a href="${candidateUrl}" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; display: inline-block;">
-                    View Candidate Profile
-                  </a>
-                </div>
-              </div>
+          const content = `
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+              <tr>
+                <td style="padding: 24px 28px;">
+                  <div style="font-size: 40px; line-height: 20px; font-weight: 700; color: #f59e0b; font-family: Georgia, serif; margin-bottom: 8px;">&ldquo;</div>
+                  <h2 style="margin: 0 0 10px 0; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.4;">Candidate Reminder: ${escapeHtml(reminder.type)}</h2>
+                  <p style="margin: 0 0 14px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+                    Hello ${escapeHtml(employer.name || 'Recruiter')},
+                  </p>
+                  <p style="margin: 0 0 16px 0; font-size: 14px; color: #334155; line-height: 1.6;">
+                    This is your scheduled reminder regarding <strong>${escapeHtml(candidate.name)}</strong>.
+                  </p>
 
-              <p style="margin-top: 30px; font-size: 14px; color: #64748b;">Log in to your Maven employer dashboard to view this candidate's full profile.</p>
-            </div>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 14px 16px; margin-bottom: 12px;">
+                    <tr>
+                      <td>
+                        <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;"><strong>Subject:</strong> ${escapeHtml(reminder.description || "N/A")}</p>
+                        <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;"><strong>Candidate:</strong> ${escapeHtml(candidate.name)}</p>
+                        <p style="margin: 0; font-size: 13px; color: #64748b;"><strong>Role:</strong> ${escapeHtml(candidateRole)}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 24px auto;">
+              <tr>
+                <td align="center" style="background-color: #2563eb; border-radius: 9999px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);">
+                  <a href="${candidateUrl}" target="_blank" style="display: inline-block; padding: 13px 40px; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 9999px;">
+                    View Candidate Profile &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin: 0 0 12px 0; text-align: center; font-size: 12px; color: #64748b;">
+              Log in to your Maven employer dashboard to view this candidate's full profile.
+            </p>
           `;
+
+          const htmlMessage = wrapNaukriLayout(content, {
+            title: subject,
+            showFeatureGrid: false,
+            showAppBanner: true,
+          });
 
           await emailService.sendEmail({
             to: employer.email,

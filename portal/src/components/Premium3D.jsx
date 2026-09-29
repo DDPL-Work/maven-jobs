@@ -1776,7 +1776,7 @@ const Premium3D = React.memo(() => {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={loggedIn ? "Ask MavenAI anything… (/history for past chats)" : "Login to chat with MavenAI"}
+                  placeholder={loggedIn ? "Ask about jobs, candidates, resumes or hiring..." : "Login to chat with MavenAI"}
                   disabled={isTyping || !loggedIn}
                 />
               </div>

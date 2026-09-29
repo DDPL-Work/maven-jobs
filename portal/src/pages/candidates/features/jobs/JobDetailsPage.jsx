@@ -46,6 +46,7 @@ import { aiService } from "../../../../services/aiService";
 import LandingFooter from "../../../../components/LandingFooter";
 import CandidateHeader from "../../../../components/common/CandidateHeader";
 import { calculateJobMatch } from "../../../../utils/jobMatching";
+import ReviewModal from "../../../../components/ReviewModal";
 
 const PERK_MAP = {
   "Health Insurance": { icon: FiShield, color: "#10b981", bg: "#ECFDF5" },
@@ -86,12 +87,6 @@ export default function JobDetailsPage() {
   const [companyData, setCompanyData] = useState(null);
   const [companyReviews, setCompanyReviews] = useState([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewForm, setReviewForm] = useState({
-    rating: 5,
-    headline: "",
-    review: "",
-    isAnonymous: false,
-  });
   const [showMoreSecurity, setShowMoreSecurity] = useState(false);
   const [showExternalLinkModal, setShowExternalLinkModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
@@ -142,7 +137,6 @@ export default function JobDetailsPage() {
     setApplyMessage("");
     setCompanyReviews([]);
     setCompanyData(null);
-    setReviewForm({ rating: 5, headline: "", review: "", isAnonymous: false });
     authService
       .getJobDetail(id)
       .then((res) => {
@@ -364,28 +358,6 @@ export default function JobDetailsPage() {
     }
   };
 
-  const handleSubmitReview = async () => {
-    if (!user || !job?.companyId) return;
-    try {
-      const res = await authService.submitCompanyReview(
-        job.companyId,
-        reviewForm,
-      );
-      if (res?.success) {
-        setReviewForm({
-          rating: 5,
-          headline: "",
-          review: "",
-          isAnonymous: false,
-        });
-        setShowReviewModal(false);
-        loadCompanyData(job.companyId);
-      }
-    } catch (e) {
-      // silent
-    }
-  };
-
   const submitApplication = async () => {
     setShowNoResumeModal(false);
     setApplying(true);
@@ -522,8 +494,15 @@ export default function JobDetailsPage() {
                 />
               ) : null;
             })()}
-            <div className="jdp-job-header">
-              <div>
+            <div className="flex flex-col sm:flex-row items-start gap-5 relative z-10">
+              <div className="jdp-company-logo-large shrink-0">
+                {job.companyLogoUrl ? (
+                  <img src={job.companyLogoUrl} alt={job.company} />
+                ) : (
+                  <span>{job.logo}</span>
+                )}
+              </div>
+              <div className="flex-1">
                 <h1 className="jdp-job-title">{job.title}</h1>
                 <div className="jdp-company-row">
                   <span className="jdp-company-name">{job.company}</span>
@@ -532,6 +511,12 @@ export default function JobDetailsPage() {
                   </div>
                   <span className="jdp-reviews">
                     {job.reviewsCount || 0} Reviews
+                  </span>
+                  <span 
+                    onClick={() => setShowReviewModal(true)}
+                    className="text-blue-600 text-[13px] font-semibold cursor-pointer hover:underline ml-2"
+                  >
+                    Write a Review
                   </span>
                 </div>
                 <div className="jdp-job-meta">
@@ -547,22 +532,15 @@ export default function JobDetailsPage() {
                   </div>
                 </div>
               </div>
-              <div className="jdp-company-logo-large">
-                {job.companyLogoUrl ? (
-                  <img src={job.companyLogoUrl} alt={job.company} />
-                ) : (
-                  <span>{job.logo}</span>
-                )}
-              </div>
             </div>
 
-            <div className="jdp-job-footer">
-              <div className="jdp-posted-info">
-                Posted: <span className="font-semibold">{job.posted}</span>
+            <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-5 pt-5 border-t border-slate-100 mt-2 relative z-10">
+              <div className="text-[13px] text-slate-500">
+                Posted: <span className="font-semibold text-slate-700">{job.posted}</span>
                 {job.openings > 0 ? (
                   <>
                     , Openings:{" "}
-                    <span className="font-semibold">{job.openings}</span>
+                    <span className="font-semibold text-slate-700">{job.openings}</span>
                   </>
                 ) : (
                   ""
@@ -570,99 +548,102 @@ export default function JobDetailsPage() {
                 {job.applicants > 0 ? (
                   <>
                     , Applicants:{" "}
-                    <span className="font-semibold">{job.applicants}</span>
+                    <span className="font-semibold text-slate-700">{job.applicants}</span>
                   </>
                 ) : (
                   ""
                 )}
               </div>
-              <div className="jdp-actions flex items-center gap-3">
-                {applyMessage && (
-                  <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
-                    {applyMessage}
-                  </span>
-                )}
-                {user ? (
-                  <button
-                    className={`jdp-save-btn${isSaved ? " saved" : ""}`}
-                    onClick={handleSaveJob}
-                    disabled={saveLoading}
-                  >
-                    <FiBookmark
-                      size={18}
-                      fill={isSaved ? "currentColor" : "none"}
-                    />{" "}
-                    {isSaved ? "Saved" : "Save"}
-                  </button>
-                ) : (
-                  <button
-                    className="jdp-save-btn"
-                    onClick={openLogin}
-                    disabled={saveLoading}
-                  >
-                    <FiBookmark size={18} fill="none" /> Save
-                  </button>
-                )}
-                {job.externalLink ? (
-                  <button
-                    onClick={() => {
-                      if (!user) {
-                        openLogin();
-                        return;
-                      }
-                      setShowExternalLinkModal(true);
-                    }}
-                    className="jdp-apply-btn hover:bg-blue-900 transition-all font-black shadow-lg shadow-blue-900/20"
-                  >
-                    <FiExternalLink size={16} /> Company Site
-                  </button>
-                ) : user ? (
-                  hasApplied ? (
-                    <button className="jdp-applied-badge">
-                      <FiCheckCircle size={18} /> Applied
+
+              <div className="flex flex-col gap-3 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center md:justify-end gap-3 w-full">
+                  {applyMessage && (
+                    <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200 text-center">
+                      {applyMessage}
+                    </span>
+                  )}
+                  {user ? (
+                    <button
+                      className={`jdp-save-btn flex-1 sm:flex-none justify-center${isSaved ? " saved" : ""}`}
+                      onClick={handleSaveJob}
+                      disabled={saveLoading}
+                    >
+                      <FiBookmark
+                        size={18}
+                        fill={isSaved ? "currentColor" : "none"}
+                      />{" "}
+                      {isSaved ? "Saved" : "Save"}
                     </button>
                   ) : (
                     <button
-                      onClick={handleApply}
-                      disabled={applying || isSubmitting}
-                      className="jdp-apply-btn hover:bg-blue-900 transition-all font-black shadow-lg shadow-blue-900/20 disabled:opacity-50"
+                      className="jdp-save-btn flex-1 sm:flex-none justify-center"
+                      onClick={openLogin}
+                      disabled={saveLoading}
                     >
-                      {applying || isSubmitting ? "Applying..." : "Apply"}
+                      <FiBookmark size={18} fill="none" /> Save
                     </button>
-                  )
-                ) : (
-                  <button
-                    className="jdp-apply-btn hover:bg-blue-900 transition-all font-black shadow-lg shadow-blue-900/20"
-                    onClick={openLogin}
-                  >
-                    Log In to apply
-                  </button>
+                  )}
+                  {job.externalLink ? (
+                    <button
+                      onClick={() => {
+                        if (!user) {
+                          openLogin();
+                          return;
+                        }
+                        setShowExternalLinkModal(true);
+                      }}
+                      className="jdp-apply-btn flex-1 sm:flex-none justify-center hover:bg-blue-900 transition-all font-black shadow-lg shadow-blue-900/20"
+                    >
+                      <FiExternalLink size={16} /> Company Site
+                    </button>
+                  ) : user ? (
+                    hasApplied ? (
+                      <button className="jdp-applied-badge flex-1 sm:flex-none justify-center">
+                        <FiCheckCircle size={18} /> Applied
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleApply}
+                        disabled={applying || isSubmitting}
+                        className="jdp-apply-btn flex-1 sm:flex-none justify-center hover:bg-blue-900 transition-all font-black shadow-lg shadow-blue-900/20 disabled:opacity-50"
+                      >
+                        {applying || isSubmitting ? "Applying..." : "Apply"}
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      className="jdp-apply-btn flex-1 sm:flex-none justify-center hover:bg-blue-900 transition-all font-black shadow-lg shadow-blue-900/20"
+                      onClick={openLogin}
+                    >
+                      Log In to apply
+                    </button>
+                  )}
+                </div>
+
+                {user && (
+                  <label className="flex items-start sm:items-center md:justify-end gap-2 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isFollowing}
+                      onChange={handleFollowToggle}
+                      disabled={followLoading}
+                      className="rounded mt-0.5 sm:mt-0 cursor-pointer"
+                    />
+                    <span
+                      style={{
+                        color: isFollowing ? "#2563eb" : "#64748b",
+                        fontWeight: isFollowing ? 600 : 400,
+                      }}
+                      className="transition-colors"
+                    >
+                      {isFollowing
+                        ? `Following ${job.company}`
+                        : `Follow ${job.company} as you apply to stay updated`}
+                    </span>
+                  </label>
                 )}
               </div>
             </div>
-
-            {user && (
-              <div className="mt-4 flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={isFollowing}
-                  onChange={handleFollowToggle}
-                  disabled={followLoading}
-                  className="rounded"
-                  style={{ cursor: "pointer" }}
-                />
-                <span
-                  style={{
-                    color: isFollowing ? "#2563eb" : "#64748b",
-                    fontWeight: isFollowing ? 600 : 400,
-                  }}
-                >
-                  {isFollowing
-                    ? `Following ${job.company}`
-                    : `Follow ${job.company} as you apply to stay updated`}
-                </span>
-              </div>
-            )}
           </section>
 
           {/* 2. Job Highlights, Match Score, and Skills */}
@@ -1239,184 +1220,17 @@ export default function JobDetailsPage() {
       )}
 
       {showReviewModal && (
-        <div
-          className="fixed inset-0 z-[10002] flex items-center justify-center"
-          style={{
-            background: "rgba(0,0,0,0.45)",
-            backdropFilter: "blur(4px)",
+        <ReviewModal
+          companyId={job.companyId}
+          companyName={job.company}
+          onClose={() => setShowReviewModal(false)}
+          onSuccess={() => {
+            setShowReviewModal(false);
+            if (job.companyId) {
+              loadCompanyData(job.companyId);
+            }
           }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 20,
-              maxWidth: 460,
-              width: "90%",
-              padding: "28px",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.2)",
-              fontFamily: "'DM Sans', system-ui, sans-serif",
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 17,
-                fontWeight: 800,
-                color: "#0f172a",
-                margin: "0 0 16px",
-              }}
-            >
-              Write a review for {job.company}
-            </h3>
-
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#334155",
-                display: "block",
-                marginBottom: 4,
-              }}
-            >
-              Rating
-            </label>
-            <div
-              className="flex gap-1 mb-4"
-              style={{ display: "flex", gap: 4 }}
-            >
-              {[1, 2, 3, 4, 5].map((s) => (
-                <FaStar
-                  key={s}
-                  size={24}
-                  className={
-                    s <= reviewForm.rating ? "text-[#facc15]" : "text-[#e2e8f0]"
-                  }
-                  style={{ cursor: "pointer" }}
-                  onClick={() => setReviewForm((f) => ({ ...f, rating: s }))}
-                />
-              ))}
-            </div>
-
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#334155",
-                display: "block",
-                marginBottom: 4,
-              }}
-            >
-              Headline (optional)
-            </label>
-            <input
-              value={reviewForm.headline}
-              onChange={(e) =>
-                setReviewForm((f) => ({ ...f, headline: e.target.value }))
-              }
-              placeholder="Summarize your experience"
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                fontSize: 13,
-                border: "1.5px solid #e2e8f0",
-                borderRadius: 10,
-                marginBottom: 12,
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#334155",
-                display: "block",
-                marginBottom: 4,
-              }}
-            >
-              Review (optional)
-            </label>
-            <textarea
-              value={reviewForm.review}
-              onChange={(e) =>
-                setReviewForm((f) => ({ ...f, review: e.target.value }))
-              }
-              placeholder="Share your experience working here..."
-              rows={3}
-              style={{
-                width: "100%",
-                padding: "10px 14px",
-                fontSize: 13,
-                border: "1.5px solid #e2e8f0",
-                borderRadius: 10,
-                marginBottom: 12,
-                outline: "none",
-                resize: "vertical",
-                boxSizing: "border-box",
-                fontFamily: "inherit",
-              }}
-            />
-
-            <label
-              className="flex items-center gap-2 mb-4"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 13,
-                color: "#64748b",
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={reviewForm.isAnonymous}
-                onChange={(e) =>
-                  setReviewForm((f) => ({
-                    ...f,
-                    isAnonymous: e.target.checked,
-                  }))
-                }
-              />
-              Post anonymously
-            </label>
-
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => setShowReviewModal(false)}
-                style={{
-                  flex: 1,
-                  padding: "11px",
-                  borderRadius: 12,
-                  border: "1.5px solid #e2e8f0",
-                  background: "#fff",
-                  color: "#475569",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitReview}
-                style={{
-                  flex: 1,
-                  padding: "11px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "#2563eb",
-                  color: "#fff",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                Submit review
-              </button>
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       {job && (

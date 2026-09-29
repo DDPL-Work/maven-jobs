@@ -10,6 +10,7 @@ const {
 const { esAvailable } = require("../config/opensearch");
 const esService = require("../services/opensearch.service");
 const { scheduleIndex, scheduleDelete } = esService;
+const notificationService = require("../services/notification.service");
 
 // Create job (CLIENT or CRM)
 exports.createJob = async (req, res) => {
@@ -63,8 +64,28 @@ exports.createJob = async (req, res) => {
       jobId: job._id,
     });
 
+    notificationService.sendCompanyNotification({
+      companyId: company._id,
+      recipientUserId: req.user._id,
+      jobId: job._id,
+      title: "Job Posted Successfully",
+      message: `Your job "${job.title}" has been successfully posted.`,
+      category: "JOB",
+      actionUrl: `/employer/job-responses`,
+    }).catch(() => {});
+
     // Async incremental ES index — fires after response is sent, zero latency impact
     scheduleIndex(job);
+  } else {
+    notificationService.sendCompanyNotification({
+      companyId: company._id,
+      recipientUserId: req.user._id,
+      jobId: job._id,
+      title: "Job Submitted for Review",
+      message: `Your job "${job.title}" has been submitted for CRM approval.`,
+      category: "JOB",
+      actionUrl: `/employer/job-responses`,
+    }).catch(() => {});
   }
 
   res.status(201).json(job);
@@ -111,6 +132,16 @@ exports.approveJob = async (req, res) => {
       jobId: job._id,
     });
   }
+
+  notificationService.sendCompanyNotification({
+    companyId: company._id,
+    recipientUserId: company.clientUserId || null,
+    jobId: job._id,
+    title: "Job Approved",
+    message: `Your job "${job.title}" has been approved and is now active.`,
+    category: "JOB",
+    actionUrl: `/employer/job-responses`,
+  }).catch(() => {});
 
   // Async incremental ES index — fires after response is sent, zero latency impact
   scheduleIndex(job);

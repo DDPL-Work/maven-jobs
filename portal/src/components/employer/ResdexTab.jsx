@@ -128,6 +128,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState(false);
   const [copiedSearchId, setCopiedSearchId] = useState(null);
+  const [activeQuotaCard, setActiveQuotaCard] = useState(0);
   const [modal, setModal] = useState({
     open: false,
     type: null,
@@ -455,6 +456,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
         <>
           {isRecruiter ? (
             <div
+              className="resdex-overview-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
@@ -625,35 +627,17 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                 margin: "0 -10px",
               }}
             >
-              {/* <button
-                onClick={() =>
-                  document
-                    .getElementById("client-quota-scroll")
-                    ?.scrollBy({ left: -320, behavior: "smooth" })
-                }
-                style={{
-                  position: "absolute",
-                  left: -5,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10,
-                  background: "#fff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "50%",
-                  width: 40,
-                  height: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  cursor: "pointer",
-                }}
-              >
-                <FiChevronLeft size={22} color="#475569" />
-              </button> */}
-
               <div
                 id="client-quota-scroll"
+                onScroll={(e) => {
+                  const scrollLeft = e.target.scrollLeft;
+                  const el = e.target;
+                  const cardWidth = (el.firstElementChild?.offsetWidth || 0) + 16;
+                  if (cardWidth > 16) {
+                    const index = Math.round(scrollLeft / cardWidth);
+                    setActiveQuotaCard(index);
+                  }
+                }}
                 style={{
                   display: "flex",
                   overflowX: "auto",
@@ -662,6 +646,8 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                   padding: "10px 10px",
                   msOverflowStyle: "none",
                   scrollbarWidth: "none",
+                  scrollSnapType: "x mandatory",
+                  WebkitOverflowScrolling: "touch",
                 }}
               >
                 <style>{`#client-quota-scroll::-webkit-scrollbar { display: none; }`}</style>
@@ -713,6 +699,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                   return (
                     <motion.div
                       key={i}
+                      className="quota-card-slide"
                       style={{
                         flex: "0 0 340px",
                         background: "#fff",
@@ -720,6 +707,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                         borderRadius: 12,
                         padding: "24px",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                        scrollSnapAlign: "start",
                       }}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -842,32 +830,81 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                 })}
               </div>
 
-              {/* <button
-                onClick={() =>
-                  document
-                    .getElementById("client-quota-scroll")
-                    ?.scrollBy({ left: 320, behavior: "smooth" })
-                }
+              {/* Navigation controls below cards */}
+              <div
                 style={{
-                  position: "absolute",
-                  right: -5,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 10,
-                  background: "#fff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "50%",
-                  width: 40,
-                  height: 40,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  cursor: "pointer",
+                  gap: 16,
+                  marginTop: 12,
                 }}
               >
-                <FiChevronRight size={22} color="#475569" />
-              </button> */}
+                <button
+                  className="ep-mob-nav-btn"
+                  onClick={() => {
+                    const el = document.getElementById("client-quota-scroll");
+                    if (el) {
+                      const cardWidth = (el.firstElementChild?.offsetWidth || 0) + 16;
+                      el.scrollBy({ left: -cardWidth, behavior: "smooth" });
+                    }
+                  }}
+                  style={{
+                    background: "#fff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "50%",
+                    width: 42,
+                    height: 42,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <FiChevronLeft size={22} color="#475569" />
+                </button>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[0, 1, 2].map((idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: activeQuotaCard === idx ? "#1E5EFF" : "#cbd5e1",
+                        transition: "background 0.3s ease",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  className="ep-mob-nav-btn"
+                  onClick={() => {
+                    const el = document.getElementById("client-quota-scroll");
+                    if (el) {
+                      const cardWidth = (el.firstElementChild?.offsetWidth || 0) + 16;
+                      el.scrollBy({ left: cardWidth, behavior: "smooth" });
+                    }
+                  }}
+                  style={{
+                    background: "#fff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "50%",
+                    width: 42,
+                    height: 42,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <FiChevronRight size={22} color="#475569" />
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -1045,58 +1082,92 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
               {isRecruiter ? "My Folders" : "Recruiter Folders"}
             </span>
           </div>
-          <div className="ap-table-wrap" style={{ border: "none" }}>
-            <table className="ap-table">
-              <thead>
-                <tr>
-                  <th>Folder Name</th>
-                  <th>Profiles</th>
-                  <th>Owner</th>
-                  <th>Updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {folders.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={4}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {folders.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "32px 12px",
+                  color: "#94a3b8",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                }}
+              >
+                No folders yet
+              </div>
+            ) : (
+              folders
+                .slice(
+                  (folderPage - 1) * folderPerPage,
+                  folderPage * folderPerPage,
+                )
+                .map((f, i) => (
+                  <motion.div
+                    key={f._id || f.id || i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      background: "#f8fafc",
+                      border: "1px solid #f1f5f9",
+                      cursor: "pointer",
+                    }}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    whileHover={{ background: "#f1f5f9", x: 2 }}
+                  >
+                    <div
                       style={{
-                        textAlign: "center",
-                        padding: 24,
-                        color: "#94a3b8",
-                        fontWeight: 600,
+                        width: 38,
+                        height: 38,
+                        borderRadius: "10px",
+                        background: "#eef2ff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#1E5EFF",
+                        flexShrink: 0,
                       }}
                     >
-                      No folders yet
-                    </td>
-                  </tr>
-                ) : (
-                  folders
-                    .slice(
-                      (folderPage - 1) * folderPerPage,
-                      folderPage * folderPerPage,
-                    )
-                    .map((f, i) => (
-                      <tr key={f._id || f.id || i}>
-                        <td style={{ fontWeight: 700, color: "#0a1628" }}>
-                          {f.name}
-                        </td>
-                        <td>
-                          <span className="ap-pill ap-pill-blue">
-                            {f.candidateCount ?? f.candidates?.length ?? 0}
-                          </span>
-                        </td>
-                        <td style={{ color: "#64748b" }}>
-                          {f.ownerName || (typeof f.owner === 'object' ? f.owner?.name : f.owner) || (typeof f.createdBy === 'object' ? f.createdBy?.name : f.createdBy) || "—"}
-                        </td>
-                        <td style={{ color: "#94a3b8" }}>
-                          {f.updatedAt ? timeAgo(f.updatedAt) : "—"}
-                        </td>
-                      </tr>
-                    ))
-                )}
-              </tbody>
-            </table>
+                      <FiFolder size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: "0.88rem",
+                          fontWeight: 700,
+                          color: "#0a1628",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {f.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#64748b",
+                          marginTop: 2,
+                        }}
+                      >
+                        Owner: {f.ownerName || (typeof f.owner === 'object' ? f.owner?.name : f.owner) || (typeof f.createdBy === 'object' ? f.createdBy?.name : f.createdBy) || "—"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                      <span className="ap-pill ap-pill-blue" style={{ fontSize: "0.65rem", padding: "2px 8px" }}>
+                        {f.candidateCount ?? f.candidates?.length ?? 0} profiles
+                      </span>
+                      <span style={{ fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>
+                        {f.updatedAt ? timeAgo(f.updatedAt) : "—"}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))
+            )}
           </div>
         </div>
 
@@ -1124,8 +1195,8 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
-                    padding: "8px 10px",
+                    gap: 12,
+                    padding: "10px 12px",
                     borderRadius: 10,
                     background: "#f8fafc",
                     border: "1px solid #f1f5f9",
@@ -1138,8 +1209,8 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                 >
                   <div
                     style={{
-                      width: 36,
-                      height: 36,
+                      width: 38,
+                      height: 38,
                       borderRadius: "50%",
                       background: "#eef2ff",
                       display: "flex",
@@ -1147,7 +1218,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                       justifyContent: "center",
                       color: "#1E5EFF",
                       fontWeight: 800,
-                      fontSize: 13,
+                      fontSize: 14,
                       flexShrink: 0,
                     }}
                   >
@@ -1156,21 +1227,24 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: "0.82rem",
+                        fontSize: "0.88rem",
                         fontWeight: 700,
                         color: "#0a1628",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
                       {p.name}
                     </div>
-                    <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                    <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {p.role} · {p.exp}
                     </div>
                     <div
                       style={{
                         display: "flex",
-                        gap: 4,
-                        marginTop: 3,
+                        gap: 6,
+                        marginTop: 6,
                         flexWrap: "wrap",
                       }}
                     >
@@ -1178,11 +1252,11 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                         <span
                           key={s}
                           style={{
-                            fontSize: "0.62rem",
+                            fontSize: "0.65rem",
                             fontWeight: 600,
                             color: "#1E5EFF",
                             background: "#EEF4FF",
-                            padding: "1px 6px",
+                            padding: "2px 8px",
                             borderRadius: 99,
                           }}
                         >

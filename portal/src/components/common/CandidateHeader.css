@@ -34,6 +34,17 @@
   display: flex;
   align-items: center;
 }
+/* Invisible bridge to prevent hover loss when moving cursor down to mega menu */
+.ch-nav-item::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: transparent;
+  z-index: 10;
+}
 
 .ch-nav-link {
   text-decoration: none;
@@ -201,6 +212,7 @@
   border-top: 1px solid rgba(20, 63, 134, 0.08);
   border-radius: 2px 0 0 0;
 }
+
 @keyframes chMega {
   from {
     opacity: 0;

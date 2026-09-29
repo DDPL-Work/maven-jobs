@@ -126,10 +126,10 @@ export default function LandingHeader() {
         {
           title: "Research companies",
           links: [
-            ["Interview questions", "/interview-questions"],
-            ["Company salaries", "/salary-insights"],
-            ["Company reviews", "/companies?tab=reviews"],
-            ["Salary Calculator", "/salary-calculator"],
+            ["Interview questions", "https://www.ambitionbox.com/interviews?utm_source=maven&utm_medium=desktop&utm_campaign=gnb"],
+            ["Company salaries", "https://www.ambitionbox.com/salaries?utm_source=maven&utm_medium=desktop&utm_campaign=gnb"],
+            ["Company reviews", "https://www.ambitionbox.com/reviews?utm_source=maven&utm_medium=desktop&utm_campaign=gnb"],
+            ["Salary Calculator", "https://www.ambitionbox.com/salaries/take-home-salary-calculator?utm_source=naukri&utm_medium=desktop&utm_campaign=gnb"],
           ],
         },
       ],
@@ -268,21 +268,33 @@ export default function LandingHeader() {
                           col.sections.map((sec, sIdx) => (
                             <div key={sIdx} style={{ marginBottom: sIdx !== col.sections.length - 1 ? '16px' : '0' }}>
                               <h4>{sec.title}</h4>
-                              {sec.links.map(([text, href]) => (
-                                <Link key={text} to={href}>
-                                  {text}
-                                </Link>
-                              ))}
+                              {sec.links.map(([text, href]) =>
+                                href.startsWith("http") ? (
+                                  <a key={text} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+                                    {text}
+                                  </a>
+                                ) : (
+                                  <Link key={text} to={href} onClick={() => setIsMobileMenuOpen(false)}>
+                                    {text}
+                                  </Link>
+                                )
+                              )}
                             </div>
                           ))
                         ) : (
                           <>
                             <h4>{col.title}</h4>
-                            {col.links.map(([text, href]) => (
-                              <Link key={text} to={href}>
-                                {text}
-                              </Link>
-                            ))}
+                            {col.links.map(([text, href]) =>
+                              href.startsWith("http") ? (
+                                <a key={text} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+                                  {text}
+                                </a>
+                              ) : (
+                                <Link key={text} to={href} onClick={() => setIsMobileMenuOpen(false)}>
+                                  {text}
+                                </Link>
+                              )
+                            )}
                           </>
                         )}
                       </div>

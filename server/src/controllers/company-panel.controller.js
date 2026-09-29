@@ -12,6 +12,8 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const CandidateProfile = require("../models/CandidateProfile");
 const CandidateNotification = require("../models/CandidateNotification");
+const CompanyNotification = require("../models/CompanyNotification");
+const notificationService = require("../services/notification.service");
 const PackageChangeRequest = require("../models/PackageChangeRequest");
 const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
@@ -43,6 +45,7 @@ const jobReportService = require("../services/job-posting-report.service");
 const smsService = require("../services/sms.service");
 const emailService = require("../services/email.service");
 const RegistrationOTP = require("../models/RegistrationOTP");
+const { buildOTPHtml } = require("../email/templates/layouts");
 const CompanySubUser = require("../models/CompanySubUser");
 const UserLoginLog = require("../models/UserLoginLog");
 
@@ -464,7 +467,7 @@ exports.sendEmailOtp = asyncHandler(async (req, res) => {
     expiresAt: new Date(Date.now() + 3 * 60 * 1000),
   });
 
-  const html = `<p>Your verification code for MavenJobs is: <b>${otp}</b></p><p>This code will expire in 3 minutes.</p>`;
+  const html = buildOTPHtml({ name: "Employer", otp, purpose: "email verification", expiryMinutes: 3 });
   await emailService.sendEmail({ to: email, subject: "Verify your email - MavenJobs", html });
 
   res.status(200).json({ success: true, message: "OTP sent" });
@@ -1030,6 +1033,16 @@ exports.createJob = asyncHandler(async (req, res) => {
       jobId: job._id,
     });
 
+    notificationService.sendCompanyNotification({
+      companyId: company._id,
+      recipientUserId: user._id,
+      jobId: job._id,
+      title: "Job Posted Successfully",
+      message: `Your job "${job.title}" has been successfully posted.`,
+      category: "JOB",
+      actionUrl: `/employer/job-responses`,
+    }).catch(() => {});
+
     // Async incremental ES index — fires after response is sent
     scheduleIndex(job);
   }
@@ -1186,6 +1199,8 @@ exports.getJob = asyncHandler(async (req, res) => {
       department: job.department || "",
       location: job.location || "",
       description: job.description || "",
+      responsibilities: job.responsibilities || "",
+      qualifications: job.qualifications || "",
       jobType: job.jobType || "",
       experience: job.experience || "",
       salaryMin: job.salaryMin || 0,
@@ -1475,7 +1490,7 @@ exports.updateApplicationStatus = asyncHandler(async (req, res) => {
   }
 
   if (candidateId && hasStatusChanged) {
-    await CandidateNotification.create({
+    await notificationService.sendCandidateNotification({
       candidateId,
       companyId: company._id,
       jobId: application.jobId?._id || application.jobId || null,
@@ -1497,14 +1512,14 @@ exports.updateApplicationStatus = asyncHandler(async (req, res) => {
     const candidateName = application.candidateId?.name;
     const jobTitle = application.jobId?.title || "the role";
     const companyName = company.name || "The company";
-    const eventPayload = { email: candidateEmail, fullName: candidateName, jobTitle, companyName };
+    const eventPayload = { email: candidateEmail, fullName: candidateName, jobTitle, companyName, candidateId };
 
     switch (requestedStatus) {
       case "SHORTLISTED":
-        EventBus.emit(EVENTS.CANDIDATE_SHORTLISTED, eventPayload);
+        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
         break;
       case "REJECTED":
-        EventBus.emit(EVENTS.CANDIDATE_REJECTED, eventPayload);
+        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
         break;
       case "INTERVIEW":
         EventBus.emit(EVENTS.CANDIDATE_INTERVIEW_SCHEDULED, {
@@ -1835,36 +1850,24 @@ exports.getNotifications = asyncHandler(async (req, res) => {
 
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = Math.max(1, Math.min(50, Number.parseInt(req.query.limit, 10) || 20));
-  const skip = (page - 1) * limit;
 
-  const notifications = await CandidateNotification.find({ companyId: company._id })
-    .sort({ updatedAt: -1, createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-
-  const notificationsPayload = notifications.map((n) => ({
-    id: String(n._id),
-    title: n.title || "Notification",
-    message: n.message || "",
-    desc: n.message || "",
-    category: n.category || "",
-    actionUrl: n.actionUrl || "",
-    status: String(n.status || "UNREAD").toUpperCase(),
-    createdAt: n.createdAt || null,
-    updatedAt: n.updatedAt || null,
-    lastUpdated: formatRelativeTime(n.updatedAt || n.createdAt),
-  }));
+  const result = await notificationService.getCompanyNotifications(company._id, {
+    userId: req.user._id,
+    userRole: req.user.role,
+    page,
+    limit,
+  });
 
   res.status(200).json({
     success: true,
     data: {
-      notifications: notificationsPayload,
-      pagination: {
-        page,
-        limit,
-        totalItems: await CandidateNotification.countDocuments({ companyId: company._id }),
-      },
+      notifications: result.notifications,
+      pagination: result.pagination,
+      unreadCount: result.unreadCount,
     },
+    notifications: result.notifications,
+    pagination: result.pagination,
+    unreadCount: result.unreadCount,
   });
 });
 
@@ -1910,31 +1913,40 @@ exports.markNotificationRead = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Notification id is required");
   }
 
-  const notification = await CandidateNotification.findOne({
-    _id: notificationId,
-    companyId: company._id,
-  });
+  const updated = await notificationService.markCompanyNotificationRead(
+    company._id,
+    notificationId,
+    req.user._id
+  );
 
-  if (!notification) {
+  if (!updated) {
     throw createHttpError(404, "Notification not found");
   }
 
-  notification.status = "READ";
-  await notification.save();
+  res.status(200).json({
+    success: true,
+    message: updated.alreadyRead ? "Notification already marked as read" : "Notification marked as read",
+    data: {
+      notification: updated,
+    },
+    notification: updated,
+    alreadyRead: !!updated.alreadyRead,
+  });
+});
+
+exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const result = await notificationService.markAllCompanyNotificationsRead(company._id, {
+    userId: req.user._id,
+    userRole: req.user.role,
+  });
 
   res.status(200).json({
     success: true,
-    data: {
-      notification: {
-        id: String(notification._id),
-        title: notification.title || "Notification",
-        message: notification.message || "",
-        status: String(notification.status || "READ").toUpperCase(),
-        createdAt: notification.createdAt || null,
-        updatedAt: notification.updatedAt || null,
-        lastUpdated: formatRelativeTime(notification.updatedAt || notification.createdAt),
-      },
-    },
+    message: result.modifiedCount > 0 ? "All notifications marked as read" : "All notifications are already marked as read",
+    data: result,
+    modifiedCount: result.modifiedCount,
+    alreadyRead: result.alreadyRead,
   });
 });
 

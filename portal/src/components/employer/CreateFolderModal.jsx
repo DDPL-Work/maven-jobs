@@ -39,6 +39,7 @@ export default function CreateFolderModal({ isOpen, onClose, onSubmit, initialDa
     onSubmit({
       name: trimmed,
       description: description.trim(),
+      folderType: initialData?.folderType || 'FOLDER',
       color: initialData?.color || '#002366',
       icon: initialData?.icon || 'folder',
       isPublic: initialData?.isPublic || false,

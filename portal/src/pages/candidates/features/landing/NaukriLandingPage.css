@@ -200,6 +200,17 @@ a {
 .lp-nav__item {
   position: relative;
 }
+/* Invisible bridge to prevent hover loss when moving cursor down to mega menu */
+.lp-nav__item::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: transparent;
+  z-index: 10;
+}
 .lp-nav__item > a {
   display: flex;
   align-items: center;

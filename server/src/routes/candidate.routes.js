@@ -105,7 +105,7 @@ router.get(
 router.get(
   "/companies/:id",
   cacheRoute({
-    key: (req) => `cache:candidate:company:${req.params.id}`,
+    key: (req) => `cache:candidate:company:${req.params.id}:${req.user?._id || 'anon'}`,
     ttl: 600,
   }),
   candidateController.getCompanyDetail,
@@ -207,19 +207,23 @@ router.post(
 router.get(
   "/notifications",
   protectCandidate,
-  cacheRoute({
-    key: (req) => `cache:candidate:notifications:${req.user?._id || req.user?.id}`,
-    ttl: 30,
-  }),
   candidateController.getNotifications,
 );
 router.patch(
   "/notifications/:id/read",
   protectCandidate,
   invalidateCache([
-    (req) => `cache:candidate:notifications:${req.user?._id || req.user?.id}`,
+    (req) => `cache:candidate:notifications:${req.user?._id || req.user?.id}*`,
   ]),
   candidateController.markNotificationRead,
+);
+router.patch(
+  "/notifications/read-all",
+  protectCandidate,
+  invalidateCache([
+    (req) => `cache:candidate:notifications:${req.user?._id || req.user?.id}*`,
+  ]),
+  candidateController.markAllNotificationsRead,
 );
 
 router.post("/resume/enhance", protectCandidate, aiResumeLimiter, candidateController.enhanceResumeWithAI);

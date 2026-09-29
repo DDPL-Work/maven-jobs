@@ -704,6 +704,27 @@ const authService = {
     }
   },
 
+  markAllEmployerNotificationsRead: async () => {
+    try {
+      const response = await api.patch('/company-panel/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to mark all employer notifications as read' };
+    }
+  },
+
+  getRecruiterNotifications: async () => {
+    return authService.getEmployerNotifications();
+  },
+
+  markRecruiterNotificationRead: async (notificationId) => {
+    return authService.markEmployerNotificationRead(notificationId);
+  },
+
+  markAllRecruiterNotificationsRead: async () => {
+    return authService.markAllEmployerNotificationsRead();
+  },
+
   getCandidateNotifications: async () => {
     try {
       const response = await api.get('/candidate/notifications');
@@ -719,6 +740,15 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to mark notification as read' };
+    }
+  },
+
+  markAllCandidateNotificationsRead: async () => {
+    try {
+      const response = await api.patch('/candidate/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to mark all candidate notifications as read' };
     }
   },
 
@@ -1007,6 +1037,14 @@ const authService = {
   },
   updateFolderCandidate: async (folderId, candidateId, data) => {
     const response = await api.patch(`/company-panel/folders/${folderId}/candidates/${candidateId}`, data);
+    return response.data;
+  },
+  addCandidateComment: async (folderId, candidateId, text) => {
+    const response = await api.post(`/company-panel/folders/${folderId}/candidates/${candidateId}/comments`, { text });
+    return response.data;
+  },
+  deleteCandidateComment: async (folderId, candidateId, commentId) => {
+    const response = await api.delete(`/company-panel/folders/${folderId}/candidates/${candidateId}/comments/${commentId}`);
     return response.data;
   },
 

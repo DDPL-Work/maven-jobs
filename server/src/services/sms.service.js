@@ -8,22 +8,30 @@ const getApiKey = () => {
   return key;
 };
 
-/**
- * Send OTP via 2Factor API
- * @param {string} phone - phone number (e.g., 919876543210 or 9876543210)
- * @returns {Promise<string>} session_id string to be used for verification
- */
-const sendOTP = async (phone) => {
+const formatPhoneNumber = (phone) => {
+  if (!phone) return '';
+  const cleaned = String(phone).replace(/\D/g, '');
+  return cleaned.length === 10 ? `91${cleaned}` : cleaned;
+};
+
+const sendOTP = async (phone, customTemplate) => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("SMS service is not configured.");
 
+  const formattedPhone = formatPhoneNumber(phone);
+  if (!formattedPhone) throw new Error("Invalid phone number provided.");
+
+  const template = customTemplate || process.env.TWO_FACTOR_OTP_TEMPLATE;
+
   try {
-    // 2Factor API URL for Autogen OTP
-    const url = `https://2factor.in/API/V1/${apiKey}/SMS/${phone}/AUTOGEN`;
+    const url = template
+      ? `https://2factor.in/API/V1/${apiKey}/SMS/${formattedPhone}/AUTOGEN/${encodeURIComponent(template)}`
+      : `https://2factor.in/API/V1/${apiKey}/SMS/${formattedPhone}/AUTOGEN`;
+
     const response = await axios.get(url);
     
     if (response.data && response.data.Status === 'Success') {
-      return response.data.Details; // This is the session_id
+      return response.data.Details;
     }
     
     throw new Error(response.data?.Details || "Failed to send OTP");
@@ -33,12 +41,6 @@ const sendOTP = async (phone) => {
   }
 };
 
-/**
- * Verify OTP via 2Factor API
- * @param {string} sessionId - the session_id returned by sendOTP
- * @param {string} otp - the OTP entered by user
- * @returns {Promise<boolean>} true if OTP is valid, false otherwise
- */
 const verifyOTP = async (sessionId, otp) => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("SMS service is not configured.");
@@ -57,4 +59,5 @@ const verifyOTP = async (sessionId, otp) => {
 module.exports = {
   sendOTP,
   verifyOTP,
+  formatPhoneNumber,
 };

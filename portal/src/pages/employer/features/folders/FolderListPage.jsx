@@ -61,6 +61,14 @@ export default function FolderListPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
+  const handleClearFilters = () => {
+    setDateFilter('all');
+    setCustomFrom('');
+    setCustomTo('');
+  };
+
+  const isFilterActive = dateFilter !== 'all';
+
   // Pagination & Sorting
   const [pageSize, setPageSize] = useState(40);
   const [page, setPage] = useState(1);
@@ -87,7 +95,7 @@ export default function FolderListPage() {
   const { session } = useEmployerAuth();
   
   const params = useMemo(() => {
-    return { sort: sortBy, page, limit: pageSize };
+    return { sort: sortBy, page, limit: pageSize, folderType: 'FOLDER' };
   }, [sortBy, page, pageSize]);
 
   const { data: serverFolders = [], refetch } = useFolders(params);
@@ -116,7 +124,9 @@ export default function FolderListPage() {
 
   // Filter server folders dynamically based on date filter (My Folders only)
   const filteredFolders = useMemo(() => {
-    let list = Array.isArray(serverFolders) ? serverFolders.filter(f => f.employerId === session?.id) : [];
+    let list = Array.isArray(serverFolders)
+      ? serverFolders.filter(f => f.employerId === session?.id && f.folderType !== 'REQUIREMENT')
+      : [];
     const now = new Date();
 
     if (dateFilter === 'last-7') {
@@ -139,7 +149,7 @@ export default function FolderListPage() {
     }
 
     return list;
-  }, [serverFolders, dateFilter, customFrom, customTo]);
+  }, [serverFolders, session?.id, dateFilter, customFrom, customTo]);
 
   // Selected folder objects for sharing
   const selectedFolderObjects = useMemo(() => {
@@ -149,13 +159,15 @@ export default function FolderListPage() {
   // Shared folders dynamically filtered
   const sharedFolders = useMemo(() => {
     return (serverFolders || []).filter(
-      f => f.employerId !== session?.id
+      f => f.employerId !== session?.id && f.folderType !== 'REQUIREMENT'
     );
-  }, [serverFolders, session]);
+  }, [serverFolders, session?.id]);
 
   // Contacted candidates folders dynamically sorted
   const contactedFolders = useMemo(() => {
-    let list = Array.isArray(serverFolders) ? serverFolders.filter(f => (f.contactedCount || 0) > 0) : [];
+    let list = Array.isArray(serverFolders)
+      ? serverFolders.filter(f => (f.contactedCount || 0) > 0 && f.folderType !== 'REQUIREMENT')
+      : [];
     if (contactedSortBy === 'Date') {
       list.sort((a, b) => new Date(b.lastActivityAt || b.updatedAt || b.createdAt) - new Date(a.lastActivityAt || a.updatedAt || a.createdAt));
     } else if (contactedSortBy === 'Name') {
@@ -326,6 +338,17 @@ export default function FolderListPage() {
                 <div className="flp-sidebar-header">
                   <FiSliders size={17} color="#64748b" />
                   <span>Filters</span>
+                  {isFilterActive && (
+                    <button
+                      type="button"
+                      className="flp-clear-filters-btn"
+                      onClick={handleClearFilters}
+                      title="Clear all filters"
+                    >
+                      <FiX size={12} />
+                      Clear
+                    </button>
+                  )}
                 </div>
 
                 <div className="flp-filter-section">

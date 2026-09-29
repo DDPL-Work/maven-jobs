@@ -80,6 +80,8 @@ import CandidateSitemap from "./pages/candidates/features/landing/CandidateSitem
 import InterviewQuestions from "./pages/candidates/features/company/InterviewQuestions";
 import SalaryCalculator from "./pages/candidates/features/company/SalaryCalculator";
 import MIvitesPage from "./pages/candidates/features/engagement/MIvitesPage";
+import AppDownloadPage from "./pages/candidates/features/landing/AppDownloadPage";
+import NotFoundPage from "./components/NotFoundPage";
 import Premium3D from "./components/Premium3D";
 import { AuthProvider, useAuth } from "./AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
@@ -154,6 +156,7 @@ function AppContent() {
       <Routes>
         {/* --- Public & Common Routes --- */}
         <Route path="/" element={<NaukriLandingPage />} />
+        <Route path="/download" element={<AppDownloadPage />} />
         <Route path="/blogs" element={<Blogs />} />
         <Route path="/blogs/:slug" element={<BlogArticle />} />
         <Route path="/blog-article" element={<BlogAIRex />} />
@@ -214,7 +217,7 @@ function AppContent() {
         <Route path="/daily-quiz" element={<ProtectedRoute><DailyQuiz /></ProtectedRoute>} />
         <Route path="/saved-jobs" element={<ProtectedRoute><SavedJobs /></ProtectedRoute>} />
         <Route path="/recommended-jobs" element={<ProtectedRoute><RecommendedJobsPage /></ProtectedRoute>} />
-        <Route path="/mivites" element={<ProtectedRoute><MIvitesPage /></ProtectedRoute>} />
+        <Route path="/:candidateId/dashboard/mivites" element={<ProtectedRoute><MIvitesPage /></ProtectedRoute>} />
         <Route path="/resume-builder" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
         <Route path="/resume-view" element={<ProtectedRoute><ResumeView /></ProtectedRoute>} />
         <Route path="/profile/resume" element={<ProtectedRoute><ResumeViewer /></ProtectedRoute>} />
@@ -263,6 +266,9 @@ function AppContent() {
         <Route path="/report/resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
         <Route path="/reports-resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
         <Route path="/employers/learning-center" element={<LearningCenter />} />
+
+        {/* --- Catch-All Route --- */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
 
       <DailyQuizNotification
@@ -283,11 +289,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <AppContent />
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

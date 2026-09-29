@@ -2,6 +2,7 @@ const ResdexReportLog = require("../models/ResdexReportLog");
 const UserLoginLog = require("../models/UserLoginLog");
 
 const emailModule = require("../email");
+const { wrapNaukriLayout, escapeHtml } = require("../email/templates/layouts");
 const logger = require("../config/logger");
 const XLSX = require("xlsx");
 
@@ -615,29 +616,38 @@ async function sendResdexReportEmail({
   const excelBuffer = buildResdexReportExcel({ headers, rows, tab, period, start, end, companyName });
   const subject = `${companyName}: Your Resdex ${tabTitle} Report (${dateRangeStr})`;
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h2 style="color: #002366; margin-bottom: 8px;">Resdex ${tabTitle} Report</h2>
-      <p style="color: #64748b; font-size: 14px; margin-top: 0;">Period: <strong>${dateRangeStr}</strong> (${period.toUpperCase()})</p>
+  const content = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 24px 28px;">
+          <p style="margin: 0 0 10px 0; font-size: 13px; color: #2563eb; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;">
+            Scheduled Resdex Reporting &bull; ${escapeHtml(period.toUpperCase())}
+          </p>
+          <div style="font-size: 40px; line-height: 20px; font-weight: 700; color: #f59e0b; font-family: Georgia, serif; margin-bottom: 8px;">&ldquo;</div>
+          <h2 style="margin: 0 0 10px 0; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.4;">Resdex ${escapeHtml(tabTitle)} Report</h2>
+          <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">Period: <strong>${escapeHtml(dateRangeStr)}</strong> (${escapeHtml(period.toUpperCase())})</p>
+          <p style="margin: 0 0 16px 0; font-size: 15px; color: #475569; line-height: 1.6;">
+            Hello,<br />Please find attached your Resdex <strong>${escapeHtml(tabTitle)}</strong> report for <strong>${escapeHtml(companyName)}</strong>.
+          </p>
 
-      <p>Hello,</p>
-      <p>Please find attached your Resdex <strong>${tabTitle}</strong> report for <strong>${companyName}</strong>.</p>
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <h3 style="margin-top: 0; font-size: 15px; color: #334155; margin-bottom: 8px;">Overview</h3>
+            <p style="font-size: 14px; margin: 0; color: #64748b;">Total Records: <strong style="color: #0f172a;">${rows.length}</strong></p>
+          </div>
 
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-        <h3 style="margin-top: 0; font-size: 15px; color: #334155;">Overview</h3>
-        <p style="font-size: 14px; margin: 0;">Total Records: <strong>${rows.length}</strong></p>
-      </div>
-
-      <p style="font-size: 13px; color: #64748b;">
-        The detailed breakdown is available in the attached Excel file. You can open it directly in Microsoft Excel or Google Sheets.
-      </p>
-
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-      <p style="font-size: 12px; color: #94a3b8;">
-        This automated email was sent by Maven Jobs according to your scheduled Resdex reporting preferences.
-      </p>
-    </div>
+          <p style="font-size: 13px; color: #64748b; margin: 0; line-height: 1.5;">
+            The detailed breakdown is available in the attached Excel file. You can open it directly in Microsoft Excel or Google Sheets.
+          </p>
+        </td>
+      </tr>
+    </table>
   `;
+
+  const html = wrapNaukriLayout(content, {
+    title: subject,
+    showFeatureGrid: false,
+    showAppBanner: true,
+  });
 
   const text = `Resdex ${tabTitle} Report for ${companyName}\nPeriod: ${dateRangeStr}\nTotal Records: ${rows.length}\n\nPlease review the attached Excel report.`;
 

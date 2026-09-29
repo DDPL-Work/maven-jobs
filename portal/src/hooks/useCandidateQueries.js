@@ -84,13 +84,17 @@ export function useCandidateApplications(userId, enabled) {
 }
 
 export function useCandidateNotifications(userId, enabled) {
+  const isEnabled = typeof enabled === "boolean" ? enabled : (typeof userId === "boolean" ? userId : !!userId);
+  const resolvedKey = typeof userId === "string" ? userId : (userId && typeof userId === "object" && (userId._id || userId.id)) || "current";
+
   return useQuery({
-    queryKey: queryKeys.candidate.notifications(userId),
+    queryKey: queryKeys.candidate.notifications(resolvedKey),
     queryFn: async () => {
       const res = await authService.getCandidateNotifications();
-      return Array.isArray(res?.data) ? res.data : [];
+      const list = res?.data?.notifications || res?.data || res?.notifications || (Array.isArray(res) ? res : []);
+      return Array.isArray(list) ? list : [];
     },
-    enabled,
+    enabled: isEnabled,
     staleTime: 30 * 1000,
     gcTime: 60 * 1000,
   });

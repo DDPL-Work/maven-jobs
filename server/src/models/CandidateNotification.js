@@ -36,7 +36,7 @@ const candidateNotificationSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["APPLICATION", "JOB_ALERT", "SYSTEM", "CAMPAIGN", "CHAT"],
+      enum: ["APPLICATION", "JOB_ALERT", "SYSTEM", "CAMPAIGN", "CHAT", "INTERVIEW", "OFFER", "INVITATION"],
       default: "SYSTEM",
     },
     status: {

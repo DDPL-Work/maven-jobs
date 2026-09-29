@@ -4,6 +4,7 @@ const Company = require("../models/Company");
 const CompanySubUser = require("../models/CompanySubUser");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const notificationService = require("../services/notification.service");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -13,6 +14,7 @@ const createHttpError = (statusCode, message) => {
 
 const smsService = require("../services/sms.service");
 const emailService = require("../services/email.service");
+const { buildOTPHtml } = require("../email/templates/layouts");
 const LoginOTP = require("../models/LoginOTP");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
@@ -129,6 +131,26 @@ exports.createUser = asyncHandler(async (req, res) => {
       resdex,
     },
   });
+
+  // Notify company admin of new team member
+  notificationService.sendCompanyNotification({
+    companyId,
+    recipientUserId: createdBy,
+    title: "New Team Member Added",
+    message: `${newUser.name} has been added as a Recruiter.`,
+    category: "TEAM",
+    actionUrl: "/user-management",
+  }).catch(() => {});
+
+  // Notify new recruiter
+  notificationService.sendRecruiterNotification({
+    companyId,
+    recruiterUserId: newUser._id,
+    title: "Welcome to the Team",
+    message: "You have been added to the recruiting team on MavenJobs.",
+    category: "TEAM",
+    actionUrl: "/employer-dashboard",
+  }).catch(() => {});
 
   res.status(201).json({
     success: true,
@@ -428,15 +450,12 @@ exports.sendDomainOtp = asyncHandler(async (req, res) => {
     const sessionId = "email_" + uuidv4();
 
     // Send email using email service
-    const html = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-        <h2 style="color: #0284c7;">Domain Verification OTP</h2>
-        <p>You requested to add a new allowed domain to your Maven company profile.</p>
-        <p>Your one-time password is:</p>
-        <h1 style="font-size: 32px; letter-spacing: 4px; background: #f0f9ff; padding: 16px; text-align: center; border-radius: 8px;">${otp}</h1>
-        <p style="font-size: 12px; color: #64748b; margin-top: 24px;">If you did not request this, please ignore this email.</p>
-      </div>
-    `;
+    const html = buildOTPHtml({
+      name: company.name || "Employer",
+      otp,
+      purpose: "domain verification",
+      expiryMinutes: 10,
+    });
 
     const emailResult = await emailService.sendEmail({
       to: company.email,

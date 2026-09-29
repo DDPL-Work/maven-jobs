@@ -33,7 +33,11 @@ export default function CrmHeader({ toggleSidebar }) {
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="relative rounded-2xl border border-slate-200 p-2.5 text-slate-700 transition-all duration-200 hover:border-lime-300 hover:bg-lime-50 hover:text-[#163060]">
+        <button
+          onClick={() => navigate("/crm/notifications")}
+          className="relative rounded-2xl border border-slate-200 p-2.5 text-slate-700 transition-all duration-200 hover:border-lime-300 hover:bg-lime-50 hover:text-[#163060]"
+          title="Notifications"
+        >
           <LuBell size={18} />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" />
         </button>

@@ -246,6 +246,8 @@ const formatPublicJob = (job, reviewMap = new Map()) => {
     salaryMax: Number(job.salaryMax || 0),
     summary: job.summary || "",
     description: job.description || "",
+    responsibilities: job.responsibilities || "",
+    qualifications: job.qualifications || "",
     externalLink: job.externalLink || "",
     skills: Array.isArray(job.skills) ? job.skills : [],
     deadline: job.deadline || null,

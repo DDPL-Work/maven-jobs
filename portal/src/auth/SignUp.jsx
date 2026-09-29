@@ -22,7 +22,6 @@ import mavenLogo from "../../assets/maven-logo-BdiSsfJk.svg";
 import "./AuthModals.css";
 
 import { useAuth } from "../AuthContext";
-import { Link } from "react-router-dom";
 
 export default function SignUp({ isOpen, onClose, openLogin }) {
   const { register, loginWithGoogle } = useAuth();
@@ -433,9 +432,9 @@ export default function SignUp({ isOpen, onClose, openLogin }) {
               {step === 2 && (
                 <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "8px", lineHeight: "1.4" }}>
                   By clicking Register, you agree to the{" "}
-                  <Link to="/maven-jobs/terms" target="_blank" style={{ color: "#143f86", textDecoration: "underline" }}>Terms and Conditions</Link>
+                  <a href="/maven-jobs/terms" target="_blank" rel="noopener noreferrer" style={{ color: "#143f86", textDecoration: "underline" }}>Terms and Conditions</a>
                   {" "}&{" "}
-                  <Link to="/maven-jobs/privacy" target="_blank" style={{ color: "#143f86", textDecoration: "underline" }}>Privacy Policy</Link>
+                  <a href="/maven-jobs/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#143f86", textDecoration: "underline" }}>Privacy Policy</a>
                   {" "}of MavenJobs.
                 </div>
               )}

@@ -311,22 +311,26 @@ export function DefaultExtraSections({ resume, isDark, skipProjects, formatting 
         <div style={secStyle}>
           <SectionHead title="Languages" style={{ marginBottom: 6 }} />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {resume.languages.map((l) => (
-              <span
-                key={l}
-                style={{
-                  fontSize: 9,
-                  color: col,
-                  background: isDark
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.03)",
-                  padding: "2px 8px",
-                  borderRadius: 4,
-                }}
-              >
-                {l}
-              </span>
-            ))}
+            {resume.languages.map((l, i) => {
+              const text = typeof l === 'object' ? l.name : l;
+              const prof = typeof l === 'object' && l.proficiency ? ` (${l.proficiency})` : '';
+              return (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 9,
+                    color: col,
+                    background: isDark
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.03)",
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                  }}
+                >
+                  {text}{prof}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -334,22 +338,25 @@ export function DefaultExtraSections({ resume, isDark, skipProjects, formatting 
         <div style={secStyle}>
           <SectionHead title="Hobbies" style={{ marginBottom: 6 }} />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-            {resume.hobbies.map((h) => (
-              <span
-                key={h}
-                style={{
-                  fontSize: 9,
-                  color: col,
-                  background: isDark
-                    ? "rgba(255,255,255,0.05)"
-                    : "rgba(0,0,0,0.03)",
-                  padding: "2px 8px",
-                  borderRadius: 4,
-                }}
-              >
-                {h}
-              </span>
-            ))}
+            {resume.hobbies.map((h, i) => {
+              const text = typeof h === 'object' ? (h.name || h.title || '') : h;
+              return (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 9,
+                    color: col,
+                    background: isDark
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.03)",
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                  }}
+                >
+                  {text}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
