@@ -624,35 +624,16 @@ export default function EmployerHeader({
                 }} />
               </button>
 
-              {/* Left-side Sliding Profile Sidebar */}
+              {/* Profile Sidebar */}
               {showProfileSidebar && (
                 <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    zIndex: 99999,
-                    background: "rgba(15, 23, 42, 0.45)",
-                    backdropFilter: "blur(4px)",
-                    WebkitBackdropFilter: "blur(4px)",
-                    display: "flex",
-                    justifyContent: "flex-start",
-                  }}
+                  className="ep-profile-sidebar-backdrop"
                   onClick={() => setShowProfileSidebar(false)}
                 >
                   <div
                     ref={profileSidebarRef}
+                    className="ep-profile-sidebar-panel"
                     onClick={(e) => e.stopPropagation()}
-                    style={{
-                      width: "100%",
-                      maxWidth: 340,
-                      height: "100vh",
-                      background: "#ffffff",
-                      boxShadow: "8px 0 32px rgba(15, 23, 42, 0.16)",
-                      display: "flex",
-                      flexDirection: "column",
-                      overflowY: "auto",
-                      animation: "epSlideRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
-                    }}
                   >
                     {/* Top Header of Sidebar */}
                     <div style={{
@@ -2306,8 +2287,49 @@ export default function EmployerHeader({
             to { opacity: 1; transform: translateY(0); }
           }
           
+          .ep-profile-sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: flex-start;
+          }
+
+          .ep-profile-sidebar-panel {
+            width: 100%;
+            max-width: 340px;
+            height: 100vh;
+            background: #ffffff;
+            box-shadow: 8px 0 32px rgba(15, 23, 42, 0.16);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            animation: epSlideRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          /* Full screen / Desktop: Open Profile Sidebar on the RIGHT side */
+          @media (min-width: 1024px) {
+            .ep-profile-sidebar-backdrop {
+              justify-content: flex-end;
+            }
+            .ep-profile-sidebar-panel {
+              box-shadow: -8px 0 32px rgba(15, 23, 42, 0.16);
+              border-left: 1px solid #e2e8f0;
+              border-right: none;
+              animation: epSlideLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+          }
+
           @keyframes epSlideRight {
             from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+          }
+
+          @keyframes epSlideLeft {
+            from { transform: translateX(100%); }
             to { transform: translateX(0); }
           }
 

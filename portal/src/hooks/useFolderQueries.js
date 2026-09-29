@@ -125,3 +125,19 @@ export function useUpdateFolderCandidate() {
     onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: folderKeys.detail(vars.folderId) }),
   });
 }
+
+export function useAddCandidateComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ folderId, candidateId, text }) => authService.addCandidateComment(folderId, candidateId, text),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: folderKeys.detail(vars.folderId) }),
+  });
+}
+
+export function useDeleteCandidateComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ folderId, candidateId, commentId }) => authService.deleteCandidateComment(folderId, candidateId, commentId),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: folderKeys.detail(vars.folderId) }),
+  });
+}

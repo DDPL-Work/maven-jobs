@@ -135,7 +135,10 @@ router.delete("/folders/:id", folderController.deleteFolder);
 router.post("/folders/:id/candidates", folderController.addCandidate);
 router.delete("/folders/:id/candidates/:candidateId", folderController.removeCandidate);
 router.patch("/folders/:id/candidates/:candidateId", folderController.updateCandidate);
+router.post("/folders/:id/candidates/:candidateId/comments", folderController.addCandidateComment);
+router.delete("/folders/:id/candidates/:candidateId/comments/:commentId", folderController.deleteCandidateComment);
 router.post("/folders/:id/candidates/bulk-remove", folderController.bulkRemoveCandidates);
+router.post("/folders/:id/test-alert", folderController.sendTestAlert);
 
 // Credits — Resume Search & Download Credits
 router.get("/credits", creditController.getCredits);

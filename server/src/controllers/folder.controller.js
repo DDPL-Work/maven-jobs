@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Folder = require("../models/Folder");
 const FolderCandidate = require("../models/FolderCandidate");
 const CandidateProfile = require("../models/CandidateProfile");
@@ -24,6 +25,7 @@ exports.getContactedCandidates = asyncHandler(async (req, res) => {
 
   const validFolders = await Folder.find({
     companyId,
+    folderType: { $ne: "REQUIREMENT" },
     $or: [{ employerId }, { sharedWith: req.user.email }],
   })
     .select("_id name")
@@ -143,8 +145,13 @@ exports.listFolders = asyncHandler(async (req, res) => {
     query.$or = [{ companyId, employerId }, { sharedWith: req.user.email }];
   }
 
-  if (folderType) {
-    query.folderType = folderType;
+  if (folderType === "REQUIREMENT") {
+    query.folderType = "REQUIREMENT";
+  } else if (folderType === "ALL") {
+    // Explicitly allow all types
+  } else {
+    // Default to standard folders only (exclude REQUIREMENT)
+    query.folderType = { $ne: "REQUIREMENT" };
   }
 
   if (search) {
@@ -258,7 +265,9 @@ exports.getFolder = asyncHandler(async (req, res) => {
       preferredLocations: profile.preferredLocations || [],
       notes: fc.notes || "",
       tags: fc.tags || [],
+      tag: fc.tag || "prospect",
       callStatus: fc.callStatus || "",
+      comments: fc.comments || [],
       addedAt: fc.createdAt,
     };
   });
@@ -271,8 +280,20 @@ exports.getFolder = asyncHandler(async (req, res) => {
 
 // POST /folders
 exports.createFolder = asyncHandler(async (req, res) => {
-  const { name, description, icon, color, isPublic, sharedWith, folderType } =
-    req.body;
+  const {
+    name,
+    description,
+    icon,
+    color,
+    isPublic,
+    sharedWith,
+    folderType,
+    jobTitle,
+    status,
+    criteria,
+    alerts,
+    isCompanyShared,
+  } = req.body;
   const companyId = req.company._id;
   const employerId = req.user._id;
 
@@ -301,9 +322,18 @@ exports.createFolder = asyncHandler(async (req, res) => {
     name: trimmedName,
     slug,
     description: String(description || "").trim(),
-    icon: icon || "folder",
+    icon: icon || (fType === "REQUIREMENT" ? "briefcase" : "folder"),
     color: color || "#002366",
     isPublic: Boolean(isPublic),
+    isCompanyShared: isCompanyShared !== undefined ? Boolean(isCompanyShared) : true,
+    jobTitle: String(jobTitle || criteria?.jobTitle || trimmedName).trim(),
+    status: status === "closed" ? "closed" : "open",
+    criteria: criteria || {},
+    alerts: alerts || {
+      enabled: true,
+      frequency: "DAILY",
+      recipients: [req.user.email],
+    },
     sharedWith: Array.isArray(sharedWith)
       ? sharedWith
       : sharedWith
@@ -321,8 +351,8 @@ exports.createFolder = asyncHandler(async (req, res) => {
     companyId,
     recruiter: req.user,
     action: "FOLDER_CREATED",
-    text: `Created folder **${trimmedName}**`,
-    metadata: { folderId: folder._id, folderName: trimmedName },
+    text: `Created ${fType === "REQUIREMENT" ? "requirement" : "folder"} **${trimmedName}**`,
+    metadata: { folderId: folder._id, folderName: trimmedName, folderType: fType },
   });
 
   res.status(201).json({ success: true, data: folder });
@@ -330,7 +360,19 @@ exports.createFolder = asyncHandler(async (req, res) => {
 
 // PATCH /folders/:id
 exports.updateFolder = asyncHandler(async (req, res) => {
-  const { name, description, icon, color, isPublic, sharedWith } = req.body;
+  const {
+    name,
+    description,
+    icon,
+    color,
+    isPublic,
+    sharedWith,
+    jobTitle,
+    status,
+    criteria,
+    alerts,
+    isCompanyShared,
+  } = req.body;
   const folder = await Folder.findOne({
     _id: req.params.id,
     $or: [
@@ -361,6 +403,11 @@ exports.updateFolder = asyncHandler(async (req, res) => {
   if (icon !== undefined) folder.icon = icon;
   if (color !== undefined) folder.color = color;
   if (isPublic !== undefined) folder.isPublic = Boolean(isPublic);
+  if (isCompanyShared !== undefined) folder.isCompanyShared = Boolean(isCompanyShared);
+  if (jobTitle !== undefined) folder.jobTitle = String(jobTitle).trim();
+  if (status !== undefined) folder.status = status === "closed" ? "closed" : "open";
+  if (criteria !== undefined) folder.criteria = { ...folder.criteria, ...criteria };
+  if (alerts !== undefined) folder.alerts = { ...folder.alerts, ...alerts };
   if (sharedWith !== undefined) {
     folder.sharedWith = Array.isArray(sharedWith) ? sharedWith : [sharedWith];
   }
@@ -472,7 +519,7 @@ exports.removeCandidate = asyncHandler(async (req, res) => {
 
 // PATCH /folders/:id/candidates/:candidateId
 exports.updateCandidate = asyncHandler(async (req, res) => {
-  const { notes, tags, callStatus } = req.body;
+  const { notes, tags, callStatus, tag } = req.body;
 
   const fc = await FolderCandidate.findOne({
     folderId: req.params.id,
@@ -487,6 +534,7 @@ exports.updateCandidate = asyncHandler(async (req, res) => {
       ? tags.map((t) => String(t).trim()).filter(Boolean)
       : [];
   if (callStatus !== undefined) fc.callStatus = String(callStatus).trim();
+  if (tag !== undefined) fc.tag = String(tag).trim();
 
   await fc.save();
 
@@ -497,6 +545,18 @@ exports.updateCandidate = asyncHandler(async (req, res) => {
       callStatus: {
         $in: ["Called", "Messaged", "Not picked", "Not reachable"],
       },
+    });
+    folder.prospectCount = await FolderCandidate.countDocuments({
+      folderId: folder._id,
+      tag: "prospect",
+    });
+    folder.shortlistedCount = await FolderCandidate.countDocuments({
+      folderId: folder._id,
+      tag: "shortlisted",
+    });
+    folder.rejectedCount = await FolderCandidate.countDocuments({
+      folderId: folder._id,
+      tag: "rejected",
     });
     folder.lastActivityAt = new Date();
     await folder.save();
@@ -714,4 +774,105 @@ exports.duplicateFolder = asyncHandler(async (req, res) => {
   }
 
   res.status(201).json({ success: true, data: folder });
+});
+
+// POST /folders/:id/test-alert
+exports.sendTestAlert = asyncHandler(async (req, res) => {
+  const requirementAlertService = require("../services/requirement-alert-email.service");
+  const result = await requirementAlertService.sendTestRequirementAlert(req.params.id, req.user);
+  res.json({ success: true, message: "Test match alert email sent successfully", data: result });
+});
+
+// POST /folders/:id/candidates/:candidateId/comments
+exports.addCandidateComment = asyncHandler(async (req, res) => {
+  const { text } = req.body;
+  if (!text || !String(text).trim()) {
+    throw createHttpError(400, "Comment text is required");
+  }
+
+  const folder = await Folder.findOne({
+    _id: req.params.id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email },
+    ],
+  });
+  if (!folder) throw createHttpError(404, "Folder not found");
+
+  const candidateIdParam = req.params.candidateId;
+  const isObjectId = mongoose.Types.ObjectId.isValid(candidateIdParam);
+  const fc = await FolderCandidate.findOne({
+    folderId: folder._id,
+    $or: [
+      { candidateId: candidateIdParam },
+      ...(isObjectId ? [{ _id: candidateIdParam }] : []),
+    ],
+  });
+
+  if (!fc) throw createHttpError(404, "Candidate not found in this folder");
+
+  const authorName =
+    req.user.name ||
+    req.user.fullName ||
+    (req.user.firstName ? `${req.user.firstName} ${req.user.lastName || ""}`.trim() : null) ||
+    req.user.email ||
+    "Recruiter";
+
+  const commentObj = {
+    text: String(text).trim(),
+    authorId: req.user._id,
+    authorName,
+    createdAt: new Date(),
+  };
+
+  if (!Array.isArray(fc.comments)) {
+    fc.comments = [];
+  }
+  fc.comments.push(commentObj);
+  await fc.save();
+
+  folder.lastActivityAt = new Date();
+  await folder.save();
+
+  res.status(201).json({
+    success: true,
+    message: "Comment added successfully",
+    data: fc.comments,
+    comment: fc.comments[fc.comments.length - 1],
+  });
+});
+
+// DELETE /folders/:id/candidates/:candidateId/comments/:commentId
+exports.deleteCandidateComment = asyncHandler(async (req, res) => {
+  const folder = await Folder.findOne({
+    _id: req.params.id,
+    $or: [
+      { companyId: req.company._id, employerId: req.user._id },
+      { sharedWith: req.user.email },
+    ],
+  });
+  if (!folder) throw createHttpError(404, "Folder not found");
+
+  const candidateIdParam = req.params.candidateId;
+  const isObjectId = mongoose.Types.ObjectId.isValid(candidateIdParam);
+  const fc = await FolderCandidate.findOne({
+    folderId: folder._id,
+    $or: [
+      { candidateId: candidateIdParam },
+      ...(isObjectId ? [{ _id: candidateIdParam }] : []),
+    ],
+  });
+
+  if (!fc) throw createHttpError(404, "Candidate not found in this folder");
+
+  fc.comments = (fc.comments || []).filter(
+    (c) => String(c._id) !== String(req.params.commentId)
+  );
+  await fc.save();
+
+  res.json({
+    success: true,
+    message: "Comment deleted successfully",
+    data: fc.comments,
+  });
 });

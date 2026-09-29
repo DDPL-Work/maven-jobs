@@ -193,7 +193,8 @@ export default function SearchResume() {
   }, []);
 
   useEffect(() => {
-    if (!locationStateProcessed.current) {
+    const stateSignature = (location.key || '') + '_' + JSON.stringify(location.state || {}) + '_' + location.search;
+    if (locationStateProcessed.current !== stateSignature) {
       let handled = false;
       if (location.state?.preSelectedCandidate) {
         handled = true;
@@ -208,22 +209,49 @@ export default function SearchResume() {
       }
       if (location.state?.savedFilters) {
         handled = true;
-        const newFilters = { ...filters, ...location.state.savedFilters };
-        setFilters(newFilters);
+        const sf = location.state.savedFilters;
+        const mappedFilters = {
+          ...filters,
+          ...sf,
+          keyword: sf.keyword || sf.jobTitle || '',
+          skills: Array.isArray(sf.skills) ? sf.skills : (typeof sf.skills === 'string' ? sf.skills.split(',').map(s => s.trim()).filter(Boolean) : []),
+          designation: sf.designation || sf.jobTitle || '',
+          minExperience: sf.minExperience !== undefined ? sf.minExperience : (sf.minExp !== undefined ? sf.minExp : ''),
+          maxExperience: sf.maxExperience !== undefined ? sf.maxExperience : (sf.maxExp !== undefined ? sf.maxExp : ''),
+          currentSalaryMin: sf.currentSalaryMin !== undefined ? sf.currentSalaryMin : (sf.minSalary !== undefined ? sf.minSalary : ''),
+          currentSalaryMax: sf.currentSalaryMax !== undefined ? sf.currentSalaryMax : (sf.maxSalary !== undefined ? sf.maxSalary : ''),
+          currentCity: Array.isArray(sf.currentCity) ? sf.currentCity : (Array.isArray(sf.locations) ? sf.locations : (typeof sf.location === 'string' ? sf.location.split(',').map(s => s.trim()).filter(Boolean) : [])),
+          noticePeriod: Array.isArray(sf.noticePeriod) ? sf.noticePeriod : (typeof sf.noticePeriod === 'string' ? [sf.noticePeriod] : []),
+          ug: sf.ug || sf.education || '',
+          industry: sf.industry || '',
+        };
+        setFilters(mappedFilters);
         if (location.state.searchName) {
           setSearchName(location.state.searchName);
         }
-        setTimeout(() => fetchCandidates(1, newFilters), 0);
+        setActiveSections(prev => {
+          const sections = new Set(prev);
+          if (mappedFilters.keyword || mappedFilters.designation) sections.add("basic");
+          if (mappedFilters.skills?.length > 0) sections.add("skills");
+          if (mappedFilters.minExperience || mappedFilters.maxExperience) sections.add("experience");
+          if (mappedFilters.currentCity?.length > 0) sections.add("location");
+          if (mappedFilters.currentSalaryMin || mappedFilters.currentSalaryMax) sections.add("salary");
+          if (mappedFilters.noticePeriod?.length > 0) sections.add("notice");
+          if (mappedFilters.ug || mappedFilters.pg) sections.add("education");
+          if (mappedFilters.industry || mappedFilters.department || mappedFilters.role) sections.add("employment");
+          return Array.from(sections);
+        });
+        setTimeout(() => fetchCandidates(1, mappedFilters), 0);
       } else if (window.__AUTO_SEARCH_RESDEX__) {
         handled = true;
         delete window.__AUTO_SEARCH_RESDEX__;
         setTimeout(() => fetchCandidates(1, filters), 0);
       }
       if (handled) {
-        locationStateProcessed.current = true;
+        locationStateProcessed.current = stateSignature;
       }
     }
-  }, [location.state, location.search]);
+  }, [location.state, location.search, location.key]);
 
   const toggleSection = (id) => {
     setActiveSections(prev =>
@@ -451,6 +479,21 @@ export default function SearchResume() {
               <div>
                 <h1 className="sr-title">Search Resume</h1>
                 <p className="sr-subtitle">Find the best candidates using advanced AI-powered search filters.</p>
+                {(location.state?.requirementId || location.state?.searchName) && (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 12px',
+                    borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe',
+                    color: '#1d4ed8', fontSize: '0.82rem', fontWeight: 600, marginTop: 8
+                  }}>
+                    <span>Requirement: <strong>{searchName || location.state?.searchName}</strong></span>
+                    {location.state?.requirementId && (
+                      <button type="button" onClick={() => navigate(`/employer-dashboard/folders/${location.state.requirementId}`)}
+                        style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: '0.82rem', fontWeight: 700 }}>
+                        View Folder
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="sr-header-actions">
                 <button className="sr-btn sr-btn-ghost" onClick={() => setSaveSearchModal(true)}>

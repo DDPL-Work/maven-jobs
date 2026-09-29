@@ -17,7 +17,11 @@ import CollaborateModal from './components/CollaborateModal';
 import notAllowedImg from '../../../../../assets/notAllowed.png';
 import './ManageJobsResponses.css';
 
-
+const SORT_OPTIONS = [
+  { value: 'date-desc', label: 'Posted/sent date' },
+  { value: 'responses-desc', label: 'Total Responses (High to Low)' },
+  { value: 'title-asc', label: 'Job Title (A-Z)' },
+];
 
 const generateFiltersFromData = (dataList) => {
   const statusesMap = {};
@@ -186,11 +190,17 @@ export default function ManageJobsResponses() {
 
   // Sorting and Pagination state
   const [sortBy, setSortBy] = useState('date-desc');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const sortRef = useRef(null);
   const [pageSize, setPageSize] = useState(60);
   const [showPageSizeMenu, setShowPageSizeMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+
+  const currentSortLabel = useMemo(() => {
+    return SORT_OPTIONS.find((opt) => opt.value === sortBy)?.label || 'Posted/sent date';
+  }, [sortBy]);
 
   // Header "Post Job" Dropdown
   const [showPostJobMenu, setShowPostJobMenu] = useState(false);
@@ -234,6 +244,9 @@ export default function ManageJobsResponses() {
       }
       if (pageSizeRef.current && !pageSizeRef.current.contains(e.target)) {
         setShowPageSizeMenu(false);
+      }
+      if (sortRef.current && !sortRef.current.contains(e.target)) {
+        setShowSortMenu(false);
       }
       if (!e.target.closest('.mjr-job-menu-wrapper')) {
         setOpenRowMenuId(null);
@@ -438,6 +451,35 @@ export default function ManageJobsResponses() {
     );
   }, [selectedStatuses, selectedCategories, selectedPosters, searchTerm]);
 
+  // Mobile / Tablet Filter Drawer State
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (searchTerm.trim()) count++;
+    count += selectedStatuses.length;
+    count += selectedCategories.length;
+    count += selectedPosters.length;
+    return count;
+  }, [searchTerm, selectedStatuses, selectedCategories, selectedPosters]);
+
+  // Close mobile filter when tab changes
+  useEffect(() => {
+    setIsMobileFilterOpen(false);
+  }, [activeTab]);
+
+  // Prevent background scroll when mobile filter sidebar is open
+  useEffect(() => {
+    if (isMobileFilterOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileFilterOpen]);
+
   // Filtered poster list for accordion search
   const displayedPosters = useMemo(() => {
     if (!filtersData.posters) return [];
@@ -493,39 +535,42 @@ export default function ManageJobsResponses() {
 
             {/* Post Job Dropdown Menu */}
             {showPostJobMenu && (
-              <div className="mjr-post-job-menu">
+              <div className="mjr-post-job-menu" role="menu">
                 <button
                   type="button"
                   className="mjr-post-job-item"
+                  role="menuitem"
                   onClick={() => {
                     setShowPostJobMenu(false);
                     navigate('/post-job?type=hot');
                   }}
                 >
-                  <span>Hot Vacancy</span>
+                  <span className="mjr-post-job-item-title">Hot Vacancy</span>
                   <span className="mjr-active-badge">Active</span>
                 </button>
 
                 <button
                   type="button"
                   className="mjr-post-job-item"
+                  role="menuitem"
                   onClick={() => {
                     setShowPostJobMenu(false);
                     navigate('/post-job?type=management');
                   }}
                 >
-                  <span>SMB Job</span>
+                  <span className="mjr-post-job-item-title">SMB Job</span>
                 </button>
 
                 <button
                   type="button"
                   className="mjr-post-job-item"
+                  role="menuitem"
                   onClick={() => {
                     setShowPostJobMenu(false);
                     navigate('/post-job?type=internship');
                   }}
                 >
-                  <span>Internship</span>
+                  <span className="mjr-post-job-item-title">Internship</span>
                   <span className="mjr-active-badge">Active</span>
                 </button>
               </div>
@@ -554,79 +599,95 @@ export default function ManageJobsResponses() {
 
           {activeTab === 'all' && (
             <div className="mjr-tabs-right">
-              {/* Show items per page */}
-              <div className="mjr-page-size-selector" ref={pageSizeRef}>
-                <span>Show</span>
-                <button
-                  type="button"
-                  className="mjr-page-size-btn"
-                  onClick={() => setShowPageSizeMenu((prev) => !prev)}
-                >
-                  <span>{pageSize}</span>
-                  <FiChevronDown size={14} />
-                </button>
-
-                {showPageSizeMenu && (
-                  <div className="mjr-page-size-menu">
-                    {[20, 40, 60, 80, 100].map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className={`mjr-page-size-item ${pageSize === size ? 'selected' : ''}`}
-                        onClick={() => {
-                          setPageSize(size);
-                          setCurrentPage(1);
-                          setShowPageSizeMenu(false);
-                        }}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
+              {/* Filter Button on left side alone for mobile & tablet */}
+              <button
+                type="button"
+                className={`mjr-mobile-filter-trigger-btn ${activeFilterCount > 0 ? 'has-filters' : ''}`}
+                onClick={() => setIsMobileFilterOpen(true)}
+                title="Open filters"
+              >
+                <FiFilter size={15} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="mjr-filter-count-badge">{activeFilterCount}</span>
                 )}
-              </div>
+              </button>
 
-              {/* Pagination arrows */}
-              <div className="mjr-pagination-nav">
-                <button
-                  type="button"
-                  className="mjr-page-arrow"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage <= 1 || loadingJobs}
-                  title="First Page"
-                >
-                  <FiChevronsLeft size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="mjr-page-arrow"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage <= 1 || loadingJobs}
-                  title="Previous Page"
-                >
-                  <FiChevronLeft size={16} />
-                </button>
+              <div className="mjr-pagination-wrapper">
+                {/* Show items per page (visible on desktop) */}
+                <div className="mjr-page-size-selector" ref={pageSizeRef}>
+                  <span className="mjr-page-size-label">Show</span>
+                  <button
+                    type="button"
+                    className="mjr-page-size-btn"
+                    onClick={() => setShowPageSizeMenu((prev) => !prev)}
+                  >
+                    <span>{pageSize}</span>
+                    <FiChevronDown size={14} />
+                  </button>
 
-                <span className="mjr-page-box">Page {currentPage} of {Math.max(1, totalPages)}</span>
+                  {showPageSizeMenu && (
+                    <div className="mjr-page-size-menu">
+                      {[20, 40, 60, 80, 100].map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          className={`mjr-page-size-item ${pageSize === size ? 'selected' : ''}`}
+                          onClick={() => {
+                            setPageSize(size);
+                            setCurrentPage(1);
+                            setShowPageSizeMenu(false);
+                          }}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                <button
-                  type="button"
-                  className="mjr-page-arrow"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage >= totalPages || loadingJobs}
-                  title="Next Page"
-                >
-                  <FiChevronRight size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="mjr-page-arrow"
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage >= totalPages || loadingJobs}
-                  title="Last Page"
-                >
-                  <FiChevronsRight size={16} />
-                </button>
+                {/* Pagination arrows */}
+                <div className="mjr-pagination-nav">
+                  <button
+                    type="button"
+                    className="mjr-page-arrow mjr-page-first"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage <= 1 || loadingJobs}
+                    title="First Page"
+                  >
+                    <FiChevronsLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="mjr-page-arrow"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1 || loadingJobs}
+                    title="Previous Page"
+                  >
+                    <FiChevronLeft size={16} />
+                  </button>
+
+                  <span className="mjr-page-box">Page {currentPage} of {Math.max(1, totalPages)}</span>
+
+                  <button
+                    type="button"
+                    className="mjr-page-arrow"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages || loadingJobs}
+                    title="Next Page"
+                  >
+                    <FiChevronRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="mjr-page-arrow mjr-page-last"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage >= totalPages || loadingJobs}
+                    title="Last Page"
+                  >
+                    <FiChevronsRight size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -635,161 +696,197 @@ export default function ManageJobsResponses() {
         {/* Content Area */}
         {activeTab === 'all' ? (
           <div className="mjr-layout-grid">
-            {/* Left Sidebar Filters */}
-            <aside className="mjr-sidebar">
+            {/* Backdrop overlay for mobile/tablet filter sidebar */}
+            <div
+              className={`mjr-sidebar-backdrop ${isMobileFilterOpen ? 'open' : ''}`}
+              onClick={() => setIsMobileFilterOpen(false)}
+            />
+
+            {/* Left Sidebar Filters (Slide-out drawer on mobile/tablet) */}
+            <aside className={`mjr-sidebar ${isMobileFilterOpen ? 'open' : ''}`}>
               <div className="mjr-sidebar-header">
-                <FiFilter size={16} color="#002366" />
-                <span>Filters</span>
-                {isFilterActive && (
+                <div className="mjr-sidebar-header-left">
+                  <FiFilter size={16} color="#002366" />
+                  <span>Filters</span>
+                  {activeFilterCount > 0 && (
+                    <span className="mjr-sidebar-filter-badge">{activeFilterCount}</span>
+                  )}
+                </div>
+
+                <div className="mjr-sidebar-header-right">
+                  {isFilterActive && (
+                    <button
+                      type="button"
+                      className="mjr-clear-filters-btn"
+                      onClick={handleClearFilters}
+                      title="Clear all filters"
+                    >
+                      <FiX size={12} />
+                      Clear
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className="mjr-clear-filters-btn"
-                    onClick={handleClearFilters}
-                    title="Clear all filters"
+                    className="mjr-sidebar-close-btn"
+                    onClick={() => setIsMobileFilterOpen(false)}
+                    title="Close filters"
+                    aria-label="Close filters"
                   >
-                    <FiX size={12} />
-                    Clear
+                    <FiX size={18} />
                   </button>
-                )}
+                </div>
               </div>
 
-              {/* Main Title/Ref Search */}
-              <div className="mjr-search-box">
-                <input
-                  type="text"
-                  className="mjr-search-input"
-                  placeholder="Search by Title/Ref Code/Job ID"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <FiSearch size={15} className="mjr-search-icon" />
-              </div>
+              <div className="mjr-sidebar-body">
+                {/* Main Title/Ref Search */}
+                <div className="mjr-search-box">
+                  <input
+                    type="text"
+                    className="mjr-search-input"
+                    placeholder="Search by Title/Ref Code/Job ID"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <FiSearch size={15} className="mjr-search-icon" />
+                </div>
 
-              {/* Accordion 1: Job Status */}
-              <div className="mjr-filter-group">
-                <button
-                  type="button"
-                  className="mjr-filter-header"
-                  onClick={() => setStatusOpen((prev) => !prev)}
-                >
-                  <span>Job status</span>
-                  {statusOpen ? <FiChevronUp size={15} /> : <FiChevronDown size={15} />}
-                </button>
+                {/* Accordion 1: Job Status */}
+                <div className="mjr-filter-group">
+                  <button
+                    type="button"
+                    className="mjr-filter-header"
+                    onClick={() => setStatusOpen((prev) => !prev)}
+                  >
+                    <span>Job status</span>
+                    {statusOpen ? <FiChevronUp size={15} /> : <FiChevronDown size={15} />}
+                  </button>
 
-                {statusOpen && (
-                  <div className="mjr-filter-list">
-                    {/* All Status option */}
-                    <label className="mjr-filter-item">
-                      <div className="mjr-filter-item-left">
-                        <input
-                          type="checkbox"
-                          className="mjr-filter-checkbox"
-                          checked={selectedStatuses.length === 0}
-                          onChange={() => {
-                            if (selectedStatuses.length > 0) {
-                              // select all → clear filter (show everything)
-                              setSelectedStatuses([]);
-                              setCurrentPage(1);
-                            }
-                            // already all selected → nothing to do
-                          }}
-                        />
-                        <span style={{ fontWeight: 600 }}>All Status</span>
-                      </div>
-                      <span className="mjr-filter-count">{filtersData.totalJobs ?? 0}</span>
-                    </label>
-
-                    {(filtersData.statuses || []).map((s) => (
-                      <label key={s.id} className="mjr-filter-item">
-                        <div className="mjr-filter-item-left">
-                          <input
-                            type="checkbox"
-                            className="mjr-filter-checkbox"
-                            checked={selectedStatuses.includes(s.id)}
-                            onChange={() => toggleStatus(s.id)}
-                          />
-                          <span>{s.label}</span>
-                        </div>
-                        <span className="mjr-filter-count">{s.count ?? 0}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Accordion 2: Category */}
-              <div className="mjr-filter-group">
-                <button
-                  type="button"
-                  className="mjr-filter-header"
-                  onClick={() => setCategoryOpen((prev) => !prev)}
-                >
-                  <span>Category</span>
-                  {categoryOpen ? <FiChevronUp size={15} /> : <FiChevronDown size={15} />}
-                </button>
-
-                {categoryOpen && (
-                  <div className="mjr-filter-list">
-                    {(filtersData.categories || []).map((cat) => (
-                      <label key={cat.id} className="mjr-filter-item">
-                        <div className="mjr-filter-item-left">
-                          <input
-                            type="checkbox"
-                            className="mjr-filter-checkbox"
-                            checked={selectedCategories.includes(cat.id)}
-                            onChange={() => toggleCategory(cat.id)}
-                          />
-                          <span>{cat.label}</span>
-                        </div>
-                        <span className="mjr-filter-count">{cat.count ?? 0}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Accordion 3: Job Posted By */}
-              <div className="mjr-filter-group">
-                <button
-                  type="button"
-                  className="mjr-filter-header"
-                  onClick={() => setPosterOpen((prev) => !prev)}
-                >
-                  <span>Job posted by</span>
-                  {posterOpen ? <FiChevronUp size={15} /> : <FiChevronDown size={15} />}
-                </button>
-
-                {posterOpen && (
-                  <div>
-                    <div className="mjr-sub-search-box">
-                      <input
-                        type="text"
-                        className="mjr-sub-search-input"
-                        placeholder="Search by username"
-                        value={userSearchTerm}
-                        onChange={(e) => setUserSearchTerm(e.target.value)}
-                      />
-                      <FiSearch size={13} className="mjr-search-icon" />
-                    </div>
-
+                  {statusOpen && (
                     <div className="mjr-filter-list">
-                      {displayedPosters.map((poster) => (
-                        <label key={poster.id} className="mjr-filter-item">
+                      {/* All Status option */}
+                      <label className="mjr-filter-item">
+                        <div className="mjr-filter-item-left">
+                          <input
+                            type="checkbox"
+                            className="mjr-filter-checkbox"
+                            checked={selectedStatuses.length === 0}
+                            onChange={() => {
+                              if (selectedStatuses.length > 0) {
+                                // select all → clear filter (show everything)
+                                setSelectedStatuses([]);
+                                setCurrentPage(1);
+                              }
+                              // already all selected → nothing to do
+                            }}
+                          />
+                          <span style={{ fontWeight: 600 }}>All Status</span>
+                        </div>
+                        <span className="mjr-filter-count">{filtersData.totalJobs ?? 0}</span>
+                      </label>
+
+                      {(filtersData.statuses || []).map((s) => (
+                        <label key={s.id} className="mjr-filter-item">
                           <div className="mjr-filter-item-left">
                             <input
                               type="checkbox"
                               className="mjr-filter-checkbox"
-                              checked={selectedPosters.includes(poster.id)}
-                              onChange={() => togglePoster(poster.id)}
+                              checked={selectedStatuses.includes(s.id)}
+                              onChange={() => toggleStatus(s.id)}
                             />
-                            <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }} title={poster.label}>{poster.label}</span>
+                            <span>{s.label}</span>
                           </div>
-                          <span className="mjr-filter-count">{poster.count ?? 0}</span>
+                          <span className="mjr-filter-count">{s.count ?? 0}</span>
                         </label>
                       ))}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+
+                {/* Accordion 2: Category */}
+                <div className="mjr-filter-group">
+                  <button
+                    type="button"
+                    className="mjr-filter-header"
+                    onClick={() => setCategoryOpen((prev) => !prev)}
+                  >
+                    <span>Category</span>
+                    {categoryOpen ? <FiChevronUp size={15} /> : <FiChevronDown size={15} />}
+                  </button>
+
+                  {categoryOpen && (
+                    <div className="mjr-filter-list">
+                      {(filtersData.categories || []).map((cat) => (
+                        <label key={cat.id} className="mjr-filter-item">
+                          <div className="mjr-filter-item-left">
+                            <input
+                              type="checkbox"
+                              className="mjr-filter-checkbox"
+                              checked={selectedCategories.includes(cat.id)}
+                              onChange={() => toggleCategory(cat.id)}
+                            />
+                            <span>{cat.label}</span>
+                          </div>
+                          <span className="mjr-filter-count">{cat.count ?? 0}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Accordion 3: Job Posted By */}
+                <div className="mjr-filter-group">
+                  <button
+                    type="button"
+                    className="mjr-filter-header"
+                    onClick={() => setPosterOpen((prev) => !prev)}
+                  >
+                    <span>Job posted by</span>
+                    {posterOpen ? <FiChevronUp size={15} /> : <FiChevronDown size={15} />}
+                  </button>
+
+                  {posterOpen && (
+                    <div>
+                      <div className="mjr-sub-search-box">
+                        <input
+                          type="text"
+                          className="mjr-sub-search-input"
+                          placeholder="Search by username"
+                          value={userSearchTerm}
+                          onChange={(e) => setUserSearchTerm(e.target.value)}
+                        />
+                        <FiSearch size={13} className="mjr-search-icon" />
+                      </div>
+
+                      <div className="mjr-filter-list">
+                        {displayedPosters.map((poster) => (
+                          <label key={poster.id} className="mjr-filter-item">
+                            <div className="mjr-filter-item-left">
+                              <input
+                                type="checkbox"
+                                className="mjr-filter-checkbox"
+                                checked={selectedPosters.includes(poster.id)}
+                                onChange={() => togglePoster(poster.id)}
+                              />
+                              <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }} title={poster.label}>{poster.label}</span>
+                            </div>
+                            <span className="mjr-filter-count">{poster.count ?? 0}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile/Tablet drawer footer */}
+              <div className="mjr-sidebar-mobile-footer">
+                <button
+                  type="button"
+                  className="mjr-sidebar-apply-btn"
+                  onClick={() => setIsMobileFilterOpen(false)}
+                >
+                  Apply & View Results ({totalCount})
+                </button>
               </div>
             </aside>
 
@@ -837,19 +934,47 @@ export default function ManageJobsResponses() {
                 </div>
 
                 <div className="mjr-toolbar-right">
-                  <span style={{ fontSize: 13, color: '#64748b' }}>Sort by:</span>
-                  <select
-                    className="mjr-sort-select"
-                    value={sortBy}
-                    onChange={(e) => {
-                      setSortBy(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <option value="date-desc">Posted/sent date</option>
-                    <option value="responses-desc">Total Responses (High to Low)</option>
-                    <option value="title-asc">Job Title (A-Z)</option>
-                  </select>
+                  <span className="mjr-sort-label">Sort by:</span>
+                  <div className="mjr-custom-sort-wrapper" ref={sortRef}>
+                    <button
+                      type="button"
+                      className={`mjr-custom-sort-btn ${showSortMenu ? 'open' : ''}`}
+                      onClick={() => setShowSortMenu((prev) => !prev)}
+                      aria-haspopup="listbox"
+                      aria-expanded={showSortMenu}
+                    >
+                      <span className="mjr-custom-sort-value">{currentSortLabel}</span>
+                      <FiChevronDown
+                        size={14}
+                        className={`mjr-sort-chevron ${showSortMenu ? 'open' : ''}`}
+                      />
+                    </button>
+
+                    {showSortMenu && (
+                      <div className="mjr-custom-sort-menu" role="listbox">
+                        {SORT_OPTIONS.map((opt) => {
+                          const isSelected = opt.value === sortBy;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected}
+                              className={`mjr-custom-sort-item ${isSelected ? 'selected' : ''}`}
+                              onClick={() => {
+                                setSortBy(opt.value);
+                                setCurrentPage(1);
+                                setShowSortMenu(false);
+                              }}
+                            >
+                              <span>{opt.label}</span>
+                              {isSelected && <FiCheckCircle size={14} className="mjr-sort-check-icon" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

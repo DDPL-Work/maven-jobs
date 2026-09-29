@@ -1039,6 +1039,14 @@ const authService = {
     const response = await api.patch(`/company-panel/folders/${folderId}/candidates/${candidateId}`, data);
     return response.data;
   },
+  addCandidateComment: async (folderId, candidateId, text) => {
+    const response = await api.post(`/company-panel/folders/${folderId}/candidates/${candidateId}/comments`, { text });
+    return response.data;
+  },
+  deleteCandidateComment: async (folderId, candidateId, commentId) => {
+    const response = await api.delete(`/company-panel/folders/${folderId}/candidates/${candidateId}/comments/${commentId}`);
+    return response.data;
+  },
 
   scheduleVideoCall: async (candidateId, data) => {
     try {
