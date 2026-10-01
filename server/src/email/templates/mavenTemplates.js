@@ -775,6 +775,221 @@ const buildJobPostedHtml = ({ jobTitle }) => {
   });
 };
 
+/**
+ * 15. Subscription Invoice Request Notification (For Assigned CRM & Sales)
+ */
+const buildInvoiceRequestHtml = ({
+  crmName,
+  companyName,
+  clientName,
+  clientEmail,
+  clientPhone,
+  planName,
+  transactionId,
+  amount,
+  requestedAt,
+}) => {
+  const crmDisplay = String(crmName || "Account Representative").trim();
+  const companyDisplay = String(companyName || "Client Company").trim();
+  const clientDisplay = String(clientName || "Authorized Representative").trim();
+  const planDisplay = String(planName || "Subscription Plan").trim();
+  const txDisplay = String(transactionId || "N/A").trim();
+  const formattedAmount =
+    amount && !isNaN(amount) && Number(amount) > 0
+      ? `₹ ${Number(amount).toLocaleString("en-IN")}`
+      : "Standard Corporate Package";
+  const dateDisplay = requestedAt
+    ? new Date(requestedAt).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : new Date().toLocaleDateString("en-IN");
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 24px;">
+      <p style="margin: 0 0 6px 0; font-size: 14px; color: #2563eb; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">
+        Tax Invoice Request
+      </p>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
+        Invoice Requested by Client
+      </h1>
+    </div>
+
+    <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155; line-height: 1.7;">
+      Hello <strong>${escapeHtml(crmDisplay)}</strong>,
+    </p>
+    <p style="margin: 0 0 20px 0; font-size: 15px; color: #334155; line-height: 1.7;">
+      <strong>${escapeHtml(companyDisplay)}</strong> has requested an official GST tax invoice for their subscribed plan. Please review the transaction details below and issue the invoice to the client.
+    </p>
+
+    <!-- Details Summary Table -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+      <tr>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600; width: 38%;">
+          Company Name
+        </td>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0f172a; font-weight: 700;">
+          ${escapeHtml(companyDisplay)}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600;">
+          Subscribed Plan
+        </td>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #2563eb; font-weight: 700;">
+          ${escapeHtml(planDisplay)}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600;">
+          Transaction ID
+        </td>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0f172a; font-weight: 600; font-family: monospace;">
+          ${escapeHtml(txDisplay)}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600;">
+          Amount Paid
+        </td>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0f172a; font-weight: 700;">
+          ${escapeHtml(formattedAmount)}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600;">
+          Requested By
+        </td>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0f172a;">
+          ${escapeHtml(clientDisplay)} (${escapeHtml(clientEmail || "N/A")})
+        </td>
+      </tr>
+      ${
+        clientPhone
+          ? `
+      <tr>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600;">
+          Contact Number
+        </td>
+        <td style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0f172a;">
+          ${escapeHtml(clientPhone)}
+        </td>
+      </tr>
+      `
+          : ""
+      }
+      <tr>
+        <td style="padding: 14px 20px; font-size: 13px; color: #64748b; font-weight: 600;">
+          Requested On
+        </td>
+        <td style="padding: 14px 20px; font-size: 14px; color: #0f172a;">
+          ${escapeHtml(dateDisplay)}
+        </td>
+      </tr>
+    </table>
+
+    <!-- Callout Box -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px 20px;">
+      <tr>
+        <td>
+          <p style="margin: 0; font-size: 14px; color: #1e40af; font-weight: 700;">Action Required</p>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #1e3a8a; line-height: 1.5;">
+            Please generate the standard GST tax invoice with company GST details and email it to <strong>${escapeHtml(clientEmail || "the client registered email")}</strong>.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px auto;">
+      <tr>
+        <td align="center" style="background-color: #2563eb; border-radius: 9999px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);">
+          <a href="${process.env.CRM_WEB_URL || APP_URL}/crm/assigned-clients" target="_blank" style="display: inline-block; padding: 13px 38px; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 9999px;">
+            Open CRM Panel
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  return mavenWrapLayout(content, {
+    title: `Invoice Request for ${companyDisplay} - ${planDisplay}`,
+    showFeatureGrid: false,
+    showAppBanner: true,
+  });
+};
+
+/**
+ * 16. Subscription Invoice Request Client Confirmation
+ */
+const buildInvoiceRequestClientConfirmationHtml = ({
+  fullName,
+  companyName,
+  planName,
+  transactionId,
+  amount,
+}) => {
+  const name = String(fullName || "Valued Partner").trim();
+  const planDisplay = String(planName || "Subscription Plan").trim();
+  const txDisplay = String(transactionId || "N/A").trim();
+  const formattedAmount =
+    amount && !isNaN(amount) && Number(amount) > 0
+      ? `₹ ${Number(amount).toLocaleString("en-IN")}`
+      : "Standard Corporate Package";
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 24px;">
+      <p style="margin: 0 0 6px 0; font-size: 14px; color: #16a34a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">
+        &#10003; Request Received
+      </p>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
+        Invoice Request Confirmed
+      </h1>
+    </div>
+
+    <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155; line-height: 1.7;">
+      Hello <strong>${escapeHtml(name)}</strong>,
+    </p>
+    <p style="margin: 0 0 20px 0; font-size: 15px; color: #334155; line-height: 1.7;">
+      We have received your invoice request for <strong>${escapeHtml(planDisplay)}</strong>. Our finance and accounts team has been notified and will email your official GST / Tax invoice shortly.
+    </p>
+
+    <!-- Details Box -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+      <tr>
+        <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600; width: 40%;">Plan</td>
+        <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0f172a; font-weight: 700;">${escapeHtml(planDisplay)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #64748b; font-weight: 600;">Transaction ID</td>
+        <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; font-size: 14px; color: #0f172a; font-family: monospace;">${escapeHtml(txDisplay)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 20px; font-size: 13px; color: #64748b; font-weight: 600;">Amount</td>
+        <td style="padding: 12px 20px; font-size: 14px; color: #0f172a; font-weight: 700;">${escapeHtml(formattedAmount)}</td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px auto;">
+      <tr>
+        <td align="center" style="background-color: #2563eb; border-radius: 9999px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);">
+          <a href="${APP_URL}/employer-dashboard/subscriptions" target="_blank" style="display: inline-block; padding: 13px 38px; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 9999px;">
+            View Subscriptions
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  return mavenWrapLayout(content, {
+    title: `Invoice Request Received - ${planDisplay}`,
+    showFeatureGrid: false,
+    showAppBanner: true,
+  });
+};
+
 module.exports = {
   mavenWrapLayout,
   buildWelcomeHtml,
@@ -791,4 +1006,6 @@ module.exports = {
   buildRecruiterWelcomeHtml,
   buildNewApplicationReceivedHtml,
   buildJobPostedHtml,
+  buildInvoiceRequestHtml,
+  buildInvoiceRequestClientConfirmationHtml,
 };

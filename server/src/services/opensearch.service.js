@@ -77,6 +77,8 @@ const JOB_MAPPING = {
       companyId:     { type: "keyword" },
       companyName:   { type: "text", fields: { keyword: { type: "keyword" } } },
       companyIndustry:{ type: "keyword" },
+      jobCategory:   { type: "keyword" },
+      isHotVacancy:  { type: "boolean" },
       isActive:      { type: "boolean" },
       approvalStatus:{ type: "keyword" },
       externalLink:  { type: "keyword" },
@@ -126,6 +128,8 @@ const toEsDoc = (job) => {
     companyId:      companyIdStr,
     companyName,
     companyIndustry,
+    jobCategory:    job.jobCategory || "standard",
+    isHotVacancy:   Boolean(job.isHotVacancy || job.jobCategory === "hot"),
     isActive:       Boolean(job.isActive),
     approvalStatus: job.approvalStatus || "PENDING",
     externalLink:   job.externalLink || "",
@@ -334,18 +338,19 @@ async function searchJobs(params = {}) {
     }
   }
 
-  // Sort
+  // Sort (hot vacancies always prioritized first)
+  const hotSort = { isHotVacancy: { order: "desc", unmapped_type: "boolean" } };
   let sortClause;
   if (!search) {
-    // No text query → sort by date only
+    // No text query → hot vacancies first, then date
     sortClause = sort === "newest"
-      ? [{ createdAt: { order: "desc" } }]
-      : [{ updatedAt: { order: "desc" } }];
+      ? [hotSort, { createdAt: { order: "desc" } }]
+      : [hotSort, { updatedAt: { order: "desc" } }];
   } else {
-    // With text query → relevance first, then date
+    // With text query → hot vacancies first, then relevance, then date
     sortClause = sort === "newest"
-      ? [{ createdAt: { order: "desc" } }, "_score"]
-      : ["_score", { updatedAt: { order: "desc" } }];
+      ? [hotSort, { createdAt: { order: "desc" } }, "_score"]
+      : [hotSort, "_score", { updatedAt: { order: "desc" } }];
   }
 
   const from = (Math.max(1, page) - 1) * limit;

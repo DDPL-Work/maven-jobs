@@ -251,6 +251,8 @@ const formatPublicJob = (job, reviewMap = new Map()) => {
     externalLink: job.externalLink || "",
     skills: Array.isArray(job.skills) ? job.skills : [],
     deadline: job.deadline || null,
+    jobCategory: job.jobCategory || "standard",
+    isHotVacancy: Boolean(job.isHotVacancy || job.jobCategory === "hot"),
     isActive: Boolean(job.isActive),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
@@ -327,6 +329,14 @@ async function esGetPublicJobs(req, res) {
     filteredHits = esHits.filter((j) => !applicationMap.has(j.id));
   }
 
+  // Ensure hot vacancies are placed first at the top
+  filteredHits.sort((a, b) => {
+    const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+    const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+    if (aHot === bHot) return 0;
+    return bHot ? 1 : -1;
+  });
+
   // Fetch review data for paginated jobs
   const companyIds = [...new Set(filteredHits.map((j) => j.companyId).filter(Boolean))];
   let reviewMap = new Map();
@@ -395,6 +405,8 @@ async function esGetPublicJobs(req, res) {
       externalLink: j.externalLink || "",
       skills: Array.isArray(j.skills) ? j.skills : [],
       isActive: Boolean(j.isActive),
+      jobCategory: j.jobCategory || "standard",
+      isHotVacancy: Boolean(j.isHotVacancy || j.jobCategory === "hot"),
       rating: r.avgRating ? Math.round(r.avgRating * 10) / 10 : null,
       reviews: r.reviewCount || 0,
       hasScreeningQuestions: false,
@@ -533,12 +545,12 @@ exports.getPublicJobs = async (req, res) => {
       }
     }
 
-    // 3. Determine sort
-    let sortObj = { updatedAt: -1 };
-    if (sort === "salary_high") sortObj = { salaryMax: -1, updatedAt: -1 };
-    else if (sort === "salary_low") sortObj = { salaryMax: 1, updatedAt: -1 };
-    else if (sort === "newest") sortObj = { createdAt: -1 };
-    else if (sort === "company_az") sortObj = { "companyId.name": 1, updatedAt: -1 };
+    // 3. Determine sort (prioritize hot vacancies)
+    let sortObj = { isHotVacancy: -1, updatedAt: -1 };
+    if (sort === "salary_high") sortObj = { isHotVacancy: -1, salaryMax: -1, updatedAt: -1 };
+    else if (sort === "salary_low") sortObj = { isHotVacancy: -1, salaryMax: 1, updatedAt: -1 };
+    else if (sort === "newest") sortObj = { isHotVacancy: -1, createdAt: -1 };
+    else if (sort === "company_az") sortObj = { isHotVacancy: -1, "companyId.name": 1, updatedAt: -1 };
 
     // 4. Fetch jobs with MongoDB query
     //    For experience, location, company name, and text search we need
@@ -598,6 +610,14 @@ exports.getPublicJobs = async (req, res) => {
         return na.localeCompare(nb);
       });
     }
+
+    // Always ensure hot vacancies are placed first at the top
+    filteredJobs.sort((a, b) => {
+      const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+      const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+      if (aHot === bHot) return 0;
+      return bHot ? 1 : -1;
+    });
 
     // 7. Build application map for authenticated users (before pagination)
     let applicationMap = new Map();

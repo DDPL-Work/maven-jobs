@@ -9,6 +9,7 @@ const createHttpError = require("http-errors");
 const asyncHandler = require("../middleware/async.middleware");
 const activityService = require("../services/recruiter-activity.service");
 const { checkAndEnforceQuota } = require("../services/quota-enforcement.service");
+const EntitlementService = require("../services/commercial/entitlement.service");
 
 const RESUME_CREDIT_COST = 10;
 const SEARCH_CREDIT_COST = 10;
@@ -158,7 +159,25 @@ exports.useCredits = asyncHandler(async (req, res) => {
   const alreadyPaid = await PaidResume.findOne({ companyId, candidateId }).lean();
   const allocationPolicy = req.company?.quotaConfig?.allocationPolicy || 'full';
   
+  let hasCommercialResdex = false;
+  let resdexCode = null;
   if (!alreadyPaid) {
+    try {
+      const resCheck = await EntitlementService.checkEntitlement(companyId, "RESDEX", 1);
+      if (resCheck.allowed) {
+        hasCommercialResdex = true;
+        resdexCode = "RESDEX";
+      } else {
+        const altCheck = await EntitlementService.checkEntitlement(companyId, "RESUME_VIEW", 1);
+        if (altCheck.allowed) {
+          hasCommercialResdex = true;
+          resdexCode = "RESUME_VIEW";
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (!alreadyPaid && !hasCommercialResdex) {
     try {
       const quotaResult = await checkAndEnforceQuota(req.company, 'cvAccess', 1);
       if (!quotaResult.unlimited) {
@@ -175,11 +194,11 @@ exports.useCredits = asyncHandler(async (req, res) => {
   }
 
   const credit = await Credit.findOne({ companyId });
-  if (!credit) throw createHttpError(404, "Credit account not found. Please top up first.");
+  if (!credit && !hasCommercialResdex) throw createHttpError(404, "Credit account not found. Please top up first.");
 
   // If they are on 'full' allocation policy (pay-as-you-go), they MUST have enough financial credits
-  if (!alreadyPaid && allocationPolicy === 'full') {
-    if (credit.balance < RESUME_CREDIT_COST) {
+  if (!alreadyPaid && !hasCommercialResdex && allocationPolicy === 'full') {
+    if ((credit?.balance || 0) < RESUME_CREDIT_COST) {
       throw createHttpError(402, "Insufficient credits. Please top up.");
     }
   }
@@ -252,6 +271,23 @@ exports.useCredits = asyncHandler(async (req, res) => {
 
   await PaidResume.create({ companyId, candidateId, recruiterId: req.user._id });
 
+  // ── Consume commercial ResDex entitlement if company has it ──
+  if (hasCommercialResdex && resdexCode) {
+    try {
+      await EntitlementService.consumeCredit({
+        companyId,
+        productCode: resdexCode,
+        quantity: 1,
+        referenceType: "Candidate",
+        referenceId: String(candidateId),
+        actor: { id: req.user._id, email: req.user.email, role: "CLIENT" },
+        notes: `${action === "RESUME_DOWNLOAD" ? "Downloaded" : "Viewed"} CV: ${candidateName}`,
+      });
+    } catch (consumeErr) {
+      console.error("[Commercial Entitlement] Failed to consume ResDex credit:", consumeErr.message);
+    }
+  }
+
   // ── Write CreditTransaction (financial ledger) ONLY if financial credits used ──
   if (allocationPolicy === 'full') {
     await CreditTransaction.create({
@@ -288,7 +324,7 @@ exports.useCredits = asyncHandler(async (req, res) => {
     platform: 'WEB',
     metadata: {
       charged: allocationPolicy === 'full',
-      balanceAfter: credit.balance,
+      balanceAfter: credit?.balance || 0,
       recruiterName: req.user.name || '',
       recruiterEmail: req.user.email || '',
       companyName: req.company?.name || '',
@@ -310,7 +346,7 @@ exports.useCredits = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: { charged: true, balance: credit.balance, creditsUsed: RESUME_CREDIT_COST },
+    data: { charged: true, balance: credit?.balance || 0, creditsUsed: hasCommercialResdex ? 1 : RESUME_CREDIT_COST },
   });
 });
 
@@ -322,11 +358,24 @@ exports.checkResumeAccess = asyncHandler(async (req, res) => {
   const paid = await PaidResume.findOne({ companyId, candidateId }).lean();
   const credit = await Credit.findOne({ companyId }).lean();
 
+  let hasCommercialResdex = false;
+  try {
+    const resCheck = await EntitlementService.checkEntitlement(companyId, "RESDEX", 1);
+    if (resCheck.allowed) {
+      hasCommercialResdex = true;
+    } else {
+      const altCheck = await EntitlementService.checkEntitlement(companyId, "RESUME_VIEW", 1);
+      if (altCheck.allowed) hasCommercialResdex = true;
+    }
+  } catch (e) {}
+
   res.json({
     success: true,
     data: {
-      hasAccess: !!paid,
+      hasAccess: !!paid || hasCommercialResdex,
+      isAlreadyPaid: !!paid,
       balance: credit?.balance || 0,
+      hasCommercialEntitlement: hasCommercialResdex,
       cost: RESUME_CREDIT_COST,
     },
   });

@@ -18,6 +18,11 @@ const jobSchema = new mongoose.Schema(
       enum: ["standard", "management", "hot", "internship"],
       default: "standard"
     },
+    isHotVacancy: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     workplaceType: String,
 
     location: String,
@@ -25,6 +30,9 @@ const jobSchema = new mongoose.Schema(
 
     salaryMin: { type: Number, min: 0 },
     salaryMax: { type: Number, min: 0 },
+    stipend: { type: Number, min: 0 },
+    internshipDuration: { type: String, default: "" },
+    internshipStartDate: { type: String, default: "" },
 
     skills: [String],
 
@@ -106,6 +114,14 @@ const jobSchema = new mongoose.Schema(
 );
 
 jobSchema.index({ companyId: 1, isActive: 1 });
+jobSchema.index({ isActive: 1, approvalStatus: 1, isHotVacancy: -1, updatedAt: -1 });
+
+jobSchema.pre("save", function (next) {
+  if (this.isModified("jobCategory") || this.isHotVacancy === undefined) {
+    this.isHotVacancy = this.jobCategory === "hot";
+  }
+  next();
+});
 
 // Automatically sync deletions to OpenSearch and trigger debounced reindex
 jobSchema.post("findOneAndDelete", function (doc) {

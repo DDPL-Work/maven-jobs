@@ -11,7 +11,13 @@
 @media (max-width: 760px) {
   .pd-notif-sidebar {
     width: min(100vw, 420px);
+    max-width: 100vw;
     right: -100vw;
+    left: auto !important;
+  }
+  .pd-notif-sidebar.show {
+    right: 0 !important;
+    left: auto !important;
   }
 
   .pd-chat-overlay,
@@ -3430,8 +3436,10 @@
 .pd-notif-sidebar {
   position: fixed;
   top: 0;
-  right: -400px;
+  right: -420px;
+  left: auto !important;
   width: 400px;
+  max-width: 90vw;
   height: 100vh;
   background: white;
   z-index: 10001;
@@ -3442,7 +3450,8 @@
 }
 
 .pd-notif-sidebar.show {
-  right: 0;
+  right: 0 !important;
+  left: auto !important;
 }
 
 .pd-notif-head {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import EmployerLayout from './EmployerLayout';
 import notAllowedImg from '../../../assets/notAllowed.png';
 
@@ -23,10 +23,7 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
 
     const handlePostJobClick = (url) => {
         setDropdownOpen(false);
-        // We use window.location.href or navigate
-        // Because /post-job to /post-job?type=management might just change query params, 
-        // causing a re-render. Let's use window.location.href to force a clean unmount/mount 
-        // to reset states if we are already on PostJob component.
+        // Force clean mount to reset form state when switching job categories
         window.location.href = url;
     };
 
@@ -45,143 +42,306 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                 <img 
                     src={notAllowedImg} 
                     alt="Not Allowed" 
-                    style={{ width: '320px', height: 'auto', marginBottom: '24px' }} 
+                    style={{ width: '280px', height: 'auto', marginBottom: '24px' }} 
                 />
 
                 <h1 style={{
                     fontSize: '24px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     color: '#0F172A',
-                    marginBottom: '12px'
+                    marginBottom: availablePlans.length > 0 ? '8px' : '12px',
+                    textAlign: 'center'
                 }}>
                     No active {jobTypeLabel} plan found
                 </h1>
 
-                {!isRecruiter && (
-                    <>
+                {availablePlans.length > 0 ? (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        marginTop: '4px',
+                        maxWidth: '600px',
+                        width: '100%',
+                        textAlign: 'center'
+                    }}>
                         <p style={{
                             fontSize: '15px',
                             color: '#64748B',
-                            marginBottom: '28px',
+                            marginBottom: '14px',
                             fontWeight: 400
                         }}>
-                            Continue to purchase plan
+                            Active in your account:
                         </p>
 
-                        <button 
-                            onClick={() => navigate('/manage-quota')}
-                            style={{
-                                padding: '12px 32px',
-                                background: '#2563EB',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '15px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                marginBottom: '48px',
-                                transition: 'background 0.2s',
-                                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#1D4ED8'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = '#2563EB'}
-                        >
-                            Proceed to Purchase
-                        </button>
-                    </>
-                )}
-
-                {availablePlans.length > 0 && (
-                    <div style={{
-                        background: '#F8FAFC',
-                        borderRadius: '12px',
-                        padding: '24px',
-                        maxWidth: '560px',
-                        width: '100%',
-                        textAlign: 'center',
-                    }}>
-                        <p style={{
-                            margin: '0 0 16px 0',
-                            fontSize: '15.5px',
-                            color: '#334155',
-                            lineHeight: '1.5'
+                        {/* Display all active categories */}
+                        <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '10px',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginBottom: '28px'
                         }}>
-                            We have also found <strong>{availablePlans.map(p => p.label).join(', ')}</strong> job posting subscription in your account.
-                        </p>
-                        
-                        <div style={{ position: 'relative', display: 'inline-block' }} ref={dropdownRef}>
-                            <button 
-                                onClick={() => {
-                                    if (availablePlans.length === 1) {
-                                        handlePostJobClick(availablePlans[0].url);
-                                    } else {
-                                        setDropdownOpen(!dropdownOpen);
-                                    }
-                                }}
+                            {availablePlans.map((plan, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 16px',
+                                        borderRadius: '999px',
+                                        background: '#F0FDF4',
+                                        border: '1px solid #BBF7D0',
+                                        color: '#15803D',
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                                    }}
+                                >
+                                    <span style={{
+                                        width: '8px',
+                                        height: '8px',
+                                        borderRadius: '50%',
+                                        background: '#22C55E',
+                                        display: 'inline-block',
+                                        boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)'
+                                    }} />
+                                    <span>{plan.label}</span>
+                                    <span style={{
+                                        fontSize: '12px',
+                                        fontWeight: 500,
+                                        color: '#166534',
+                                        background: '#DCFCE7',
+                                        padding: '2px 8px',
+                                        borderRadius: '12px'
+                                    }}>
+                                        {plan.left} credit{plan.left !== 1 ? 's' : ''} left
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Action button: single button if 1 active, or dropdown button if > 1 active */}
+                        {availablePlans.length === 1 ? (
+                            <button
+                                onClick={() => handlePostJobClick(availablePlans[0].url)}
                                 style={{
-                                    background: 'transparent',
+                                    padding: '12px 32px',
+                                    background: '#2563EB',
+                                    color: '#fff',
                                     border: 'none',
-                                    color: '#2563EB',
+                                    borderRadius: '8px',
                                     fontSize: '15px',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '8px 12px',
-                                    borderRadius: '6px',
-                                    transition: 'background 0.2s'
+                                    gap: '8px',
+                                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                                    transition: 'all 0.2s ease'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#EFF6FF'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#1D4ED8';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = '#2563EB';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
                             >
-                                Post Job
-                                {availablePlans.length > 1 && (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                                <span>Post {availablePlans[0].label}</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </button>
+                        ) : (
+                            <div style={{ position: 'relative', display: 'inline-block' }} ref={dropdownRef}>
+                                <button
+                                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                                    style={{
+                                        padding: '12px 28px',
+                                        background: '#2563EB',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '15px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#1D4ED8';
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = '#2563EB';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    <span>Post with Active Plan</span>
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        style={{
+                                            transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                            transition: 'transform 0.2s ease'
+                                        }}
+                                    >
                                         <polyline points="6 9 12 15 18 9"></polyline>
                                     </svg>
-                                )}
-                            </button>
+                                </button>
 
-                            {dropdownOpen && availablePlans.length > 1 && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    marginTop: '8px',
-                                    background: '#fff',
-                                    border: '1px solid #E2E8F0',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                                    minWidth: '180px',
-                                    zIndex: 50,
-                                    overflow: 'hidden'
-                                }}>
-                                    {availablePlans.map((plan, idx) => (
-                                        <div 
-                                            key={idx}
-                                            onClick={() => handlePostJobClick(plan.url)}
-                                            style={{
-                                                padding: '12px 16px',
-                                                fontSize: '14px',
-                                                fontWeight: 500,
-                                                color: '#1E293B',
-                                                cursor: 'pointer',
-                                                textAlign: 'left',
-                                                borderBottom: idx !== availablePlans.length - 1 ? '1px solid #F1F5F9' : 'none',
-                                                transition: 'background 0.15s'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
-                                        >
-                                            {plan.label}
+                                {dropdownOpen && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 'calc(100% + 8px)',
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        background: '#fff',
+                                        border: '1px solid #E2E8F0',
+                                        borderRadius: '12px',
+                                        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                                        minWidth: '240px',
+                                        zIndex: 100,
+                                        overflow: 'hidden',
+                                        padding: '6px'
+                                    }}>
+                                        <div style={{
+                                            padding: '8px 12px 4px',
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            color: '#94A3B8',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                            textAlign: 'left'
+                                        }}>
+                                            Active categories
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                                        {availablePlans.map((plan, idx) => (
+                                            <div
+                                                key={idx}
+                                                onClick={() => handlePostJobClick(plan.url)}
+                                                style={{
+                                                    padding: '10px 14px',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    transition: 'background 0.15s ease',
+                                                    textAlign: 'left'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <div>
+                                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>
+                                                        Post {plan.label}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', color: '#16A34A', fontWeight: 500, marginTop: '2px' }}>
+                                                        {plan.left} credit{plan.left !== 1 ? 's' : ''} available
+                                                    </div>
+                                                </div>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                                </svg>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Secondary Option: Purchase missing plan */}
+                        {!isRecruiter && (
+                            <div style={{ marginTop: '24px' }}>
+                                <button
+                                    onClick={() => navigate('/manage-quota')}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#64748B',
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 14px',
+                                        borderRadius: '6px',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#2563EB';
+                                        e.currentTarget.style.background = '#EFF6FF';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = '#64748B';
+                                        e.currentTarget.style.background = 'transparent';
+                                    }}
+                                >
+                                    Need {jobTypeLabel}? Proceed to purchase plan →
+                                </button>
+                            </div>
+                        )}
                     </div>
+                ) : (
+                    /* When 0 categories are active */
+                    !isRecruiter ? (
+                        <div style={{ textAlign: 'center' }}>
+                            <p style={{
+                                fontSize: '15px',
+                                color: '#64748B',
+                                marginBottom: '24px',
+                                fontWeight: 400
+                            }}>
+                                Continue to purchase plan
+                            </p>
+
+                            <button 
+                                onClick={() => navigate('/manage-quota')}
+                                style={{
+                                    padding: '12px 32px',
+                                    background: '#2563EB',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '15px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#1D4ED8';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = '#2563EB';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                            >
+                                Proceed to Purchase
+                            </button>
+                        </div>
+                    ) : (
+                        <p style={{ fontSize: '15px', color: '#64748B', marginTop: '12px' }}>
+                            Please contact your administrator to purchase job posting credits.
+                        </p>
+                    )
                 )}
             </div>
         </EmployerLayout>

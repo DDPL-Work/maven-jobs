@@ -33,6 +33,17 @@ const companySchema = new mongoose.Schema(
     countryCode: String,
     altPhone: String,
 
+    contactPerson: { type: String, default: "" },
+    contactDesignation: { type: String, default: "" },
+    alias: { type: String, default: "" },
+    tanNumber: { type: String, default: "" },
+    gstin: { type: String, default: "" },
+    kycStatus: { type: String, default: "PENDING_VERIFICATION" },
+    registeredName: { type: String, default: "" },
+    addressLabel: { type: String, default: "Primary Address" },
+    profileHotVacancies: { type: String, default: "Standard" },
+    profileClassifieds: { type: String, default: "Standard" },
+
     location: {
       country: String,
       region: String,
@@ -77,7 +88,6 @@ const companySchema = new mongoose.Schema(
       }
     },
 
-    // ✅ NEW CONTENT FIELDS
     about: String,
     mission: String,
     vision: String,
@@ -94,25 +104,25 @@ const companySchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
-    packageType: {
-      type: String,
-      enum: ["STANDARD", "PREMIUM", "ELITE"],
-      default: "STANDARD",
-    },
-    jobLimit: {
-      type: Number,
-      default: 0,
-    },
-    grandfatheredJobLimit: {
-      type: Number,
-      default: 0,
-    },
-    nviteLimit: {
-      type: Number,
-      default: 0,
-    },
-    activeJobCount: { type: Number, default: 0 },
-    packageExpiresAt: { type: Date, default: null },
+    // packageType: {
+    //   type: String,
+    //   enum: ["STANDARD", "PREMIUM", "ELITE"],
+    //   default: "STANDARD",
+    // },
+    // jobLimit: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    // grandfatheredJobLimit: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    // nviteLimit: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    // activeJobCount: { type: Number, default: 0 },
+    // packageExpiresAt: { type: Date, default: null },
     configurationNotes: { type: String, default: "" },
     accountManager: { type: String, default: "" },
 
@@ -137,6 +147,45 @@ const companySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "CrmUser",
       default: null,
+    },
+
+    // Commercial plan snapshot & consumed services/products
+    planSnapshot: {
+      planId: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
+      planVersionId: { type: mongoose.Schema.Types.ObjectId, ref: "PlanVersion" },
+      planVersionNumber: { type: Number, default: 1 },
+      planName: { type: String, default: "" },
+      planCode: { type: String, default: "" },
+      planType: { type: String, default: "FREE" },
+      billingCycle: { type: String, default: "CUSTOM" },
+      validity: { type: Number, default: 30 },
+      validityUnit: { type: String, default: "DAYS" },
+      startDate: { type: Date, default: null },
+      endDate: { type: Date, default: null },
+      assignedAt: { type: Date, default: Date.now },
+      services: [
+        {
+          productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+          productCode: { type: String, default: "" },
+          productName: { type: String, default: "" },
+          category: { type: String, default: "" },
+          productType: { type: String, default: "" },
+          quantity: { type: Number, default: 0 },
+          usedQuantity: { type: Number, default: 0 },
+          unit: { type: String, default: "" },
+          validity: { type: Number, default: 30 },
+          validityUnit: { type: String, default: "DAYS" },
+          userLimit: { type: Number, default: 0 },
+          features: [
+            {
+              key: String,
+              name: String,
+              enabled: Boolean,
+              value: mongoose.Schema.Types.Mixed,
+            },
+          ],
+        },
+      ],
     },
   },
   { timestamps: true }

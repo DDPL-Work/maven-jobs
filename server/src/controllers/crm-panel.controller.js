@@ -259,6 +259,16 @@ const formatClient = (company, clientUser = null, options = {}) => {
         accessStatus: clientUser.accessStatus || "ACTIVE",
       }
     : null,
+  lastInvoiceRequest: options?.lastInvoiceRequest
+    ? {
+        id: String(options.lastInvoiceRequest._id),
+        planName: options.lastInvoiceRequest.planName,
+        transactionId: options.lastInvoiceRequest.transactionId,
+        amount: options.lastInvoiceRequest.amount,
+        requestedAt: options.lastInvoiceRequest.requestedAt || options.lastInvoiceRequest.createdAt,
+        status: options.lastInvoiceRequest.status,
+      }
+    : null,
   updatedAt: company.updatedAt,
   lastUpdated: formatRelativeTime(company.updatedAt),
   };
@@ -782,10 +792,28 @@ exports.getClients = asyncHandler(async (req, res) => {
     }),
   );
 
+  const InvoiceRequest = require("../models/InvoiceRequest");
+  const companyIds = companies.map((c) => c._id);
+  const pendingInvoices = await InvoiceRequest.find({
+    companyId: { $in: companyIds },
+    status: "PENDING",
+  }).sort({ createdAt: -1 }).lean();
+
+  const invoiceMap = new Map();
+  pendingInvoices.forEach((inv) => {
+    const cid = String(inv.companyId);
+    if (!invoiceMap.has(cid)) {
+      invoiceMap.set(cid, inv);
+    }
+  });
+
   res.status(200).json({
     success: true,
     data: syncedCompanies.map((item) =>
-      formatClient(item.company, item.company.clientUserId, { jobLimit: item.jobLimit }),
+      formatClient(item.company, item.company.clientUserId, {
+        jobLimit: item.jobLimit,
+        lastInvoiceRequest: invoiceMap.get(String(item.company._id)) || null,
+      }),
     ),
   });
 });
@@ -810,10 +838,28 @@ exports.getAssignedClients = asyncHandler(async (req, res) => {
     }),
   );
 
+  const InvoiceRequest = require("../models/InvoiceRequest");
+  const companyIds = companies.map((c) => c._id);
+  const pendingInvoices = await InvoiceRequest.find({
+    companyId: { $in: companyIds },
+    status: "PENDING",
+  }).sort({ createdAt: -1 }).lean();
+
+  const invoiceMap = new Map();
+  pendingInvoices.forEach((inv) => {
+    const cid = String(inv.companyId);
+    if (!invoiceMap.has(cid)) {
+      invoiceMap.set(cid, inv);
+    }
+  });
+
   res.status(200).json({
     success: true,
     data: syncedCompanies.map((item) =>
-      formatClient(item.company, item.company.clientUserId, { jobLimit: item.jobLimit }),
+      formatClient(item.company, item.company.clientUserId, {
+        jobLimit: item.jobLimit,
+        lastInvoiceRequest: invoiceMap.get(String(item.company._id)) || null,
+      }),
     ),
   });
 });
@@ -1082,6 +1128,9 @@ exports.createJob = asyncHandler(async (req, res) => {
     experience = "",
     salaryMin = 0,
     salaryMax = 0,
+    stipend,
+    internshipDuration = "",
+    internshipStartDate = "",
     skills = [],
     deadline = null,
     description = "",
@@ -1116,17 +1165,24 @@ exports.createJob = asyncHandler(async (req, res) => {
     }
   }
 
+  const parsedStipend = stipend !== undefined ? Number(stipend || 0) : undefined;
+
   const job = await Job.create({
     companyId: company._id,
     title: title.trim(),
     summary: summary.trim(),
     department: department.trim(),
     jobType: jobType.trim(),
+    jobCategory: (req.body.jobCategory && ["standard", "management", "hot", "internship"].includes(req.body.jobCategory)) ? req.body.jobCategory : "standard",
+    isHotVacancy: req.body.jobCategory === "hot",
     workplaceType: workplaceType.trim(),
     location: location.trim(),
     experience: experience.trim(),
-    salaryMin: Number(salaryMin || 0),
-    salaryMax: Number(salaryMax || 0),
+    salaryMin: Number(salaryMin || (parsedStipend !== undefined ? parsedStipend : 0)),
+    salaryMax: Number(salaryMax || (parsedStipend !== undefined ? parsedStipend : 0)),
+    stipend: parsedStipend,
+    internshipDuration: String(internshipDuration || "").trim(),
+    internshipStartDate: String(internshipStartDate || "").trim(),
     skills,
     deadline,
     description: description.trim(),
@@ -2333,4 +2389,62 @@ exports.downloadResume = asyncHandler(async (req, res) => {
     console.error("Error proxying resume download:", error.message);
     res.status(500).json({ success: false, message: "Unable to download resume. Please try again later." });
   }
+});
+
+// GET /crm-panel/invoice-requests — List invoice requests for assigned CRM/admin
+exports.getInvoiceRequests = asyncHandler(async (req, res) => {
+  const InvoiceRequest = require("../models/InvoiceRequest");
+  const query = isFseOperator(req.user)
+    ? { assignedCrmId: req.user._id }
+    : {};
+
+  const requests = await InvoiceRequest.find(query)
+    .sort({ createdAt: -1 })
+    .populate("companyId", "name email phone location")
+    .populate("requestedBy", "name email")
+    .lean();
+
+  res.status(200).json({
+    success: true,
+    data: requests.map((item) => ({
+      id: String(item._id),
+      companyName: item.companyId?.name || "Unknown company",
+      companyId: String(item.companyId?._id || item.companyId),
+      requestedByName: item.requestedBy?.name || "Client",
+      requestedByEmail: item.requestedBy?.email || "",
+      planName: item.planName,
+      transactionId: item.transactionId,
+      amount: item.amount,
+      status: item.status,
+      requestedAt: item.requestedAt || item.createdAt,
+    })),
+  });
+});
+
+// PATCH /crm-panel/invoice-requests/:id/status — Update invoice request status (SENT/CANCELLED)
+exports.updateInvoiceRequestStatus = asyncHandler(async (req, res) => {
+  const InvoiceRequest = require("../models/InvoiceRequest");
+  const { id } = req.params;
+  const { status, adminNotes } = req.body;
+
+  const validStatuses = ["PENDING", "SENT", "CANCELLED"];
+  if (!validStatuses.includes(status)) {
+    throw createHttpError(400, "Invalid invoice status");
+  }
+
+  const invoiceRequest = await InvoiceRequest.findById(id);
+  if (!invoiceRequest) {
+    throw createHttpError(404, "Invoice request not found");
+  }
+
+  invoiceRequest.status = status;
+  if (adminNotes !== undefined) {
+    invoiceRequest.adminNotes = String(adminNotes).trim();
+  }
+  await invoiceRequest.save();
+
+  res.status(200).json({
+    success: true,
+    data: invoiceRequest,
+  });
 });

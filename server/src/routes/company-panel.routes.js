@@ -91,6 +91,7 @@ router.get("/profile", controller.getProfile);
 router.patch("/profile", controller.updateProfile);
 router.patch("/profile/media", uploadCompanyMedia, controller.updateCompanyMedia);
 router.get("/subscriptions", controller.getSubscriptions);
+router.post("/subscriptions/request-invoice", controller.requestSubscriptionInvoice);
 
 // Account
 router.post("/delete-account", controller.deleteAccount);

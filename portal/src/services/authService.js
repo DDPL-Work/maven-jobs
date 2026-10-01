@@ -452,9 +452,12 @@ const authService = {
     }
   },
 
-  enhanceDescription: async (text, type = 'description') => {
+  enhanceDescription: async (payload, maybeType = 'description') => {
     try {
-      const response = await api.post('/company-panel/ai/enhance-description', { text, type });
+      const body = typeof payload === 'object' && payload !== null
+        ? payload
+        : { text: payload, type: maybeType };
+      const response = await api.post('/company-panel/ai/enhance-description', body);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'AI enhancement failed' };
@@ -575,6 +578,15 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch employer subscriptions' };
+    }
+  },
+
+  requestSubscriptionInvoice: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/subscriptions/request-invoice', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to request subscription invoice' };
     }
   },
 
@@ -1235,6 +1247,33 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to change password' };
+    }
+  },
+
+  getEmployerProfile: async () => {
+    try {
+      const response = await api.get('/company-panel/profile');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch company profile' };
+    }
+  },
+
+  updateEmployerProfile: async (data) => {
+    try {
+      const response = await api.patch('/company-panel/profile', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update company profile' };
+    }
+  },
+
+  getEmployerDashboard: async () => {
+    try {
+      const response = await api.get('/company-panel/dashboard');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch employer dashboard' };
     }
   }
 };

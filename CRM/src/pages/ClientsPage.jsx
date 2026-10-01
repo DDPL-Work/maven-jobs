@@ -538,6 +538,16 @@ export default function ClientsPage() {
                   <p className="mt-2 text-xs text-slate-500">
                     {client.activeJobCount}/{client.jobLimit} jobs active
                   </p>
+                  {client.lastInvoiceRequest && (
+                    <div className="mt-2">
+                      <span
+                        className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200"
+                        title={`Transaction: ${client.lastInvoiceRequest.transactionId || 'N/A'}`}
+                      >
+                        Invoice: {client.lastInvoiceRequest.planName}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="font-semibold text-slate-900">

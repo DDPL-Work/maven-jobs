@@ -110,11 +110,11 @@ export default function LandingEmployeeHeader({ solid = false, isLoggedIn = fals
                             </p>
                           </div>
                           <Link
-                            to="/job-posting"
+                            to="/buy-online?category=jobs"
                             className="elp-promo-link"
                             onClick={() => setShowOfferings(false)}
                           >
-                            Free Job Posting <FiArrowRight size={16} />
+                            Explore Job Postings <FiArrowRight size={16} />
                           </Link>
                         </div>
                       </div>
@@ -124,65 +124,55 @@ export default function LandingEmployeeHeader({ solid = false, isLoggedIn = fals
                       <span className="elp-section-label">BY PRODUCTS</span>
                       <div className="elp-section-links">
                         <Link
-                          to="/job-posting"
+                          to="/buy-online?category=combined"
                           className="elp-mega-link"
                           onClick={() => setShowOfferings(false)}
                         >
-                          <div className="elp-mega-link-title">Job Posting</div>
+                          <div className="elp-mega-link-title">Combined Plans & Packages</div>
                           <div className="elp-mega-link-desc">
-                            Find & attract relevant talent
+                            All-in-one hiring with Jobs, ResDex & AI
                           </div>
                         </Link>
                         <Link
-                          to="/resume-database"
+                          to="/buy-online?category=jobs"
+                          className="elp-mega-link"
+                          onClick={() => setShowOfferings(false)}
+                        >
+                          <div className="elp-mega-link-title">Job Posting Solutions</div>
+                          <div className="elp-mega-link-desc">
+                            SMB Jobs & Hot Vacancies with custom counters
+                          </div>
+                        </Link>
+                        <Link
+                          to="/buy-online?category=resdex"
                           className="elp-mega-link"
                           onClick={() => setShowOfferings(false)}
                         >
                           <div className="elp-mega-link-title">
-                            Resume Database (Resdex)
+                            Resume Database (ResDex)
                           </div>
                           <div className="elp-mega-link-desc">
-                            Access India's largest database
-                          </div>
-                        </Link>
-                        <Link
-                          to="/hiring-automation"
-                          className="elp-mega-link"
-                          onClick={() => setShowOfferings(false)}
-                        >
-                          <div className="elp-mega-link-title">Hiring Automation</div>
-                          <div className="elp-mega-link-desc">
-                            Streamline your recruitment workflow
+                            Search millions of verified candidate CVs
                           </div>
                         </Link>
                         <Link
-                          to="/expert-assist"
+                          to="/buy-online?category=standalone"
                           className="elp-mega-link"
                           onClick={() => setShowOfferings(false)}
                         >
-                          <div className="elp-mega-link-title">Expert Assist</div>
+                          <div className="elp-mega-link-title">AI & Productivity Credits</div>
                           <div className="elp-mega-link-desc">
-                            Our Assisted hiring solution
+                            Automate JD writing & screening questions
                           </div>
                         </Link>
                         <Link
-                          to="/branding"
+                          to="/buy-online#enterprise"
                           className="elp-mega-link"
                           onClick={() => setShowOfferings(false)}
                         >
-                          <div className="elp-mega-link-title">Employer Branding</div>
+                          <div className="elp-mega-link-title">Custom & Enterprise Plans</div>
                           <div className="elp-mega-link-desc">
-                            Showcase your brand presence
-                          </div>
-                        </Link>
-                        <Link
-                          to="/talent-pulse"
-                          className="elp-mega-link"
-                          onClick={() => setShowOfferings(false)}
-                        >
-                          <div className="elp-mega-link-title">Talent Planning</div>
-                          <div className="elp-mega-link-desc">
-                            Make informed hiring decisions
+                            Tailored corporate volume & multi-seat setup
                           </div>
                         </Link>
                       </div>
@@ -191,27 +181,42 @@ export default function LandingEmployeeHeader({ solid = false, isLoggedIn = fals
                     <div className="elp-mega-section">
                       <span className="elp-section-label">BY BUSINESS TYPE</span>
                       <div className="elp-section-links">
-                        <a
-                          href={location.pathname === "/employer-login" ? "#solutions" : "/employer-login#solutions"}
+                        <Link
+                          to="/buy-online?category=combined"
                           className="elp-mega-link simple"
                           onClick={() => setShowOfferings(false)}
                         >
-                          Enterprises
-                        </a>
-                        <a
-                          href={location.pathname === "/employer-login" ? "#solutions" : "/employer-login#solutions"}
+                          Free Forever Plan
+                        </Link>
+                        <Link
+                          to="/buy-online?category=combined"
                           className="elp-mega-link simple"
                           onClick={() => setShowOfferings(false)}
                         >
-                          Small & medium business
-                        </a>
-                        <a
-                          href={location.pathname === "/employer-login" ? "#solutions" : "/employer-login#solutions"}
+                          Small & medium business (SMB Starter)
+                        </Link>
+                        <Link
+                          to="/buy-online?category=combined"
                           className="elp-mega-link simple"
                           onClick={() => setShowOfferings(false)}
                         >
-                          Consultants & agency
-                        </a>
+                          Corporate & Growth Companies
+                        </Link>
+                        <Link
+                          to="/buy-online#enterprise"
+                          className="elp-mega-link simple"
+                          onClick={() => setShowOfferings(false)}
+                        >
+                          Large Enterprises & Agencies
+                        </Link>
+                        <Link
+                          to="/buy-online#compare"
+                          className="elp-mega-link simple"
+                          style={{ color: "#4338ca", fontWeight: 700 }}
+                          onClick={() => setShowOfferings(false)}
+                        >
+                          Compare All Plan Capabilities →
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -360,46 +365,39 @@ export default function LandingEmployeeHeader({ solid = false, isLoggedIn = fals
               {openSections.byProducts && (
                 <div className="elp-drawer-sublist">
                   <Link
-                    to="/job-posting"
+                    to="/buy-online?category=combined"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Job Posting
+                    Combined Plans & Packages
                   </Link>
                   <Link
-                    to="/resume-database"
+                    to="/buy-online?category=jobs"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Resume Database (Resdex)
+                    Job Posting Solutions (SMB & Hot)
                   </Link>
                   <Link
-                    to="/hiring-automation"
+                    to="/buy-online?category=resdex"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Hiring Automation
+                    Resume Database (ResDex)
                   </Link>
                   <Link
-                    to="/expert-assist"
+                    to="/buy-online?category=standalone"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Expert Assist
+                    AI & Productivity Credits
                   </Link>
                   <Link
-                    to="/branding"
+                    to="/buy-online#enterprise"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Employer Branding
-                  </Link>
-                  <Link
-                    to="/talent-pulse"
-                    className="elp-drawer-subitem"
-                    onClick={() => setMobileDrawerOpen(false)}
-                  >
-                    Talent Planning
+                    Custom & Enterprise Plans
                   </Link>
                 </div>
               )}
@@ -420,27 +418,42 @@ export default function LandingEmployeeHeader({ solid = false, isLoggedIn = fals
               </button>
               {openSections.byBusinessType && (
                 <div className="elp-drawer-sublist">
-                  <a
-                    href={location.pathname === "/employer-login" ? "#solutions" : "/employer-login#solutions"}
+                  <Link
+                    to="/buy-online?category=combined"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Enterprises
-                  </a>
-                  <a
-                    href={location.pathname === "/employer-login" ? "#solutions" : "/employer-login#solutions"}
+                    Free Forever Plan
+                  </Link>
+                  <Link
+                    to="/buy-online?category=combined"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Small & medium business
-                  </a>
-                  <a
-                    href={location.pathname === "/employer-login" ? "#solutions" : "/employer-login#solutions"}
+                    Small & medium business (SMB Starter)
+                  </Link>
+                  <Link
+                    to="/buy-online?category=combined"
                     className="elp-drawer-subitem"
                     onClick={() => setMobileDrawerOpen(false)}
                   >
-                    Consultants & agency
-                  </a>
+                    Corporate & Growth Companies
+                  </Link>
+                  <Link
+                    to="/buy-online#enterprise"
+                    className="elp-drawer-subitem"
+                    onClick={() => setMobileDrawerOpen(false)}
+                  >
+                    Large Enterprises & Agencies
+                  </Link>
+                  <Link
+                    to="/buy-online#compare"
+                    className="elp-drawer-subitem"
+                    style={{ color: "#4338ca", fontWeight: 700 }}
+                    onClick={() => setMobileDrawerOpen(false)}
+                  >
+                    Compare Plan Capabilities →
+                  </Link>
                 </div>
               )}
             </div>

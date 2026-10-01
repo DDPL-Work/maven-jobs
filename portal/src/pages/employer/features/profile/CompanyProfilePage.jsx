@@ -1,178 +1,313 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import {
   FiEdit2, FiCheckCircle, FiShield, FiBriefcase, FiUser,
-  FiMapPin, FiGlobe, FiPhone, FiMail, FiX, FiCheck
+  FiMapPin, FiGlobe, FiPhone, FiMail, FiX, FiCheck, FiAlertCircle
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import { useEmployerAuth } from '../../../../hooks/useEmployerAuth';
 import authService from '../../../../services/authService';
 
-// Company Profile Page component
-const STORAGE_KEY = 'employer_company_profile_data';
-
 export default function CompanyProfilePage() {
   const { session } = useEmployerAuth();
-  const [dashboardData, setDashboardData] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Edit Modals
+  // Edit Modals & State
   const [editAccountModal, setEditAccountModal] = useState(false);
   const [editCompanyModal, setEditCompanyModal] = useState(false);
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [savingCompany, setSavingCompany] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
-
-  // Initial state with defaults matching the screenshots + dynamic session fallbacks
-  const [profile, setProfile] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-
-    const empUser = (() => {
-      try {
-        return JSON.parse(localStorage.getItem('employerUser') || '{}');
-      } catch {
-        return {};
-      }
-    })();
-
-    return {
-      // Header
-      companyName: empUser.companyName || empUser.name || 'SAVVI SALES SERVICES PRIVATE LIMITED',
-      logoUrl: empUser.logoUrl || '',
-
-      // Account Details
-      username: empUser.email || empUser.username || 'admin@mavenjobs.in',
-      communicationEmail: empUser.email || 'admin@mavenjobs.in',
-      mobileNumber: empUser.phone || '+91-9996725557',
-
-      // Company Details
-      companyType: 'Placement consultant/Search Firm',
-      industryType: 'Employment Firms/Recruitment Services Firms',
-      contactPerson: empUser.name || 'Diwakar',
-      alias: '',
-      contactDesignation: 'Talent Acquisition Lead',
-      websiteUrl: 'https://mavenjobs.in',
-      profileHotVacancies: 'Standard',
-      profileClassifieds: 'Standard',
-      phone1: '9350114002',
-      phone2: '',
-      tanNumber: 'RTKS23867E',
-
-      // KYC Details
-      kycStatus: 'APPROVED',
-      registeredName: empUser.companyName || 'SAVVI SALES & SERVICES PRIVATE LIMITED',
-      addressLabel: 'Primary Address',
-      address: '331, Gandhi Colony, Samalkha, Panipat, Haryana, 132101',
-      country: 'India',
-      city: 'PANIPAT',
-      state: 'Haryana',
-      pincode: '132101',
-      gstin: 'Unregistered',
-    };
-  });
+  const [modalError, setModalError] = useState('');
 
   // Edit form buffers
   const [accountForm, setAccountForm] = useState({
-    username: profile.username,
-    communicationEmail: profile.communicationEmail,
-    mobileNumber: profile.mobileNumber,
+    username: '',
+    communicationEmail: '',
+    mobileNumber: '',
   });
 
   const [companyForm, setCompanyForm] = useState({
-    companyType: profile.companyType,
-    industryType: profile.industryType,
-    contactPerson: profile.contactPerson,
-    alias: profile.alias,
-    contactDesignation: profile.contactDesignation,
-    websiteUrl: profile.websiteUrl,
-    phone1: profile.phone1,
-    phone2: profile.phone2,
-    tanNumber: profile.tanNumber,
+    companyType: '',
+    industryType: '',
+    contactPerson: '',
+    alias: '',
+    contactDesignation: '',
+    websiteUrl: '',
+    phone1: '',
+    phone2: '',
+    // tanNumber: '',
   });
 
-  // Fetch live dashboard data to populate if present
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await authService.getEmployerProfile();
+      if (res?.data) {
+        const comp = res.data.company || {};
+        const usr = res.data.user || {};
+
+        const merged = {
+          id: comp.id || comp._id || '',
+          clientId: comp.clientId || (comp.id ? `MV-${String(comp.id).slice(-5).toUpperCase()}` : (comp._id ? `MV-${String(comp._id).slice(-5).toUpperCase()}` : '—')),
+          companyName: comp.companyName || comp.name || session?.companyName || '',
+          logoUrl: comp.logoUrl || session?.logoUrl || '',
+          username: usr.username || usr.name || usr.email || '',
+          communicationEmail: comp.communicationEmail || comp.email || usr.email || '',
+          mobileNumber: comp.mobileNumber || comp.phone || usr.phone || '',
+          companyType: comp.companyType || comp.type || '',
+          industryType: comp.industryType || comp.industry || '',
+          contactPerson: comp.contactPerson || usr.name || '',
+          alias: comp.alias || '',
+          contactDesignation: comp.contactDesignation || comp.tagline || '',
+          websiteUrl: comp.websiteUrl || comp.website || '',
+          profileHotVacancies: comp.profileHotVacancies || 'Standard',
+          profileClassifieds: comp.profileClassifieds || 'Standard',
+          phone1: comp.phone1 || comp.phone || '',
+          phone2: comp.phone2 || comp.altPhone || '',
+          // tanNumber: comp.tanNumber || '',
+          gstin: comp.gstin || '',
+          kycStatus: comp.kycStatus || (comp.status === 'ACTIVE' ? 'APPROVED' : (comp.status || 'PENDING_VERIFICATION')),
+          registeredName: comp.registeredName || comp.name || '',
+          addressLabel: comp.addressLabel || 'Primary Address',
+          address: comp.location?.address || '',
+          country: comp.location?.country || 'India',
+          city: comp.location?.city || '',
+          state: comp.location?.region || comp.location?.state || '',
+          pincode: comp.location?.pincode || '',
+          status: comp.status || 'ACTIVE',
+          planSnapshot: comp.planSnapshot || null,
+          services: comp.services || comp.planSnapshot?.services || [],
+          packageType: comp.packageType || 'STANDARD',
+          plan: comp.plan || comp.planSnapshot?.planName || 'Free Plan',
+        };
+
+        setProfile(merged);
+      } else {
+        setError('No company details received.');
+      }
+    } catch (err) {
+      console.error('Failed to fetch company profile from collection:', err);
+      setError(err?.message || 'Failed to load company profile. Please ensure you are logged in.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let active = true;
-    authService.getEmployerDashboard()
-      .then((res) => {
-        if (!active || !res?.data) return;
-        setDashboardData(res.data);
-        const comp = res.data.company;
-        const usr = res.data.user;
-
-        setProfile((prev) => {
-          const updated = {
-            ...prev,
-            companyName: comp?.name || prev.companyName,
-            logoUrl: comp?.logoUrl || prev.logoUrl,
-            username: usr?.email || usr?.username || prev.username,
-            communicationEmail: comp?.email || usr?.email || prev.communicationEmail,
-            mobileNumber: usr?.phone || comp?.phone || prev.mobileNumber,
-            industryType: comp?.industry || prev.industryType,
-            companyType: comp?.type || prev.companyType,
-            websiteUrl: comp?.website || prev.websiteUrl,
-            contactPerson: usr?.name || prev.contactPerson,
-            phone1: comp?.phone || prev.phone1,
-            phone2: comp?.altPhone || prev.phone2,
-            registeredName: comp?.name || prev.registeredName,
-          };
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-          } catch {}
-          return updated;
-        });
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => { active = false; };
+    loadProfile();
   }, []);
-
-  const handleSaveAccount = (e) => {
-    e.preventDefault();
-    const updated = {
-      ...profile,
-      communicationEmail: accountForm.communicationEmail,
-      mobileNumber: accountForm.mobileNumber,
-    };
-    setProfile(updated);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch {}
-    setEditAccountModal(false);
-    showToast('Account details updated successfully');
-  };
-
-  const handleSaveCompany = (e) => {
-    e.preventDefault();
-    const updated = {
-      ...profile,
-      companyType: companyForm.companyType,
-      industryType: companyForm.industryType,
-      contactPerson: companyForm.contactPerson,
-      alias: companyForm.alias,
-      contactDesignation: companyForm.contactDesignation,
-      websiteUrl: companyForm.websiteUrl,
-      phone1: companyForm.phone1,
-      phone2: companyForm.phone2,
-      tanNumber: companyForm.tanNumber,
-    };
-    setProfile(updated);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch {}
-    setEditCompanyModal(false);
-    showToast('Company details updated successfully');
-  };
 
   const showToast = (msg) => {
     setSaveSuccess(msg);
     setTimeout(() => setSaveSuccess(''), 3500);
   };
+
+  const handleOpenAccountModal = () => {
+    if (!profile) return;
+    setAccountForm({
+      username: profile.username || '',
+      communicationEmail: profile.communicationEmail || '',
+      mobileNumber: profile.mobileNumber || '',
+    });
+    setModalError('');
+    setEditAccountModal(true);
+  };
+
+  const handleOpenCompanyModal = () => {
+    if (!profile) return;
+    setCompanyForm({
+      companyType: profile.companyType || '',
+      industryType: profile.industryType || '',
+      contactPerson: profile.contactPerson || '',
+      alias: profile.alias || '',
+      contactDesignation: profile.contactDesignation || '',
+      websiteUrl: profile.websiteUrl || '',
+      phone1: profile.phone1 || '',
+      phone2: profile.phone2 || '',
+      // tanNumber: profile.tanNumber || '',
+    });
+    setModalError('');
+    setEditCompanyModal(true);
+  };
+
+  const handleSaveAccount = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingAccount(true);
+      setModalError('');
+      const res = await authService.updateEmployerProfile({
+        communicationEmail: accountForm.communicationEmail,
+        email: accountForm.communicationEmail,
+        companyEmail: accountForm.communicationEmail,
+        phone: accountForm.mobileNumber,
+        mobileNumber: accountForm.mobileNumber,
+      });
+
+      if (res?.data) {
+        const comp = res.data.company || {};
+        const usr = res.data.user || {};
+        setProfile((prev) => ({
+          ...prev,
+          username: usr.username || usr.email || prev.username,
+          communicationEmail: comp.communicationEmail || comp.email || accountForm.communicationEmail,
+          mobileNumber: comp.mobileNumber || comp.phone || accountForm.mobileNumber,
+        }));
+      } else {
+        setProfile((prev) => ({
+          ...prev,
+          communicationEmail: accountForm.communicationEmail,
+          mobileNumber: accountForm.mobileNumber,
+        }));
+      }
+      setEditAccountModal(false);
+      showToast('Account details updated successfully');
+    } catch (err) {
+      setModalError(err?.message || 'Failed to update account details');
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
+  const handleSaveCompany = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingCompany(true);
+      setModalError('');
+      const res = await authService.updateEmployerProfile({
+        companyType: companyForm.companyType,
+        type: companyForm.companyType,
+        industryType: companyForm.industryType,
+        industry: companyForm.industryType,
+        contactPerson: companyForm.contactPerson,
+        alias: companyForm.alias,
+        contactDesignation: companyForm.contactDesignation,
+        websiteUrl: companyForm.websiteUrl,
+        website: companyForm.websiteUrl,
+        phone1: companyForm.phone1,
+        phone: companyForm.phone1,
+        phone2: companyForm.phone2,
+        altPhone: companyForm.phone2,
+        // tanNumber: companyForm.tanNumber,
+      });
+
+      if (res?.data?.company) {
+        const comp = res.data.company;
+        setProfile((prev) => ({
+          ...prev,
+          companyType: comp.companyType || comp.type || companyForm.companyType,
+          industryType: comp.industryType || comp.industry || companyForm.industryType,
+          contactPerson: comp.contactPerson || companyForm.contactPerson,
+          alias: comp.alias || companyForm.alias,
+          contactDesignation: comp.contactDesignation || companyForm.contactDesignation,
+          websiteUrl: comp.websiteUrl || comp.website || companyForm.websiteUrl,
+          phone1: comp.phone1 || comp.phone || companyForm.phone1,
+          phone2: comp.phone2 || comp.altPhone || companyForm.phone2,
+          // tanNumber: comp.tanNumber || companyForm.tanNumber,
+        }));
+      } else {
+        setProfile((prev) => ({
+          ...prev,
+          ...companyForm,
+        }));
+      }
+      setEditCompanyModal(false);
+      showToast('Company details updated successfully');
+    } catch (err) {
+      setModalError(err?.message || 'Failed to update company details');
+    } finally {
+      setSavingCompany(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <EmployerLayout activeTab="company-profile">
+        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
+          <EmployerBreadcrumb items={[
+            { label: 'Employer Dashboard', path: '/employer-dashboard' },
+            { label: 'Company Profile' },
+          ]} />
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            border: '1px solid #e2e8f0',
+            padding: '70px 32px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+            color: '#64748b',
+          }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              border: '3px solid #e2e8f0',
+              borderTopColor: '#002366',
+              animation: 'spinProfile 0.8s linear infinite',
+            }} />
+            <span style={{ fontSize: 14.5, fontWeight: 600 }}>Fetching company details from database...</span>
+          </div>
+          <style>{`
+            @keyframes spinProfile {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </EmployerLayout>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <EmployerLayout activeTab="company-profile">
+        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '40px 20px' }}>
+          <EmployerBreadcrumb items={[
+            { label: 'Employer Dashboard', path: '/employer-dashboard' },
+            { label: 'Company Profile' },
+          ]} />
+          <div style={{
+            background: '#fff5f5',
+            borderRadius: 16,
+            border: '1px solid #fed7d7',
+            padding: '40px 32px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 14,
+            color: '#c53030',
+            textAlign: 'center',
+          }}>
+            <FiAlertCircle size={32} />
+            <span style={{ fontSize: 16, fontWeight: 700 }}>{error || 'Unable to load company profile'}</span>
+            <button
+              onClick={loadProfile}
+              style={{
+                marginTop: 8,
+                padding: '8px 20px',
+                borderRadius: 8,
+                border: 'none',
+                background: '#002366',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </EmployerLayout>
+    );
+  }
+
+  const isKycApproved = profile.kycStatus === 'APPROVED' || profile.status === 'ACTIVE';
 
   return (
     <EmployerLayout activeTab="company-profile">
@@ -242,7 +377,7 @@ export default function CompanyProfilePage() {
               letterSpacing: '-0.02em',
               lineHeight: 1.25,
             }}>
-              {profile.companyName}
+              {profile.companyName || 'Company Profile'}
             </h1>
             <div style={{
               display: 'flex',
@@ -255,20 +390,20 @@ export default function CompanyProfilePage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
-                background: '#dcfce7',
-                color: '#15803d',
+                background: isKycApproved ? '#dcfce7' : '#fef3c7',
+                color: isKycApproved ? '#15803d' : '#b45309',
                 padding: '4px 10px',
                 borderRadius: 6,
                 fontSize: 12,
                 fontWeight: 700,
               }}>
-                <FiCheckCircle size={12} /> KYC Verified
+                <FiCheckCircle size={12} /> {isKycApproved ? 'KYC Verified' : (profile.kycStatus || 'Pending Verification')}
               </span>
               <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-                Client ID: MV-88294
+                Client ID: {profile.clientId || '—'}
               </span>
               <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-                • India
+                • {profile.country || 'India'}
               </span>
             </div>
           </div>
@@ -287,7 +422,7 @@ export default function CompanyProfilePage() {
             {profile.logoUrl ? (
               <img
                 src={profile.logoUrl}
-                alt={profile.companyName}
+                alt={profile.companyName || 'Company'}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 14 }}
               />
             ) : (
@@ -297,7 +432,7 @@ export default function CompanyProfilePage() {
                 color: '#002366',
                 fontFamily: "'Bricolage Grotesque', sans-serif",
               }}>
-                {profile.companyName.slice(0, 2).toUpperCase()}
+                {(profile.companyName || 'CO').slice(0, 2).toUpperCase()}
               </span>
             )}
           </div>
@@ -333,14 +468,7 @@ export default function CompanyProfilePage() {
               </h2>
             </div>
             <button
-              onClick={() => {
-                setAccountForm({
-                  username: profile.username,
-                  communicationEmail: profile.communicationEmail,
-                  mobileNumber: profile.mobileNumber,
-                });
-                setEditAccountModal(true);
-              }}
+              onClick={handleOpenAccountModal}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -400,20 +528,7 @@ export default function CompanyProfilePage() {
               </h2>
             </div>
             <button
-              onClick={() => {
-                setCompanyForm({
-                  companyType: profile.companyType,
-                  industryType: profile.industryType,
-                  contactPerson: profile.contactPerson,
-                  alias: profile.alias,
-                  contactDesignation: profile.contactDesignation,
-                  websiteUrl: profile.websiteUrl,
-                  phone1: profile.phone1,
-                  phone2: profile.phone2,
-                  tanNumber: profile.tanNumber,
-                });
-                setEditCompanyModal(true);
-              }}
+              onClick={handleOpenCompanyModal}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -440,8 +555,8 @@ export default function CompanyProfilePage() {
             <ProfileRow label="Company Type" value={profile.companyType} />
             <ProfileRow label="Industry Type" value={profile.industryType} />
             <ProfileRow label="Contact Person" value={profile.contactPerson} />
-            <ProfileRow label="Alias" value={profile.alias || '—'} />
-            <ProfileRow label="Contact Person's Designation" value={profile.contactDesignation || '—'} />
+            <ProfileRow label="Alias" value={profile.alias} />
+            <ProfileRow label="Contact Person's Designation" value={profile.contactDesignation} />
             <ProfileRow
               label="Website URL"
               value={
@@ -462,8 +577,8 @@ export default function CompanyProfilePage() {
             <ProfileRow label="Profile for Hot Vacancies" value={profile.profileHotVacancies || 'Standard'} />
             <ProfileRow label="Profile for Classifieds" value={profile.profileClassifieds || 'Standard'} />
             <ProfileRow label="Phone Number 1" value={profile.phone1} />
-            <ProfileRow label="Phone Number 2" value={profile.phone2 || '—'} />
-            <ProfileRow label="TAN Number" value={profile.tanNumber || '—'} />
+            <ProfileRow label="Phone Number 2" value={profile.phone2} />
+            {/* <ProfileRow label="TAN Number" value={profile.tanNumber} /> */}
           </div>
         </div>
 
@@ -500,15 +615,15 @@ export default function CompanyProfilePage() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 5,
-              background: '#dcfce7',
-              color: '#15803d',
+              background: isKycApproved ? '#dcfce7' : '#fef3c7',
+              color: isKycApproved ? '#15803d' : '#b45309',
               padding: '4px 12px',
               borderRadius: 6,
               fontSize: 12.5,
               fontWeight: 800,
               letterSpacing: '0.04em',
             }}>
-              <FiCheckCircle size={13} /> {profile.kycStatus}
+              <FiCheckCircle size={13} /> {profile.kycStatus || 'PENDING'}
             </span>
           </div>
 
@@ -518,22 +633,22 @@ export default function CompanyProfilePage() {
               value={
                 <span style={{
                   display: 'inline-block',
-                  background: '#dcfce7',
-                  color: '#15803d',
+                  background: isKycApproved ? '#dcfce7' : '#fef3c7',
+                  color: isKycApproved ? '#15803d' : '#b45309',
                   padding: '3px 10px',
                   borderRadius: 6,
                   fontSize: 12,
                   fontWeight: 800,
                   letterSpacing: '0.04em',
                 }}>
-                  {profile.kycStatus}
+                  {profile.kycStatus || 'PENDING'}
                 </span>
               }
             />
-            <ProfileRow label="Name" value={profile.registeredName} />
-            <ProfileRow label="Address Label" value={profile.addressLabel} />
+            <ProfileRow label="Name" value={profile.registeredName || profile.companyName} />
+            <ProfileRow label="Address Label" value={profile.addressLabel || 'Primary Address'} />
             <ProfileRow label="Address" value={profile.address} />
-            <ProfileRow label="Country" value={profile.country} />
+            <ProfileRow label="Country" value={profile.country || 'India'} />
             <ProfileRow label="City" value={profile.city} />
             <ProfileRow label="State" value={profile.state} />
             <ProfileRow label="Pincode" value={profile.pincode} />
@@ -550,7 +665,7 @@ export default function CompanyProfilePage() {
           backdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: 20,
-        }} onClick={() => setEditAccountModal(false)}>
+        }} onClick={() => !savingAccount && setEditAccountModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{
             background: '#ffffff',
             borderRadius: 20,
@@ -561,10 +676,23 @@ export default function CompanyProfilePage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#002366' }}>Edit Account Details</h3>
-              <button onClick={() => setEditAccountModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <button
+                disabled={savingAccount}
+                onClick={() => setEditAccountModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
                 <FiX size={20} />
               </button>
             </div>
+
+            {modalError && (
+              <div style={{
+                background: '#fff5f5', border: '1px solid #fed7d7', color: '#c53030',
+                padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 16
+              }}>
+                {modalError}
+              </div>
+            )}
 
             <form onSubmit={handleSaveAccount}>
               <div style={{ marginBottom: 16 }}>
@@ -604,6 +732,7 @@ export default function CompanyProfilePage() {
               <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
+                  disabled={savingAccount}
                   onClick={() => setEditAccountModal(false)}
                   style={{
                     padding: '10px 20px', borderRadius: 10, border: '1px solid #cbd5e1',
@@ -614,12 +743,14 @@ export default function CompanyProfilePage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={savingAccount}
                   style={{
                     padding: '10px 22px', borderRadius: 10, border: 'none',
-                    background: '#002366', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14
+                    background: '#002366', color: '#fff', fontWeight: 700, cursor: savingAccount ? 'not-allowed' : 'pointer', fontSize: 14,
+                    opacity: savingAccount ? 0.7 : 1
                   }}
                 >
-                  Save Changes
+                  {savingAccount ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -635,7 +766,7 @@ export default function CompanyProfilePage() {
           backdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: 20,
-        }} onClick={() => setEditCompanyModal(false)}>
+        }} onClick={() => !savingCompany && setEditCompanyModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{
             background: '#ffffff',
             borderRadius: 20,
@@ -648,10 +779,23 @@ export default function CompanyProfilePage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#002366' }}>Edit Company Details</h3>
-              <button onClick={() => setEditCompanyModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <button
+                disabled={savingCompany}
+                onClick={() => setEditCompanyModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
                 <FiX size={20} />
               </button>
             </div>
+
+            {modalError && (
+              <div style={{
+                background: '#fff5f5', border: '1px solid #fed7d7', color: '#c53030',
+                padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 16
+              }}>
+                {modalError}
+              </div>
+            )}
 
             <form onSubmit={handleSaveCompany}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -697,6 +841,16 @@ export default function CompanyProfilePage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>Alias</label>
+                <input
+                  type="text"
+                  value={companyForm.alias}
+                  onChange={(e) => setCompanyForm({ ...companyForm, alias: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: 13.5, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>Website URL</label>
                 <input
                   type="text"
@@ -727,7 +881,7 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: 22 }}>
+              {/* <div style={{ marginBottom: 22 }}>
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>TAN Number</label>
                 <input
                   type="text"
@@ -735,11 +889,12 @@ export default function CompanyProfilePage() {
                   onChange={(e) => setCompanyForm({ ...companyForm, tanNumber: e.target.value })}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: 13.5, boxSizing: 'border-box' }}
                 />
-              </div>
+              </div> */}
 
               <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
+                  disabled={savingCompany}
                   onClick={() => setEditCompanyModal(false)}
                   style={{
                     padding: '10px 20px', borderRadius: 10, border: '1px solid #cbd5e1',
@@ -750,12 +905,14 @@ export default function CompanyProfilePage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={savingCompany}
                   style={{
                     padding: '10px 22px', borderRadius: 10, border: 'none',
-                    background: '#002366', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14
+                    background: '#002366', color: '#fff', fontWeight: 700, cursor: savingCompany ? 'not-allowed' : 'pointer', fontSize: 14,
+                    opacity: savingCompany ? 0.7 : 1
                   }}
                 >
-                  Save Changes
+                  {savingCompany ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -767,6 +924,7 @@ export default function CompanyProfilePage() {
 }
 
 function ProfileRow({ label, value }) {
+  const displayVal = value !== null && value !== undefined && value !== '' ? value : '—';
   return (
     <div style={{
       display: 'grid',
@@ -790,7 +948,7 @@ function ProfileRow({ label, value }) {
         color: '#0f172a',
         wordBreak: 'break-word',
       }}>
-        {value}
+        {displayVal}
       </div>
     </div>
   );

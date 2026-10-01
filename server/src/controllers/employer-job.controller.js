@@ -48,6 +48,10 @@ const resolveClientUserAndCompany = async (userId) => {
  * Normalizes job category into standard display tags
  */
 const resolveJobCategory = (job) => {
+  if (job.jobCategory === "hot") return "Hot Vacancy";
+  if (job.jobCategory === "management") return "SMB Job";
+  if (job.jobCategory === "internship") return "Internship";
+  if (job.jobCategory === "standard") return "Standard Job";
   const text = `${job.jobType || ""} ${job.department || ""} ${job.title || ""}`.toLowerCase();
   if (text.includes("intern")) return "Internship";
   if (text.includes("hot") || text.includes("urgent")) return "Hot Vacancy";

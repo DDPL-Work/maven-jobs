@@ -717,6 +717,8 @@ const formatJob = (
     externalLink: job.externalLink || "",
     skills: Array.isArray(job.skills) ? job.skills : [],
     deadline: job.deadline || null,
+    jobCategory: job.jobCategory || "standard",
+    isHotVacancy: Boolean(job.isHotVacancy || job.jobCategory === "hot"),
     isActive: Boolean(job.isActive),
     applicationStatus: application?.status || "",
     hasApplied: Boolean(application),
@@ -944,9 +946,9 @@ const getRecommendedJobs = async (profile, candidateId) => {
     }
   }
 
-  // Always fetch all active jobs to populate categories
+  // Always fetch all active jobs to populate categories (hot vacancies first)
   const allJobs = await Job.find({ isActive: true, approvalStatus: "APPROVED" })
-    .sort({ updatedAt: -1 })
+    .sort({ isHotVacancy: -1, updatedAt: -1 })
     .populate("companyId", "name logoUrl");
 
   const applicationMap = await buildApplicationMap(
@@ -1054,7 +1056,7 @@ const buildSimilarJobs = async (job, candidateId) => {
         : null,
     ].filter(Boolean),
   })
-    .sort({ updatedAt: -1 })
+    .sort({ isHotVacancy: -1, updatedAt: -1 })
     .limit(5)
     .populate("companyId", "name logoUrl coverImageUrl");
 
@@ -1425,7 +1427,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     Application.find({ candidateId: req.user._id }).select("status"),
     Application.distinct("companyId", { candidateId: req.user._id }),
     Job.find({ isActive: true, approvalStatus: "APPROVED" })
-      .sort({ createdAt: -1 })
+      .sort({ isHotVacancy: -1, createdAt: -1 })
       .limit(10)
       .populate("companyId", "name logoUrl"),
     CandidateQuizResult.findOne({ candidateId: req.user._id, quizKey }),
@@ -1436,7 +1438,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
           isActive: true,
           approvalStatus: "APPROVED",
         })
-          .sort({ createdAt: -1 })
+          .sort({ isHotVacancy: -1, createdAt: -1 })
           .limit(20)
           .populate("companyId", "name industry logoUrl")
       : Promise.resolve([]),
@@ -1734,18 +1736,33 @@ exports.getJobs = asyncHandler(async (req, res) => {
           .includes(search),
       );
     }
+
+    jobs.sort((a, b) => {
+      const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+      const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+      if (aHot === bHot) return 0;
+      return bHot ? 1 : -1;
+    });
   } else {
     jobs = await Job.find({
       isActive: true,
       approvalStatus: "APPROVED",
     })
-      .sort({ updatedAt: -1 })
+      .sort({ isHotVacancy: -1, updatedAt: -1 })
       .limit(300)
       .populate("companyId", "name industry coverImageUrl");
 
     if (search) {
       jobs = jobs.filter((job) => jobMatchesKeywordSearch(job, search));
     }
+
+    // Always ensure hot vacancies are placed at the top of candidate list
+    jobs.sort((a, b) => {
+      const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+      const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+      if (aHot === bHot) return 0;
+      return bHot ? 1 : -1;
+    });
 
     jobs = jobs.slice(0, 48);
   }

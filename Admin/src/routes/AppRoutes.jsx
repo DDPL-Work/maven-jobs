@@ -13,6 +13,14 @@ const UsersPage = lazy(() => import("../pages/UsersPage"));
 const PaymentsPage = lazy(() => import("../pages/PaymentsPage"));
 const NotFound = lazy(() => import("../pages/NotFound"));
 
+// Commercial Management Pages
+const CommercialDashboardPage = lazy(() => import("../pages/commercial/CommercialDashboardPage"));
+const CommercialProductsPage = lazy(() => import("../pages/commercial/CommercialProductsPage"));
+const CommercialPlansPage = lazy(() => import("../pages/commercial/CommercialPlansPage"));
+const CommercialSubscriptionsPage = lazy(() => import("../pages/commercial/CommercialSubscriptionsPage"));
+const CommercialCreditLedgerPage = lazy(() => import("../pages/commercial/CommercialCreditLedgerPage"));
+const CommercialAuditLogsPage = lazy(() => import("../pages/commercial/CommercialAuditLogsPage"));
+
 function SuspenseSpinner() {
   return (
     <div className="flex min-h-[420px] w-full items-center justify-center">
@@ -47,6 +55,54 @@ const router = createBrowserRouter([
             element: (
               <Suspense fallback={<SuspenseSpinner />}>
                 <AdminDashboard />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/dashboard",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialDashboardPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/products",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialProductsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/plans",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialPlansPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/subscriptions",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialSubscriptionsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/credit-ledger",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialCreditLedgerPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/audit-logs",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialAuditLogsPage />
               </Suspense>
             ),
           },

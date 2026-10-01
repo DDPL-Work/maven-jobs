@@ -226,6 +226,7 @@ function AppContent() {
         <Route path="/employer-login" element={<EmployerLandingPage />} />
         <Route path="/recruit/client-registration-form" element={<ClientRegistrationForm />} />
         <Route path="/buy-online" element={<Buyonline />} />
+        <Route path="/portal/buy-online" element={<Buyonline />} />
         <Route path="/expert-assist" element={<ExpertAssist />} />
         <Route path="/employer-help" element={<EmployerHelp />} />
         <Route path="/talent-pulse" element={<Talent />} />

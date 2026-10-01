@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPhone, FiMail, FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage, FiLoader } from 'react-icons/fi';
+import { FiPhone, FiMail, FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertCircle, FiPackage, FiLoader } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import authService from '../../../../services/authService';
@@ -10,6 +10,7 @@ export default function MySubscriptionsPage() {
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [expandedCards, setExpandedCards] = useState({ 0: true }); // First card open by default
   const [invoiceToast, setInvoiceToast] = useState(null);
+  const [requestingInvoiceId, setRequestingInvoiceId] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,12 +52,44 @@ export default function MySubscriptionsPage() {
     }));
   };
 
-  const handleRequestInvoice = (sub, e) => {
+  const handleRequestInvoice = async (sub, e) => {
     e.stopPropagation();
-    setInvoiceToast(`Invoice requested for Transaction ID #${sub.transactionId}. Sent to your registered email.`);
-    setTimeout(() => {
-      setInvoiceToast(null);
-    }, 4500);
+    const planName = sub.planName || sub.products?.[0]?.name || 'Subscription Plan';
+    const subTargetId = sub.id || sub.transactionId;
+
+    try {
+      setRequestingInvoiceId(subTargetId);
+      const res = await authService.requestSubscriptionInvoice({
+        planName,
+        transactionId: sub.transactionId || '',
+        amount: sub.amountPaid || 0,
+        subscriptionId: sub.id || '',
+      });
+
+      const message =
+        res?.message ||
+        `Invoice requested for "${planName}" (#${sub.transactionId}). Sent to your registered email.`;
+
+      setInvoiceToast({
+        type: 'success',
+        message,
+      });
+    } catch (err) {
+      console.error('Failed to request invoice:', err);
+      const errorMessage =
+        err?.message ||
+        err?.response?.data?.message ||
+        'Unable to submit invoice request right now. Please try again.';
+      setInvoiceToast({
+        type: 'error',
+        message: errorMessage,
+      });
+    } finally {
+      setRequestingInvoiceId(null);
+      setTimeout(() => {
+        setInvoiceToast(null);
+      }, 5500);
+    }
   };
 
   const getInitials = (name) => {
@@ -88,25 +121,32 @@ export default function MySubscriptionsPage() {
 
         {/* Floating Toast feedback */}
         {invoiceToast && (
-          <div style={{
-            position: 'fixed',
-            top: 24,
-            right: 24,
-            zIndex: 9999,
-            backgroundColor: '#0f172a',
-            color: '#ffffff',
-            padding: '14px 20px',
-            borderRadius: 12,
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            border: '1px solid #334155',
-            fontSize: 14,
-            fontWeight: 500,
-          }}>
-            <FiCheckCircle size={20} color="#34d399" style={{ flexShrink: 0 }} />
-            <span>{invoiceToast}</span>
+          <div
+            style={{
+              position: 'fixed',
+              top: 24,
+              right: 24,
+              zIndex: 9999,
+              backgroundColor: invoiceToast.type === 'error' ? '#7f1d1d' : '#0f172a',
+              color: '#ffffff',
+              padding: '14px 20px',
+              borderRadius: 12,
+              boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              border: `1px solid ${invoiceToast.type === 'error' ? '#ef4444' : '#334155'}`,
+              fontSize: 14,
+              fontWeight: 500,
+              maxWidth: 480,
+            }}
+          >
+            {invoiceToast.type === 'error' ? (
+              <FiAlertCircle size={20} color="#f87171" style={{ flexShrink: 0 }} />
+            ) : (
+              <FiCheckCircle size={20} color="#34d399" style={{ flexShrink: 0 }} />
+            )}
+            <span>{typeof invoiceToast === 'string' ? invoiceToast : invoiceToast.message}</span>
           </div>
         )}
 
@@ -350,24 +390,44 @@ export default function MySubscriptionsPage() {
                       }}>
                         <button
                           type="button"
+                          disabled={requestingInvoiceId === (sub.id || sub.transactionId)}
                           onClick={(e) => handleRequestInvoice(sub, e)}
                           style={{
                             background: 'none',
                             border: 'none',
                             padding: 0,
-                            color: '#1e5eff',
+                            color: requestingInvoiceId === (sub.id || sub.transactionId) ? '#94a3b8' : '#1e5eff',
                             fontSize: 14.5,
                             fontWeight: 600,
-                            cursor: 'pointer',
+                            cursor: requestingInvoiceId === (sub.id || sub.transactionId) ? 'not-allowed' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 6,
                             outline: 'none',
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+                          onMouseEnter={(e) => {
+                            if (requestingInvoiceId !== (sub.id || sub.transactionId)) {
+                              e.currentTarget.style.textDecoration = 'underline';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.textDecoration = 'none';
+                          }}
                         >
-                          Request invoice
+                          {requestingInvoiceId === (sub.id || sub.transactionId) ? (
+                            <>
+                              <FiLoader
+                                size={15}
+                                style={{
+                                  display: 'inline-block',
+                                  animation: 'spin 1s linear infinite',
+                                }}
+                              />
+                              <span>Requesting...</span>
+                            </>
+                          ) : (
+                            'Request invoice'
+                          )}
                         </button>
                         <span style={{
                           color: '#1e5eff',

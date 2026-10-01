@@ -379,6 +379,8 @@ export default function JobListingPage() {
         type: companyObj.type || companyObj.industry || "Corporate",
         date: new Date(j.createdAt || Date.now()).getTime(),
         externalLink: j.externalLink || "",
+        jobCategory: j.jobCategory || "standard",
+        isHotVacancy: Boolean(j.isHotVacancy || j.jobCategory === "hot"),
       };
     });
 
@@ -402,6 +404,14 @@ export default function JobListingPage() {
     } else if (sortBy === "newest") {
       formatted.sort((a, b) => b.date - a.date);
     }
+
+    // Always keep hot vacancies pinned to the top of the candidate listing
+    formatted.sort((a, b) => {
+      const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+      const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+      if (aHot === bHot) return 0;
+      return bHot ? 1 : -1;
+    });
 
     setBackendJobs({ jobs: formatted, total, totalPages });
 
@@ -1154,7 +1164,7 @@ export default function JobListingPage() {
             jobs.map((job) => (
               <div
                 key={job.id}
-                className={`jlp-job-card${job.featured ? " featured" : ""}`}
+                className={`jlp-job-card${job.isHotVacancy ? " hot-vacancy" : job.featured ? " featured" : ""}`}
               >
                 {job.coverUrl ? (
                   <div
@@ -1162,7 +1172,18 @@ export default function JobListingPage() {
                     style={{ backgroundImage: `url(${job.coverUrl})` }}
                   />
                 ) : null}
-                {job.featured && (
+                {job.isHotVacancy ? (
+                  <div
+                    className="jlp-featured-badge"
+                    style={{
+                      background: "linear-gradient(135deg, #ef4444, #f97316)",
+                      color: "#fff",
+                      boxShadow: "0 2px 8px rgba(239, 68, 68, 0.35)",
+                    }}
+                  >
+                    🔥 Hot Vacancy
+                  </div>
+                ) : job.featured && (
                   <div className="jlp-featured-badge">
                     <FaStar size={12} className="inline mr-1" /> Featured
                   </div>

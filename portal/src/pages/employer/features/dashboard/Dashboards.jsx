@@ -3281,9 +3281,20 @@ export default function EmployerProfile() {
         html{scroll-behavior:smooth}
         body{background:#f0f4fb;font-family:'DM Sans',system-ui,sans-serif;color:${C.s800}}
         .pd-notif-overlay { position: fixed; inset: 0; background: rgba(0, 35, 102, 0.35); backdrop-filter: blur(4px); z-index: 10000; opacity: 0; visibility: hidden; transition: all 0.3s; }
-        .pd-notif-overlay.show { opacity: 1; visibility: visible; }
-        .pd-notif-sidebar { position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; z-index: 10001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.1); display: flex; flex-direction: column; transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .pd-notif-sidebar.show { right: 0; }
+        .pd-notif-sidebar { position: fixed; top: 0; right: -420px; left: auto !important; width: 400px; max-width: 90vw; height: 100vh; background: white; z-index: 10001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.1); display: flex; flex-direction: column; transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .pd-notif-sidebar.show { right: 0 !important; left: auto !important; }
+        @media (max-width: 768px) {
+          .pd-notif-sidebar {
+            width: min(100vw, 400px);
+            max-width: 100vw;
+            right: -100vw;
+            left: auto !important;
+          }
+          .pd-notif-sidebar.show {
+            right: 0 !important;
+            left: auto !important;
+          }
+        }
         .pd-notif-head { padding: 22px 24px; border-bottom: 1px solid ${C.s200}; display: flex; align-items: center; justify-content: space-between; }
         .pd-notif-head h3 { font-family: ${C.fd}; font-size: 18px; font-weight: 800; color: ${C.navy}; margin:0;}
         .pd-notif-close { background: ${C.s100}; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: ${C.s500}; cursor: pointer; transition: all 0.2s; }

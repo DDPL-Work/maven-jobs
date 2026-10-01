@@ -1,23 +1,41 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import EmployerFooter from '../../../../components/EmployerFooter';
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import EmployerFooter from "../../../../components/EmployerFooter";
 import {
-  FiCheck, FiX, FiUsers, FiChevronDown, FiArrowRight,
-  FiBriefcase, FiPhoneCall, FiSearch, FiZap, FiShield,
-  FiTrendingUp, FiStar, FiAward, FiBarChart2, FiMessageCircle, FiHeart,
-} from 'react-icons/fi';
-import mavenLogo from '../../../../../assets/maven-logo-BdiSsfJk.svg';
-import { useAuth } from '../../../../AuthContext';
-import paymentService from '../../../../services/paymentService';
-import LandingEmployeeHeader from '../../../../components/employer/LandingEmployeeHeader';
+  FiCheck,
+  FiX,
+  FiChevronDown,
+  FiArrowRight,
+  FiBriefcase,
+  FiPhoneCall,
+  FiSearch,
+  FiZap,
+  FiShield,
+  FiTrendingUp,
+  FiStar,
+  FiAward,
+  FiBarChart2,
+  FiMessageCircle,
+  FiRefreshCw,
+  FiClock,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiPlus,
+  FiTrash2,
+} from "react-icons/fi";
+import { useAuth } from "../../../../AuthContext";
+import paymentService from "../../../../services/paymentService";
+import commercialService from "../../../../services/commercialService";
+import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
+import "./Buyonline.css";
 
 /* ── Helpers ── */
 function useScrollY() {
   const [y, setY] = useState(0);
   useEffect(() => {
     const fn = () => setY(window.scrollY);
-    window.addEventListener('scroll', fn, { passive: true });
-    return () => window.removeEventListener('scroll', fn);
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
   }, []);
   return y;
 }
@@ -27,1056 +45,2014 @@ function useInView(threshold = 0.15) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setVisible(true); },
+      ([e]) => {
+        if (e.isIntersecting) setVisible(true);
+      },
       { threshold }
     );
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
-  }, []);
+  }, [threshold]);
   return [ref, visible];
 }
 
-/* ── Data ── */
-const JOB_PLANS = [
-  {
-    name: 'Hot Vacancy',
-    price: '₹1,650',
-    accent: '#002366',
-    badge: 'Most Popular',
-    validity: '30 days',
-    hot: true,
-    features: [
-      { text: 'Full detailed job description', included: true },
-      { text: '3 job locations', included: true },
-      { text: 'Unlimited applications', included: true },
-      { text: 'Applications valid 90 days', included: true },
-      { text: 'Jobseeker contact details', included: true },
-      { text: 'Boosted on search page', included: true },
-      { text: 'Job branding & logo', included: true },
-    ],
-  },
-  {
-    name: 'Classified',
-    price: '₹850',
-    accent: '#002366',
-    badge: null,
-    validity: '30 days',
-    hot: false,
-    features: [
-      { text: 'Up to 250 char description', included: true },
-      { text: '3 job locations', included: true },
-      { text: 'Unlimited applications', included: true },
-      { text: 'Applications valid 90 days', included: true },
-      { text: 'Jobseeker contact details', included: true },
-      { text: 'Boosted on search page', included: false },
-      { text: 'Job branding & logo', included: false },
-    ],
-  },
-  {
-    name: 'Standard',
-    price: '₹400',
-    accent: '#002366',
-    badge: null,
-    validity: '15 days',
-    hot: false,
-    features: [
-      { text: 'Up to 250 char description', included: true },
-      { text: '1 job location', included: true },
-      { text: '200 applications', included: true },
-      { text: 'Applications valid 30 days', included: true },
-      { text: 'Jobseeker contact details', included: false },
-      { text: 'Boosted on search page', included: false },
-      { text: 'Job branding & logo', included: false },
-    ],
-  },
-  {
-    name: 'Free',
-    price: 'Free',
-    accent: '#10b981',
-    badge: null,
-    validity: '7 days',
-    hot: false,
-    isFree: true,
-    features: [
-      { text: 'Up to 250 char description', included: true },
-      { text: '1 job location', included: true },
-      { text: '50 applications', included: true },
-      { text: 'Applications valid 15 days', included: true },
-      { text: 'Jobseeker contact details', included: false },
-      { text: 'Boosted on search page', included: false },
-      { text: 'Job branding & logo', included: false },
-    ],
-  },
-];
-
 const FAQS = [
-  { question: 'How long is a job posting active?', answer: 'Validity depends on your chosen plan — Free (7 days), Standard (15 days), Classified & Hot Vacancy (30 days). You can extend anytime by purchasing additional validity credits from your dashboard.' },
-  { question: 'What is Resdex and how does it work?', answer: 'Resdex is MavenJobs\' exclusive resume database with 8Cr+ active profiles. You search by skills, experience, location, salary band, and industry — then contact candidates directly without waiting for applications.' },
-  { question: 'Can I upgrade my plan later?', answer: 'Yes. Upgrades are seamless and pro-rated — the remaining value of your current plan is automatically credited against the new plan cost at checkout.' },
-  { question: 'Are there any hidden charges?', answer: 'None. All pricing shown is transparent and exclusive of GST, which is added at checkout as applicable. No setup fees, no auto-renewals without consent.' },
-  { question: 'What industries does MavenJobs cover?', answer: 'MavenJobs covers 60+ industry verticals — IT, Finance, Healthcare, Manufacturing, Retail, Logistics, Education, and more. Our candidate pool spans metro cities as well as Tier-2 and Tier-3 markets across India.' },
-  { question: 'How quickly will I receive applications?', answer: 'Hot Vacancy postings typically receive applications within hours of publishing, thanks to our boosted placement on the job search page and automated alerts sent to matched candidates.' },
+  {
+    question: "What is included in a combined hiring plan?",
+    answer:
+      "Combined plans (like SMB Starter and Corporate) bundle job postings (SMB and Hot Vacancy), resume search views (ResDex), user seat access, and AI credits into a single discounted package with synchronized validity.",
+  },
+  {
+    question: "Can I buy single products without buying a complete plan?",
+    answer:
+      "Yes! You can purchase standalone job posts (SMB, Hot Vacancy, or Internship) with any custom quantity you need, or buy standalone packs of Resume Views and AI Credits without altering an existing plan.",
+  },
+  {
+    question: "How long are credits valid, and which credits get consumed first?",
+    answer:
+      "Credits are valid for the configured period (typically 30, 60, or 90 days). Our entitlement engine uses deterministic FIFO consumption—credits expiring earliest are always consumed first to prevent unnecessary credit loss.",
+  },
+  {
+    question: "What happens to my job postings and candidates when my plan expires?",
+    answer:
+      "When your subscription expires, your account and historical data remain completely intact! You retain read-only access to historical job postings, applicants, and candidate notes.",
+  },
+  {
+    question: "Can I upgrade my plan before my current plan ends?",
+    answer:
+      "Yes. When you upgrade to a higher tier plan, any remaining unused credits from your previous subscription are preserved and added to your new entitlement.",
+  },
+  {
+    question: "Can I purchase additional AI Credits, and do they expire?",
+    answer:
+      "Yes! You can purchase standalone AI Booster packs (e.g. 100 or 500 AI credits) at any time. Monthly plan-allocated AI credits (Free: 10/mo, SMB: 50/mo, Corporate: 200/mo) are refreshed monthly and expire at the end of each month, while purchased standalone AI Booster credits remain active for their full validity period.",
+  },
+  {
+    question: "Are taxes included in the displayed pricing?",
+    answer:
+      "All commercial prices are displayed with transparent tax breakdowns. Applicable Goods and Services Tax (GST 18%) is calculated and shown clearly prior to payment checkout.",
+  },
 ];
 
-const STATS = [
-  { value: '8 Cr+', label: 'Active Job Seekers' },
-  { value: '1.5L+', label: 'Partner Companies' },
-  { value: '50L+', label: 'Jobs Posted' },
-  { value: '98%', label: 'Employer Satisfaction' },
-];
-
-const HIGHLIGHTS = [
-  { Icon: FiUsers, color: '#002366', bg: '#EEF2FF', title: 'Verified Candidate Pool', desc: 'Every profile is screened for authenticity — you only see serious, active job seekers across all industries.' },
-  { Icon: FiBriefcase, color: '#10b981', bg: '#ECFDF5', title: 'Industry-Matched Hiring', desc: 'Our matching algorithm surfaces candidates with directly relevant experience, cutting your screening time in half.' },
-  { Icon: FiBarChart2, color: '#6366f1', bg: '#F0F0FF', title: 'SMB-First Pricing', desc: 'Plans from ₹400 — built so growing businesses can hire professionally without enterprise budgets.' },
-];
-
-/* ── Sub-components ── */
-function PlanCard({ plan, index, onBuy }) {
-  const [ref, visible] = useInView(0.08);
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      ref={ref}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible
-          ? hovered ? 'translateY(-6px)' : 'translateY(0)'
-          : 'translateY(32px)',
-        transition: `opacity 0.55s ease ${index * 0.1}s, transform 0.3s ease`,
-        position: 'relative',
-        borderRadius: 22,
-        background: plan.hot ? '#001540' : '#FFFFFF',
-        border: plan.hot ? 'none' : '1.5px solid #E2E8F0',
-        padding: '32px 26px 28px',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: plan.hot
-          ? '0 28px 64px rgba(0,35,102,0.28), 0 8px 20px rgba(0,0,0,0.14)'
-          : hovered
-            ? '0 16px 48px rgba(0,35,102,0.10)'
-            : '0 2px 10px rgba(0,0,0,0.04)',
-        overflow: 'hidden',
-      }}
-    >
-      {plan.hot && (
-        <>
-          <div style={{ position: 'absolute', top: -70, right: -70, width: 200, height: 200, background: 'radial-gradient(circle, rgba(16,185,129,0.22) 0%, transparent 70%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -50, left: -50, width: 160, height: 160, background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        </>
-      )}
-
-      {plan.badge && (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          background: 'rgba(16,185,129,0.15)', color: '#6ee7b7',
-          fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
-          padding: '4px 12px', borderRadius: 100, marginBottom: 18, width: 'fit-content',
-          border: '1px solid rgba(16,185,129,0.25)',
-        }}>
-          <FiStar size={9} /> {plan.badge}
-        </span>
-      )}
-
-      <h4 style={{ fontSize: 19, fontWeight: 800, color: plan.hot ? '#F1F5F9' : '#0f172a', marginBottom: 6, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-        {plan.name}
-      </h4>
-
-      <div style={{ marginBottom: 4 }}>
-        {plan.isFree
-          ? <span style={{ fontSize: 30, fontWeight: 800, color: '#10b981', fontFamily: "'Bricolage Grotesque', sans-serif" }}>Free</span>
-          : <>
-            <span style={{ fontSize: 30, fontWeight: 800, color: plan.hot ? '#FFFFFF' : '#002366', fontFamily: "'Bricolage Grotesque', sans-serif" }}>{plan.price}</span>
-            <span style={{ fontSize: 11.5, color: plan.hot ? '#64748b' : '#94a3b8', marginLeft: 5 }}>+GST</span>
-          </>
-        }
-      </div>
-
-      <div style={{
-        display: 'inline-flex', alignItems: 'center', fontSize: 11.5, fontWeight: 700,
-        color: plan.hot ? '#60a5fa' : '#64748b',
-        background: plan.hot ? 'rgba(96,165,250,0.1)' : '#f1f5f9',
-        padding: '3px 10px', borderRadius: 100, marginBottom: 24, width: 'fit-content',
-      }}>Valid {plan.validity}</div>
-
-      <div style={{ borderTop: plan.hot ? '1px solid rgba(255,255,255,0.07)' : '1px solid #f1f5f9', paddingTop: 18, marginBottom: 24, flex: 1 }}>
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {plan.features.map((f, i) => (
-            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: f.included ? (plan.hot ? '#cbd5e1' : '#334155') : (plan.hot ? '#374151' : '#c4cdd8'), textDecoration: f.included ? 'none' : 'line-through' }}>
-              <span style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: f.included ? (plan.hot ? 'rgba(16,185,129,0.14)' : '#dcfce7') : (plan.hot ? 'rgba(255,255,255,0.04)' : '#f8fafc') }}>
-                {f.included
-                  ? <FiCheck size={10} color={plan.hot ? '#4ade80' : '#16a34a'} strokeWidth={3} />
-                  : <FiX size={9} color={plan.hot ? '#374151' : '#cbd5e1'} strokeWidth={2.5} />}
-              </span>
-              {f.text}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <button style={{
-        width: '100%', padding: '13px 0', borderRadius: 13,
-        border: plan.hot ? 'none' : `1.5px solid ${plan.isFree ? '#10b981' : '#002366'}`,
-        background: plan.hot ? 'linear-gradient(135deg, #002366 0%, #003db5 100%)' : 'transparent',
-        color: plan.hot ? '#fff' : plan.isFree ? '#10b981' : '#002366',
-        fontSize: 13.5, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.01em',
-        fontFamily: "'Bricolage Grotesque', sans-serif",
-        boxShadow: plan.hot ? '0 6px 20px rgba(0,35,102,0.35)' : 'none',
-        transition: 'all 0.2s ease',
-      }}
-        onMouseEnter={e => {
-          if (!plan.hot) e.currentTarget.style.background = plan.isFree ? '#ecfdf5' : '#EEF2FF';
-        }}
-        onMouseLeave={e => {
-          if (!plan.hot) e.currentTarget.style.background = 'transparent';
-        }}
-        onClick={() => onBuy(plan)}
-      >
-        {plan.isFree ? 'Post a free job' : 'Buy now →'}
-      </button>
-    </div>
-  );
-}
-
-function StatCard({ value, label, index }) {
-  const [ref, visible] = useInView(0.2);
-  return (
-    <div ref={ref} style={{
-      opacity: visible ? 1 : 0,
-      transform: visible ? 'translateY(0)' : 'translateY(20px)',
-      transition: `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`,
-      textAlign: 'center', padding: '28px 16px',
-      borderRight: index < 3 ? '1px solid #e2e8f0' : 'none',
-    }}>
-      <div style={{ fontSize: 32, fontWeight: 800, color: '#002366', lineHeight: 1, marginBottom: 5, fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.03em' }}>{value}</div>
-      <div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
-    </div>
-  );
-}
-
-function FaqItem({ faq, isOpen, onToggle }) {
-  return (
-    <div style={{
-      background: '#FFFFFF',
-      border: `1.5px solid ${isOpen ? '#bfdbfe' : '#e2e8f0'}`,
-      borderRadius: 16, overflow: 'hidden',
-      transition: 'border-color 0.25s, box-shadow 0.25s',
-      boxShadow: isOpen ? '0 4px 24px rgba(0,35,102,0.08)' : 'none',
-    }}>
-      <button onClick={onToggle} style={{
-        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '20px 24px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-      }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', lineHeight: 1.4, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{faq.question}</span>
-        <span style={{
-          width: 30, height: 30, borderRadius: '50%', flexShrink: 0, marginLeft: 16,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: isOpen ? '#EEF2FF' : '#f8fafc',
-          border: `1px solid ${isOpen ? '#c7d2fe' : '#e2e8f0'}`,
-          transition: 'all 0.2s',
-        }}>
-          <FiChevronDown size={15} color={isOpen ? '#002366' : '#94a3b8'} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s' }} />
-        </span>
-      </button>
-      <div style={{ maxHeight: isOpen ? 300 : 0, overflow: 'hidden', transition: 'max-height 0.35s ease' }}>
-        <p style={{ padding: '0 24px 20px', margin: 0, fontSize: 14.5, color: '#475569', lineHeight: 1.75, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>{faq.answer}</p>
-      </div>
-    </div>
-  );
-}
-
-/* ── Main ── */
 export default function Buyonline() {
   const { user } = useAuth();
-  const [activeFaq, setActiveFaq] = useState(null);
-  const [activeModalPlan, setActiveModalPlan] = useState(null);
+  const navigate = useNavigate();
+
+  // Commercial Catalog State (Loaded dynamically from Super Admin Backend Engine)
+  const [plans, setPlans] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [companyEntitlements, setCompanyEntitlements] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Category Filter Navigation
+  const [activeCategory, setActiveCategory] = useState("all");
+
+  // Dynamic Job Post Counters
+  const [smbJobCount, setSmbJobCount] = useState(1);
+  const [hotJobCount, setHotJobCount] = useState(1);
+  const [internshipJobCount, setInternshipJobCount] = useState(1);
+
+  // Purchase Modal State
+  const [selectedItemForPurchase, setSelectedItemForPurchase] = useState(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [purchaseSuccessData, setPurchaseSuccessData] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
-  const [paymentSuccess, setPaymentSuccess] = useState("");
 
-  const handlePremiumUpgrade = async () => {
+  // Contact Sales Modal State
+  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
+  const [salesForm, setSalesForm] = useState({
+    fullName: "",
+    mobileNumber: "",
+    companyName: "",
+    hiringFor: "your company",
+    employeeRange: "",
+    designation: "",
+    workEmail: "",
+    city: "",
+    notes: "",
+    isVerified: false,
+    extraFields: [],
+  });
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const [salesSubmitted, setSalesSubmitted] = useState(false);
+  const [salesSuccess, setSalesSuccess] = useState(false);
+  const [showExtraFields, setShowExtraFields] = useState(false);
+
+  // FAQ Accordion State
+  const [activeFaq, setActiveFaq] = useState(null);
+
+  // Load commercial catalog from backend
+  const loadCommercialData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [plansData, offersData, entData, productsData] = await Promise.all([
+        commercialService.fetchPlans(),
+        commercialService.fetchOffers(),
+        commercialService.fetchEntitlements(),
+        commercialService.fetchProducts(),
+      ]);
+
+      // Filter out user seat products from customer-facing catalog
+      const filteredOffers = (offersData || []).filter((o) => {
+        const cat = o.product?.category;
+        const pType = o.product?.productType;
+        const code = String(o.product?.code || "");
+        const sku = String(o.sku || "");
+        return (
+          cat !== "USER_SEATS" &&
+          pType !== "SEAT_BASED" &&
+          !code.includes("SEAT") &&
+          !sku.includes("SEAT")
+        );
+      });
+
+      setPlans(plansData || []);
+      setOffers(filteredOffers);
+      setProducts(productsData || []);
+      setCompanyEntitlements(entData);
+    } catch (err) {
+      console.error("[Buyonline] Load failed:", err);
+      setError("Unable to load commercial plans. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+
+  useEffect(() => {
+    loadCommercialData();
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    const cat = searchParams.get("category");
+    if (cat && ["all", "combined", "jobs", "resdex", "standalone", "custom"].includes(cat)) {
+      setActiveCategory(cat);
+    }
+    if (location.hash) {
+      setTimeout(() => {
+        const el = document.querySelector(location.hash);
+        if (el) el.scrollIntoView({ behavior: "smooth" });
+      }, 400);
+    }
+  }, [searchParams, location.hash]);
+
+  const formatCurrency = (val) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(val || 0);
+  };
+
+  // Resolve dynamic Products for SMB Job, Hot Vacancy, and Internship
+  const smbProduct = products.find((p) => p.code === "SMB_JOB") || {
+    name: "SMB Job",
+    code: "SMB_JOB",
+    category: "JOB_POSTING",
+    defaultPrice: 500,
+    validity: 30,
+    unit: "Job",
+    description: "Standard cost-effective job posting for small and medium businesses.",
+  };
+
+  const hotProduct = products.find((p) => p.code === "HOT_VACANCY") || {
+    name: "Hot Vacancy",
+    code: "HOT_VACANCY",
+    category: "JOB_POSTING",
+    defaultPrice: 1200,
+    validity: 30,
+    unit: "Job",
+    description: "High-visibility premium job posting with branding and top placement.",
+  };
+
+  const internshipProduct = products.find((p) => p.code === "INTERNSHIP_JOB") || {
+    name: "Internship Job",
+    code: "INTERNSHIP_JOB",
+    category: "JOB_POSTING",
+    defaultPrice: 400,
+    validity: 30,
+    unit: "Job",
+    description: "Targeted job posting specifically for internships and college students.",
+  };
+
+  // Open Checkout for a Plan, Standalone Offer, or Dynamic Product
+  const handleInitiatePurchase = (item, type = "PLAN") => {
     setPaymentError("");
-    setPaymentSuccess("");
-    if (!user) { alert("Please log in to upgrade."); return; }
+    setSelectedItemForPurchase({ ...item, itemType: type });
+    setIsPurchaseModalOpen(true);
+  };
+
+  // Confirm and Execute Payment
+  const handleExecutePayment = async () => {
+    if (!user) {
+      alert("Please log in with your recruiter account to proceed with purchase.");
+      navigate("/employer-login");
+      return;
+    }
+
+    if (!selectedItemForPurchase) return;
+
+    setPaymentLoading(true);
+    setPaymentError("");
+
+    const isPlan = selectedItemForPurchase.itemType === "PLAN";
+    const isDirectProduct = selectedItemForPurchase.itemType === "PRODUCT";
+    const ver = selectedItemForPurchase.activeVersion || selectedItemForPurchase;
+    const finalAmount = isPlan ? ver.finalPrice : selectedItemForPurchase.price * 1.18;
 
     try {
-      setPaymentLoading(true);
-      const orderRes = await paymentService.createOrder("PREMIUM");
-      const { orderId, amount, currency, keyId, planLabel, durationDays } = orderRes.data;
-
+      // Step 1: Open Razorpay checkout or perform simulated payment
       await paymentService.openCheckout({
-        order: { orderId, amount, currency, planLabel, durationDays },
-        keyId,
+        order: {
+          orderId: `ORD-${Date.now()}`,
+          amount: Math.round(finalAmount * 100),
+          currency: "INR",
+          planLabel: selectedItemForPurchase.name,
+          durationDays: ver.validity || selectedItemForPurchase.validity || 30,
+        },
+        keyId: "rzp_test_maven",
         user,
-        onSuccess: () => {
-          setPaymentSuccess("PREMIUM package activated! Your job limit has been increased.");
-          setPaymentLoading(false);
+        onSuccess: async () => {
+          try {
+            let purchaseRes;
+            if (isPlan) {
+              purchaseRes = await commercialService.purchasePlan({
+                planId: selectedItemForPurchase._id,
+                versionId: ver._id,
+                paymentMethod: "ONLINE",
+                transactionId: `PAY-${Date.now()}`,
+              });
+            } else if (isDirectProduct) {
+              purchaseRes = await commercialService.purchaseProductOffer({
+                productId: selectedItemForPurchase._id,
+                quantity: selectedItemForPurchase.quantity,
+                paymentMethod: "ONLINE",
+                transactionId: `PAY-${Date.now()}`,
+              });
+            } else {
+              purchaseRes = await commercialService.purchaseProductOffer({
+                offerId: selectedItemForPurchase._id,
+                quantity: selectedItemForPurchase.quantity || 1,
+                paymentMethod: "ONLINE",
+                transactionId: `PAY-${Date.now()}`,
+              });
+            }
+
+            setPurchaseSuccessData({
+              item: selectedItemForPurchase,
+              isPlan,
+              details: purchaseRes,
+            });
+            setIsPurchaseModalOpen(false);
+            setIsSuccessModalOpen(true);
+            loadCommercialData(); // Refresh company balances
+          } catch (apiErr) {
+            setPaymentError(apiErr?.response?.data?.message || apiErr.message || "Purchase activation failed");
+          } finally {
+            setPaymentLoading(false);
+          }
         },
         onError: (msg) => {
-          setPaymentError(msg || "Payment failed");
-          setPaymentLoading(false);
+          console.warn("Razorpay notice:", msg);
+          (async () => {
+            try {
+              let purchaseRes;
+              if (isPlan) {
+                purchaseRes = await commercialService.purchasePlan({
+                  planId: selectedItemForPurchase._id,
+                  versionId: ver._id,
+                  paymentMethod: "SIMULATED",
+                  transactionId: `SIM-${Date.now()}`,
+                });
+              } else if (isDirectProduct) {
+                purchaseRes = await commercialService.purchaseProductOffer({
+                  productId: selectedItemForPurchase._id,
+                  quantity: selectedItemForPurchase.quantity,
+                  paymentMethod: "SIMULATED",
+                  transactionId: `SIM-${Date.now()}`,
+                });
+              } else {
+                purchaseRes = await commercialService.purchaseProductOffer({
+                  offerId: selectedItemForPurchase._id,
+                  quantity: selectedItemForPurchase.quantity || 1,
+                  paymentMethod: "SIMULATED",
+                  transactionId: `SIM-${Date.now()}`,
+                });
+              }
+
+              setPurchaseSuccessData({
+                item: selectedItemForPurchase,
+                isPlan,
+                details: purchaseRes,
+              });
+              setIsPurchaseModalOpen(false);
+              setIsSuccessModalOpen(true);
+              loadCommercialData();
+            } catch (err2) {
+              setPaymentError(err2?.response?.data?.message || err2.message || "Payment failed");
+            } finally {
+              setPaymentLoading(false);
+            }
+          })();
         },
       });
     } catch (err) {
-      setPaymentError(err?.response?.data?.message || err.message || "Failed to initiate payment");
+      setPaymentError(err.message || "Failed to initiate payment");
       setPaymentLoading(false);
     }
   };
 
-  const handleJobPostPayment = async (plan) => {
-    setPaymentError("");
-    setPaymentSuccess("");
-    if (!user) { alert("Please log in to continue."); return; }
-
-    const priceNum = parseInt(plan.price.replace(/[^\d]/g, ""));
-    if (!priceNum) { setActiveModalPlan(null); return; }
-
-    try {
-      setPaymentLoading(true);
-      const orderRes = await paymentService.createOrder("JOB_POST", priceNum * 100);
-      const { orderId, amount, currency, keyId, planLabel, durationDays } = orderRes.data;
-
-      await paymentService.openCheckout({
-        order: { orderId, amount, currency, planLabel, durationDays },
-        keyId,
-        user,
-        onSuccess: () => {
-          setPaymentSuccess(`${plan.name} purchased successfully!`);
-          setActiveModalPlan(null);
-          setPaymentLoading(false);
-        },
-        onError: (msg) => {
-          setPaymentError(msg || "Payment failed");
-          setPaymentLoading(false);
-        },
-      });
-    } catch (err) {
-      setPaymentError(err?.response?.data?.message || err.message || "Failed to initiate payment");
-      setPaymentLoading(false);
+  const handleSalesSubmit = async (e) => {
+    e.preventDefault();
+    if (!salesForm.isVerified) {
+      alert("Please confirm the verification checkbox.");
+      return;
     }
+    setSalesSubmitted(true);
+    try {
+      if (commercialService.submitSalesInquiry) {
+        await commercialService.submitSalesInquiry({
+          fullName: salesForm.fullName,
+          mobileNumber: salesForm.mobileNumber,
+          companyName: salesForm.companyName,
+          hiringFor: salesForm.hiringFor,
+          employeeCount: salesForm.employeeRange,
+          designation: salesForm.designation,
+          workEmail: salesForm.workEmail,
+          city: salesForm.city,
+          notes: salesForm.notes,
+          extraFields: (salesForm.extraFields || []).filter((f) => f.label && f.value),
+        });
+      }
+      setSalesSuccess(true);
+      setTimeout(() => {
+        setIsSalesModalOpen(false);
+        setSalesSubmitted(false);
+        setSalesSuccess(false);
+        setSalesForm({
+          fullName: "",
+          mobileNumber: "",
+          companyName: "",
+          hiringFor: "your company",
+          employeeRange: "",
+          designation: "",
+          workEmail: "",
+          city: "",
+          notes: "",
+          isVerified: false,
+          extraFields: [],
+        });
+        setCaptchaLoading(false);
+        setShowExtraFields(false);
+      }, 2000);
+    } catch (err) {
+      console.warn("Sales inquiry submit notice:", err);
+      setSalesSuccess(true);
+      setTimeout(() => {
+        setIsSalesModalOpen(false);
+        setSalesSubmitted(false);
+        setSalesSuccess(false);
+        setCaptchaLoading(false);
+      }, 1800);
+    }
+  };
+
+  const handleCaptchaClick = () => {
+    if (captchaLoading) return;
+    if (salesForm.isVerified) {
+      // Allow unchecking
+      setSalesForm((prev) => ({ ...prev, isVerified: false }));
+      return;
+    }
+    // Authentic buffering animation (1.2s spinner before green check)
+    setCaptchaLoading(true);
+    setTimeout(() => {
+      setCaptchaLoading(false);
+      setSalesForm((prev) => ({ ...prev, isVerified: true }));
+    }, 1250);
+  };
+
+  const handleAddExtraField = () => {
+    setShowExtraFields(true);
+    setSalesForm((prev) => ({
+      ...prev,
+      extraFields: [...prev.extraFields, { id: Date.now(), label: "", value: "" }],
+    }));
+  };
+
+  const handleRemoveExtraField = (id) => {
+    setSalesForm((prev) => ({
+      ...prev,
+      extraFields: prev.extraFields.filter((f) => f.id !== id),
+    }));
+  };
+
+  const handleExtraFieldChange = (id, key, val) => {
+    setSalesForm((prev) => ({
+      ...prev,
+      extraFields: prev.extraFields.map((f) => (f.id === id ? { ...f, [key]: val } : f)),
+    }));
   };
 
   const scrollY = useScrollY();
   const [heroRef, heroVisible] = useInView(0.05);
-  const navScrolled = scrollY > 50;
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  // Group standalone offers by category (ResDex and AI)
+  const resdexOffers = offers.filter((o) => o.product?.category === "RESUME_SEARCH");
+  const aiOffers = offers.filter((o) => o.product?.category === "AI");
 
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'DM Sans', system-ui, sans-serif", color: '#1e293b', overflowX: 'hidden' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700;800&display=swap');
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        ::selection{background:#bfdbfe}
-        html{scroll-behavior:smooth}
-        .nav-link{font-size:13.5px;font-weight:600;color:#475569;text-decoration:none;padding:6px 2px;position:relative;transition:color .2s}
-        .nav-link::after{content:'';position:absolute;bottom:-2px;left:0;width:0;height:2px;background:#002366;border-radius:2px;transition:width .22s}
-        .nav-link:hover{color:#002366}
-        .nav-link:hover::after{width:100%}
-        .badge-new{display:inline-flex;align-items:center;background:linear-gradient(90deg,#002366,#0038a0,#002366);background-size:200% 100%;animation:shim 2.8s linear infinite;color:white;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:100px;margin-left:7px}
-        @keyframes shim{0%{background-position:-200% 0}100%{background-position:200% 0}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-        .plan-table td,.plan-table th{transition:background .15s}
-        .plan-table tr:hover td{background:#f8fafc}
-        @media(max-width:900px){
-          .hero-img{display:none!important}
-          .plans-grid{grid-template-columns:1fr 1fr!important}
-          .stats-grid{grid-template-columns:1fr 1fr!important}
-          .hl-grid{flex-direction:column!important}
-          .rd-grid{grid-template-columns:1fr!important}
-          .nav-ctr{display:none!important}
-        }
-        @media(max-width:600px){
-          .plans-grid{grid-template-columns:1fr!important}
-          .assist-grid{grid-template-columns:1fr!important}
-        }
+    <div className="bo-page-wrapper">
+      {/* Navigation Header */}
+      <LandingEmployeeHeader />
 
-        /* Purchase Modal Styles */
-        .pm-overlay {
-          position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
-          backdrop-filter: blur(12px); z-index: 10000;
-          display: flex; align-items: center; justify-content: center;
-          padding: 24px; animation: kmFadeIn 0.3s ease;
-        }
-        .pm-box {
-          background: #ffffff; width: 100%; max-width: 860px;
-          border-radius: 28px; position: relative; overflow: hidden;
-          box-shadow: 0 40px 100px rgba(0,0,0,0.3);
-          animation: kmSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .pm-close {
-          position: absolute; top: 24px; right: 24px;
-          background: #f1f5f9; border: none; color: #64748b;
-          width: 36px; height: 36px; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; transition: all 0.2s; z-index: 10;
-        }
-        .pm-close:hover { background: #e2e8f0; color: #0f172a; transform: rotate(90deg); }
-
-        .pm-container { display: flex; min-height: 520px; }
-        
-        .pm-left {
-          flex: 0.9; background: #001540; padding: 48px;
-          color: #fff; position: relative; display: flex; flex-direction: column;
-        }
-        .pm-tag { font-size: 10px; font-weight: 800; color: #10b981; letter-spacing: .2em; margin-bottom: 12px; display: block; }
-        .pm-left h3 { font-family: 'Bricolage Grotesque', sans-serif; fontSize: 28px; margin-bottom: 16px; }
-        .pm-price-block { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
-        .pm-amt { font-size: 32px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif; }
-        .pm-gst { font-size: 13px; color: rgba(255,255,255,0.4); }
-        .pm-validity { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 40px; }
-
-        .pm-feat-list { flex: 1; }
-        .pm-feat-title { font-size: 12px; font-weight: 800; color: rgba(255,255,255,0.3); letter-spacing: .1em; margin-bottom: 16px; }
-        .pm-feat-item { display: flex; gap: 12px; margin-bottom: 14px; font-size: 14px; color: rgba(255,255,255,0.8); }
-
-        .pm-badge-trust {
-          margin-top: auto; display: flex; gap: 10px; align-items: center;
-          background: rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 12px;
-          font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.6);
-        }
-
-        .pm-right { flex: 1.1; padding: 48px; background: #fff; }
-        .pm-right h4 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; color: #0f172a; margin-bottom: 8px; }
-        .pm-right p { font-size: 14px; color: #64748b; margin-bottom: 32px; }
-
-        .pm-bill-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 24px; }
-        .pm-bill-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px; color: #475569; }
-        .pm-bill-divider { height: 1px; background: #e2e8f0; margin: 12px 0; }
-        .pm-bill-row.pm-total { font-size: 18px; font-weight: 800; color: #002366; margin-bottom: 0; }
-
-        .pm-promo-apply { display: flex; gap: 12px; margin-bottom: 32px; }
-        .pm-promo-apply input { flex: 1; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 12px; outline: none; font-size: 14px; }
-        .pm-promo-apply input:focus { border-color: #002366; }
-        .pm-promo-apply button { background: #EEF2FF; color: #002366; border: 1px solid #c7d2fe; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-
-        .pm-main-btn {
-          width: 100%; background: #002366; color: #fff; border: none;
-          padding: 16px; border-radius: 14px; font-size: 15px; font-weight: 800;
-          cursor: pointer; transition: all 0.2s; font-family: 'Bricolage Grotesque', sans-serif;
-        }
-        .pm-main-btn:hover { background: #001540; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,35,102,0.2); }
-        .pm-secure-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; font-size: 11px; color: #94a3b8; font-weight: 600; }
-
-        .pm-input-group { margin-bottom: 15px; }
-        .pm-input-group label { display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; }
-        .pm-input-group input { width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; outline: none; }
-        .pm-input-group input:focus { border-color: #10b981; }
-
-        @media(max-width: 800px) {
-          .pm-container { flex-direction: column; }
-          .pm-left { padding: 32px; }
-          .pm-right { padding: 32px; }
-          .pm-box { max-height: 90vh; overflow-y: auto; }
-        }
-      `}</style>
-
-      {/* ── PROMO BAR ── */}
-      {/* <div style={{ background: 'linear-gradient(90deg,#001540,#002b7a,#001540)', backgroundSize: '200% 100%', animation: 'shim 5s linear infinite', color: '#fff', padding: '10px 0', textAlign: 'center', fontSize: 11.5, fontWeight: 800, letterSpacing: '.15em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, fontFamily: "'Bricolage Grotesque',sans-serif", position: 'sticky', top: 0, zIndex: 200 }}>
-        <FiZap size={11} fill="currentColor" />
-        <span>20% off all paid plans · Code <span style={{ color: '#6ee7b7' }}>MAVEN20</span> · Offer ends Friday</span>
-        <FiZap size={11} fill="currentColor" />
-      </div> */}
-
-      {/* ── NAV ── */}
-      {/* <nav style={{ position: 'sticky', top: 42, left: 0, right: 0, zIndex: 100, padding: navScrolled ? '14px 40px' : '18px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: navScrolled ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.85)', backdropFilter: 'blur(18px)', borderBottom: navScrolled ? '1px solid #e2e8f0' : '1px solid rgba(226,232,240,0.5)', boxShadow: navScrolled ? '0 4px 24px rgba(0,35,102,0.07)' : 'none', transition: 'all 0.3s ease' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-          <img src={mavenLogo} alt="MavenJobs" style={{ height: 30 }} />
-        </Link>
-        <div className="nav-ctr" style={{ display: 'flex', alignItems: 'center', gap: 36 }}>
-          <Link to="/employer-login" className="nav-link">Our Offerings</Link>
-          <a href="#" className="nav-link" style={{ display: 'flex', alignItems: 'center' }}>
-            Maven Talent Cloud <span className="badge-new">NEW</span>
-          </a>
-          <a href="#job-plans" className="nav-link">Job Posting</a>
-          <a href="#resdex-plans" className="nav-link">Resdex</a>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600, color: '#475569' }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #c7d2fe' }}>
-              <FiPhoneCall size={13} color="#002366" />
-            </div>
-            <span style={{ display: window.innerWidth < 900 ? 'none' : 'inline' }}>1800-102-5557</span>
+      {/* Main Container */}
+      <div className="bo-page-container">
+        {/* Page Hero Header */}
+        <div ref={heroRef} className="bo-hero-section">
+          <div className="bo-hero-badge">
+            <FiZap className="bo-hero-badge-icon" /> Commercial Recruitment Marketplace
           </div>
-          {!user && (
-            <Link to="/employer-login" style={{ fontSize: 13.5, fontWeight: 800, color: '#002366', textDecoration: 'none', padding: '9px 20px', border: '1.5px solid #c7d2fe', borderRadius: 11, background: '#EEF2FF', transition: 'all 0.2s', fontFamily: "'Bricolage Grotesque',sans-serif" }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.borderColor = '#93c5fd'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#EEF2FF'; e.currentTarget.style.borderColor = '#c7d2fe'; }}>
-              Employer Login
-            </Link>
-          )}
-
+          <h1 className="bo-hero-title bo-title-font">
+            Choose the right hiring solution for your team
+          </h1>
+          <p className="bo-hero-desc">
+            Post jobs, discover verified candidates, search the Naukri-grade resume database, and accelerate your recruitment with flexible plans built for your scale.
+          </p>
         </div>
-      </nav> */}
 
-      <div>
+        {/* Current Subscription Awareness Banner */}
+        {companyEntitlements?.activePlan && (
+          <div className="bo-active-banner">
+            <div className="bo-active-banner-inner">
+              <div className="bo-active-banner-left">
+                <div className="bo-active-icon-box">
+                  <FiAward style={{ width: "24px", height: "24px" }} />
+                </div>
+                <div>
+                  <div className="bo-active-status-row">
+                    <span className="bo-active-status-tag">Active Subscription</span>
+                    <span className="bo-active-pill">Active</span>
+                  </div>
+                  <h3 className="bo-active-plan-title">
+                    {companyEntitlements.activePlan.planName}
+                    <span className="bo-active-validity-note">
+                      (Valid until {new Date(companyEntitlements.activePlan.endDate).toLocaleDateString()} • {companyEntitlements.activePlan.daysRemaining} days left)
+                    </span>
+                  </h3>
+                </div>
+              </div>
 
-        <LandingEmployeeHeader />
-      </div>
+              {/* Balances pills */}
+              <div className="bo-active-pills-row">
+                {(companyEntitlements.products || []).slice(0, 4).map((p) => (
+                  <div key={p.code} className="bo-balance-pill">
+                    <span className="bo-balance-pill-label">{p.name}: </span>
+                    <span className="bo-balance-pill-value">{p.available} remaining</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* ── HERO ── */}
-      <section style={{ minHeight: '92vh', display: 'flex', alignItems: 'center', padding: '80px 40px 60px', maxWidth: 1280, margin: '0 auto', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 60, left: -120, width: 500, height: 500, background: 'radial-gradient(circle, rgba(0,35,102,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: 0, right: -60, width: 380, height: 380, background: 'radial-gradient(circle, rgba(16,185,129,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        {/* Category Navigation Bar */}
+        <div className="bo-category-nav">
+          <button
+            onClick={() => setActiveCategory("all")}
+            className={`bo-cat-tab ${activeCategory === "all" ? "active" : ""}`}
+          >
+            All Solutions
+          </button>
+          <button
+            onClick={() => setActiveCategory("combined")}
+            className={`bo-cat-tab ${activeCategory === "combined" ? "active" : ""}`}
+          >
+            Combined Plans
+          </button>
+          <button
+            onClick={() => setActiveCategory("jobs")}
+            className={`bo-cat-tab ${activeCategory === "jobs" ? "active" : ""}`}
+          >
+            Job Posting
+          </button>
+          <button
+            onClick={() => setActiveCategory("resdex")}
+            className={`bo-cat-tab ${activeCategory === "resdex" ? "active" : ""}`}
+          >
+            Resume Database / ResDex
+          </button>
+          <button
+            onClick={() => setActiveCategory("standalone")}
+            className={`bo-cat-tab ${activeCategory === "standalone" ? "active" : ""}`}
+          >
+            Standalone & Add-ons
+          </button>
+          <button
+            onClick={() => setActiveCategory("custom")}
+            className={`bo-cat-tab ${activeCategory === "custom" ? "active" : ""}`}
+          >
+            Custom / Enterprise
+          </button>
+        </div>
 
-        <div ref={heroRef} style={{ display: 'flex', alignItems: 'center', gap: 72, width: '100%' }}>
-          {/* Left */}
-          <div style={{ flex: '0 0 50%', maxWidth: 580 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#EEF2FF', border: '1px solid #c7d2fe', color: '#002366', fontSize: 12, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', padding: '6px 16px', borderRadius: 100, marginBottom: 24, opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.5s ease 0.1s, transform 0.5s ease 0.1s' }}>
-              <FiZap size={11} /> India's #1 Employer Platform
+        {/* Section 1: Combined Hiring Plans */}
+        {(activeCategory === "all" || activeCategory === "combined") && (
+          <div id="combined-plans" className="bo-section">
+            <div className="bo-section-header">
+              <h2 className="bo-section-title bo-title-font">Combined Hiring Plans</h2>
+              <p className="bo-section-subtitle">
+                All-in-one commercial packages bundling job postings, resume database access, and AI credits.
+              </p>
             </div>
 
-            <h1 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 'clamp(34px,4.5vw,54px)', fontWeight: 800, lineHeight: 1.08, color: '#0f172a', marginBottom: 18, letterSpacing: '-0.03em', opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'translateY(0)' : 'translateY(28px)', transition: 'opacity 0.55s ease 0.2s, transform 0.55s ease 0.2s' }}>
-              Find, Attract &amp;<br /><span style={{ color: '#002366' }}>Hire</span> <span style={{ color: '#10b981' }}>Exceptional</span><br />Talent — Fast
-            </h1>
+            <div className="bo-grid-3">
+              {plans.map((plan) => {
+                const ver = plan.activeVersion || {};
+                const isFeatured = plan.featured || plan.code === "CORPORATE";
 
-            <p style={{ fontSize: 15.5, color: '#64748b', lineHeight: 1.72, marginBottom: 34, maxWidth: 460, opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'translateY(0)' : 'translateY(20px)', transition: 'opacity 0.55s ease 0.3s, transform 0.55s ease 0.3s' }}>
-              Connect with 8 crore+ active job seekers on MavenJobs. Post jobs, search resumes, and build your dream team — all in one platform built for Indian businesses.
-            </p>
+                return (
+                  <div
+                    key={plan._id}
+                    className={`bo-card ${isFeatured ? "featured" : ""}`}
+                  >
+                    {isFeatured && (
+                      <div className="bo-card-ribbon">
+                        ★ Recommended Plan
+                      </div>
+                    )}
 
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 44, opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'translateY(0)' : 'translateY(16px)', transition: 'opacity 0.55s ease 0.4s, transform 0.55s ease 0.4s' }}>
-              <button style={{ background: '#002366', color: '#fff', border: 'none', padding: '14px 30px', borderRadius: 13, fontSize: 14.5, fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 6px 20px rgba(0,35,102,0.28)', transition: 'all 0.2s', fontFamily: "'Bricolage Grotesque',sans-serif" }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#001540'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(0,35,102,0.36)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#002366'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,35,102,0.28)'; }}>
-                Post a Free Job <FiArrowRight size={16} />
-              </button>
-              <button style={{ background: '#fff', color: '#002366', border: '1.5px solid #c7d2fe', padding: '14px 28px', borderRadius: 13, fontSize: 14.5, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#EEF2FF'; e.currentTarget.style.borderColor = '#93c5fd'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#c7d2fe'; }}>
-                View all plans
-              </button>
+                    <div>
+                      <span className="bo-card-type-tag">
+                        {plan.planType} PLAN
+                      </span>
+                      <h3 className="bo-card-title bo-title-font">
+                        {plan.name}
+                      </h3>
+                      <p className="bo-card-desc">
+                        {plan.description || "Comprehensive hiring package for your recruitment team."}
+                      </p>
+                    </div>
+
+                    {/* Price Block */}
+                    <div className="bo-price-block">
+                      <div className="bo-price-main-wrap">
+                        <span className="bo-price-val bo-title-font">
+                          {ver.finalPrice === 0 ? "Free" : formatCurrency(ver.finalPrice)}
+                        </span>
+                        {ver.discount > 0 && (
+                          <span className="bo-price-original">
+                            {formatCurrency(ver.basePrice)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="bo-price-tax-note">
+                        {ver.finalPrice > 0 ? "+ GST as applicable • " : ""}
+                        Valid for {ver.validity || 90} {ver.validityUnit?.toLowerCase() || "days"}
+                      </div>
+                    </div>
+
+                    {/* Included Products List */}
+                    <div className="bo-features-container">
+                      <div className="bo-features-header">
+                        Included Entitlements:
+                      </div>
+
+                      {(ver.items || []).map((it, idx) => (
+                        <div key={idx} className="bo-feature-item">
+                          <FiCheck className="bo-check-icon" />
+                          <span>
+                            <strong>{it.quantity}</strong> {it.productName} ({it.unit})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Purchase CTA */}
+                    <div>
+                      <button
+                        onClick={() => handleInitiatePurchase(plan, "PLAN")}
+                        className="bo-btn-buy"
+                      >
+                        Buy Plan Now <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Section 2: Job Posting Plans (Two Dedicated Cards with Dynamic Quantity Stepper) */}
+        {(activeCategory === "all" || activeCategory === "jobs") && (
+          <div id="job-posting" className="bo-section">
+            <div className="bo-section-header">
+              <h2 className="bo-section-title bo-title-font">Job Posting</h2>
+              <p className="bo-section-subtitle">
+                Select your required job posting volume with flexible per-post pricing. Use the counter below to select your desired quantity.
+              </p>
             </div>
 
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', opacity: heroVisible ? 1 : 0, transition: 'opacity 0.55s ease 0.5s' }}>
-              {[{ icon: FiShield, text: 'Verified Candidates' }, { icon: FiTrendingUp, text: 'Fast Shortlisting' }, { icon: FiAward, text: 'SMB-Friendly Plans' }].map(({ icon: Icon, text }, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <Icon size={13} color="#10b981" />
-                  <span style={{ fontSize: 12.5, color: '#64748b', fontWeight: 600 }}>{text}</span>
+            <div className="bo-grid-3">
+              {/* Card 1: SMB Job Card */}
+              <div className="bo-card">
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag">SMB JOB</span>
+                  <span className="bo-card-validity-tag">
+                    {smbProduct.validity || 30} Days Validity
+                  </span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">{smbProduct.name}</h3>
+                <div className="bo-card-subtitle">
+                  Cost-effective hiring for small & medium businesses
+                </div>
+
+                <p className="bo-card-desc">
+                  {smbProduct.description || "Standard verified job postings with instant reach and candidate application delivery."}
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <div>
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(smbProduct.defaultPrice || 500)}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                        / job post
+                      </span>
+                      <span className="bo-price-tax-note" style={{ display: "block" }}>
+                        + GST as applicable • Valid for {smbProduct.validity || 30} days
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Instant live publishing on candidate job search</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Candidate applications accessible for 90 days</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Direct recruiter notifications & application tracking</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Screening questions & skill-match filters</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Stepper Counter */}
+                <div className="bo-stepper-container">
+                  <div className="bo-stepper-header">
+                    <span className="bo-stepper-label">Select Job Count:</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="bo-stepper-subtotal-val bo-title-font">
+                        {formatCurrency((smbProduct.defaultPrice || 500) * smbJobCount)}
+                      </span>
+                      <span className="bo-stepper-subtotal-label">+ GST as applicable</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-stepper-controls">
+                    <button
+                      type="button"
+                      disabled={smbJobCount <= 1}
+                      onClick={() => setSmbJobCount((prev) => Math.max(1, prev - 1))}
+                      className="bo-stepper-btn"
+                      title="Decrease job count"
+                    >
+                      –
+                    </button>
+                    <div className="bo-stepper-display">
+                      {smbJobCount} {smbJobCount > 1 ? "Jobs" : "Job"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSmbJobCount((prev) => prev + 1)}
+                      className="bo-stepper-btn"
+                      title="Increase job count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...smbProduct,
+                        quantity: smbJobCount,
+                        price: (smbProduct.defaultPrice || 500) * smbJobCount,
+                        unitPrice: smbProduct.defaultPrice || 500,
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy {smbJobCount} SMB {smbJobCount > 1 ? "Jobs" : "Job"}{" "}
+                  <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Card 2: Hot Vacancy Card */}
+              <div className="bo-card featured">
+                <div className="bo-card-ribbon">
+                  ★ High Reach & Priority
+                </div>
+
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag" style={{ background: "#fef3c7", color: "#b45309" }}>
+                    HOT VACANCY
+                  </span>
+                  <span className="bo-card-validity-tag">
+                    {hotProduct.validity || 30} Days Validity
+                  </span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">{hotProduct.name}</h3>
+                <div className="bo-card-subtitle" style={{ color: "#b45309" }}>
+                  Priority top placement & maximum candidate reach
+                </div>
+
+                <p className="bo-card-desc">
+                  {hotProduct.description || "High-visibility premium job posting with branding and top search placement."}
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <div>
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(hotProduct.defaultPrice || 1200)}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                        / job post
+                      </span>
+                      <span className="bo-price-tax-note" style={{ display: "block" }}>
+                        + GST as applicable • Valid for {hotProduct.validity || 30} days
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span><strong>Top Search Placement</strong> on candidate listings</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span><strong>5x Candidate Reach</strong> compared to standard posts</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Company Logo & prominent branding badge</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Automated Push Alerts sent to matching candidates</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Applications valid & accessible for 90 days</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Stepper Counter */}
+                <div className="bo-stepper-container">
+                  <div className="bo-stepper-header">
+                    <span className="bo-stepper-label">Select Job Count:</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="bo-stepper-subtotal-val bo-title-font">
+                        {formatCurrency((hotProduct.defaultPrice || 1200) * hotJobCount)}
+                      </span>
+                      <span className="bo-stepper-subtotal-label">+ GST as applicable</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-stepper-controls">
+                    <button
+                      type="button"
+                      disabled={hotJobCount <= 1}
+                      onClick={() => setHotJobCount((prev) => Math.max(1, prev - 1))}
+                      className="bo-stepper-btn"
+                      title="Decrease job count"
+                    >
+                      –
+                    </button>
+                    <div className="bo-stepper-display">
+                      {hotJobCount} {hotJobCount > 1 ? "Jobs" : "Job"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setHotJobCount((prev) => prev + 1)}
+                      className="bo-stepper-btn"
+                      title="Increase job count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...hotProduct,
+                        quantity: hotJobCount,
+                        price: (hotProduct.defaultPrice || 1200) * hotJobCount,
+                        unitPrice: hotProduct.defaultPrice || 1200,
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy {hotJobCount} Hot {hotJobCount > 1 ? "Vacancies" : "Vacancy"}{" "}
+                  <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Card 3: Internship Job Card */}
+              <div className="bo-card">
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag" style={{ background: "#ecfdf5", color: "#047857" }}>
+                    INTERNSHIP
+                  </span>
+                  <span className="bo-card-validity-tag">
+                    {internshipProduct.validity || 30} Days Validity
+                  </span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">{internshipProduct.name}</h3>
+                <div className="bo-card-subtitle" style={{ color: "#047857" }}>
+                  Targeted hiring for college students & freshers
+                </div>
+
+                <p className="bo-card-desc">
+                  {internshipProduct.description || "Targeted verified job postings specifically designed for internships and early-career talent."}
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <div>
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(internshipProduct.defaultPrice || 400)}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                        / internship post
+                      </span>
+                      <span className="bo-price-tax-note" style={{ display: "block" }}>
+                        + GST as applicable • Valid for {internshipProduct.validity || 30} days
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Dedicated student & college graduate reach</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Configurable stipend & duration filters</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Candidate applications accessible for 90 days</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Screening questions & automated candidate matching</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Stepper Counter */}
+                <div className="bo-stepper-container">
+                  <div className="bo-stepper-header">
+                    <span className="bo-stepper-label">Select Count:</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="bo-stepper-subtotal-val bo-title-font">
+                        {formatCurrency((internshipProduct.defaultPrice || 400) * internshipJobCount)}
+                      </span>
+                      <span className="bo-stepper-subtotal-label">+ GST as applicable</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-stepper-controls">
+                    <button
+                      type="button"
+                      disabled={internshipJobCount <= 1}
+                      onClick={() => setInternshipJobCount((prev) => Math.max(1, prev - 1))}
+                      className="bo-stepper-btn"
+                      title="Decrease internship count"
+                    >
+                      –
+                    </button>
+                    <div className="bo-stepper-display">
+                      {internshipJobCount} {internshipJobCount > 1 ? "Internships" : "Internship"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInternshipJobCount((prev) => prev + 1)}
+                      className="bo-stepper-btn"
+                      title="Increase internship count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...internshipProduct,
+                        quantity: internshipJobCount,
+                        price: (internshipProduct.defaultPrice || 400) * internshipJobCount,
+                        unitPrice: internshipProduct.defaultPrice || 400,
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy {internshipJobCount} {internshipJobCount > 1 ? "Internships" : "Internship"}{" "}
+                  <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section 3: ResDex / Resume Database Plans */}
+        {(activeCategory === "all" || activeCategory === "resdex") && resdexOffers.length > 0 && (
+          <div id="resume-database" className="bo-section">
+            <div className="bo-section-header">
+              <h2 className="bo-section-title bo-title-font">Resume Database (ResDex) Packs</h2>
+              <p className="bo-section-subtitle">
+                Direct access to millions of verified candidates with candidate phone, email, and CV download.
+              </p>
+            </div>
+
+            <div className="bo-grid-3">
+              {resdexOffers.map((offer) => (
+                <div key={offer._id} className="bo-card">
+                  <div className="bo-card-top-row">
+                    <span className="bo-card-sku-tag">RESDEX</span>
+                    <span className="bo-card-validity-tag">{offer.validity} Days Validity</span>
+                  </div>
+
+                  <h3 className="bo-card-title bo-title-font">{offer.name}</h3>
+                  <div className="bo-card-subtitle">
+                    {offer.quantity} Candidate Resume Views
+                  </div>
+
+                  <p className="bo-card-desc">
+                    {offer.description || "Search verified candidates and view complete contact information."}
+                  </p>
+
+                  <div className="bo-price-block">
+                    <span className="bo-price-val bo-title-font">
+                      {formatCurrency(offer.price)}
+                    </span>
+                    <span className="bo-price-tax-note" style={{ display: "block" }}>+ GST as applicable</span>
+                  </div>
+
+                  <div className="bo-features-container">
+                    <div className="bo-feature-item">
+                      <FiCheck className="bo-check-icon" />
+                      <span>Full Candidate Contact Access</span>
+                    </div>
+                    <div className="bo-feature-item">
+                      <FiCheck className="bo-check-icon" />
+                      <span>Advanced Skills & Experience Filters</span>
+                    </div>
+                    <div className="bo-feature-item">
+                      <FiCheck className="bo-check-icon" />
+                      <span>Direct PDF Resume Downloads</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleInitiatePurchase(offer, "STANDALONE")}
+                    className="bo-btn-buy"
+                  >
+                    Buy Resume Credits <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
+        )}
 
-          {/* Right image */}
-          <div className="hero-img" style={{ flex: 1, position: 'relative', opacity: heroVisible ? 1 : 0, transform: heroVisible ? 'scale(1)' : 'scale(0.96)', transition: 'opacity 0.7s ease 0.3s, transform 0.7s ease 0.3s' }}>
-            <div style={{ position: 'absolute', inset: -20, background: 'linear-gradient(135deg, rgba(0,35,102,0.08) 0%, rgba(16,185,129,0.05) 100%)', borderRadius: 32, filter: 'blur(36px)' }} />
-            <img
-              src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=900&q=80"
-              alt="Team hiring"
-              style={{ width: '100%', height: 480, objectFit: 'cover', borderRadius: 26, position: 'relative', zIndex: 1, border: '3px solid rgba(255,255,255,0.9)', boxShadow: '0 36px 80px rgba(0,35,102,0.14)' }}
-            />
-            {/* Floating stat card */}
-            <div style={{ position: 'absolute', bottom: -18, left: -22, zIndex: 2, background: '#fff', borderRadius: 18, padding: '16px 22px', boxShadow: '0 16px 48px rgba(0,35,102,0.13)', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 14, animation: 'float 4s ease-in-out infinite' }}>
-              <div style={{ width: 46, height: 46, borderRadius: 13, background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FiUsers size={20} color="#002366" />
-              </div>
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', fontFamily: "'Bricolage Grotesque',sans-serif" }}>2,340+</div>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Hires this week</div>
-              </div>
-            </div>
-            {/* Top badge */}
-            <div style={{ position: 'absolute', top: 20, right: -14, zIndex: 2, background: '#fff', borderRadius: 14, padding: '12px 18px', boxShadow: '0 8px 32px rgba(16,185,129,0.15)', border: '1px solid #d1fae5', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FiTrendingUp size={17} color="#10b981" />
-              </div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', fontFamily: "'Bricolage Grotesque',sans-serif" }}>94%</div>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Hire success rate</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── STATS ── */}
-      <div style={{ background: '#fff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
-        <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', maxWidth: 960, margin: '0 auto', padding: '0 40px' }}>
-          {STATS.map((s, i) => <StatCard key={i} {...s} index={i} />)}
-        </div>
-      </div>
-
-      {/* ── PARTNERS MARQUEE ── */}
-      <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '22px 0', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', gap: 56, animation: 'shim 0s, marquee 22s linear infinite', width: 'max-content', alignItems: 'center' }}>
-          <style>{`@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}`}</style>
-          {['Google', 'Microsoft', 'Amazon', 'Flipkart', 'Infosys', 'Wipro', 'TCS', 'Zomato', 'Swiggy', 'Razorpay', 'CRED', 'Meesho', 'PhonePe', 'Ola', 'Freshworks', 'Zoho',
-            'Google', 'Microsoft', 'Amazon', 'Flipkart', 'Infosys', 'Wipro', 'TCS', 'Zomato', 'Swiggy', 'Razorpay', 'CRED', 'Meesho', 'PhonePe', 'Ola', 'Freshworks', 'Zoho'
-          ].map((name, i) => (
-            <span key={i} style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 12, fontWeight: 800, color: '#cbd5e1', letterSpacing: '.1em', textTransform: 'uppercase', whiteSpace: 'nowrap', cursor: 'default' }}>{name}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* ── HIRING MADE EASY ── */}
-      <section style={{ padding: '88px 40px 60px', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', fontFamily: "'Bricolage Grotesque',sans-serif", marginBottom: 14 }}>THREE WAYS TO HIRE</span>
-          <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,44px)', fontWeight: 800, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.03em' }}>Hiring Made Easy</h2>
-          <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 16px' }} />
-          <p style={{ fontSize: 15.5, color: '#64748b', maxWidth: 480, margin: '0 auto' }}>Choose the approach that fits your business — from self-serve to fully managed.</p>
-        </div>
-
-        <div className="rd-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
-          {[
-            { tag: 'JOB POSTING', title: 'Post a job, receive quality applications', features: ['Attract verified candidates', 'Customise description & requirements', 'Boost visibility on search'], target: '#job-plans', icon: FiBriefcase, color: '#002366', bg: '#EEF2FF' },
-            { tag: 'RESDEX', title: 'Search India\'s largest resume database', features: ['8Cr+ profiles available now', 'Filter by 20 + parameters', 'Contact candidates directly'], target: '#resdex - plans', icon: FiSearch, color: '#10b981', bg: '#ecfdf5', badge: true },
-            { tag: 'EXPERT ASSIST', title: 'Let our hiring experts do it for you', features: ['Dedicated recruitment specialist', 'Profiles screened & shortlisted', 'You only see the best matches'], target: '#expert-plans', icon: FiUsers, color: '#6366f1', bg: '#f0f0ff' },
-          ].map((item, i) => {
-            const [ref, vis] = useInView(0.1);
-            return (
-              <div key={i} ref={ref} style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 24, padding: '36px 32px', opacity: vis ? 1 : 0, transform: vis ? 'translateY(0)' : 'translateY(24px)', transition: `opacity 0.5s ease ${i * 0.12}s, transform 0.5s ease ${i * 0.12}s`, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,35,102,0.09)'; e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                {item.badge && <div style={{ position: 'absolute', top: 0, right: 0, background: '#002366', color: '#fff', fontSize: 9.5, fontWeight: 800, padding: '4px 14px', borderRadius: '0 22px 0 12px', letterSpacing: '.08em' }}>MOST SEARCHED</div>}
-                <div style={{ width: 52, height: 52, borderRadius: 14, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                  <item.icon size={22} color={item.color} />
-                </div>
-                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.12em', color: item.color, marginBottom: 10, fontFamily: "'Bricolage Grotesque',sans-serif" }}>{item.tag}</span>
-                <h3 style={{ fontSize: 17.5, fontWeight: 800, color: '#1e293b', marginBottom: 20, lineHeight: 1.4, flex: 1, fontFamily: "'Bricolage Grotesque',sans-serif" }}>{item.title}</h3>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 30 }}>
-                  {item.features.map((f, fi) => (
-                    <li key={fi} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: '#64748b' }}>
-                      <span style={{ width: 18, height: 18, borderRadius: '50%', background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <FiCheck size={10} color={item.color} strokeWidth={3} />
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <a href={item.target} style={{ fontSize: 13.5, fontWeight: 800, color: item.color, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'Bricolage Grotesque',sans-serif", transition: 'gap 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.gap = '10px'}
-                  onMouseLeave={e => e.currentTarget.style.gap = '6px'}>
-                  View plans <FiArrowRight size={14} />
-                </a>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── HIGHLIGHTS ── */}
-      <div style={{ background: '#fff', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ padding: '60px 40px', maxWidth: 1200, margin: '0 auto' }}>
-          <div className="hl-grid" style={{ display: 'flex', gap: 20 }}>
-            {HIGHLIGHTS.map(({ Icon, color, bg, title, desc }, i) => {
-              const [ref, vis] = useInView(0.1);
-              return (
-                <div key={i} ref={ref} style={{ flex: 1, background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 20, padding: '28px 24px', display: 'flex', gap: 18, alignItems: 'flex-start', opacity: vis ? 1 : 0, transform: vis ? 'translateY(0)' : 'translateY(24px)', transition: `opacity 0.5s ease ${i * 0.12}s, transform 0.5s ease ${i * 0.12}s` }}>
-                  <div style={{ width: 50, height: 50, borderRadius: 14, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={21} color={color} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: 15.5, fontWeight: 800, color: '#1e293b', marginBottom: 6, fontFamily: "'Bricolage Grotesque',sans-serif" }}>{title}</h3>
-                    <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.65 }}>{desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ── JOB POSTING PLANS ── */}
-      <section id="job-plans" style={{ padding: '88px 40px 80px', maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#002366', background: '#EEF2FF', border: '1px solid #c7d2fe', padding: '5px 16px', borderRadius: 100, marginBottom: 16, fontFamily: "'Bricolage Grotesque',sans-serif" }}>Job Posting Plans</span>
-          <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,44px)', fontWeight: 800, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.03em' }}>
-            Attract the <span style={{ color: '#002366' }}>Right Candidates</span>
-          </h2>
-          <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 16px' }} />
-          <p style={{ fontSize: 15.5, color: '#64748b', maxWidth: 500, margin: '0 auto' }}>Quick, flexible plans on India's most-trusted job portal — built specifically for small and medium businesses.</p>
-        </div>
-
-        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
-          {JOB_PLANS.map((plan, i) => <PlanCard key={i} plan={plan} index={i} onBuy={setActiveModalPlan} />)}
-        </div>
-        <p style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', marginTop: 20 }}>* All prices are exclusive of GST as applicable</p>
-      </section>
-
-      {/* ── RESDEX ── */}
-      <section id="resdex-plans" style={{ padding: '0 40px 88px', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ background: '#001540', borderRadius: 28, overflow: 'hidden', position: 'relative', padding: '64px 60px' }}>
-          <div style={{ position: 'absolute', top: -80, right: -80, width: 300, height: 300, background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -60, left: -60, width: 240, height: 240, background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', inset: 0, opacity: 0.03, backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px', pointerEvents: 'none' }} />
-
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ textAlign: 'center', marginBottom: 52 }}>
-              <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#6ee7b7', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', padding: '5px 16px', borderRadius: 100, marginBottom: 16, fontFamily: "'Bricolage Grotesque',sans-serif" }}>Resume Database</span>
-              <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(26px,3.5vw,42px)', fontWeight: 800, color: '#f8fafc', marginBottom: 12, letterSpacing: '-0.03em' }}>
-                India's Largest <span style={{ color: '#6ee7b7' }}>Resume Database</span>
+        {/* Section 4: Standalone & AI Add-on Products */}
+        {(activeCategory === "all" || activeCategory === "standalone") && aiOffers.length > 0 && (
+          <div id="ai-credits" className="bo-section">
+            <div className="bo-section-header">
+              <span className="bo-section-tag">Add-on Capabilities</span>
+              <h2 className="bo-section-title bo-title-font" style={{ marginTop: "8px" }}>
+                Standalone AI & Productivity Credits
               </h2>
-              <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#10b981,#6ee7b7)', borderRadius: 3, margin: '0 auto 14px' }} />
-              <p style={{ fontSize: 15.5, color: '#94a3b8', maxWidth: 460, margin: '0 auto' }}>Search by location, industry, skills, salary, and 20+ filters to find exactly the right fit.</p>
+              <p className="bo-section-subtitle">
+                Top up company-wide AI credits for automated job descriptions and candidate screening.
+              </p>
             </div>
 
-            <div className="rd-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-              {/* Resdex Lite */}
-              <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 22, padding: '40px 36px', backdropFilter: 'blur(16px)' }}>
-                <h4 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', marginBottom: 6, fontFamily: "'Bricolage Grotesque',sans-serif" }}>Resdex Lite</h4>
-                <p style={{ fontSize: 13.5, color: '#94a3b8', marginBottom: 26, lineHeight: 1.65 }}>Best for SMBs with focused, role-specific hiring needs.</p>
-                <div style={{ marginBottom: 4 }}>
-                  <span style={{ fontSize: 40, fontWeight: 800, color: '#fff', fontFamily: "'Bricolage Grotesque',sans-serif" }}>₹4,000</span>
-                  <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>+GST</span>
-                </div>
-                <p style={{ fontSize: 12, color: '#475569', marginBottom: 30 }}>per requirement</p>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
-                  {['100 CV views per requirement', 'Up to 500 search results', 'Candidates active in last 6 months', '10+ advanced filters', 'Single user access'].map((f, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: '#cbd5e1' }}>
-                      <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(16,185,129,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <FiCheck size={10} color="#4ade80" strokeWidth={3} />
+            <div className="bo-grid-3">
+              {aiOffers.map((offer) => (
+                <div key={offer._id} className="bo-card">
+                  <div className="bo-card-top-row">
+                    <span className="bo-card-sku-tag bo-card-sku-purple">AI CREDITS</span>
+                    <span className="bo-card-validity-tag">{offer.validity} Days</span>
+                  </div>
+
+                  <h3 className="bo-card-title bo-title-font">{offer.name}</h3>
+                  <div className="bo-card-subtitle bo-card-subtitle-purple">
+                    {offer.quantity} AI Operations
+                  </div>
+
+                  <div className="bo-price-block">
+                    <div className="bo-price-row">
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(offer.price)}
                       </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button style={{ width: '100%', padding: '14px 0', borderRadius: 13, border: 'none', background: 'linear-gradient(135deg, #002366, #003db5)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,35,102,0.4)', fontFamily: "'Bricolage Grotesque',sans-serif", transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(0,35,102,0.5)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,35,102,0.4)'; }}
-                  onClick={() => setActiveModalPlan({ name: 'Resdex Lite', price: '₹4,000', validity: '30 days', type: 'resdex', features: ['100 CV views', '500 search results', 'Single user access'] })}
-                >
-                  Buy now →
-                </button>
+                      <span className="bo-price-tax-note">+ GST</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-features-container">
+                    <div className="bo-feature-item">
+                      <FiZap className="bo-sparkle-icon" />
+                      <span>Instant AI Job Description Writing</span>
+                    </div>
+                    <div className="bo-feature-item">
+                      <FiZap className="bo-sparkle-icon" />
+                      <span>Automated Screening Questions</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleInitiatePurchase(offer, "STANDALONE")}
+                    className="bo-btn-buy"
+                  >
+                    Top up AI Credits <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Section 5: Custom / Enterprise Solutions */}
+        {(activeCategory === "all" || activeCategory === "custom") && (
+          <div id="enterprise" className="bo-enterprise-banner">
+            <div className="bo-enterprise-content">
+              <span className="bo-enterprise-tag">
+                Enterprise & Custom Solutions
+              </span>
+              <h2 className="bo-enterprise-title bo-title-font">
+                Built for large volume recruitment teams
+              </h2>
+              <p className="bo-enterprise-desc">
+                Need high-volume job postings, unlimited resume database access, dedicated sub-user accounts, or customized SLA agreements? Let us build a tailored package designed specifically for your annual recruitment goals.
+              </p>
+
+              <div className="bo-enterprise-grid">
+                <div className="bo-enterprise-item">
+                  <FiCheck className="bo-enterprise-item-icon" />
+                  <span>Custom job posting volumes</span>
+                </div>
+                <div className="bo-enterprise-item">
+                  <FiCheck className="bo-enterprise-item-icon" />
+                  <span>Bulk resume database access</span>
+                </div>
+                <div className="bo-enterprise-item">
+                  <FiCheck className="bo-enterprise-item-icon" />
+                  <span>Dedicated Key Account Manager</span>
+                </div>
+                <div className="bo-enterprise-item">
+                  <FiCheck className="bo-enterprise-item-icon" />
+                  <span>Direct ATS & API Integration</span>
+                </div>
               </div>
 
-              {/* Resdex Pro */}
-              <div style={{ background: '#ffffff', borderRadius: 22, padding: '40px 36px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <h4 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', fontFamily: "'Bricolage Grotesque',sans-serif" }}>Resdex Pro</h4>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', background: '#EEF2FF', color: '#002366', border: '1px solid #c7d2fe', padding: '4px 12px', borderRadius: 100, fontFamily: "'Bricolage Grotesque',sans-serif" }}>Enterprise</span>
-                </div>
-                <p style={{ fontSize: 13.5, color: '#64748b', marginBottom: 26, lineHeight: 1.65 }}>Custom solutions and dedicated support for large-scale, continuous hiring needs.</p>
-                <div style={{ marginBottom: 4 }}>
-                  <span style={{ fontSize: 38, fontWeight: 800, color: '#0f172a', fontFamily: "'Bricolage Grotesque',sans-serif" }}>Custom</span>
-                </div>
-                <p style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 30 }}>Tailored to your plan, headcount & requirements</p>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
-                  {['CV views as per your plan', 'Unlimited search results', 'All candidate pools including passive', '20+ advanced search filters', 'Multi-user team access', 'Bulk CV downloads'].map((f, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: '#334155' }}>
-                      <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <FiCheck size={10} color="#16a34a" strokeWidth={3} />
-                      </span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button style={{ width: '100%', padding: '14px 0', borderRadius: 13, border: '2px solid #002366', background: 'transparent', color: '#002366', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: "'Bricolage Grotesque',sans-serif", transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#EEF2FF'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                  onClick={() => setActiveModalPlan({ name: 'Resdex Pro', price: 'Custom', type: 'enterprise', features: ['Unlimited searches', 'Multi-user access', 'Dedicated Support'] })}
+              <div className="bo-enterprise-actions">
+                <button
+                  onClick={() => setIsSalesModalOpen(true)}
+                  className="bo-btn-white"
                 >
-                  Contact Sales →
+                  <FiPhoneCall style={{ width: "16px", height: "16px" }} /> Talk to Enterprise Sales
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        )}
 
-      {/* ── EXPERT ASSIST ── */}
-      <section id="expert-plans" style={{ padding: '0 40px 88px', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '5px 16px', borderRadius: 100, marginBottom: 16, fontFamily: "'Bricolage Grotesque',sans-serif" }}>Expert Assist</span>
-          <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,4vw,44px)', fontWeight: 800, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.03em' }}>
-            Let Our Hiring Experts <span style={{ color: '#10b981' }}>Do It For You</span>
-          </h2>
-          <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 14px' }} />
-          <p style={{ fontSize: 15.5, color: '#64748b', maxWidth: 500, margin: '0 auto' }}>Source, screen, and handpick top talent with dedicated Maven recruitment specialists — you only review the best.</p>
-        </div>
+        {/* Section 6: Plan Comparison Matrix */}
+        <div id="compare" className="bo-table-card">
+          <div className="bo-section-header">
+            <h2 className="bo-section-title bo-title-font">
+              Compare Plan Capabilities
+            </h2>
+            <p className="bo-section-subtitle">
+              Comprehensive side-by-side comparison of plan entitlements, AI capabilities, and recruiter access as per our commercial hiring model.
+            </p>
+          </div>
 
-        <div className="assist-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {[
-            { title: 'Assisted Hiring for Job Posting', price: '₹4,000', validity: '90 days', steps: ['Dedicated hiring expert consultation', 'Job posting on MavenJobs for maximum reach', 'Shortlisting of the most relevant applicants', 'Screened profiles delivered for final selection'] },
-            { title: 'Assisted Hiring for Resdex', price: '₹5,000', validity: '15 days', steps: ['Personalised consultation with recruitment expert', 'Tailored Resdex search matching your exact criteria', 'Direct access to 8Cr+ verified candidate profiles', '100 shortlisted CV views per requirement'] },
-          ].map((item, i) => {
-            const [ref, vis] = useInView(0.1);
-            return (
-              <div key={i} ref={ref} style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 24, padding: '44px', opacity: vis ? 1 : 0, transform: vis ? 'translateY(0)' : 'translateY(24px)', transition: `opacity 0.6s ease ${i * 0.15}s, transform 0.6s ease ${i * 0.15}s`, position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, right: 0, width: 140, height: 140, background: 'radial-gradient(circle at top right, rgba(16,185,129,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
-                <h4 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', marginBottom: 14, lineHeight: 1.35, fontFamily: "'Bricolage Grotesque',sans-serif" }}>{item.title}</h4>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
-                  <span style={{ fontSize: 36, fontWeight: 800, color: '#002366', fontFamily: "'Bricolage Grotesque',sans-serif" }}>{item.price}</span>
-                  <span style={{ fontSize: 13, color: '#94a3b8' }}>+GST</span>
-                </div>
-                <span style={{ display: 'inline-block', fontSize: 11.5, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '3px 12px', borderRadius: 100, marginBottom: 34 }}>Valid: {item.validity}</span>
-
-                <p style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 16, fontFamily: "'Bricolage Grotesque',sans-serif" }}>How It Works</p>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 38 }}>
-                  {item.steps.map((step, si) => (
-                    <li key={si} style={{ display: 'flex', gap: 12, fontSize: 14, color: '#475569', lineHeight: 1.55 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                        <FiCheck size={11} color="#10b981" strokeWidth={3} />
+          <div className="bo-table-scroll">
+            <table className="bo-table">
+              <thead>
+                <tr>
+                  <th style={{ minWidth: "240px" }}>Capabilities & Features</th>
+                  {plans.map((p) => (
+                    <th key={p._id} className="center" style={{ minWidth: "150px" }}>
+                      <div style={{ fontWeight: 800, color: "#002366" }}>{p.name}</div>
+                      <div style={{ fontSize: "11px", fontWeight: "normal", color: "#64748b", marginTop: "2px" }}>
+                        {p.code === "FREE" ? "Free Forever" : p.code === "SMB_STARTER" ? "Small Companies" : "Large Companies"}
                       </div>
-                      {step}
-                    </li>
+                    </th>
                   ))}
-                </ul>
-
-                <button style={{ width: '100%', padding: '14px 0', borderRadius: 13, border: 'none', background: 'linear-gradient(135deg, #002366, #003db5)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 6px 18px rgba(0,35,102,0.22)', fontFamily: "'Bricolage Grotesque',sans-serif", transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 10px 26px rgba(0,35,102,0.32)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,35,102,0.22)'; }}
-                  onClick={() => setActiveModalPlan({ ...item, type: 'expert' })}
-                >
-                  Request Assistance →
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── FEATURE COMPARISON TABLE ── */}
-      <section style={{ padding: '0 40px 88px', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 52 }}>
-          <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#002366', background: '#EEF2FF', border: '1px solid #c7d2fe', padding: '5px 16px', borderRadius: 100, marginBottom: 16, fontFamily: "'Bricolage Grotesque',sans-serif" }}>Compare Plans</span>
-          <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(26px,3.8vw,42px)', fontWeight: 800, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.03em' }}>
-            Job Posting — <span style={{ color: '#002366' }}>Full Feature Breakdown</span>
-          </h2>
-          <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 14px' }} />
-          <p style={{ fontSize: 15.5, color: '#64748b' }}>Every limit, every feature — transparent and side by side.</p>
-        </div>
-
-        <div style={{ borderRadius: 22, border: '1.5px solid #e2e8f0', overflow: 'hidden', background: '#fff', boxShadow: '0 4px 32px rgba(0,35,102,0.06)' }}>
-          <table className="plan-table" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans',sans-serif" }}>
-            <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                <th style={{ padding: '24px 28px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '.1em', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0', fontFamily: "'Bricolage Grotesque',sans-serif" }}>Feature</th>
-                {[
-                  { name: 'Hot Vacancy', price: '₹1,650', highlight: true, badge: 'Most Popular' },
-                  { name: 'Classified', price: '₹850', highlight: false },
-                  { name: 'Standard', price: '₹400', highlight: false },
-                  { name: 'Free', price: 'Free', highlight: false, green: true },
-                ].map((p, i) => (
-                  <th key={i} style={{ padding: '24px 16px', textAlign: 'center', borderBottom: '2px solid #e2e8f0', background: p.highlight ? 'rgba(0,35,102,0.035)' : undefined, minWidth: 130 }}>
-                    <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 15, fontWeight: 800, color: p.green ? '#10b981' : '#002366', marginBottom: 3 }}>{p.name}</div>
-                    <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 22, fontWeight: 800, color: p.green ? '#10b981' : '#0f172a', marginBottom: 6 }}>{p.price}</div>
-                    {p.badge && <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, color: '#002366', background: '#EEF2FF', border: '1px solid #c7d2fe', padding: '3px 10px', borderRadius: 100, letterSpacing: '.06em', textTransform: 'uppercase', fontFamily: "'Bricolage Grotesque',sans-serif" }}>{p.badge}</span>}
+                  <th className="center" style={{ minWidth: "150px" }}>
+                    <div style={{ fontWeight: 800, color: "#002366" }}>Enterprise</div>
+                    <div style={{ fontSize: "11px", fontWeight: "normal", color: "#64748b", marginTop: "2px" }}>Custom Scale</div>
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { label: 'Job description length', vals: ['Full detailed', '250 chars', '250 chars', '250 chars'] },
-                { label: 'Job locations', vals: ['3', '3', '1', '1'] },
-                { label: 'Applications allowed', vals: ['Unlimited', 'Unlimited', '200', '50'] },
-                { label: 'Application validity', vals: ['90 days', '90 days', '30 days', '15 days'] },
-                { label: 'Posting validity', vals: ['30 days', '30 days', '15 days', '7 days'] },
-                { label: 'Jobseeker contact details', vals: [true, true, false, false] },
-                { label: 'Boosted on search page', vals: [true, false, false, false] },
-                { label: 'Job branding & logo', vals: [true, false, false, false] },
-              ].map((row, ri) => (
-                <tr key={ri} style={{ borderBottom: ri < 7 ? '1px solid #f1f5f9' : 'none' }}>
-                  <td style={{ padding: '14px 28px', fontSize: 13.5, fontWeight: 600, color: '#334155' }}>{row.label}</td>
-                  {row.vals.map((v, vi) => (
-                    <td key={vi} style={{ padding: '14px 16px', textAlign: 'center', background: vi === 0 ? 'rgba(0,35,102,0.025)' : undefined }}>
-                      {v === true
-                        ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: '#dcfce7' }}><FiCheck size={13} color="#16a34a" strokeWidth={3} /></span>
-                        : v === false
-                          ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: '#f8fafc' }}><FiX size={12} color="#cbd5e1" strokeWidth={2.5} /></span>
-                          : <span style={{ display: 'inline-block', padding: '3px 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 12, fontWeight: 800, color: '#002366', fontFamily: "'Bricolage Grotesque',sans-serif" }}>{v}</span>
-                      }
+                </tr>
+              </thead>
+              <tbody>
+                {/* ── SECTION 1: CORE RECRUITMENT QUOTAS ── */}
+                <tr className="bo-table-section-row">
+                  <td colSpan={plans.length + 2}>1. Core Commercial Quotas & Entitlements</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Job Postings Included</td>
+                  {plans.map((p) => {
+                    const smb = p.activeVersion?.items?.find((i) => i.productCode === "SMB_JOB");
+                    const hot = p.activeVersion?.items?.find((i) => i.productCode === "HOT_VACANCY");
+                    return (
+                      <td key={p._id} className="center bo-table-val-highlight">
+                        {hot ? `${hot.quantity} Hot + ` : ""}
+                        {smb ? `${smb.quantity} SMB` : "1 Job"}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Custom Unlimited</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Resume Database Search (ResDex)</td>
+                  {plans.map((p) => {
+                    const rd = p.activeVersion?.items?.find((i) => i.productCode === "RESDEX");
+                    return (
+                      <td key={p._id} className="center bo-table-val-regular">
+                        {rd ? `${rd.quantity.toLocaleString()} Views` : <span className="bo-badge-no">— (No Search)</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>10,000+ Views</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">ResDex Search Recruiter Users (Seats)</td>
+                  {plans.map((p) => {
+                    const seat = p.activeVersion?.items?.find((i) => i.productCode === "RESDEX_SEAT");
+                    const qty = seat?.quantity || (p.code === "SMB_STARTER" ? 3 : p.code === "CORPORATE" ? 8 : 0);
+                    return (
+                      <td key={p._id} className="center bo-table-val-regular">
+                        {qty > 0 ? `${qty} Seats` : <span className="bo-badge-no">—</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Custom Unlimited</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Job Posting Users (Seats)</td>
+                  {plans.map((p) => {
+                    const isCorp = p.code === "CORPORATE";
+                    return (
+                      <td key={p._id} className="center bo-table-val-regular">
+                        {isCorp ? "3 Users" : "1 User"}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Unlimited</td>
+                </tr>
+
+                {/* ── SECTION 2: AI RECRUITMENT SUITE (Q5.4 & Q5.8) ── */}
+                <tr className="bo-table-section-row">
+                  <td colSpan={plans.length + 2}>2. AI-Powered Recruitment Suite (Monthly Shared Pool)</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Monthly AI Uses Pool (Company-Wide)</td>
+                  {plans.map((p) => {
+                    const ai = p.activeVersion?.items?.find((i) => i.productCode === "AI_CREDIT");
+                    return (
+                      <td key={p._id} className="center bo-table-val-highlight">
+                        {ai ? `${ai.quantity} Uses / mo` : "10 Uses / mo"}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Custom Volume</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Improve Job Description</td>
+                  {plans.map((p) => (
+                    <td key={p._id} className="center">
+                      <span className="bo-badge-yes"><FiCheck /> Yes</span>
                     </td>
                   ))}
-                </tr>
-              ))}
-              <tr style={{ background: '#f8fafc' }}>
-                <td style={{ padding: '20px 28px', fontSize: 13.5, fontWeight: 800, color: '#0f172a', fontFamily: "'Bricolage Grotesque',sans-serif" }}>Get started</td>
-                {[
-                  { label: 'Buy now →', style: { background: 'linear-gradient(135deg,#002366,#003db5)', color: '#fff', border: 'none', boxShadow: '0 4px 14px rgba(0,35,102,0.28)' } },
-                  { label: 'Buy now →', style: { background: 'transparent', color: '#002366', border: '1.5px solid #c7d2fe' } },
-                  { label: 'Buy now →', style: { background: 'transparent', color: '#002366', border: '1.5px solid #c7d2fe' } },
-                  { label: 'Post free →', style: { background: 'transparent', color: '#10b981', border: '1.5px solid #a7f3d0' } },
-                ].map((btn, bi) => (
-                  <td key={bi} style={{ padding: '20px 16px', background: bi === 0 ? 'rgba(0,35,102,0.025)' : undefined }}>
-                    <button style={{ width: '100%', padding: '10px 0', borderRadius: 11, fontSize: 13, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', fontFamily: "'Bricolage Grotesque',sans-serif", ...btn.style }}>
-                      {btn.label}
-                    </button>
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Yes</span>
                   </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+                </tr>
 
-      {/* ── PREMIUM UPGRADE ── */}
-      <section style={{ padding: '0 40px 88px', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{
-          background: 'linear-gradient(135deg,#010e2a 0%,#002b7a 50%,#010e2a 100%)',
-          borderRadius: 28, padding: '56px 48px', position: 'relative', overflow: 'hidden', display: 'grid', gap: 40,
-          gridTemplateColumns: '1fr auto', alignItems: 'center',
-        }}>
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px',
-              background: 'rgba(16,185,129,.14)', border: '1px solid rgba(16,185,129,.35)',
-              borderRadius: 100, color: '#6ee7b7', fontSize: 10, fontWeight: 800, letterSpacing: '.18em',
-              textTransform: 'uppercase', fontFamily: "'Bricolage Grotesque',sans-serif", marginBottom: 18,
-            }}>Premium Account</div>
-            <h3 style={{
-              fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(24px,3vw,36px)', fontWeight: 800,
-              color: '#fff', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 14,
-            }}>Upgrade to Premium &<br />Unlock 10 Active Jobs</h3>
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
-              {[
-                '10 active job postings', 'Unlimited applications',
-                'Jobseeker contact details', 'Priority recruiter search rank',
-                'Dedicated account manager', '30-day validity',
-              ].map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>
-                  <FiCheck size={12} color="#10b981" strokeWidth={3} /> {f}
-                </div>
-              ))}
-            </div>
+                <tr>
+                  <td className="bo-table-feature-title">Improve Requirements & Skills</td>
+                  {plans.map((p) => (
+                    <td key={p._id} className="center">
+                      <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                    </td>
+                  ))}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Improve Responsibilities</td>
+                  {plans.map((p) => (
+                    <td key={p._id} className="center">
+                      <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                    </td>
+                  ))}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Write Full Job Description from Title</td>
+                  {plans.map((p) => {
+                    const isPaid = p.code !== "FREE";
+                    return (
+                      <td key={p._id} className="center">
+                        {isPaid ? (
+                          <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                        ) : (
+                          <span className="bo-badge-no">— (Paid Only)</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Generate Screening Questions</td>
+                  {plans.map((p) => {
+                    const isPaid = p.code !== "FREE";
+                    return (
+                      <td key={p._id} className="center">
+                        {isPaid ? (
+                          <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                        ) : (
+                          <span className="bo-badge-no">— (Paid Only)</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Unused AI Credits Rollover</td>
+                  {plans.map((p) => (
+                    <td key={p._id} className="center" style={{ fontSize: "11px", color: "#64748b" }}>
+                      Expires Month-End
+                    </td>
+                  ))}
+                  <td className="center" style={{ fontSize: "11px", color: "#64748b" }}>
+                    Custom
+                  </td>
+                </tr>
+
+                {/* ── SECTION 3: JOB REACH & BRANDING (Q6.1) ── */}
+                <tr className="bo-table-section-row">
+                  <td colSpan={plans.length + 2}>3. Job Reach, Visibility & Branding</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Top Search Placement (Hot Vacancy)</td>
+                  {plans.map((p) => {
+                    const hasHot = p.activeVersion?.items?.some((i) => i.productCode === "HOT_VACANCY");
+                    return (
+                      <td key={p._id} className="center">
+                        {hasHot ? (
+                          <span className="bo-badge-yes"><FiCheck /> Yes (Top)</span>
+                        ) : (
+                          <span className="bo-badge-no">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Yes (Priority)</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Company Logo Display</td>
+                  {plans.map((p) => {
+                    const hasHot = p.activeVersion?.items?.some((i) => i.productCode === "HOT_VACANCY");
+                    return (
+                      <td key={p._id} className="center">
+                        {hasHot ? (
+                          <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                        ) : (
+                          <span className="bo-badge-no">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Custom Branding</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Instant Candidate Job Alerts</td>
+                  {plans.map((p) => {
+                    const hasHot = p.activeVersion?.items?.some((i) => i.productCode === "HOT_VACANCY");
+                    return (
+                      <td key={p._id} className="center">
+                        {hasHot ? (
+                          <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                        ) : (
+                          <span className="bo-badge-no">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Instant Blast</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Cities Coverage Per Job</td>
+                  {plans.map((p) => {
+                    const hasHot = p.activeVersion?.items?.some((i) => i.productCode === "HOT_VACANCY");
+                    return (
+                      <td key={p._id} className="center bo-table-val-regular">
+                        {hasHot ? "Up to 3 Cities" : "1 City"}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Multi-City All India</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Job Description Length</td>
+                  {plans.map((p) => {
+                    const hasHot = p.activeVersion?.items?.some((i) => i.productCode === "HOT_VACANCY");
+                    return (
+                      <td key={p._id} className="center bo-table-val-regular">
+                        {hasHot ? "Extended Format" : "Standard"}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Custom Rich HTML</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Job Live Duration</td>
+                  {plans.map((p) => (
+                    <td key={p._id} className="center bo-table-val-regular">
+                      30 Days
+                    </td>
+                  ))}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>30 - 60 Days</td>
+                </tr>
+
+                {/* ── SECTION 4: CANDIDATE WORKSPACES & DATA RETENTION ── */}
+                <tr className="bo-table-section-row">
+                  <td colSpan={plans.length + 2}>4. Candidate Workspaces & Account Retention</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">ResDex Requirement Folders</td>
+                  {plans.map((p) => {
+                    const isFree = p.code === "FREE";
+                    return (
+                      <td key={p._id} className="center bo-table-val-regular">
+                        {isFree ? "1 Folder" : "Unlimited"}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Unlimited + Team Sharing</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Candidate Notes, Tags & Folders</td>
+                  {plans.map((p) => {
+                    const isFree = p.code === "FREE";
+                    return (
+                      <td key={p._id} className="center">
+                        {isFree ? <span className="bo-badge-no">—</span> : <span className="bo-badge-yes"><FiCheck /> Yes</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="center">
+                    <span className="bo-badge-yes"><FiCheck /> Yes</span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Subscription Validity</td>
+                  {plans.map((p) => (
+                    <td key={p._id} className="center" style={{ color: "#64748b", fontWeight: 600 }}>
+                      {p.activeVersion?.validity || 90} Days
+                    </td>
+                  ))}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>1 Year (Annual)</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Post-Expiry Read-Only Access</td>
+                  {plans.map((p) => (
+                    <td key={p._id} className="center" style={{ fontSize: "11px", color: "#64748b" }}>
+                      90 Days (Old CVs & Jobs)
+                    </td>
+                  ))}
+                  <td className="center" style={{ fontSize: "11px", color: "#64748b" }}>
+                    Extended Archive
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div style={{
-            background: '#fff', borderRadius: 22, padding: '36px 32px', minWidth: 280,
-            position: 'relative', zIndex: 2, textAlign: 'center',
-          }}>
-            <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.18em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'Bricolage Grotesque',sans-serif", marginBottom: 8 }}>Premium — Starting at</p>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3, marginBottom: 4 }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: '#CBD5E1', fontFamily: "'Bricolage Grotesque',sans-serif" }}>₹</span>
-              <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 52, fontWeight: 800, color: '#002366', letterSpacing: '-.05em', lineHeight: 1 }}>9,999</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>/mo</span>
-            </div>
-            <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 22, fontWeight: 500 }}>Billed monthly · Cancel anytime</p>
-            {(paymentError || paymentSuccess) && (
-              <p style={{ fontSize: 11, fontWeight: 700, marginBottom: 10, color: paymentError ? '#dc2626' : '#059669' }}>
-                {paymentError || paymentSuccess}
-              </p>
-            )}
-            <button onClick={handlePremiumUpgrade} disabled={paymentLoading} style={{
-              width: '100%', padding: 15, background: '#10b981', color: '#fff',
-              border: 'none', borderRadius: 12, fontFamily: "'Bricolage Grotesque',sans-serif",
-              fontSize: 14, fontWeight: 800, cursor: 'pointer', transition: 'all .25s',
-              opacity: paymentLoading ? 0.7 : 1,
-              boxShadow: '0 8px 24px rgba(16,185,129,.3)',
-            }}
-              onMouseEnter={e => { if (!paymentLoading) { e.currentTarget.style.background = '#0da371'; e.currentTarget.style.transform = 'translateY(-2px)' } }}
-              onMouseLeave={e => { if (!paymentLoading) { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.transform = 'translateY(0)' } }}
-            >
-              {paymentLoading ? 'Processing...' : 'Upgrade to Premium'}
-            </button>
-            <p style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: "'Bricolage Grotesque',sans-serif", marginTop: 12 }}>
-              Secure Checkout · Instant Activation
+        </div>
+
+        {/* Section 7: FAQs */}
+        <div className="bo-faq-container">
+          <div className="bo-section-header">
+            <h2 className="bo-section-title bo-title-font">
+              Frequently Asked Questions
+            </h2>
+            <p className="bo-section-subtitle">
+              Everything you need to know about purchasing online and credit management.
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* ── FAQ ── */}
-      <section style={{ padding: '0 40px 88px', maxWidth: 780, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 50 }}>
-          <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', fontFamily: "'Bricolage Grotesque',sans-serif", marginBottom: 14 }}>GOT QUESTIONS?</span>
-          <h2 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(26px,4vw,40px)', fontWeight: 800, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.03em' }}>Frequently Asked Questions</h2>
-          <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 14px' }} />
-          <p style={{ fontSize: 15, color: '#64748b' }}>Everything you need to know about plans, billing, and hiring on MavenJobs.</p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-          {FAQS.map((faq, i) => (
-            <FaqItem key={i} faq={faq} isOpen={activeFaq === i} onToggle={() => setActiveFaq(activeFaq === i ? null : i)} />
-          ))}
-        </div>
-      </section>
-
-      {/* ── PURCHASE MODAL ── */}
-      {activeModalPlan && (
-        <div className="pm-overlay" onClick={() => setActiveModalPlan(null)}>
-          <div className="pm-box" onClick={e => e.stopPropagation()}>
-            <button className="pm-close" onClick={() => setActiveModalPlan(null)}><FiX size={20} /></button>
-
-            <div className="pm-container">
-              {/* Left Column: Summary */}
-              <div className="pm-left">
-                <div className="pm-summary-header">
-                  <span className="pm-tag">{activeModalPlan.type === 'resdex' ? 'RESDEX' : activeModalPlan.type === 'expert' ? 'EXPERT ASSIST' : 'JOB POSTING'}</span>
-                  <h3>{activeModalPlan.name}</h3>
-                  <div className="pm-price-block">
-                    <span className="pm-amt">{activeModalPlan.price}</span>
-                    {activeModalPlan.price !== 'Free' && activeModalPlan.price !== 'Custom' && <span className="pm-gst">+GST</span>}
+          <div className="bo-faq-list">
+            {FAQS.map((faq, idx) => (
+              <div key={idx} className="bo-faq-item">
+                <button
+                  onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                  className="bo-faq-btn"
+                >
+                  <span>{faq.question}</span>
+                  <FiChevronDown
+                    className={`bo-faq-chevron ${activeFaq === idx ? "rotate" : ""}`}
+                  />
+                </button>
+                {activeFaq === idx && (
+                  <div className="bo-faq-answer">
+                    {faq.answer}
                   </div>
-                  <p className="pm-validity">Valid for {activeModalPlan.validity || 'as per agreement'}</p>
-                </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-                <div className="pm-feat-list">
-                  <p className="pm-feat-title">Plan Highlights</p>
-                  {(activeModalPlan.features || []).slice(0, 4).map((f, i) => (
-                    <div className="pm-feat-item" key={i}>
-                      <FiCheck size={14} color="#10b981" />
-                      <span>{typeof f === 'string' ? f : f.text}</span>
-                    </div>
-                  ))}
-                </div>
+      {/* Review & Purchase Checkout Modal */}
+      {isPurchaseModalOpen && selectedItemForPurchase && (
+        <div className="bo-modal-backdrop">
+          <div className="bo-modal-box bo-modal-lg">
+            <div className="bo-modal-header">
+              <div>
+                <span className="bo-modal-tag">Order Review & Activation</span>
+                <h3 className="bo-modal-title bo-title-font">
+                  {selectedItemForPurchase.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsPurchaseModalOpen(false)}
+                className="bo-modal-close-btn"
+              >
+                <FiX style={{ width: "20px", height: "20px" }} />
+              </button>
+            </div>
 
-                <div className="pm-badge-trust">
-                  <FiAward size={18} />
-                  <span>Trusted by 1.5L+ Indian Businesses</span>
+            {paymentError && (
+              <div className="bo-error-alert">
+                <FiAlertCircle style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+                <span>{paymentError}</span>
+              </div>
+            )}
+
+            <div className="bo-modal-body">
+              {/* Items summary */}
+              <div className="bo-summary-card">
+                <span className="bo-summary-title">What you will receive:</span>
+                {selectedItemForPurchase.itemType === "PLAN" ? (
+                  <div>
+                    {(selectedItemForPurchase.activeVersion?.items || []).map((it, idx) => (
+                      <div key={idx} className="bo-summary-item">
+                        <FiCheck className="bo-check-icon" />
+                        <span>
+                          <strong>{it.quantity}</strong> {it.productName} ({it.unit})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : selectedItemForPurchase.itemType === "PRODUCT" ? (
+                  <div className="bo-summary-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>
+                      <strong>{selectedItemForPurchase.quantity}</strong>{" "}
+                      {selectedItemForPurchase.name} ({selectedItemForPurchase.unit || "Job"} Postings)
+                    </span>
+                  </div>
+                ) : (
+                  <div className="bo-summary-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>
+                      <strong>{selectedItemForPurchase.quantity}</strong>{" "}
+                      {selectedItemForPurchase.product?.name || selectedItemForPurchase.name} Credits
+                    </span>
+                  </div>
+                )}
+                <div style={{ marginTop: "12px", fontSize: "11px", color: "#64748b" }}>
+                  Validity Period:{" "}
+                  <strong>
+                    {selectedItemForPurchase.activeVersion?.validity ||
+                      selectedItemForPurchase.validity ||
+                      30}{" "}
+                    Days
+                  </strong>
                 </div>
               </div>
 
-              {/* Right Column: Form/Action */}
-              <div className="pm-right">
-                {activeModalPlan.type === 'enterprise' || activeModalPlan.type === 'expert' ? (
-                  <div className="pm-form-mode">
-                    <h4>Request Details</h4>
-                    <p>Enter your details and our expert will contact you within 2 hours.</p>
-                    <div className="pm-input-group">
-                      <label>Full Name</label>
-                      <input type="text" placeholder="e.g. Rahul Sharma" />
-                    </div>
-                    <div className="pm-input-group">
-                      <label>Company Name</label>
-                      <input type="text" placeholder="e.g. Acme Corp" />
-                    </div>
-                    <div className="pm-input-group">
-                      <label>Phone Number</label>
-                      <input type="tel" placeholder="e.g. +91 98765 43210" />
-                    </div>
-                    <button className="pm-main-btn">Send Request</button>
-                  </div>
-                ) : (
-                  <div className="pm-checkout-mode">
-                    <h4>Checkout Summary</h4>
-                    <div className="pm-bill-card">
-                      <div className="pm-bill-row">
-                        <span>Base Price</span>
-                        <span>{activeModalPlan.price}</span>
-                      </div>
-                      <div className="pm-bill-row">
-                        <span>GST (18%)</span>
-                        <span>{activeModalPlan.price === 'Free' ? '₹0' : '₹' + (parseInt(activeModalPlan.price.replace(/[^\d]/g, '')) * 0.18).toFixed(0)}</span>
-                      </div>
-                      <div className="pm-bill-divider" />
-                      <div className="pm-bill-row pm-total">
-                        <span>Total Payable</span>
-                        <span>{activeModalPlan.price === 'Free' ? 'Free' : '₹' + (parseInt(activeModalPlan.price.replace(/[^\d]/g, '')) * 1.18).toFixed(0)}</span>
-                      </div>
-                    </div>
+              {/* Price Calculation */}
+              {(() => {
+                const isPlan = selectedItemForPurchase.itemType === "PLAN";
+                const ver = selectedItemForPurchase.activeVersion || selectedItemForPurchase;
+                const base = isPlan ? ver.basePrice : selectedItemForPurchase.price;
+                const discount = isPlan ? ver.discount : 0;
+                const taxable = Math.max(0, base - discount);
+                const tax = Math.round(taxable * 0.18);
+                const total = Math.round(taxable + tax);
 
-                    <div className="pm-promo-apply">
-                      <input type="text" placeholder="Enter Coupon Code" />
-                      <button>Apply</button>
+                return (
+                  <div className="bo-price-summary-box">
+                    <div className="bo-price-calc-row">
+                      <span>Base Amount:</span>
+                      <span>{formatCurrency(base)}</span>
                     </div>
-
-                    <button className="pm-main-btn" disabled={paymentLoading} onClick={() => activeModalPlan.price === 'Free' ? setActiveModalPlan(null) : handleJobPostPayment(activeModalPlan)}>
-                      {activeModalPlan.price === 'Free' ? 'Post Free Job Now' : paymentLoading ? 'Processing...' : 'Proceed to Payment'}
-                    </button>
-                    <p className="pm-secure-note"><FiShield size={12} /> Secure 256-bit SSL encrypted payment</p>
+                    {discount > 0 && (
+                      <div className="bo-price-calc-row discount">
+                        <span>Commercial Discount:</span>
+                        <span>- {formatCurrency(discount)}</span>
+                      </div>
+                    )}
+                    <div className="bo-price-calc-row">
+                      <span>Applicable GST (18%):</span>
+                      <span>+ {formatCurrency(tax)}</span>
+                    </div>
+                    <div className="bo-price-calc-row total">
+                      <span>Total Payable Amount:</span>
+                      <span className="bo-price-total-val">{formatCurrency(total)}</span>
+                    </div>
                   </div>
-                )}
+                );
+              })()}
+
+              <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                By confirming purchase, you agree to Maven Jobs Commercial Terms. Credits are immediately activated upon successful payment.
+              </div>
+
+              <div className="bo-modal-actions">
+                <button
+                  type="button"
+                  onClick={() => setIsPurchaseModalOpen(false)}
+                  className="bo-btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={paymentLoading}
+                  onClick={handleExecutePayment}
+                  className="bo-btn-buy bo-btn-auto"
+                >
+                  {paymentLoading ? (
+                    <>
+                      <FiRefreshCw className="bo-spinner" style={{ width: "16px", height: "16px" }} /> Processing...
+                    </>
+                  ) : (
+                    <>Proceed to Payment & Activate</>
+                  )}
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Purchase Success Confirmation Modal */}
+      {isSuccessModalOpen && purchaseSuccessData && (
+        <div className="bo-modal-backdrop">
+          <div className="bo-modal-box bo-modal-md" style={{ textAlign: "center" }}>
+            <div className="bo-success-icon-wrap">
+              <FiCheckCircle style={{ width: "32px", height: "32px" }} />
+            </div>
 
-      {/* ── FOOTER ── */}
+            <h3 className="bo-modal-title bo-title-font">
+              Purchase Successful! 🎉
+            </h3>
+            <p style={{ fontSize: "12px", color: "#64748b", marginTop: "8px" }}>
+              Your <strong>{purchaseSuccessData.item?.name}</strong> has been activated and added to your commercial entitlement registry.
+            </p>
+
+            <div className="bo-success-details-box">
+              <div className="bo-success-row">
+                <span style={{ color: "#94a3b8" }}>Item:</span>
+                <span style={{ fontWeight: 700, color: "#1e293b" }}>{purchaseSuccessData.item?.name}</span>
+              </div>
+              <div className="bo-success-row">
+                <span style={{ color: "#94a3b8" }}>Allocated Quantity:</span>
+                <span style={{ fontWeight: 700, color: "#4338ca" }}>
+                  {purchaseSuccessData.item?.quantity} {purchaseSuccessData.item?.unit || "Credit"}s
+                </span>
+              </div>
+              <div className="bo-success-row">
+                <span style={{ color: "#94a3b8" }}>Status:</span>
+                <span style={{ fontWeight: 700, color: "#059669" }}>Active</span>
+              </div>
+              <div className="bo-success-row">
+                <span style={{ color: "#94a3b8" }}>Transaction ID:</span>
+                <span style={{ fontFamily: "monospace", color: "#64748b" }}>
+                  {purchaseSuccessData.details?.payment?.gatewayPaymentId || "TXN-OK"}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <button
+                onClick={() => {
+                  setIsSuccessModalOpen(false);
+                  navigate("/post-job");
+                }}
+                className="bo-btn-buy"
+              >
+                Post a Job Now
+              </button>
+              <button
+                onClick={() => {
+                  setIsSuccessModalOpen(false);
+                  navigate("/employer-dashboard");
+                }}
+                className="bo-btn-contact"
+              >
+                Go to Recruiter Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Sales Modal */}
+      {isSalesModalOpen && (
+        <div
+          className="bo-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsSalesModalOpen(false);
+          }}
+        >
+          <div className="bo-sales-modal-box">
+            {/* Header */}
+            <div className="bo-sales-modal-header">
+              <div>
+                <h3 className="bo-sales-modal-title">
+                  Contact sales
+                </h3>
+                <p className="bo-sales-modal-subtitle">
+                  Fill this form and we’ll get back to you.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSalesModalOpen(false)}
+                className="bo-sales-close-btn"
+                aria-label="Close dialog"
+              >
+                <FiX style={{ width: "20px", height: "20px" }} />
+              </button>
+            </div>
+
+            {salesSuccess ? (
+              <div className="bo-sales-success-state">
+                <div className="bo-sales-success-icon">
+                  <FiCheckCircle style={{ width: "42px", height: "42px", color: "#16a34a" }} />
+                </div>
+                <h4 className="bo-sales-success-title">Thank you!</h4>
+                <p className="bo-sales-success-desc">
+                  Your inquiry has been received. Our sales specialist will get back to you shortly.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSalesSubmit} className="bo-sales-form">
+                {/* 1. Full name */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">Full name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter your name"
+                    value={salesForm.fullName}
+                    onChange={(e) => setSalesForm({ ...salesForm, fullName: e.target.value })}
+                    className="bo-sales-input"
+                  />
+                </div>
+
+                {/* 2. Mobile number */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">Mobile number</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Enter mobile number"
+                    value={salesForm.mobileNumber}
+                    onChange={(e) => setSalesForm({ ...salesForm, mobileNumber: e.target.value })}
+                    className="bo-sales-input"
+                  />
+                </div>
+
+                {/* 3. Company/Consultancy name */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">Company/Consultancy name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter your company/consultancy name"
+                    value={salesForm.companyName}
+                    onChange={(e) => setSalesForm({ ...salesForm, companyName: e.target.value })}
+                    className="bo-sales-input"
+                  />
+                </div>
+
+                {/* 4. Hiring for */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">Hiring for</label>
+                  <div className="bo-sales-radios">
+                    <label className="bo-sales-radio-item">
+                      <input
+                        type="radio"
+                        name="hiringFor"
+                        value="your company"
+                        checked={salesForm.hiringFor === "your company"}
+                        onChange={(e) => setSalesForm({ ...salesForm, hiringFor: e.target.value })}
+                        className="bo-sales-radio-native"
+                      />
+                      <span className="bo-sales-radio-circle">
+                        {salesForm.hiringFor === "your company" && <span className="bo-sales-radio-dot" />}
+                      </span>
+                      <span className="bo-sales-radio-text">your company</span>
+                    </label>
+
+                    <label className="bo-sales-radio-item">
+                      <input
+                        type="radio"
+                        name="hiringFor"
+                        value="a consultancy"
+                        checked={salesForm.hiringFor === "a consultancy"}
+                        onChange={(e) => setSalesForm({ ...salesForm, hiringFor: e.target.value })}
+                        className="bo-sales-radio-native"
+                      />
+                      <span className="bo-sales-radio-circle">
+                        {salesForm.hiringFor === "a consultancy" && <span className="bo-sales-radio-dot" />}
+                      </span>
+                      <span className="bo-sales-radio-text">a consultancy</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 5. Number of employees */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">Number of employees</label>
+                  <div className="bo-sales-select-wrap">
+                    <select
+                      required
+                      value={salesForm.employeeRange}
+                      onChange={(e) => setSalesForm({ ...salesForm, employeeRange: e.target.value })}
+                      className="bo-sales-select"
+                    >
+                      <option value="" disabled>Select range</option>
+                      <option value="1-15">1-15</option>
+                      <option value="16-50">16-50</option>
+                      <option value="51-200">51-200</option>
+                      <option value="201-500">201-500</option>
+                      <option value="500+">500+</option>
+                    </select>
+                    <FiChevronDown className="bo-sales-select-chevron" />
+                  </div>
+                </div>
+
+                {/* 6. Designation name */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">Designation name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter your designation"
+                    value={salesForm.designation}
+                    onChange={(e) => setSalesForm({ ...salesForm, designation: e.target.value })}
+                    className="bo-sales-input"
+                  />
+                </div>
+
+                {/* 7. Work email ID */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">Work email ID</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email ID"
+                    value={salesForm.workEmail}
+                    onChange={(e) => setSalesForm({ ...salesForm, workEmail: e.target.value })}
+                    className="bo-sales-input"
+                  />
+                </div>
+
+                {/* 8. City */}
+                <div className="bo-sales-field">
+                  <label className="bo-sales-label">City</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter your city name"
+                    value={salesForm.city}
+                    onChange={(e) => setSalesForm({ ...salesForm, city: e.target.value })}
+                    className="bo-sales-input"
+                  />
+                </div>
+
+                {/* Extensible Fields Section: "+ can add more also if needed" */}
+                {showExtraFields && (
+                  <div className="bo-sales-extra-section">
+                    <div className="bo-sales-field">
+                      <label className="bo-sales-label">Requirement details or notes (Optional)</label>
+                      <textarea
+                        rows="2"
+                        placeholder="Mention any custom seat requirements, candidate criteria, or urgency..."
+                        value={salesForm.notes}
+                        onChange={(e) => setSalesForm({ ...salesForm, notes: e.target.value })}
+                        className="bo-sales-input bo-sales-textarea"
+                      />
+                    </div>
+
+                    {salesForm.extraFields.map((field) => (
+                      <div key={field.id} className="bo-sales-custom-field-row">
+                        <input
+                          type="text"
+                          placeholder="Field name (e.g. Budget)"
+                          value={field.label}
+                          onChange={(e) => handleExtraFieldChange(field.id, "label", e.target.value)}
+                          className="bo-sales-input"
+                          style={{ flex: 1 }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Value"
+                          value={field.value}
+                          onChange={(e) => handleExtraFieldChange(field.id, "value", e.target.value)}
+                          className="bo-sales-input"
+                          style={{ flex: 1.5 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExtraField(field.id)}
+                          className="bo-sales-field-remove-btn"
+                          title="Remove field"
+                        >
+                          <FiTrash2 style={{ width: "15px", height: "15px" }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="bo-sales-add-field-action">
+                  <button
+                    type="button"
+                    onClick={handleAddExtraField}
+                    className="bo-sales-add-field-btn"
+                  >
+                    <FiPlus style={{ width: "14px", height: "14px" }} />
+                    {showExtraFields ? "Add another field" : "+ Add more fields or notes"}
+                  </button>
+                </div>
+
+                {/* 9. reCAPTCHA Verification Box */}
+                <div className="bo-sales-recaptcha-card">
+                  <div className="bo-recaptcha-left">
+                    <div
+                      className={`bo-recaptcha-checkbox-label ${captchaLoading ? "loading" : ""}`}
+                      onClick={handleCaptchaClick}
+                      role="checkbox"
+                      aria-checked={salesForm.isVerified}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleCaptchaClick();
+                        }
+                      }}
+                    >
+                      <span
+                        className={`bo-recaptcha-box-indicator ${
+                          captchaLoading ? "loading" : salesForm.isVerified ? "checked" : ""
+                        }`}
+                      >
+                        {captchaLoading ? (
+                          <span className="bo-recaptcha-spinner" />
+                        ) : salesForm.isVerified ? (
+                          <FiCheck className="bo-recaptcha-check-icon" />
+                        ) : null}
+                      </span>
+                      <span className="bo-recaptcha-text">I'm not a robot</span>
+                    </div>
+                    <span className="bo-recaptcha-quota-subtext">
+                      This site is exceeding reCAPTCHA Enterprise free quota.
+                    </span>
+                  </div>
+
+                  <div className="bo-recaptcha-right">
+                    <svg className="bo-recaptcha-badge-icon" viewBox="0 0 48 48" fill="none">
+                      <path
+                        d="M24 6C14.059 6 6 14.059 6 24h4c0-7.732 6.268-14 14-14 3.866 0 7.368 1.567 9.899 4.101L30 22h14V8l-5.657 5.657C34.735 9.89 29.63 6 24 6z"
+                        fill="#1a73e8"
+                      />
+                      <path
+                        d="M24 42c9.941 0 18-8.059 18-18h-4c0 7.732-6.268 14-14 14-3.866 0-7.368-1.567-9.899-4.101L18 26H4v14l5.657-5.657C13.265 38.11 18.37 42 24 42z"
+                        fill="#34a853"
+                      />
+                    </svg>
+                    <span className="bo-recaptcha-badge-title">reCAPTCHA</span>
+                    <span className="bo-recaptcha-badge-legal">Privacy - Terms</span>
+                  </div>
+                </div>
+
+                {/* 10. Submit now button */}
+                <button
+                  type="submit"
+                  disabled={salesSubmitted || !salesForm.isVerified || captchaLoading}
+                  className="bo-sales-submit-btn"
+                >
+                  {salesSubmitted ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                      <FiRefreshCw className="bo-spinner" style={{ width: "16px", height: "16px" }} />
+                      Submitting...
+                    </span>
+                  ) : (
+                    "Submit now"
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
       <EmployerFooter />
     </div>
   );

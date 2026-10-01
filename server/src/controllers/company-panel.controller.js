@@ -44,6 +44,7 @@ const { scheduleIndex, scheduleDelete } = esService;
 const jobReportService = require("../services/job-posting-report.service");
 const smsService = require("../services/sms.service");
 const emailService = require("../services/email.service");
+const EntitlementService = require("../services/commercial/entitlement.service");
 const RegistrationOTP = require("../models/RegistrationOTP");
 const { buildOTPHtml } = require("../email/templates/layouts");
 const CompanySubUser = require("../models/CompanySubUser");
@@ -156,32 +157,57 @@ const formatCompanyForClient = (company, options = {}) => {
 
   return {
     id: String(company._id),
+    clientId: `MV-${String(company._id).slice(-5).toUpperCase()}`,
     name: company.name,
+    companyName: company.name,
     logoUrl: isRecruiter ? (options?.user?.avatar || "") : (company.logoUrl || ""),
     coverImageUrl: isRecruiter ? (options?.user?.coverImageUrl || "") : (company.coverImageUrl || ""),
     industry: company.industry || "",
+    industryType: company.industry || "",
     about: company.about || "",
     companySize: company.companySize || "",
+    employeesCount: company.employeesCount || company.companySize || "",
     foundedYear: company.foundedYear || "",
     tagline: company.tagline || "",
     type: company.type || "",
+    companyType: company.type || "",
+    contactPerson: company.contactPerson || options?.user?.name || "",
+    contactDesignation: company.contactDesignation || company.tagline || "",
+    alias: company.alias || "",
+    phone1: company.phone || "",
+    phone2: company.altPhone || "",
+    altPhone: company.altPhone || "",
+    tanNumber: company.tanNumber || "",
+    gstin: company.gstin || "",
+    kycStatus: company.kycStatus || (company.status === "ACTIVE" ? "APPROVED" : (company.status || "PENDING_VERIFICATION")),
+    registeredName: company.registeredName || company.name || "",
+    addressLabel: company.addressLabel || "Primary Address",
+    profileHotVacancies: company.profileHotVacancies || "Standard",
+    profileClassifieds: company.profileClassifieds || "Standard",
     specialties: company.specialties || [],
     perks: company.perks || [],
     linkedIn: company.linkedIn || "",
     status: company.status || "ACTIVE",
     packageType: company.packageType || "STANDARD",
+    plan: company.planSnapshot?.planName || company.packageType || "FREE",
+    planSnapshot: company.planSnapshot || null,
+    services: company.planSnapshot?.services || [],
     jobLimit: resolvedJobLimit,
     activeJobCount,
     remainingSlots: Math.max(resolvedJobLimit - activeJobCount, 0),
     email: company.email || "",
+    communicationEmail: company.email || options?.user?.email || "",
     phone: company.phone || "",
+    mobileNumber: company.phone || options?.user?.phone || "",
     website: company.website || "",
-    linkedIn: company.linkedIn || "",
+    websiteUrl: company.website || "",
     accountManager: company.accountManager || "",
     configurationNotes: company.configurationNotes || "",
     location: {
+      country: company.location?.country || "India",
       city: company.location?.city || "",
       region: company.location?.region || "",
+      state: company.location?.region || "",
       zone: company.location?.zone || "",
       address: company.location?.address || "",
       pincode: company.location?.pincode || "",
@@ -620,6 +646,18 @@ exports.register = asyncHandler(async (req, res) => {
       },
     });
 
+    // Auto-assign default Free Plan and save consumed products/services to company profile
+    try {
+      const PurchaseService = require("../services/commercial/purchase.service");
+      await PurchaseService.assignDefaultFreePlan({
+        companyId: company._id,
+        userId: user._id,
+        actor: { id: user._id, email: user.email, role: "CLIENT" },
+      });
+    } catch (planErr) {
+      console.error("[Company Registration] Failed to assign default Free plan:", planErr?.message || planErr);
+    }
+
     // Create a Lead for FSE Verification
     const zone = getZoneFromState(state);
     
@@ -934,29 +972,103 @@ exports.createJob = asyncHandler(async (req, res) => {
 
   const jobCategory = toTrimmedString(req.body.jobCategory) || "standard";
 
-  // Always count active standard jobs — needed for activeJobCount tracking after save
-  const activeApprovedCount = await Job.countDocuments({
-    companyId: company._id,
-    isActive: true,
-    jobCategory: { $ne: "management" }
-  });
+  // Category mapping to commercial products
+  const targetProductCode =
+    jobCategory === "management"
+      ? "SMB_JOB"
+      : jobCategory === "hot"
+      ? "HOT_VACANCY"
+      : jobCategory === "internship"
+      ? "INTERNSHIP_JOB"
+      : "JOB_POSTING";
 
-  if (jobCategory === "management") {
-    // SMB Job limit check
-    const smbActiveCount = await Job.countDocuments({
-      companyId: company._id,
-      isActive: true,
-      jobCategory: "management"
-    });
-    const smbLimit = Number(packageSnapshot.smbJobPostingLimit || 0);
-    if (smbLimit <= 0 || smbActiveCount >= smbLimit) {
-      throw createHttpError(403, "Your plan does not allow more SMB job postings. Please upgrade your package.");
+  const categoryLabel =
+    jobCategory === "management"
+      ? "SMB Job"
+      : jobCategory === "hot"
+      ? "Hot Vacancy"
+      : jobCategory === "internship"
+      ? "Internship"
+      : "Standard Job";
+
+  // Count active jobs by category
+  const [activeApprovedCount, activeSmbCount, activeHotCount, activeInternshipCount] = await Promise.all([
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship" }),
+  ]);
+
+  let hasCommercialEntitlement = false;
+  let entitlementCodeToConsume = null;
+
+  try {
+    const entCheck = await EntitlementService.checkEntitlement(company._id, targetProductCode, 1);
+    if (entCheck.allowed) {
+      hasCommercialEntitlement = true;
+      entitlementCodeToConsume = targetProductCode;
+    } else if (jobCategory === "standard") {
+      const genericCheck = await EntitlementService.checkEntitlement(company._id, "JOB_POSTING", 1);
+      if (genericCheck.allowed) {
+        hasCommercialEntitlement = true;
+        entitlementCodeToConsume = "JOB_POSTING";
+      }
     }
-  } else {
-    // Standard Job limit check
-    const standardLimit = Number(packageSnapshot.jobPostingLimit || packageSnapshot.jobLimit || 0);
-    if (standardLimit <= 0 || activeApprovedCount >= standardLimit) {
-      throw createHttpError(403, "Your plan does not allow more standard job postings. Please upgrade your package.");
+  } catch (err) {
+    // Entitlement check failed or none found
+  }
+
+  let matchingPlanService = null;
+
+  if (!hasCommercialEntitlement) {
+    if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+      matchingPlanService = company.planSnapshot.services.find(
+        (s) =>
+          String(s.productCode).toUpperCase() === targetProductCode ||
+          (targetProductCode === "SMB_JOB" && String(s.productCode).toUpperCase().includes("SMB")) ||
+          (targetProductCode === "HOT_VACANCY" && String(s.productCode).toUpperCase().includes("HOT")) ||
+          (targetProductCode === "INTERNSHIP_JOB" && String(s.productCode).toUpperCase().includes("INTERN")) ||
+          (targetProductCode === "JOB_POSTING" && (String(s.productCode).toUpperCase().includes("JOB") || String(s.category).toUpperCase() === "JOB_POSTING"))
+      );
+
+      if (!matchingPlanService) {
+        throw createHttpError(403, `Your active plan does not include ${categoryLabel} postings. Please upgrade your plan or purchase credits.`);
+      }
+
+      let catActive = 0;
+      if (jobCategory === "management") catActive = activeSmbCount;
+      else if (jobCategory === "hot") catActive = activeHotCount;
+      else if (jobCategory === "internship") catActive = activeInternshipCount;
+      else catActive = activeApprovedCount;
+
+      const usedCount = Math.max(matchingPlanService.usedQuantity || 0, catActive);
+      const limit = Number(matchingPlanService.quantity || 0);
+
+      if (limit <= 0 || usedCount >= limit) {
+        throw createHttpError(403, `Your credits for ${categoryLabel} postings are exhausted (limit: ${limit}). Please upgrade your plan.`);
+      }
+    } else {
+      if (jobCategory === "management") {
+        const smbLimit = Number(packageSnapshot.smbJobPostingLimit || 0);
+        if (smbLimit <= 0 || activeSmbCount >= smbLimit) {
+          throw createHttpError(403, "Your plan does not allow more SMB job postings. Please upgrade your package.");
+        }
+      } else if (jobCategory === "hot") {
+        const hotLimit = Number(packageSnapshot.hotVacancyLimit || 0);
+        if (hotLimit <= 0 || activeHotCount >= hotLimit) {
+          throw createHttpError(403, "Your plan does not allow Hot Vacancy postings. Please upgrade your package.");
+        }
+      } else if (jobCategory === "internship") {
+        const internLimit = Number(packageSnapshot.internshipLimit || 0);
+        if (internLimit <= 0 || activeInternshipCount >= internLimit) {
+          throw createHttpError(403, "Your plan does not allow Internship postings. Please upgrade your package.");
+        }
+      } else {
+        const standardLimit = Number(packageSnapshot.jobPostingLimit || packageSnapshot.jobLimit || 0);
+        if (standardLimit <= 0 || activeApprovedCount >= standardLimit) {
+          throw createHttpError(403, "Your plan does not allow more standard job postings. Please upgrade your package.");
+        }
+      }
     }
   }
 
@@ -975,6 +1087,12 @@ exports.createJob = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Deadline must be a valid date");
   }
 
+  const stipend = req.body.stipend !== undefined
+    ? toSafeNumber(req.body.stipend, 0)
+    : (jobCategory === "internship" ? toSafeNumber(req.body.salaryMin, 0) : undefined);
+  const internshipDuration = toTrimmedString(req.body.internshipDuration);
+  const internshipStartDate = toTrimmedString(req.body.internshipStartDate);
+
   const job = await Job.create({
     companyId: company._id,
     title,
@@ -982,11 +1100,15 @@ exports.createJob = asyncHandler(async (req, res) => {
     department: toTrimmedString(req.body.department),
     jobType: toTrimmedString(req.body.jobType),
     jobCategory,
+    isHotVacancy: jobCategory === "hot",
     workplaceType: toTrimmedString(req.body.workplaceType),
     location: toTrimmedString(req.body.location),
     experience: toTrimmedString(req.body.experience),
-    salaryMin: toSafeNumber(req.body.salaryMin, 0),
-    salaryMax: toSafeNumber(req.body.salaryMax, 0),
+    salaryMin: toSafeNumber(req.body.salaryMin, stipend !== undefined ? stipend : 0),
+    salaryMax: toSafeNumber(req.body.salaryMax, stipend !== undefined ? stipend : 0),
+    stipend: stipend !== undefined ? stipend : undefined,
+    internshipDuration,
+    internshipStartDate,
     skills: rawSkills,
     deadline,
     description: toTrimmedString(req.body.description),           // Role Description
@@ -1013,6 +1135,39 @@ exports.createJob = asyncHandler(async (req, res) => {
         }))
       : [],
   });
+
+  // Consume commercial entitlement credit if applicable
+  if (hasCommercialEntitlement && entitlementCodeToConsume) {
+    try {
+      await EntitlementService.consumeCredit({
+        companyId: company._id,
+        productCode: entitlementCodeToConsume,
+        quantity: 1,
+        referenceType: "Job",
+        referenceId: job._id.toString(),
+        actor: { id: user._id, email: user.email, role: "CLIENT" },
+        notes: `Posted ${categoryLabel}: ${job.title}`,
+      });
+    } catch (consumeErr) {
+      console.error("[Commercial Entitlement] Failed to consume job credit:", consumeErr.message);
+    }
+  }
+
+  // Deduct / update used credit on company planSnapshot services
+  if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+    const sToUpdate = matchingPlanService || company.planSnapshot.services.find(
+      (s) =>
+        String(s.productCode).toUpperCase() === targetProductCode ||
+        (targetProductCode === "SMB_JOB" && String(s.productCode).toUpperCase().includes("SMB")) ||
+        (targetProductCode === "HOT_VACANCY" && String(s.productCode).toUpperCase().includes("HOT")) ||
+        (targetProductCode === "INTERNSHIP_JOB" && String(s.productCode).toUpperCase().includes("INTERN")) ||
+        (targetProductCode === "JOB_POSTING" && (String(s.productCode).toUpperCase().includes("JOB") || String(s.category).toUpperCase() === "JOB_POSTING"))
+    );
+    if (sToUpdate) {
+      sToUpdate.usedQuantity = (sToUpdate.usedQuantity || 0) + 1;
+      company.markModified("planSnapshot");
+    }
+  }
 
   const nextActiveCount = hasAvailablePackageSlot ? activeApprovedCount + 1 : activeApprovedCount;
   const shouldPersist =
@@ -1106,8 +1261,15 @@ exports.updateJob = asyncHandler(async (req, res) => {
   if (req.body.location !== undefined) job.location = toTrimmedString(req.body.location);
   if (req.body.description !== undefined) job.description = toTrimmedString(req.body.description);
   if (req.body.jobType !== undefined) job.jobType = toTrimmedString(req.body.jobType);
+  if (req.body.jobCategory !== undefined) {
+    job.jobCategory = toTrimmedString(req.body.jobCategory);
+    job.isHotVacancy = job.jobCategory === "hot";
+  }
   if (req.body.salaryMin !== undefined) job.salaryMin = toSafeNumber(req.body.salaryMin, 0);
   if (req.body.salaryMax !== undefined) job.salaryMax = toSafeNumber(req.body.salaryMax, 0);
+  if (req.body.stipend !== undefined) job.stipend = toSafeNumber(req.body.stipend, 0);
+  if (req.body.internshipDuration !== undefined) job.internshipDuration = toTrimmedString(req.body.internshipDuration);
+  if (req.body.internshipStartDate !== undefined) job.internshipStartDate = toTrimmedString(req.body.internshipStartDate);
   if (req.body.experience !== undefined) job.experience = toTrimmedString(req.body.experience);
   if (req.body.isActive !== undefined) job.isActive = Boolean(req.body.isActive);
   if (req.body.externalLink !== undefined) job.externalLink = toTrimmedString(req.body.externalLink);
@@ -1629,16 +1791,41 @@ exports.updateProfile = asyncHandler(async (req, res) => {
     company.email = nextCompanyEmail;
   }
 
-  company.phone = toTrimmedString(req.body.phone) || company.phone;
-  company.industry = toTrimmedString(req.body.industry) || company.industry;
-  company.website = toTrimmedString(req.body.website) || company.website;
+  if (req.body.companyName && toTrimmedString(req.body.companyName)) {
+    company.name = toTrimmedString(req.body.companyName);
+  }
+  if (req.body.contactPerson !== undefined) company.contactPerson = toTrimmedString(req.body.contactPerson);
+  if (req.body.contactDesignation !== undefined) company.contactDesignation = toTrimmedString(req.body.contactDesignation);
+  if (req.body.alias !== undefined) company.alias = toTrimmedString(req.body.alias);
+  if (req.body.phone1 !== undefined || req.body.phone !== undefined || req.body.mobileNumber !== undefined) {
+    company.phone = toTrimmedString(req.body.phone1 || req.body.phone || req.body.mobileNumber) || company.phone;
+  }
+  if (req.body.phone2 !== undefined || req.body.altPhone !== undefined) {
+    company.altPhone = toTrimmedString(req.body.phone2 || req.body.altPhone);
+  }
+  if (req.body.tanNumber !== undefined) company.tanNumber = toTrimmedString(req.body.tanNumber);
+  if (req.body.gstin !== undefined) company.gstin = toTrimmedString(req.body.gstin);
+  if (req.body.registeredName !== undefined) company.registeredName = toTrimmedString(req.body.registeredName);
+  if (req.body.addressLabel !== undefined) company.addressLabel = toTrimmedString(req.body.addressLabel);
+  if (req.body.profileHotVacancies !== undefined) company.profileHotVacancies = toTrimmedString(req.body.profileHotVacancies);
+  if (req.body.profileClassifieds !== undefined) company.profileClassifieds = toTrimmedString(req.body.profileClassifieds);
+  if (req.body.companyType !== undefined || req.body.type !== undefined) {
+    company.type = toTrimmedString(req.body.companyType || req.body.type);
+  }
+  if (req.body.industryType !== undefined || req.body.industry !== undefined) {
+    company.industry = toTrimmedString(req.body.industryType || req.body.industry);
+  }
+  if (req.body.websiteUrl !== undefined || req.body.website !== undefined) {
+    company.website = toTrimmedString(req.body.websiteUrl || req.body.website);
+  }
+  if (req.body.communicationEmail && toTrimmedString(req.body.communicationEmail)) {
+    company.email = toTrimmedString(req.body.communicationEmail).toLowerCase();
+  }
   company.linkedIn = toTrimmedString(req.body.linkedIn) || company.linkedIn;
   company.about = toTrimmedString(req.body.about) || company.about;
   company.companySize = toTrimmedString(req.body.companySize) || company.companySize;
   company.foundedYear = toTrimmedString(req.body.foundedYear) || company.foundedYear;
   company.tagline = toTrimmedString(req.body.tagline) || company.tagline;
-  company.type = toTrimmedString(req.body.type) || company.type;
-  company.linkedIn = toTrimmedString(req.body.linkedIn) || company.linkedIn;
 
   if (Array.isArray(req.body.specialties)) {
     company.specialties = req.body.specialties.map((s) => String(s).trim()).filter(Boolean);
@@ -1650,8 +1837,9 @@ exports.updateProfile = asyncHandler(async (req, res) => {
 
   company.location = {
     ...(company.location || {}),
+    country: toTrimmedString(req.body.country) || company.location?.country || "India",
     city: toTrimmedString(req.body.city) || company.location?.city || "",
-    region: toTrimmedString(req.body.region) || company.location?.region || "",
+    region: toTrimmedString(req.body.region || req.body.state) || company.location?.region || "",
     zone: toTrimmedString(req.body.zone) || company.location?.zone || "",
     address: toTrimmedString(req.body.address) || company.location?.address || "",
     pincode: toTrimmedString(req.body.pincode) || company.location?.pincode || "",
@@ -1951,31 +2139,142 @@ exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
 });
 
 exports.enhanceDescription = asyncHandler(async (req, res) => {
-  const { text, type } = req.body;
-  if (!text || !text.trim()) {
-    throw createHttpError(400, "Text is required");
+  const { text, type = "description", jobTitle = "", jobCategory = "standard" } = req.body;
+
+  const hasText = Boolean(text && String(text).trim());
+  const hasTitle = Boolean(jobTitle && String(jobTitle).trim());
+
+  if (!hasText && !hasTitle) {
+    throw createHttpError(400, "Please enter a Job Title or existing text to enhance with AI.");
   }
 
-  const promptMap = {
-    description: "Rewrite the following job role description to be more professional, engaging, and clear. Improve grammar, tone, and structure. Return only the enhanced description paragraph without any prefixes, labels, or commentary.",
-    responsibilities: "Rewrite the following job responsibilities as clean bullet points, each starting with '•'. Make them clear, action-oriented, and professional. Return only the bullet points, one per line, without any prefixes, labels, or commentary.",
-    qualifications: "Rewrite the following qualifications as clean bullet points, each starting with '•'. Make them clear and professional. Return only the bullet points, one per line, without any prefixes, labels, or commentary.",
-  };
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  if (!company) {
+    throw createHttpError(404, "Company not found");
+  }
 
-  const systemPrompt = promptMap[type] || promptMap.description;
+  // 1. Verify that company has available AI credits
+  const AiCreditService = require("../services/commercial/ai-credit.service");
+  const quota = await AiCreditService.getAiQuota(company._id);
+  if (!quota || quota.availableCredits < 1) {
+    throw createHttpError(402, "You have exhausted your AI credits (0 remaining). Please purchase an AI Credit Booster pack or upgrade your plan to continue using AI enhancement.");
+  }
 
+  // 2. Build Category-Specific Guidance
+  let categoryGuidance = "";
+  const cat = String(jobCategory).toLowerCase();
+  if (cat === "internship") {
+    categoryGuidance = "This role is an INTERNSHIP. Emphasize learning opportunities, academic projects, foundational skills, mentorship, curiosity, and eagerness to grow. Avoid demanding years of senior industry experience.";
+  } else if (cat === "management" || cat === "smb") {
+    categoryGuidance = "This role is for a small & medium business (SMB) or agile growth company. Emphasize versatility, autonomy, end-to-end execution, practical problem-solving, and cross-functional impact.";
+  } else if (cat === "hot") {
+    categoryGuidance = "This role is a high-priority, urgent hiring 'Hot Vacancy'. Emphasize high impact, fast-paced execution, competitive growth, critical deliverables, and attracting top-tier talent quickly.";
+  } else {
+    categoryGuidance = "This is a standard professional job posting. Ensure a clear, structured, industry-standard, and professional tone.";
+  }
+
+  // 3. Build Section Prompt
+  const cleanTitle = jobTitle.trim() || "the specified position";
+  let systemPrompt = "";
+
+  if (type === "responsibilities") {
+    if (hasText) {
+      systemPrompt = `You are an expert HR recruiter. ${categoryGuidance}
+Rewrite and refine the provided key responsibilities for a "${cleanTitle}".
+Ensure every responsibility is clear, action-oriented, and realistic.
+Format strictly as clean bullet points where EACH bullet point starts with "• ".
+Return ONLY the bullet points, one per line, without any headings, labels, intro, or commentary.`;
+    } else {
+      systemPrompt = `You are an expert HR recruiter. ${categoryGuidance}
+Generate 5 to 7 key responsibilities for a "${cleanTitle}".
+Ensure each responsibility is action-oriented, precise, and realistic.
+Format strictly as clean bullet points where EACH bullet point starts with "• ".
+Return ONLY the bullet points, one per line, without any headings, labels, intro, or commentary.`;
+    }
+  } else if (type === "qualifications" || type === "skills") {
+    if (hasText) {
+      systemPrompt = `You are an expert HR recruiter. ${categoryGuidance}
+Rewrite and refine the provided required skills and qualifications for a "${cleanTitle}".
+Ensure they are modern, realistic, well-articulated, and appropriate for the level.
+Format strictly as clean bullet points where EACH bullet point starts with "• ".
+Return ONLY the bullet points, one per line, without any headings, labels, intro, or commentary.`;
+    } else {
+      systemPrompt = `You are an expert HR recruiter. ${categoryGuidance}
+Generate 5 to 7 required skills & qualifications for a "${cleanTitle}".
+Include core technical/domain skills, educational background, and essential soft skills.
+Format strictly as clean bullet points where EACH bullet point starts with "• ".
+Return ONLY the bullet points, one per line, without any headings, labels, intro, or commentary.`;
+    }
+  } else {
+    // description
+    if (hasText) {
+      systemPrompt = `You are an expert HR recruiter. ${categoryGuidance}
+Rewrite and elevate the provided job role description for a "${cleanTitle}".
+Improve grammar, professional tone, flow, and clarity while retaining key company context.
+Format as 1 to 2 cohesive, engaging paragraphs.
+Return ONLY the enhanced description paragraphs without any headings, labels, bullet points, intro, or commentary.`;
+    } else {
+      systemPrompt = `You are an expert HR recruiter. ${categoryGuidance}
+Generate a compelling, professional job role description for a "${cleanTitle}".
+Describe what the role entails, the team's mission, and what success looks like in 1 to 2 cohesive, engaging paragraphs.
+Return ONLY the description text without any headings, labels, bullet points, intro, or commentary.`;
+    }
+  }
+
+  const userPrompt = hasText
+    ? `Role Title: ${cleanTitle}\n\nExisting Text to enhance:\n${text}`
+    : `Generate content for Role Title: ${cleanTitle}`;
+
+  // 4. Generate with OpenAI
+  let enhanced = "";
   try {
     const response = await OpenAIService.createChatCompletion({
-      model: process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini",
       systemPrompt,
-      userPrompt: text,
+      userPrompt,
       maxOutputTokens: 2000,
     });
-    const enhanced = response?.output_text || response?.outputText || response?.choices?.[0]?.message?.content || "";
-    res.json({ success: true, data: { text: enhanced.trim() } });
+    enhanced = response?.output_text || response?.outputText || response?.choices?.[0]?.message?.content || "";
   } catch (err) {
     throw createHttpError(502, `AI enhancement failed: ${err.message}`);
   }
+
+  if (!enhanced || !enhanced.trim()) {
+    throw createHttpError(502, "AI was unable to generate content. Please try again.");
+  }
+
+  // 5. Consume 1 AI Credit upon successful generation
+  const featureName = type === "responsibilities"
+    ? "IMPROVE_RESPONSIBILITIES"
+    : (type === "qualifications" || type === "skills")
+    ? "IMPROVE_REQUIREMENTS"
+    : "IMPROVE_JD";
+
+  const consumption = await AiCreditService.useAiCredit({
+    companyId: company._id,
+    userId: req.user._id,
+    feature: featureName,
+    actor: { userId: req.user._id, userEmail: req.user.email },
+  });
+
+  // Keep company.planSnapshot.services in sync if AI_CREDIT is present
+  if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+    const sIndex = company.planSnapshot.services.findIndex(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
+    if (sIndex !== -1) {
+      company.planSnapshot.services[sIndex].usedQuantity = (company.planSnapshot.services[sIndex].usedQuantity || 0) + 1;
+      company.markModified("planSnapshot");
+      await company.save();
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      text: enhanced.trim(),
+      remainingCredits: consumption.remainingCredits,
+      creditsDeducted: 1,
+    },
+  });
 });
 
 exports.suggestSkills = asyncHandler(async (req, res) => {
@@ -2369,7 +2668,41 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
 
   const subscriptions = [];
 
-  // 1. Build subscriptions from real PaymentTransaction records in DB
+  // 1. Build subscriptions from commercial Subscription records in DB
+  const Subscription = require("../models/Subscription");
+  const commercialSubs = companyId ? await Subscription.find({ companyId }).sort({ createdAt: -1 }).lean() : [];
+  if (commercialSubs && commercialSubs.length > 0) {
+    commercialSubs.forEach((sub) => {
+      const isStillActive = sub.status === "ACTIVE" && new Date(sub.endDate) > new Date();
+      const planName = sub.commercialSnapshot?.planName || sub.planName || "MavenJobs Plan";
+      subscriptions.push({
+        id: String(sub._id),
+        planName,
+        transactionId: sub.orderId ? `MJ-ORD-${String(sub.orderId).slice(-6).toUpperCase()}` : `SUB-${String(sub._id).slice(-8).toUpperCase()}`,
+        date: formatDate(sub.startDate),
+        amountPaid: sub.commercialSnapshot?.pricePaid || 0,
+        amountFormatted: (sub.commercialSnapshot?.pricePaid || 0) > 0 ? `₹ ${Number(sub.commercialSnapshot.pricePaid).toLocaleString("en-IN")}` : "Free Plan",
+        status: isStillActive ? "ACTIVE" : (sub.status || "EXPIRED"),
+        products: (sub.entitlementSnapshot && sub.entitlementSnapshot.length > 0)
+          ? sub.entitlementSnapshot.map((item, idx) => ({
+              id: `prod-ent-${sub._id}-${idx}`,
+              name: `${item.productName || item.productCode} (${item.quantity} ${item.unit || "Units"})`,
+              validity: `From ${formatDate(sub.startDate)} to ${formatDate(item.expiryDate || sub.endDate)}`,
+              status: isStillActive ? "ACTIVE" : "EXPIRED",
+            }))
+          : [
+              {
+                id: `prod-main-${sub._id}`,
+                name: planName,
+                validity: `From ${formatDate(sub.startDate)} to ${formatDate(sub.endDate)}`,
+                status: isStillActive ? "ACTIVE" : "EXPIRED",
+              },
+            ],
+      });
+    });
+  }
+
+  // 2. Build subscriptions from real PaymentTransaction records in DB
   if (transactions && transactions.length > 0) {
     transactions.forEach((tx) => {
       const createdAt = tx.createdAt ? new Date(tx.createdAt) : new Date();
@@ -2386,8 +2719,11 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
         JOB_PACKAGE_3: "20 Hot Vacancy Job Postings Package",
       };
 
+      const planName = planNameMap[tx.planType] || `${tx.planType || "Corporate"} Package`;
+
       subscriptions.push({
         id: String(tx._id),
+        planName,
         transactionId: tx.razorpayPaymentId || `TX-${String(tx._id).slice(-8).toUpperCase()}`,
         date: formatDate(createdAt),
         amountPaid: tx.amount || 0,
@@ -2396,7 +2732,7 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
         products: [
           {
             id: `prod-${tx._id}`,
-            name: planNameMap[tx.planType] || `${tx.planType || "Corporate"} Package`,
+            name: planName,
             validity: `From ${formatDate(createdAt)} to ${formatDate(expiresAt)}`,
             status: isStillActive ? "ACTIVE" : "EXPIRED",
           },
@@ -2405,8 +2741,8 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
     });
   }
 
-  // 2. Build active subscription from Company package record in DB if assigned
-  if (company && company.packageType) {
+  // 3. Fallback active subscription from Company package record in DB if no commercial subs
+  if (subscriptions.length === 0 && company && company.packageType) {
     const validFrom = company.createdAt ? new Date(company.createdAt) : new Date();
     const validTo = company.packageExpiresAt
       ? new Date(company.packageExpiresAt)
@@ -2419,9 +2755,11 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
       ELITE: 599900,
     };
     const amount = planPrices[company.packageType] ?? 0;
+    const planName = `MavenJobs ${company.packageType} Package`;
 
     subscriptions.push({
       id: `company-plan-${company._id}`,
+      planName,
       transactionId: `MJ-${String(company._id).slice(-8).toUpperCase()}`,
       date: formatDate(validFrom),
       amountPaid: amount,
@@ -2430,7 +2768,7 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
       products: [
         {
           id: `prod-main-${company._id}`,
-          name: `MavenJobs ${company.packageType} Package`,
+          name: planName,
           validity: `From ${formatDate(validFrom)} to ${formatDate(validTo)}`,
           status: isActive ? "ACTIVE" : "EXPIRED",
         },
@@ -2459,6 +2797,158 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /company-panel/subscriptions/request-invoice — Request official tax invoice for subscribed plan
+exports.requestSubscriptionInvoice = asyncHandler(async (req, res) => {
+  const companyId = req.company?._id || req.user?.companyId;
+  const { planName, transactionId, amount, subscriptionId } = req.body;
+
+  if (!planName || !String(planName).trim()) {
+    throw createHttpError(400, "Plan name is required to request an invoice.");
+  }
+
+  const Company = require("../models/Company");
+  const InvoiceRequest = require("../models/InvoiceRequest");
+
+  const company = companyId
+    ? await Company.findById(companyId)
+        .populate("createdByCRM", "fullName email phone role")
+        .populate("assignedFSE", "fullName email phone role")
+    : null;
+
+  if (!company) {
+    throw createHttpError(404, "Company account not found.");
+  }
+
+  // Determine assigned CRM / Account Manager
+  const assignedCrm = company.createdByCRM || company.assignedFSE || null;
+  const assignedCrmId = assignedCrm?._id || null;
+
+  // 1. Create and save the InvoiceRequest into DB for CRM to view
+  const invoiceRecord = await InvoiceRequest.create({
+    companyId: company._id,
+    requestedBy: req.user._id,
+    assignedCrmId,
+    planName: String(planName).trim(),
+    transactionId: transactionId ? String(transactionId).trim() : "",
+    amount: Number(amount) || 0,
+    subscriptionId: subscriptionId ? String(subscriptionId).trim() : "",
+    status: "PENDING",
+    requestedAt: new Date(),
+  });
+
+  // 2. Notify Admin / CRM via AdminNotification system feed
+  try {
+    await notificationService.sendAdminNotification({
+      title: `Invoice Request: ${company.name}`,
+      message: `${company.name} has requested an official tax invoice for ${planName} (Tx: ${transactionId || "N/A"}).`,
+      type: "SYSTEM",
+      severity: "INFO",
+      actionUrl: "/crm/assigned-clients",
+      metadata: {
+        invoiceRequestId: invoiceRecord._id,
+        companyId: company._id,
+        companyName: company.name,
+        planName,
+        transactionId,
+        amount: Number(amount) || 0,
+        requestedByUserId: req.user._id,
+        requestedByName: req.user.name,
+        requestedByEmail: req.user.email,
+        assignedCrmId,
+        assignedCrmName: assignedCrm?.fullName || "",
+      },
+    });
+  } catch (notifErr) {
+    console.warn("Failed to create admin notification for invoice request:", notifErr?.message || notifErr);
+  }
+
+  // 3. Create CompanyNotification for employer panel
+  try {
+    const CompanyNotification = require("../models/CompanyNotification");
+    await CompanyNotification.create({
+      companyId: company._id,
+      recipientUserId: req.user._id,
+      title: "Invoice Request Submitted",
+      message: `Your request for the official tax invoice for "${planName}" (Tx: ${transactionId || "N/A"}) has been submitted to your assigned account manager.`,
+      type: "BILLING",
+      status: "UNREAD",
+      metadata: {
+        invoiceRequestId: invoiceRecord._id,
+        planName,
+        transactionId,
+        amount: Number(amount) || 0,
+      },
+    });
+  } catch (cNotifErr) {
+    console.warn("Failed to create company notification for invoice request:", cNotifErr?.message || cNotifErr);
+  }
+
+  // 4. Send branded notification email to assigned CRM (or sales) and confirmation to client
+  try {
+    const {
+      buildInvoiceRequestHtml,
+      buildInvoiceRequestClientConfirmationHtml,
+    } = require("../email/templates/mavenTemplates");
+
+    const crmEmail = assignedCrm?.email || process.env.SALES_EMAIL || "sales@mavenjobs.com";
+    const crmHtml = buildInvoiceRequestHtml({
+      crmName: assignedCrm?.fullName || "Account Representative",
+      companyName: company.name,
+      clientName: req.user.name || "Client",
+      clientEmail: req.user.email,
+      clientPhone: company.phone || "",
+      planName,
+      transactionId,
+      amount,
+      requestedAt: invoiceRecord.requestedAt,
+    });
+
+    await emailService.sendEmail({
+      to: crmEmail,
+      subject: `Invoice Request: ${company.name} - ${planName}`,
+      html: crmHtml,
+      text: `${company.name} has requested an invoice for ${planName} (Transaction: ${transactionId || "N/A"}). Requested by: ${req.user.name} (${req.user.email}).`,
+    });
+
+    // Confirmation copy to client user
+    if (req.user?.email && req.user.email.toLowerCase() !== crmEmail.toLowerCase()) {
+      const clientHtml = buildInvoiceRequestClientConfirmationHtml({
+        fullName: req.user.name,
+        companyName: company.name,
+        planName,
+        transactionId,
+        amount,
+      });
+
+      await emailService.sendEmail({
+        to: req.user.email,
+        subject: `Invoice Request Confirmed: ${planName}`,
+        html: clientHtml,
+        text: `We have received your invoice request for ${planName}. Our team will email your official GST invoice shortly.`,
+      }).catch((e) => console.warn("Client email send error:", e?.message));
+    }
+  } catch (emailErr) {
+    console.warn("Failed to dispatch invoice request email:", emailErr?.message || emailErr);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Invoice request for "${planName}" submitted successfully. Our team will email your invoice shortly.`,
+    data: {
+      requestId: String(invoiceRecord._id),
+      planName: invoiceRecord.planName,
+      transactionId: invoiceRecord.transactionId,
+      status: invoiceRecord.status,
+      assignedCrm: assignedCrm
+        ? {
+            name: assignedCrm.fullName,
+            email: assignedCrm.email,
+          }
+        : null,
+    },
+  });
+});
+
 // GET /company-panel/quota-usage
 exports.getQuotaUsage = asyncHandler(async (req, res) => {
   const { company } = await resolveClientUserAndCompany(req.user._id);
@@ -2469,11 +2959,26 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   const Nvite = require("../models/Nvite");
 
   const Package = require("../models/Package");
-  const pkg = await Package.findOne({ name: company.packageType || "STANDARD" });
+  const pkg = company.planSnapshot ? null : await Package.findOne({ name: company.packageType || "STANDARD" });
   
   const credit = await Credit.findOne({ companyId: company._id }).lean();
-  const actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
-  const fullNviteTotal = company.nviteLimit || 200000;
+  let actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
+  let fullNviteTotal = company.planSnapshot ? 0 : (company.nviteLimit || pkg?.nviteLimit || 0);
+
+  if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+    actualFullCvTotal = credit?.lifetimePurchased || 0;
+    fullNviteTotal = 0;
+    for (const s of company.planSnapshot.services) {
+      const code = String(s.productCode || "").toUpperCase();
+      const cat = String(s.category || "").toUpperCase();
+      if (code.includes("CV") || code.includes("RESDEX") || code.includes("RESUME") || cat === "RESUME_SEARCH") {
+        actualFullCvTotal += (s.quantity || 0);
+      }
+      if (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES") {
+        fullNviteTotal += (s.quantity || 0);
+      }
+    }
+  }
 
   const quotaConfig = company.quotaConfig || {};
   const allocationPolicy = quotaConfig.allocationPolicy || "full";
@@ -2539,31 +3044,140 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
     nviteUsedByYou = nviteYouAgg[0]?.sum || 0;
   }
 
-  // Job Postings (always overall)
-  const jobTotal = (pkg?.jobPostingLimit || 2) + (company.grandfatheredJobLimit || 0);
-  const jobUsedByAll = company.activeJobCount || await Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $ne: "management" } });
-  const jobLeft = Math.max(0, jobTotal - jobUsedByAll);
-  
+  // Job Postings by category
+  const [smbActiveCount, hotActiveCount, internshipActiveCount, standardActiveCount] = await Promise.all([
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
+  ]);
+
+  let smbUsedByYou = 0;
+  let hotUsedByYou = 0;
+  let internshipUsedByYou = 0;
   let jobUsedByYou = 0;
+
   if (isRecruiter) {
-    jobUsedByYou = await Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: { $ne: "management" } });
+    const [smbYou, hotYou, internYou, stdYou] = await Promise.all([
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "management" }),
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "hot" }),
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "internship" }),
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
+    ]);
+    smbUsedByYou = smbYou;
+    hotUsedByYou = hotYou;
+    internshipUsedByYou = internYou;
+    jobUsedByYou = stdYou;
   }
 
-  // SMB Job Postings
-  const smbJobTotal = pkg?.smbJobPostingLimit || 0;
-  const smbJobUsedByAll = await Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" });
-  const smbJobLeft = Math.max(0, smbJobTotal - smbJobUsedByAll);
+  let jobTotal = (pkg?.jobPostingLimit || 2) + (company.grandfatheredJobLimit || 0);
+  let smbJobTotal = pkg?.smbJobPostingLimit || 0;
+  let hotJobTotal = pkg?.hotVacancyLimit || 0;
+  let internshipJobTotal = pkg?.internshipLimit || 0;
 
-  let smbJobUsedByYou = 0;
-  if (isRecruiter) {
-    smbJobUsedByYou = await Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "management" });
+  let smbJobUsedByAll = smbActiveCount;
+  let hotJobUsedByAll = hotActiveCount;
+  let internshipJobUsedByAll = internshipActiveCount;
+  let jobUsedByAll = standardActiveCount;
+
+  if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+    const smbService = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "SMB_JOB" || String(s.productCode).toUpperCase().includes("SMB"));
+    const hotService = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "HOT_VACANCY" || String(s.productCode).toUpperCase().includes("HOT"));
+    const internService = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "INTERNSHIP_JOB" || String(s.productCode).toUpperCase().includes("INTERN"));
+    const stdService = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "JOB_POSTING" || String(s.productCode).toUpperCase() === "STANDARD_JOB");
+
+    smbJobTotal = smbService ? (smbService.quantity || 0) : 0;
+    hotJobTotal = hotService ? (hotService.quantity || 0) : 0;
+    internshipJobTotal = internService ? (internService.quantity || 0) : 0;
+    jobTotal = stdService ? (stdService.quantity || 0) : (company.grandfatheredJobLimit || 0);
+
+    if (smbService && smbService.usedQuantity) smbJobUsedByAll = Math.max(smbJobUsedByAll, smbService.usedQuantity);
+    if (hotService && hotService.usedQuantity) hotJobUsedByAll = Math.max(hotJobUsedByAll, hotService.usedQuantity);
+    if (internService && internService.usedQuantity) internshipJobUsedByAll = Math.max(internshipJobUsedByAll, internService.usedQuantity);
+    if (stdService && stdService.usedQuantity) jobUsedByAll = Math.max(jobUsedByAll, stdService.usedQuantity);
   }
+
+  let smbJobLeft = Math.max(0, smbJobTotal - smbJobUsedByAll);
+  let hotJobLeft = Math.max(0, hotJobTotal - hotJobUsedByAll);
+  let internshipJobLeft = Math.max(0, internshipJobTotal - internshipJobUsedByAll);
+  let jobLeft = Math.max(0, jobTotal - jobUsedByAll);
+
+  // Also factor in active Entitlements if present
+  try {
+    const Entitlement = require("../models/Entitlement");
+    const activeEnts = await Entitlement.find({
+      companyId: company._id,
+      status: "ACTIVE",
+      expiryDate: { $gte: now },
+      remainingQuantity: { $gt: 0 },
+    }).lean();
+
+    let entSmbRemaining = 0;
+    let entHotRemaining = 0;
+    let entInternRemaining = 0;
+    let entStandardRemaining = 0;
+
+    for (const ent of activeEnts) {
+      const pCode = String(ent.productCode || "").toUpperCase();
+      if (pCode === "SMB_JOB") {
+        entSmbRemaining += (ent.remainingQuantity || 0);
+      } else if (pCode === "HOT_VACANCY") {
+        entHotRemaining += (ent.remainingQuantity || 0);
+      } else if (pCode === "INTERNSHIP_JOB") {
+        entInternRemaining += (ent.remainingQuantity || 0);
+      } else if (pCode === "JOB_POSTING") {
+        entStandardRemaining += (ent.remainingQuantity || 0);
+      }
+    }
+
+    if (entSmbRemaining > 0) {
+      smbJobLeft = Math.max(smbJobLeft, entSmbRemaining);
+      smbJobTotal = Math.max(smbJobTotal, smbJobUsedByAll + smbJobLeft);
+    }
+    if (entHotRemaining > 0) {
+      hotJobLeft = Math.max(hotJobLeft, entHotRemaining);
+      hotJobTotal = Math.max(hotJobTotal, hotJobUsedByAll + hotJobLeft);
+    }
+    if (entInternRemaining > 0) {
+      internshipJobLeft = Math.max(internshipJobLeft, entInternRemaining);
+      internshipJobTotal = Math.max(internshipJobTotal, internshipJobUsedByAll + internshipJobLeft);
+    }
+    if (entStandardRemaining > 0) {
+      jobLeft = Math.max(jobLeft, entStandardRemaining);
+      jobTotal = Math.max(jobTotal, jobUsedByAll + jobLeft);
+    }
+  } catch (_) {}
+
+  const smbJobLeftFinal = Math.max(0, smbJobLeft);
+  const hotJobLeftFinal = Math.max(0, hotJobLeft);
+  const internshipJobLeftFinal = Math.max(0, internshipJobLeft);
+  const jobLeftFinal = Math.max(0, jobLeft);
 
   const CompanySubUser = require("../models/CompanySubUser");
   
   const totalSubUsers = await CompanySubUser.countDocuments({ companyId: company._id });
   const resdexSubUsers = await CompanySubUser.countDocuments({ companyId: company._id, "permissions.resdex": true });
   const jobPostingSubUsers = await CompanySubUser.countDocuments({ companyId: company._id, "permissions.jobPosting": true });
+
+  let aiTotal = 0;
+  let aiLeft = 0;
+  let aiUsedByAll = 0;
+  try {
+    const AiCreditService = require("../services/commercial/ai-credit.service");
+    const aiQuota = await AiCreditService.getAiQuota(company._id);
+    aiTotal = aiQuota.allocatedCredits || 0;
+    aiLeft = aiQuota.availableCredits || 0;
+    aiUsedByAll = aiQuota.consumedCredits || 0;
+  } catch (_) {
+    if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+      const aiSvc = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
+      if (aiSvc) {
+        aiTotal = aiSvc.quantity || 0;
+        aiUsedByAll = aiSvc.usedQuantity || 0;
+        aiLeft = Math.max(0, aiTotal - aiUsedByAll);
+      }
+    }
+  }
 
   res.status(200).json({
     success: true,
@@ -2586,7 +3200,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       jobPosting: {
         total: jobTotal,
-        left: jobLeft,
+        left: jobLeftFinal,
         usedByAll: jobUsedByAll,
         usedByYou: isRecruiter ? jobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -2594,10 +3208,33 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       smbJobPosting: {
         total: smbJobTotal,
-        left: smbJobLeft,
+        left: smbJobLeftFinal,
         usedByAll: smbJobUsedByAll,
         usedByYou: isRecruiter ? smbJobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
+        badge: "OVERALL"
+      },
+      hotVacancy: {
+        total: hotJobTotal,
+        left: hotJobLeftFinal,
+        usedByAll: hotJobUsedByAll,
+        usedByYou: isRecruiter ? hotJobUsedByYou : null,
+        licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
+        badge: "OVERALL"
+      },
+      internship: {
+        total: internshipJobTotal,
+        left: internshipJobLeftFinal,
+        usedByAll: internshipJobUsedByAll,
+        usedByYou: isRecruiter ? internshipJobUsedByYou : null,
+        licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
+        badge: "OVERALL"
+      },
+      aiCredit: {
+        total: aiTotal,
+        left: aiLeft,
+        usedByAll: aiUsedByAll,
+        usedByYou: null,
         badge: "OVERALL"
       }
     }
@@ -2611,21 +3248,151 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
   const PaidResume = require("../models/PaidResume");
   const Nvite = require("../models/Nvite");
   const Package = require("../models/Package");
+  const Job = require("../models/Job");
+  const AiUsageLog = require("../models/AiUsageLog");
 
-  const pkg = await Package.findOne({ name: company.packageType || "STANDARD" });
+  // Only query legacy package if company has NO planSnapshot
+  const pkg = company.planSnapshot ? null : await Package.findOne({ name: company.packageType || "STANDARD" });
   
   const credit = await Credit.findOne({ companyId: company._id }).lean();
-  const actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
+  let actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
   const actualFullCvUsed = await PaidResume.countDocuments({ companyId: company._id });
 
-  const fullNviteTotal = pkg?.nviteLimit || 250000;
+  let fullNviteTotal = pkg?.nviteLimit || 0;
   const nviteAllAgg = await Nvite.aggregate([
     { $match: { companyId: company._id } },
     { $group: { _id: null, sum: { $sum: "$totalCount" } } }
   ]);
   const fullNviteUsed = nviteAllAgg[0]?.sum || 0;
 
+  // Commercial Plan Snapshot & Services
+  const planSnapshot = company.planSnapshot || null;
+  const planServices = Array.isArray(planSnapshot?.services) ? planSnapshot.services : [];
+
+  if (planSnapshot) {
+    actualFullCvTotal = credit?.lifetimePurchased || 0;
+    fullNviteTotal = 0;
+    for (const s of planServices) {
+      const code = String(s.productCode || "").toUpperCase();
+      const cat = String(s.category || "").toUpperCase();
+      if (code.includes("CV") || code.includes("RESDEX") || code.includes("RESUME") || cat === "RESUME_SEARCH") {
+        actualFullCvTotal += (s.quantity || 0);
+      }
+      if (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES") {
+        fullNviteTotal += (s.quantity || 0);
+      }
+    }
+  }
+
+  const [activeSmbJobs, activeHotJobs, activeInternshipJobs, activeStandardJobs, aiUsageAgg] = await Promise.all([
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship" }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
+    AiUsageLog.aggregate([
+      { $match: { companyId: company._id, status: "SUCCESS" } },
+      { $group: { _id: null, sum: { $sum: "$creditsUsed" } } }
+    ])
+  ]);
+  const totalAiUsed = aiUsageAgg[0]?.sum || 0;
+
+  const enrichedServices = planServices.map((s) => {
+    const code = String(s.productCode || "").toUpperCase();
+    const cat = String(s.category || "").toUpperCase();
+    const unitStr = String(s.unit || "").toLowerCase();
+    const total = Number(s.quantity || 0);
+    let used = s.usedQuantity || 0;
+
+    if (code === "SMB_JOB" || code.includes("SMB")) {
+      used = Math.max(used, activeSmbJobs);
+    } else if (code === "HOT_VACANCY" || code.includes("HOT")) {
+      used = Math.max(used, activeHotJobs);
+    } else if (code === "INTERNSHIP_JOB" || code.includes("INTERN")) {
+      used = Math.max(used, activeInternshipJobs);
+    } else if (code === "JOB_POSTING" || cat === "JOB_POSTING" || unitStr.includes("job")) {
+      used = Math.max(used, activeStandardJobs);
+    } else if (code.includes("AI") || cat === "AI" || unitStr.includes("ai")) {
+      used = Math.max(used, totalAiUsed);
+    } else if (code.includes("CV") || code.includes("RESDEX") || cat === "RESUME_SEARCH") {
+      used = Math.max(used, actualFullCvUsed);
+    } else if (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES") {
+      used = Math.max(used, fullNviteUsed);
+    }
+
+    const remaining = Math.max(0, total - used);
+    const percentUsed = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+
+    return {
+      _id: s._id,
+      productId: s.productId,
+      productCode: s.productCode,
+      productName: s.productName,
+      category: s.category,
+      productType: s.productType,
+      quantity: total,
+      unit: s.unit || "Unit",
+      validity: s.validity,
+      validityUnit: s.validityUnit || "DAYS",
+      userLimit: s.userLimit || 1,
+      features: s.features || [],
+      total,
+      used,
+      remaining,
+      percentUsed,
+    };
+  });
+
   const now = new Date();
+
+  // Also include active standalone entitlements not in planServices
+  try {
+    const Entitlement = require("../models/Entitlement");
+    const activeEnts = await Entitlement.find({
+      companyId: company._id,
+      status: "ACTIVE",
+      expiryDate: { $gte: now },
+      remainingQuantity: { $gt: 0 },
+    }).lean();
+
+    for (const ent of activeEnts) {
+      const existing = enrichedServices.find((s) => s.productCode === ent.productCode);
+      if (existing) {
+        existing.total += (ent.allocatedQuantity || ent.remainingQuantity);
+        existing.remaining += ent.remainingQuantity;
+        existing.used = Math.max(0, existing.total - existing.remaining);
+        existing.quantity = existing.total;
+        existing.percentUsed = existing.total > 0 ? Math.min(100, Math.round((existing.used / existing.total) * 100)) : 0;
+      } else {
+        let used = ent.consumedQuantity || 0;
+        if (ent.productCode === "INTERNSHIP_JOB") used = Math.max(used, activeInternshipJobs);
+        else if (ent.productCode === "HOT_VACANCY") used = Math.max(used, activeHotJobs);
+        else if (ent.productCode === "SMB_JOB") used = Math.max(used, activeSmbJobs);
+
+        const total = ent.allocatedQuantity || (ent.remainingQuantity + used);
+        const remaining = Math.max(0, ent.remainingQuantity);
+        const percentUsed = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+
+        enrichedServices.push({
+          _id: ent._id,
+          productId: ent.productId,
+          productCode: ent.productCode,
+          productName: ent.productName || (ent.productCode === "INTERNSHIP_JOB" ? "Internship Job" : ent.productCode),
+          category: ent.productCode === "INTERNSHIP_JOB" ? "JOB_POSTING" : "STANDALONE",
+          productType: "CREDIT_BASED",
+          quantity: total,
+          unit: ent.unit || "Job",
+          validity: 30,
+          validityUnit: "DAYS",
+          userLimit: 1,
+          features: ent.features || [],
+          total,
+          used,
+          remaining,
+          percentUsed,
+        });
+      }
+    }
+  } catch (_) {}
   
   const startOfWeek = new Date(now);
   const day = startOfWeek.getDay();
@@ -2666,6 +3433,14 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
       full: {
         cvAccess: { total: actualFullCvTotal, used: actualFullCvUsed },
         nvite: { total: fullNviteTotal, used: fullNviteUsed },
+      },
+      plan: planSnapshot,
+      services: enrichedServices,
+      company: {
+        id: company._id,
+        name: company.name,
+        packageType: company.packageType,
+        status: company.status,
       }
     }
   });

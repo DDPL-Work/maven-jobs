@@ -652,11 +652,12 @@ const InfoBox = ({ children }) => (
 );
 
 /* ─────────────────────── STEP 1: JOB DETAILS ─────────────────────── */
-function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
+function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUploadJd, isInternship: isInternshipProp }) {
   const typeParam = new URLSearchParams(window.location.search).get("type");
-  const entityName = typeParam === "internship" ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
+  const [selectedTypes, setSelectedTypes] = useState(data.jobTypes || (typeParam === "internship" ? ["Internship"] : []));
+  const isInternship = isInternshipProp ?? (typeParam === "internship" || selectedTypes.includes("Internship") || (data.jobTypes || []).includes("Internship"));
+  const entityName = isInternship ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
   
-  const [selectedTypes, setSelectedTypes] = useState(data.jobTypes || []);
   const [selectedPerks, setSelectedPerks] = useState(data.perks || []);
 
   const toggleType = (t) => {
@@ -676,11 +677,6 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* <InfoBox>
-                You're posting this job as a <strong>Company / Business</strong>. Your posting will be visible to
-                <strong> 8Cr+</strong> job seekers on MavenJobs within minutes of launch.
-            </InfoBox> */}
-
       {/* Basic Info */}
       <SectionCard
         icon={<FiBriefcase size={20} />}
@@ -802,139 +798,218 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
         </div>
       </SectionCard>
 
-      {/* Salary */}
+      {/* Salary / Stipend */}
       <SectionCard
         icon={<FiDollarSign size={20} />}
-        title="Compensation"
-        subtitle="Salary range helps attract the right candidates faster."
+        title={isInternship ? "Compensation (Stipend)" : "Compensation"}
+        subtitle={
+          isInternship
+            ? "Specify the stipend offered for this internship."
+            : "Salary range helps attract the right candidates faster."
+        }
         accentColor="#84CC16"
       >
-        <div
-          className="pj-grid-3"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 20,
-            alignItems: "end",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#1E293B",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Min Salary <span style={{ color: "#EF4444" }}>*</span>
-            </label>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                border: "1.5px solid #E2E8F0",
-                borderRadius: 12,
-                overflow: "hidden",
-                background: "#fff",
-              }}
-            >
-              <span
+        {isInternship ? (
+          <div
+            className="pj-grid-2"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 20,
+              alignItems: "end",
+            }}
+          >
+            <div>
+              <label
                 style={{
-                  padding: "11px 12px",
-                  background: "#F8FAFC",
-                  color: "#64748B",
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 700,
-                  borderRight: "1px solid #E2E8F0",
+                  color: "#1E293B",
+                  display: "block",
+                  marginBottom: 6,
                 }}
               >
-                ₹
-              </span>
-              <input
-                placeholder="e.g. 800000"
-                value={data.salaryMin || ""}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "");
-                  setData((p) => ({ ...p, salaryMin: val }));
-                }}
+                Stipend Amount <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <div
                 style={{
-                  padding: "11px 14px",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: "#0F172A",
-                  border: "none",
-                  outline: "none",
-                  flex: 1,
-                  fontFamily: "inherit",
-                }}
-              />
-            </div>
-          </div>
-          <div>
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#1E293B",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Max Salary <span style={{ color: "#EF4444" }}>*</span>
-            </label>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                border: "1.5px solid #E2E8F0",
-                borderRadius: 12,
-                overflow: "hidden",
-                background: "#fff",
-              }}
-            >
-              <span
-                style={{
-                  padding: "11px 12px",
-                  background: "#F8FAFC",
-                  color: "#64748B",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  borderRight: "1px solid #E2E8F0",
+                  display: "flex",
+                  alignItems: "center",
+                  border: "1.5px solid #E2E8F0",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#fff",
                 }}
               >
-                ₹
-              </span>
-              <input
-                placeholder="e.g. 1500000"
-                value={data.salaryMax || ""}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "");
-                  setData((p) => ({ ...p, salaryMax: val }));
-                }}
-                style={{
-                  padding: "11px 14px",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: "#0F172A",
-                  border: "none",
-                  outline: "none",
-                  flex: 1,
-                  fontFamily: "inherit",
-                }}
-              />
+                <span
+                  style={{
+                    padding: "11px 12px",
+                    background: "#F8FAFC",
+                    color: "#64748B",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    borderRight: "1px solid #E2E8F0",
+                  }}
+                >
+                  ₹
+                </span>
+                <input
+                  placeholder="e.g. 15000"
+                  value={data.stipend !== undefined ? data.stipend : (data.salaryMin || "")}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setData((p) => ({ ...p, stipend: val, salaryMin: val, salaryMax: val }));
+                  }}
+                  style={{
+                    padding: "11px 14px",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "#0F172A",
+                    border: "none",
+                    outline: "none",
+                    flex: 1,
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
             </div>
+            <Select
+              label="Stipend Cycle"
+              options={["Per Month", "Lump-sum", "Unpaid"]}
+              value={data.payCycle || "Per Month"}
+              onChange={(e) =>
+                setData((p) => ({ ...p, payCycle: e.target.value }))
+              }
+            />
           </div>
-          <Select
-            label="Pay Cycle"
-            options={["Per Month", "Per Annum", "Per Hour"]}
-            value={data.payCycle || "Per Annum"}
-            onChange={(e) =>
-              setData((p) => ({ ...p, payCycle: e.target.value }))
-            }
-          />
-        </div>
+        ) : (
+          <div
+            className="pj-grid-3"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              gap: 20,
+              alignItems: "end",
+            }}
+          >
+            <div>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#1E293B",
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
+                Min Salary <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  border: "1.5px solid #E2E8F0",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#fff",
+                }}
+              >
+                <span
+                  style={{
+                    padding: "11px 12px",
+                    background: "#F8FAFC",
+                    color: "#64748B",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    borderRight: "1px solid #E2E8F0",
+                  }}
+                >
+                  ₹
+                </span>
+                <input
+                  placeholder="e.g. 800000"
+                  value={data.salaryMin || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setData((p) => ({ ...p, salaryMin: val }));
+                  }}
+                  style={{
+                    padding: "11px 14px",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "#0F172A",
+                    border: "none",
+                    outline: "none",
+                    flex: 1,
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#1E293B",
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
+                Max Salary <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  border: "1.5px solid #E2E8F0",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#fff",
+                }}
+              >
+                <span
+                  style={{
+                    padding: "11px 12px",
+                    background: "#F8FAFC",
+                    color: "#64748B",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    borderRight: "1px solid #E2E8F0",
+                  }}
+                >
+                  ₹
+                </span>
+                <input
+                  placeholder="e.g. 1500000"
+                  value={data.salaryMax || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setData((p) => ({ ...p, salaryMax: val }));
+                  }}
+                  style={{
+                    padding: "11px 14px",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "#0F172A",
+                    border: "none",
+                    outline: "none",
+                    flex: 1,
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            </div>
+            <Select
+              label="Pay Cycle"
+              options={["Per Month", "Per Annum", "Per Hour"]}
+              value={data.payCycle || "Per Annum"}
+              onChange={(e) =>
+                setData((p) => ({ ...p, payCycle: e.target.value }))
+              }
+            />
+          </div>
+        )}
         <div style={{ marginTop: 16 }}>
           <label
             style={{
@@ -954,7 +1029,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
               style={{ width: 16, height: 16, accentColor: "#002366" }}
             />
             <span style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>
-              Hide salary from candidates (show "Competitive" instead)
+              Hide {isInternship ? "stipend" : "salary"} from candidates (show "Competitive" instead)
             </span>
           </label>
         </div>
@@ -964,7 +1039,11 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
       <SectionCard
         icon={<FiFileText size={20} />}
         title={`${entityName} Description`}
-        subtitle="Tell candidates about the role, responsibilities, and what success looks like."
+        subtitle={
+          <span style={{ display: "inline-flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+            <span>Tell candidates about the role, responsibilities, and what success looks like.</span>
+          </span>
+        }
         accentColor="#002366"
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -997,6 +1076,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
                   type="button"
                   onClick={() => onAiEnhance("roleDescription", "description")}
                   disabled={aiLoading?.roleDescription}
+                  title="Generate or enhance Role Description using AI (1 credit)"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1013,10 +1093,12 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
                     transition: "all .14s",
                   }}
                 >
-                  <FiZap size={14} />{" "}
+                  <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
                   {aiLoading?.roleDescription
                     ? "Enhancing…"
-                    : "Enhance with AI"}
+                    : (!data.roleDescription?.trim()
+                      ? "Generate with AI (1 credit)"
+                      : "Enhance with AI (1 credit)")}
                 </button>
                 <label
                   style={{
@@ -1104,6 +1186,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
                   onAiEnhance("responsibilities", "responsibilities")
                 }
                 disabled={aiLoading?.responsibilities}
+                title="Generate or enhance Key Responsibilities using AI (1 credit)"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -1120,8 +1203,12 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
                   transition: "all .14s",
                 }}
               >
-                <FiZap size={14} />{" "}
-                {aiLoading?.responsibilities ? "Enhancing…" : "Enhance with AI"}
+                <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
+                {aiLoading?.responsibilities
+                  ? "Enhancing…"
+                  : (!data.responsibilities?.trim()
+                    ? "Generate with AI (1 credit)"
+                    : "Enhance with AI (1 credit)")}
               </button>
             </div>
             <textarea
@@ -1189,6 +1276,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
                 type="button"
                 onClick={() => onAiEnhance("skills", "qualifications")}
                 disabled={aiLoading?.skills}
+                title="Generate or enhance Required Skills & Qualifications using AI (1 credit)"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -1205,8 +1293,12 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, onUploadJd }) {
                   transition: "all .14s",
                 }}
               >
-                <FiZap size={14} />{" "}
-                {aiLoading?.skills ? "Enhancing…" : "Enhance with AI"}
+                <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
+                {aiLoading?.skills
+                  ? "Enhancing…"
+                  : (!data.skills?.trim()
+                    ? "Generate with AI (1 credit)"
+                    : "Enhance with AI (1 credit)")}
               </button>
             </div>
             <textarea
@@ -1258,7 +1350,10 @@ function StepCandidatePreferences({
   onSuggestSkills,
   skillSuggestions,
   skillSuggestLoading,
+  isInternship: isInternshipProp,
 }) {
+  const typeParam = new URLSearchParams(window.location.search).get("type");
+  const isInternship = isInternshipProp ?? (typeParam === "internship" || (data.jobTypes || []).includes("Internship"));
   const [skills, setSkills] = useState(data.requiredSkills || []);
   const [skillInput, setSkillInput] = useState("");
 
@@ -1307,14 +1402,91 @@ function StepCandidatePreferences({
           className="pj-grid-2"
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
         >
+          {isInternship && (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <Select
+                  label="Internship Duration"
+                  required
+                  creatable
+                  options={["1 Month", "2 Months", "3 Months", "6 Months", "1 Year"]}
+                  placeholder="Select or type duration (e.g. 3 Months)"
+                  value={data.internshipDuration || ""}
+                  onChange={(e) =>
+                    setData((p) => ({ ...p, internshipDuration: e.target.value }))
+                  }
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <Input
+                  label="Internship Start Date"
+                  required
+                  type={data.internshipStartDate === "Immediately" ? "text" : "date"}
+                  value={data.internshipStartDate || ""}
+                  onChange={(e) =>
+                    setData((p) => ({ ...p, internshipStartDate: e.target.value }))
+                  }
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: -2 }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setData((p) => ({ ...p, internshipStartDate: "Immediately" }))
+                    }
+                    style={{
+                      background:
+                        data.internshipStartDate === "Immediately"
+                          ? "#002366"
+                          : "#F1F5F9",
+                      color:
+                        data.internshipStartDate === "Immediately"
+                          ? "#fff"
+                          : "#475569",
+                      border: "1px solid #CBD5E1",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Starts Immediately
+                  </button>
+                  {data.internshipStartDate &&
+                    data.internshipStartDate !== "Immediately" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setData((p) => ({ ...p, internshipStartDate: "" }))
+                        }
+                        style={{
+                          background: "#F1F5F9",
+                          color: "#64748B",
+                          border: "1px solid #CBD5E1",
+                          borderRadius: 6,
+                          padding: "3px 8px",
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                </div>
+              </div>
+            </>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <Select
               label="Minimum Experience"
-              required
+              required={!isInternship}
               creatable
               options={EXPERIENCE}
               placeholder="Select or type min experience"
-              value={data.minExp || ""}
+              value={data.minExp || (isInternship ? "Fresher" : "")}
               onChange={(e) =>
                 setData((p) => ({ ...p, minExp: e.target.value }))
               }
@@ -1323,11 +1495,11 @@ function StepCandidatePreferences({
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <Select
               label="Maximum Experience"
-              required
+              required={!isInternship}
               creatable
               options={EXPERIENCE}
               placeholder="Select or type max experience"
-              value={data.maxExp || ""}
+              value={data.maxExp || (isInternship ? "Fresher" : "")}
               onChange={(e) =>
                 setData((p) => ({ ...p, maxExp: e.target.value }))
               }
@@ -1355,7 +1527,7 @@ function StepCandidatePreferences({
               "Any",
             ]}
             placeholder="Any"
-            value={data.noticePeriod || ""}
+            value={data.noticePeriod || (isInternship ? "Immediate" : "")}
             onChange={(e) =>
               setData((p) => ({ ...p, noticePeriod: e.target.value }))
             }
@@ -1964,9 +2136,10 @@ function StepScreening({ data, setData }) {
 }
 
 /* ─────────────────────── STEP 4: REVIEW & LAUNCH ─────────────────────── */
-function StepReview({ data }) {
+function StepReview({ data, isInternship: isInternshipProp }) {
   const typeParam = new URLSearchParams(window.location.search).get("type");
-  const entityName = typeParam === "internship" ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
+  const isInternship = isInternshipProp ?? (typeParam === "internship" || (data.jobTypes || []).includes("Internship"));
+  const entityName = isInternship ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
   const ReviewRow = ({ label, value }) => (
     <div
       className="pj-review-row"
@@ -2098,20 +2271,39 @@ function StepReview({ data }) {
         <ReviewRow label="Industry" value={data.industry} />
         <ReviewRow label="Location" value={data.location} />
         <ReviewRow label="Job Type" value={(data.jobTypes || []).join(", ")} />
-        <ReviewRow
-          label="Salary Range"
-          value={
-            data.salaryMin && data.salaryMax
-              ? `₹${parseInt(data.salaryMin || 0).toLocaleString("en-IN")} – ₹${parseInt(data.salaryMax || 0).toLocaleString("en-IN")} ${data.payCycle || "Per Annum"}`
-              : null
-          }
-        />
+        {isInternship ? (
+          <ReviewRow
+            label="Stipend"
+            value={
+              data.payCycle === "Unpaid"
+                ? "Unpaid"
+                : (data.stipend || data.salaryMin)
+                  ? `₹${parseInt(data.stipend || data.salaryMin || 0).toLocaleString("en-IN")} ${data.payCycle || "Per Month"}`
+                  : "Unpaid"
+            }
+          />
+        ) : (
+          <ReviewRow
+            label="Salary Range"
+            value={
+              data.salaryMin && data.salaryMax
+                ? `₹${parseInt(data.salaryMin || 0).toLocaleString("en-IN")} – ₹${parseInt(data.salaryMax || 0).toLocaleString("en-IN")} ${data.payCycle || "Per Annum"}`
+                : null
+            }
+          />
+        )}
+        {isInternship && (
+          <>
+            <ReviewRow label="Internship Duration" value={data.internshipDuration || "—"} />
+            <ReviewRow label="Internship Start Date" value={data.internshipStartDate || "—"} />
+          </>
+        )}
         <ReviewRow
           label="Experience Required"
           value={
             data.minExp && data.maxExp
               ? `${data.minExp} – ${data.maxExp}`
-              : data.minExp
+              : (data.minExp || (isInternship ? "Fresher" : "—"))
           }
         />
         <ReviewRow label="Minimum Education" value={data.minEducation} />
@@ -2164,9 +2356,10 @@ function StepReview({ data }) {
 }
 
 /* ─────────────────────── PROGRESS BAR ─────────────────────── */
-function ProgressBar({ currentStep, totalSteps }) {
+function ProgressBar({ currentStep, totalSteps, isInternship: isInternshipProp }) {
   const typeParam = new URLSearchParams(window.location.search).get("type");
-  const entityName = typeParam === "internship" ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
+  const isInternship = isInternshipProp ?? (typeParam === "internship");
+  const entityName = isInternship ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
   const progressRef = useRef(null);
   const pct = ((currentStep - 1) / (totalSteps - 1)) * 100;
 
@@ -2307,10 +2500,20 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [createdJob, setCreatedJob] = useState(null);
-  const [formData, setFormData] = useState({
+  const location = useLocation();
+  const typeParam = new URLSearchParams(location.search).get("type");
+  const isSMB = typeParam === "management";
+  const isHot = typeParam === "hot";
+
+  const [formData, setFormData] = useState(() => ({
     campaignPlan: "Standard",
     cvEnabled: true,
-  });
+    ...(typeParam === "internship" ? { jobTypes: ["Internship"], payCycle: "Per Month" } : {}),
+  }));
+  const isInternship = typeParam === "internship" || (formData.jobTypes || []).includes("Internship");
+  const entityName = isInternship ? "Internship" : isHot ? "Hot Vacancy" : isSMB ? "SMB Job" : "Job";
+  const jobTypeLabel = isHot ? "Hot Vacancy" : isInternship ? "Internship" : isSMB ? "SMB Job" : "Standard Job";
+
   const contentRef = useRef(null);
   const headerRef = useRef(null);
   const launchRef = useRef(null);
@@ -2322,17 +2525,10 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const launchedRef = useRef(launched);
   launchedRef.current = launched;
 
-  const location = useLocation();
-  const typeParam = new URLSearchParams(location.search).get("type");
-  const isSMB = typeParam === "management";
-  const isInternship = typeParam === "internship";
-  const isHot = typeParam === "hot";
-  const entityName = isInternship ? "Internship" : isHot ? "Hot Vacancy" : isSMB ? "SMB Job" : "Job";
-  const jobTypeLabel = isSMB ? "SMB Job" : "Standard Job";
-
   const [quotaLoading, setQuotaLoading] = useState(true);
   const [quotaExhausted, setQuotaExhausted] = useState(false);
   const [availablePlans, setAvailablePlans] = useState([]);
+  const [aiCredits, setAiCredits] = useState(null);
 
   useEffect(() => {
     const checkQuota = async () => {
@@ -2340,20 +2536,57 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       setQuotaExhausted(false);
       try {
         const res = await authService.getQuotaUsage();
-        if (res?.data) {
-          const quotaData = isSMB
-            ? res.data.smbJobPosting
-            : res.data.jobPosting;
-          if (!quotaData || quotaData.left <= 0) {
+        const usageData = res?.data || res;
+        if (usageData) {
+          if (usageData.aiCredit && typeof usageData.aiCredit.left === "number") {
+            setAiCredits(usageData.aiCredit.left);
+          }
+          let quotaData = usageData.jobPosting;
+          if (isHot) {
+            quotaData = usageData.hotVacancy;
+          } else if (isInternship) {
+            quotaData = usageData.internship;
+          } else if (isSMB) {
+            quotaData = usageData.smbJobPosting;
+          }
+
+          if (!quotaData || Number(quotaData.left || 0) <= 0) {
             setQuotaExhausted(true);
             const available = [];
-            if (isSMB && res.data.jobPosting?.left > 0) {
-              available.push({ label: "Standard Job", url: "/post-job" });
+            if (!isHot && Number(usageData.hotVacancy?.left || 0) > 0) {
+              available.push({
+                label: "Hot Vacancy",
+                type: "hot",
+                url: "/post-job?type=hot",
+                left: Number(usageData.hotVacancy?.left || 0),
+                total: Number(usageData.hotVacancy?.total || 0),
+              });
             }
-            if (!isSMB && res.data.smbJobPosting?.left > 0) {
+            if (!isSMB && Number(usageData.smbJobPosting?.left || 0) > 0) {
               available.push({
                 label: "SMB Job",
+                type: "management",
                 url: "/post-job?type=management",
+                left: Number(usageData.smbJobPosting?.left || 0),
+                total: Number(usageData.smbJobPosting?.total || 0),
+              });
+            }
+            if (!isInternship && Number(usageData.internship?.left || 0) > 0) {
+              available.push({
+                label: "Internship",
+                type: "internship",
+                url: "/post-job?type=internship",
+                left: Number(usageData.internship?.left || 0),
+                total: Number(usageData.internship?.total || 0),
+              });
+            }
+            if (typeParam && Number(usageData.jobPosting?.left || 0) > 0) {
+              available.push({
+                label: "Standard Job",
+                type: "standard",
+                url: "/post-job",
+                left: Number(usageData.jobPosting?.left || 0),
+                total: Number(usageData.jobPosting?.total || 0),
               });
             }
             setAvailablePlans(available);
@@ -2368,7 +2601,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       }
     };
     checkQuota();
-  }, [isSMB]);
+  }, [location.search, isSMB, isHot, isInternship, typeParam]);
 
   // Auto-save draft when closing tab/window
   useEffect(() => {
@@ -2412,19 +2645,50 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const [aiError, setAiError] = useState("");
 
   const handleAiEnhance = async (field, type) => {
-    const text = formData[field];
-    if (!text || !text.trim()) {
+    const text = formData[field] || "";
+    const jobTitle = formData.jobTitle || "";
+
+    if (!jobTitle.trim() && !text.trim()) {
       setAiError(
-        `Please write something in the ${field.replace(/([A-Z])/g, " $1").toLowerCase()} field first.`,
+        "Please fill in the Job Title first to enhance or generate this section with AI."
       );
       return;
     }
+
+    if (aiCredits !== null && aiCredits <= 0) {
+      setAiError(
+        "You have exhausted your AI credits (0 remaining). Please purchase an AI Credit Booster pack or upgrade your plan to continue."
+      );
+      return;
+    }
+
     setAiLoading((p) => ({ ...p, [field]: true }));
     setAiError("");
     try {
-      const res = await authService.enhanceDescription(text, type);
+      const currentCategory = isHot
+        ? "hot"
+        : isInternship
+        ? "internship"
+        : isSMB
+        ? "management"
+        : "standard";
+
+      const res = await authService.enhanceDescription({
+        text,
+        type,
+        jobTitle,
+        jobCategory: currentCategory,
+      });
+
       const enhanced = res?.data?.text || "";
-      if (enhanced) setFormData((p) => ({ ...p, [field]: enhanced }));
+      if (enhanced) {
+        setFormData((p) => ({ ...p, [field]: enhanced }));
+      }
+      if (typeof res?.data?.remainingCredits === "number") {
+        setAiCredits(res.data.remainingCredits);
+      } else if (aiCredits !== null && aiCredits > 0) {
+        setAiCredits((prev) => Math.max(0, prev - 1));
+      }
     } catch (err) {
       setAiError(err?.message || "AI enhancement failed. Try again.");
     } finally {
@@ -2507,8 +2771,13 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       if (!formData.location) return "Please fill in the Location field.";
       if (!(formData.jobTypes || []).length)
         return "Please select at least one Job Type.";
-      if (!formData.salaryMin || !formData.salaryMax)
-        return "Please fill in the Salary Range fields.";
+      if (isInternship) {
+        if (!formData.stipend && !formData.salaryMin && formData.payCycle !== "Unpaid")
+          return "Please fill in the Stipend field.";
+      } else {
+        if (!formData.salaryMin || !formData.salaryMax)
+          return "Please fill in the Salary Range fields.";
+      }
       if (!formData.roleDescription?.trim())
         return "Please fill in the Role Description field.";
       if (!formData.responsibilities?.trim())
@@ -2518,8 +2787,13 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       return null;
     }
     if (s === 2) {
-      if (!formData.minExp) return "Please select Minimum Experience.";
-      if (!formData.maxExp) return "Please select Maximum Experience.";
+      if (isInternship) {
+        if (!formData.internshipDuration?.trim()) return "Please specify Internship Duration.";
+        if (!formData.internshipStartDate?.trim()) return "Please specify Internship Start Date.";
+      } else {
+        if (!formData.minExp) return "Please select Minimum Experience.";
+        if (!formData.maxExp) return "Please select Maximum Experience.";
+      }
       if (!formData.minEducation) return "Please select Minimum Education.";
       if (!(formData.requiredSkills || []).length)
         return "Please add at least one Required Skill.";
@@ -2623,10 +2897,23 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             .map((item) => item.trim())
             .filter(Boolean);
 
-      const experience =
-        formData.minExp && formData.maxExp
-          ? `${formData.minExp} – ${formData.maxExp}`
-          : formData.minExp || formData.maxExp || "";
+      const experience = isInternship
+        ? (formData.minExp && formData.maxExp ? `${formData.minExp} – ${formData.maxExp}` : formData.minExp || "Fresher")
+        : (formData.minExp && formData.maxExp
+            ? `${formData.minExp} – ${formData.maxExp}`
+            : formData.minExp || formData.maxExp || "");
+
+      const salaryMin = isInternship
+        ? (Number(formData.stipend || formData.salaryMin) || 0)
+        : (Number(formData.salaryMin) || 0);
+
+      const salaryMax = isInternship
+        ? (Number(formData.stipend || formData.salaryMax || formData.salaryMin) || 0)
+        : (Number(formData.salaryMax) || 0);
+
+      const stipend = isInternship
+        ? (Number(formData.stipend || formData.salaryMin) || 0)
+        : undefined;
 
       const workplaceType = (formData.jobTypes || []).includes("Remote")
         ? "Remote"
@@ -2669,12 +2956,15 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         responsibilities: formData.responsibilities || "",  // Key Responsibilities → DB: responsibilities
         qualifications:  formData.skills            || "",  // Required Skills & Qualifications → DB: qualifications
         department: formData.industry || "General",
-        jobType: formData.jobTypes?.[0] || "Full-time",
+        jobType: formData.jobTypes?.[0] || (isInternship ? "Internship" : "Full-time"),
         workplaceType,
         location: formData.location,
         experience,
-        salaryMin: Number(formData.salaryMin) || 0,
-        salaryMax: Number(formData.salaryMax) || 0,
+        salaryMin,
+        salaryMax,
+        stipend,
+        internshipDuration: isInternship ? (formData.internshipDuration || "") : undefined,
+        internshipStartDate: isInternship ? (formData.internshipStartDate || "") : undefined,
         skills,
         deadline: formData.cvEndDate || undefined,
         screeningQuestions,
@@ -2682,7 +2972,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         // Map URL ?type param → DB enum: hot → "hot", management → "management", internship → "internship"
         jobCategory: typeParam && ["hot", "management", "internship"].includes(typeParam)
           ? typeParam
-          : "standard",
+          : (isInternship ? "internship" : "standard"),
       };
 
 
@@ -3012,7 +3302,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         className="pj-main"
         style={{ maxWidth: 900, margin: "0 auto", padding: "0px 40px 120px" }}
       >
-        <ProgressBar currentStep={step} totalSteps={STEPS.length} />
+        <ProgressBar currentStep={step} totalSteps={STEPS.length} isInternship={isInternship} />
 
         <div ref={contentRef}>
           {step === 1 && (
@@ -3021,7 +3311,9 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
               setData={updateData}
               onAiEnhance={handleAiEnhance}
               aiLoading={aiLoading}
+              aiCredits={aiCredits}
               onUploadJd={handleUploadJd}
+              isInternship={isInternship}
             />
           )}
           {step === 2 && (
@@ -3031,10 +3323,11 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
               onSuggestSkills={handleSuggestSkills}
               skillSuggestions={skillSuggestions}
               skillSuggestLoading={skillSuggestLoading}
+              isInternship={isInternship}
             />
           )}
           {step === 3 && <StepScreening data={formData} setData={updateData} />}
-          {step === 4 && <StepReview data={formData} />}
+          {step === 4 && <StepReview data={formData} isInternship={isInternship} />}
         </div>
         {aiError && (
           <div
