@@ -175,7 +175,8 @@ function LcHeader({ activeSection, onNav }) {
             className={`lc-header-nav-btn ${activeSection === 'cert' ? 'active' : ''}`}
             onClick={() => onNav('cert')}
           >
-            Certification Programme
+            <span className="lc-nav-text-full">Certification Programme</span>
+            <span className="lc-nav-text-short">Certification</span>
             <span className="lc-header-free-pill">Free</span>
           </button>
           <button
@@ -208,6 +209,8 @@ export default function LearningCenter() {
   const [expertIdx, setExpertIdx] = useState(0);
   const [openFaq, setOpenFaq] = useState(null);
   const [activeFaqTab, setActiveFaqTab] = useState(FAQ_CATEGORIES[0].id);
+  const [faqDropdownOpen, setFaqDropdownOpen] = useState(false);
+  const faqDropdownRef = useRef(null);
   const [heroVisible, setHeroVisible] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -301,6 +304,20 @@ export default function LearningCenter() {
     return () => clearTimeout(timeout);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (faqDropdownRef.current && !faqDropdownRef.current.contains(event.target)) {
+        setFaqDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
   const scrollToSection = (id) => {
     const el = document.getElementById(`lc-section-${id}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -317,7 +334,7 @@ export default function LearningCenter() {
       <section className={`lc-hero ${heroVisible ? 'lc-hero--visible' : ''}`}>
         <div className="lc-hero-main-title-wrap">
           <h1 className="lc-hero-main-title">
-            Get more out of MavenJobs products with{' '}
+            <span className="lc-hero-title-static">Get more out of MavenJobs products with</span>{' '}
             <span className="lc-rotating-word">
               {typedText}<span className="lc-cursor">|</span>
             </span>
@@ -409,7 +426,7 @@ export default function LearningCenter() {
         <div className="lc-split-layout">
           <div className="lc-split-left">
             <div className="lc-section-eyebrow"><FiVideo size={14} /> Live Webinars</div>
-            <h2 className="lc-section-title">Product webinars<br />with experts</h2>
+            <h2 className="lc-section-title">Product webinars with experts</h2>
             <ul className="lc-feature-list">
               <li><FiCheckCircle size={14} color="#10b981" /> Free live sessions, every weekday</li>
               <li><FiCheckCircle size={14} color="#10b981" /> Ask questions directly to product experts</li>
@@ -484,7 +501,7 @@ export default function LearningCenter() {
         <div className="lc-guides-header-row">
           <div>
             <div className="lc-section-eyebrow"><FiBook size={14} /> Product Guides</div>
-            <h2 className="lc-section-title">Step-by-step guides<br />for every product</h2>
+            <h2 className="lc-section-title">Step-by-step guides for every product</h2>
           </div>
           <div className="lc-carousel-nav">
             <button className="lc-nav-btn" onClick={() => setGuideIdx(i => Math.max(0, i - 1))} disabled={guideIdx === 0}><FiChevronLeft /></button>
@@ -519,10 +536,12 @@ export default function LearningCenter() {
           <h2 className="lc-section-title">Frequently asked questions</h2>
           
           <div className="lc-faq-container">
+            {/* Desktop Sidebar (visible on desktop) */}
             <div className="lc-faq-sidebar">
               {FAQ_CATEGORIES.map(cat => (
                 <button 
                   key={cat.id} 
+                  type="button"
                   className={`lc-faq-sidebar-btn ${activeFaqTab === cat.id ? 'active' : ''}`}
                   onClick={() => {
                     setActiveFaqTab(cat.id);
@@ -534,12 +553,56 @@ export default function LearningCenter() {
                 </button>
               ))}
             </div>
+
+            {/* Mobile / Tablet Dropdown Category Selector */}
+            <div className="lc-faq-mobile-dropdown-wrap" ref={faqDropdownRef}>
+              <div 
+                className={`lc-faq-dropdown-trigger ${faqDropdownOpen ? 'active' : ''}`}
+                onClick={() => setFaqDropdownOpen(prev => !prev)}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="lc-faq-dropdown-value">
+                  <span className="lc-faq-dropdown-label">Category:</span>
+                  <span className="lc-faq-dropdown-selected">
+                    {FAQ_CATEGORIES.find(c => c.id === activeFaqTab)?.title}
+                  </span>
+                </div>
+                <FiChevronDown className={`lc-faq-dropdown-arrow ${faqDropdownOpen ? 'rotate' : ''}`} size={18} />
+              </div>
+
+              {faqDropdownOpen && (
+                <div className="lc-faq-dropdown-menu">
+                  {FAQ_CATEGORIES.map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`lc-faq-dropdown-item ${activeFaqTab === cat.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setActiveFaqTab(cat.id);
+                        setOpenFaq(null);
+                        setFaqDropdownOpen(false);
+                      }}
+                    >
+                      <span>{cat.title}</span>
+                      {activeFaqTab === cat.id && (
+                        <FiCheckCircle size={16} color="#002366" style={{ flexShrink: 0 }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             
             <div className="lc-faq-content" key={activeFaqTab}>
               <div className="lc-faq-list">
                 {FAQ_CATEGORIES.find(c => c.id === activeFaqTab)?.faqs.map((faq, i) => (
                   <div key={i} className={`lc-faq-item ${openFaq === i ? 'open' : ''}`}>
-                    <button className="lc-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                    <button 
+                      type="button"
+                      className="lc-faq-q" 
+                      onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    >
                       <span>{faq.q}</span>
                       <FiChevronDown className="lc-faq-icon" size={18} />
                     </button>
@@ -548,14 +611,14 @@ export default function LearningCenter() {
                 ))}
               </div>
             </div>
-              </div>
+          </div>
             </div>
           </section>
 
           <EmployerFooter />
 
           {showVideoModal && (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.8)' }}>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.8)', padding: 16, boxSizing: 'border-box' }}>
               <div style={{ position: 'absolute', inset: 0 }} onClick={() => setShowVideoModal(false)} />
               <div style={{ position: 'relative', width: '90%', maxWidth: 800, backgroundColor: '#000', borderRadius: 8, overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
                 <button 

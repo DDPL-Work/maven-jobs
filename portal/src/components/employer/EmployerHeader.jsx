@@ -2353,4 +2353,3 @@ export default function EmployerHeader({
     </>
   );
 }
-

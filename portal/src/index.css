@@ -70,6 +70,15 @@ a {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Global Form Controls Normalization */
+select, select option, optgroup {
+  font-size: 13px !important;
+  font-family: inherit !important;
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+  line-height: 1.4 !important;
+}
+
 /* ========================================
    RESPONSIVE INFRASTRUCTURE
    ======================================== */

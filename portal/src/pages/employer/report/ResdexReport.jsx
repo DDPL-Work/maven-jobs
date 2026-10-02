@@ -24,6 +24,7 @@ import {
   FiMoreVertical,
   FiInfo,
   FiPlusCircle,
+  FiCheck,
 } from "react-icons/fi";
 import EmployerLayout from "../../../components/employer/EmployerLayout";
 import EmployerBreadcrumb from "../../../components/employer/EmployerBreadcrumb";
@@ -32,7 +33,76 @@ import userManagementService from "../../../services/userManagementService";
 import DynamicReportTable from "./DynamicReportTable";
 import CandidateCard from "../../../components/employer/CandidateCard";
 import { useContactedCandidates } from "../../../hooks/useFolderQueries";
+import CustomDatePicker from "../../../components/common/CustomDatePicker";
 import "./ResdexReport.css";
+
+function RxrCustomSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  className = "",
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleOutside);
+      document.addEventListener("touchstart", handleOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [isOpen]);
+
+  const selectedOpt = options.find((o) => o.value === value) || options[0];
+
+  return (
+    <div className={`rxr-custom-select-container ${className}`} ref={ref}>
+      <button
+        type="button"
+        className={`rxr-custom-select-trigger ${isOpen ? "open" : ""}`}
+        onClick={() => setIsOpen((p) => !p)}
+      >
+        <span className="rxr-custom-select-text">
+          {selectedOpt ? selectedOpt.label : placeholder}
+        </span>
+        <FiChevronDown
+          size={14}
+          className={`rxr-custom-select-chevron ${isOpen ? "rotate" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="rxr-custom-select-menu">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`rxr-custom-select-item ${value === opt.value ? "active" : ""}`}
+              onClick={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+            >
+              <span>{opt.label}</span>
+              {value === opt.value && (
+                <FiCheck size={14} className="rxr-custom-select-check" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const TABS = [
   { id: "database-usage", label: "Database Usage" },
@@ -597,6 +667,7 @@ export default function ResdexReport() {
 
   return (
     <EmployerLayout
+      containerWidth={1240}
       company={company}
       activeTab="report"
       onNavigate={(tabId) => {
@@ -615,8 +686,8 @@ export default function ResdexReport() {
       />
 
       <div className="rxr-container">
-        {/* Resdex Top Tabs Navigation */}
-        <div className="rxr-tabs-nav">
+        {/* Desktop Tabs Navigation */}
+        <div className="rxr-tabs-nav rxr-desktop-tabs">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -627,6 +698,17 @@ export default function ResdexReport() {
               {tab.label}
             </button>
           ))}
+        </div>
+
+        {/* Mobile Tabs Dropdown */}
+        <div className="rxr-mobile-tabs-wrap">
+          <div className="rxr-mobile-tabs-label">Select Report:</div>
+          <RxrCustomSelect
+            value={activeTab}
+            onChange={(val) => handleTabChange(val)}
+            options={TABS.map((t) => ({ value: t.id, label: t.label }))}
+            className="rxr-mobile-tab-select"
+          />
         </div>
 
         {generatedReport ? (
@@ -749,36 +831,20 @@ export default function ResdexReport() {
                           <div className="rxr-date-group">
                             <div className="rxr-date-item">
                               <span className="rxr-date-sublabel">From</span>
-                              <div className="rxr-date-input-wrap">
-                                <FiCalendar
-                                  className="rxr-date-icon"
-                                  size={15}
-                                />
-                                <input
-                                  type="date"
-                                  className="rxr-date-input"
-                                  value={fromDate}
-                                  max={yesterdayStr}
-                                  onChange={(e) => setFromDate(e.target.value)}
-                                />
-                              </div>
+                              <CustomDatePicker
+                                value={fromDate}
+                                max={yesterdayStr}
+                                onChange={setFromDate}
+                              />
                             </div>
 
                             <div className="rxr-date-item">
                               <span className="rxr-date-sublabel">To</span>
-                              <div className="rxr-date-input-wrap">
-                                <FiCalendar
-                                  className="rxr-date-icon"
-                                  size={15}
-                                />
-                                <input
-                                  type="date"
-                                  className="rxr-date-input"
-                                  value={toDate}
-                                  max={yesterdayStr}
-                                  onChange={(e) => setToDate(e.target.value)}
-                                />
-                              </div>
+                              <CustomDatePicker
+                                value={toDate}
+                                max={yesterdayStr}
+                                onChange={setToDate}
+                              />
                             </div>
                           </div>
                         </div>
@@ -886,23 +952,17 @@ export default function ResdexReport() {
                             <div className="rxr-row-content">
                               <div
                                 className="rxr-select-wrap"
-                                style={{ minWidth: 280 }}
+                                style={{ minWidth: 260 }}
                               >
-                                <select
-                                  className="rxr-select"
+                                <RxrCustomSelect
                                   value={dbReportType}
-                                  onChange={(e) =>
-                                    setDbReportType(e.target.value)
-                                  }
-                                >
-                                  <option value="Summary">Summary</option>
-                                  <option value="Quarterly">Quarterly</option>
-                                  <option value="Monthly">Monthly</option>
-                                  <option value="Daily">Daily</option>
-                                </select>
-                                <FiChevronDown
-                                  className="rxr-select-icon"
-                                  size={16}
+                                  onChange={setDbReportType}
+                                  options={[
+                                    { value: "Summary", label: "Summary" },
+                                    { value: "Quarterly", label: "Quarterly" },
+                                    { value: "Monthly", label: "Monthly" },
+                                    { value: "Daily", label: "Daily" },
+                                  ]}
                                 />
                               </div>
                             </div>
@@ -1098,23 +1158,17 @@ export default function ResdexReport() {
                             <div className="rxr-row-content">
                               <div
                                 className="rxr-select-wrap"
-                                style={{ minWidth: 280 }}
+                                style={{ minWidth: 260 }}
                               >
-                                <select
-                                  className="rxr-select"
+                                <RxrCustomSelect
                                   value={callReportType}
-                                  onChange={(e) =>
-                                    setCallReportType(e.target.value)
-                                  }
-                                >
-                                  <option value="Summary">Summary</option>
-                                  <option value="Quarterly">Quarterly</option>
-                                  <option value="Monthly">Monthly</option>
-                                  <option value="Daily">Daily</option>
-                                </select>
-                                <FiChevronDown
-                                  className="rxr-select-icon"
-                                  size={16}
+                                  onChange={setCallReportType}
+                                  options={[
+                                    { value: "Summary", label: "Summary" },
+                                    { value: "Quarterly", label: "Quarterly" },
+                                    { value: "Monthly", label: "Monthly" },
+                                    { value: "Daily", label: "Daily" },
+                                  ]}
                                 />
                               </div>
                             </div>
@@ -1247,36 +1301,20 @@ export default function ResdexReport() {
                           <div className="rxr-date-group">
                             <div className="rxr-date-item">
                               <span className="rxr-date-sublabel">From</span>
-                              <div className="rxr-date-input-wrap">
-                                <FiCalendar
-                                  className="rxr-date-icon"
-                                  size={15}
-                                />
-                                <input
-                                  type="date"
-                                  className="rxr-date-input"
-                                  value={fromDate}
-                                  max={yesterdayStr}
-                                  onChange={(e) => setFromDate(e.target.value)}
-                                />
-                              </div>
+                              <CustomDatePicker
+                                value={fromDate}
+                                max={yesterdayStr}
+                                onChange={setFromDate}
+                              />
                             </div>
 
                             <div className="rxr-date-item">
                               <span className="rxr-date-sublabel">To</span>
-                              <div className="rxr-date-input-wrap">
-                                <FiCalendar
-                                  className="rxr-date-icon"
-                                  size={15}
-                                />
-                                <input
-                                  type="date"
-                                  className="rxr-date-input"
-                                  value={toDate}
-                                  max={yesterdayStr}
-                                  onChange={(e) => setToDate(e.target.value)}
-                                />
-                              </div>
+                              <CustomDatePicker
+                                value={toDate}
+                                max={yesterdayStr}
+                                onChange={setToDate}
+                              />
                             </div>
                           </div>
 
@@ -1531,18 +1569,17 @@ export default function ResdexReport() {
 
                   <div className="rxr-contacted-page-controls">
                     <span>Show</span>
-                    <select
-                      className="rxr-contacted-show-select"
+                    <RxrCustomSelect
                       value={contactedPageSize}
-                      onChange={(e) =>
-                        setContactedPageSize(Number(e.target.value))
-                      }
-                    >
-                      <option value={20}>20</option>
-                      <option value={40}>40</option>
-                      <option value={60}>60</option>
-                      <option value={100}>100</option>
-                    </select>
+                      onChange={(val) => setContactedPageSize(Number(val))}
+                      options={[
+                        { value: 20, label: "20" },
+                        { value: 40, label: "40" },
+                        { value: 60, label: "60" },
+                        { value: 100, label: "100" },
+                      ]}
+                      className="rxr-compact-select"
+                    />
 
                     <button
                       type="button"
@@ -2030,14 +2067,22 @@ export default function ResdexReport() {
                     Select Email to get Reports:
                   </div>
                   <div className="rxr-row-content">
-                    <div className="rxr-email-container">
+                    <div
+                      className="rxr-email-container"
+                      onClick={() => {
+                        if (!isAddingEmail) setIsAddingEmail(true);
+                      }}
+                    >
                       {emailList.map((email) => (
                         <div key={email} className="rxr-email-chip">
-                          <span>{email}</span>
+                          <span className="rxr-email-chip-text">{email}</span>
                           <button
                             type="button"
                             className="rxr-email-chip-remove"
-                            onClick={() => handleRemoveEmail(email)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveEmail(email);
+                            }}
                             aria-label={`Remove ${email}`}
                           >
                             <FiX size={13} />
@@ -2067,17 +2112,10 @@ export default function ResdexReport() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setIsAddingEmail(true)}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            color: "#64748b",
-                            fontSize: "13px",
-                            cursor: "pointer",
-                            padding: "4px 6px",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
+                          className="rxr-email-add-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAddingEmail(true);
                           }}
                         >
                           <FiPlus size={13} /> Add Email
@@ -2088,12 +2126,9 @@ export default function ResdexReport() {
                 </div>
 
                 {/* Save & Send Report Now Buttons */}
-                <div className="rxr-form-row" style={{ marginBottom: 0 }}>
+                <div className="rxr-form-row rxr-auto-email-actions-row" style={{ marginBottom: 0 }}>
                   <div className="rxr-row-label"></div>
-                  <div
-                    className="rxr-row-content"
-                    style={{ display: "flex", gap: 12, alignItems: "center" }}
-                  >
+                  <div className="rxr-row-content rxr-auto-email-actions">
                     <button
                       type="button"
                       className="rxr-btn-primary"
@@ -2105,17 +2140,9 @@ export default function ResdexReport() {
 
                     <button
                       type="button"
-                      className="rxr-btn-primary"
+                      className="rxr-btn-outline"
                       onClick={handleSendNow}
                       disabled={isSendingEmail || !emailList.length}
-                      style={{
-                        background: "#ffffff",
-                        color: "#002366",
-                        border: "1px solid #002366",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
                       title="Generate and email the current Resdex report immediately to the selected email(s)"
                     >
                       <FiMail size={15} />

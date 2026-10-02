@@ -76,16 +76,33 @@ export default function EmployerLayout({
         onLogout={onLogout}
         requireAuth
       />
-      <div style={{
-        flex: 1,
-        width: '100%',
-        maxWidth: containerWidth,
-        margin: '0 auto',
-        padding: '20px 20px 48px',
-        boxSizing: 'border-box',
-      }}>
+      <div
+        className="ep-layout-content-wrapper"
+        style={{
+          flex: 1,
+          width: '100%',
+          maxWidth: containerWidth,
+          margin: '0 auto',
+          boxSizing: 'border-box',
+        }}
+      >
         {children}
       </div>
+      <style>{`
+        .ep-layout-content-wrapper {
+          padding: 20px 20px 48px;
+        }
+        @media (max-width: 1024px) {
+          .ep-layout-content-wrapper {
+            padding: 16px 16px 40px;
+          }
+        }
+        @media (max-width: 640px) {
+          .ep-layout-content-wrapper {
+            padding: 12px 12px 36px;
+          }
+        }
+      `}</style>
       {!hideFooter && <EmployerFooter />}
     </div>
   );

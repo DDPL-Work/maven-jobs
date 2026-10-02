@@ -1,51 +1,55 @@
 /* ==========================================================================
    Job Posting Report Styles — MavenJobs Theme
+   Fully Responsive for Desktop, Tablet, and Mobile
    ========================================================================== */
 
 .jpr-container {
-  max-width: 1160px;
+  max-width: 1240px;
   margin: 0 auto;
+  padding-bottom: 40px;
+  box-sizing: border-box;
 }
 
 .jpr-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 28px 32px;
-  box-shadow: 0 4px 20px rgba(0, 35, 102, 0.04);
-  margin-bottom: 24px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 10px rgba(0, 35, 102, 0.03);
+  margin-bottom: 20px;
   transition: box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
 .jpr-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 35, 102, 0.07);
+  box-shadow: 0 6px 20px rgba(0, 35, 102, 0.06);
 }
 
 .jpr-page-title {
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-size: 24px;
+  font-family: 'Bricolage Grotesque', -apple-system, sans-serif;
+  font-size: 20px;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.02em;
   margin: 0 0 16px 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .jpr-section-divider {
   height: 1px;
-  background: #e2e8f0;
-  margin: 28px 0;
+  background: #f1f5f9;
+  margin: 22px 0;
   border: none;
 }
 
 .jpr-section-title {
   font-family: 'DM Sans', sans-serif;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
-  margin: 0 0 20px 0;
+  margin: 0 0 16px 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -55,17 +59,18 @@
 .jpr-form-row {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 22px;
-  gap: 20px;
+  margin-bottom: 18px;
+  gap: 16px;
+  box-sizing: border-box;
 }
 
 .jpr-row-label {
   width: 190px;
   flex-shrink: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #475569;
-  padding-top: 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #334155;
+  padding-top: 2px;
 }
 
 .jpr-row-content {
@@ -73,16 +78,17 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
+  min-width: 0;
 }
 
 /* Radio Button Group */
 .jpr-radio-label {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
   color: #1e293b;
   cursor: pointer;
   user-select: none;
@@ -94,8 +100,8 @@
 }
 
 .jpr-radio-custom {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   border: 2px solid #94a3b8;
   border-radius: 50%;
   display: inline-flex;
@@ -103,7 +109,7 @@
   justify-content: center;
   transition: all 0.15s ease;
   position: relative;
-  background: #fff;
+  background: #ffffff;
   flex-shrink: 0;
 }
 
@@ -117,8 +123,8 @@
 
 .jpr-radio-label input[type="radio"]:checked + .jpr-radio-custom::after {
   content: '';
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   background: #002366;
   border-radius: 50%;
   display: block;
@@ -129,23 +135,25 @@
   background: #002366;
   color: #ffffff;
   border: none;
-  border-radius: 10px;
-  padding: 10px 24px;
-  font-size: 13.5px;
+  border-radius: 9px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
   font-weight: 700;
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 14px rgba(0, 35, 102, 0.2);
+  justify-content: center;
+  gap: 7px;
+  box-shadow: 0 3px 10px rgba(0, 35, 102, 0.18);
   transition: all 0.18s ease;
+  box-sizing: border-box;
 }
 
 .jpr-btn-primary:hover {
-  background: #001a4d;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 35, 102, 0.28);
+  background: #001845;
+  box-shadow: 0 4px 14px rgba(0, 35, 102, 0.25);
 }
 
 .jpr-btn-primary:active {
@@ -157,27 +165,30 @@
   cursor: not-allowed;
   transform: none;
 }
+
 .jpr-btn-outline {
-  color:#002366;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 24px;
-  font-size: 13.5px;
+  color: #002366;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9px;
+  height: 40px;
+  padding: 0 18px;
+  font-size: 13px;
   font-weight: 700;
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 14px rgba(0, 35, 102, 0.2);
-  transition: all 0.18s ease;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .jpr-btn-outline:hover {
-  background: #001a4d;
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 35, 102, 0.28);
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
 }
 
 .jpr-btn-outline:active {
@@ -194,20 +205,22 @@
 .jpr-date-group {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .jpr-date-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .jpr-date-sublabel {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  min-width: 38px;
 }
 
 .jpr-date-input-wrap {
@@ -218,48 +231,50 @@
 
 .jpr-date-input {
   border: 1.5px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 8px 12px 8px 36px;
-  font-size: 13.5px;
+  border-radius: 9px;
+  padding: 0 12px 0 34px;
+  height: 38px;
+  font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: #0f172a;
   font-family: 'DM Sans', sans-serif;
   background: #ffffff;
   outline: none;
   transition: all 0.15s ease;
-  min-width: 170px;
+  min-width: 160px;
+  box-sizing: border-box;
 }
 
 .jpr-date-input:focus {
-  border-color: #002366;
-  box-shadow: 0 0 0 3px rgba(0, 35, 102, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .jpr-date-icon {
   position: absolute;
-  left: 11px;
+  left: 10px;
   color: #64748b;
   pointer-events: none;
 }
 
 .jpr-helper-note {
-  font-size: 12.5px;
+  font-size: 12px;
   font-style: italic;
   color: #64748b;
-  margin-top: 8px;
+  margin-top: 6px;
   line-height: 1.4;
 }
 
 /* Status Banner */
 .jpr-status-banner {
-  padding: 12px 18px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 600;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   transition: all 0.2s ease;
 }
 
@@ -280,20 +295,22 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   border: 1.5px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 6px 12px;
+  border-radius: 9px;
+  padding: 6px 10px;
   background: #ffffff;
   min-height: 44px;
   width: 100%;
-  max-width: 680px;
+  max-width: 580px;
   transition: all 0.15s ease;
+  box-sizing: border-box;
+  cursor: text;
 }
 
 .jpr-email-container:focus-within {
   border-color: #002366;
-  box-shadow: 0 0 0 3px rgba(0, 35, 102, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 35, 102, 0.08);
 }
 
 .jpr-email-chip {
@@ -302,115 +319,141 @@
   color: #1e40af;
   border-radius: 6px;
   padding: 4px 8px;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
+  box-sizing: border-box;
+  animation: jprChipIn 0.12s ease-out;
+}
+
+@keyframes jprChipIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.jpr-email-chip-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
 }
 
 .jpr-email-chip-remove {
   border: none;
   background: transparent;
-  color: #60a5fa;
+  color: #3b82f6;
   cursor: pointer;
   padding: 0;
+  margin: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }
 
 .jpr-email-chip-remove:hover {
-  color: #dc2626;
+  color: #ffffff;
+  background: #ef4444;
 }
 
 .jpr-email-input {
-  border: none;
-  outline: none;
-  font-size: 13.5px;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 13px;
   font-family: 'DM Sans', sans-serif;
-  color: #1e293b;
+  color: #0f172a;
   flex: 1;
-  min-width: 120px;
-  background: transparent;
+  min-width: 160px;
+  background: transparent !important;
+  padding: 4px 6px;
+  height: 30px;
+  box-sizing: border-box;
 }
 
 .jpr-email-input::placeholder {
   color: #94a3b8;
+  font-size: 12.5px;
+}
+
+.jpr-email-add-btn {
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s ease;
+}
+
+.jpr-email-add-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.jpr-auto-email-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* Results / Preview Table */
 .jpr-results-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 28px 32px;
-  box-shadow: 0 6px 24px rgba(0, 35, 102, 0.05);
-  margin-top: 24px;
-}
-
-.jpr-results-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.jpr-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.jpr-kpi-box {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 18px 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.jpr-kpi-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 4px 16px rgba(0, 35, 102, 0.04);
+  margin-top: 20px;
+  box-sizing: border-box;
 }
 
 .jpr-table-wrapper {
   overflow-x: auto;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .jpr-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .jpr-table th {
   background: #f8fafc;
   color: #475569;
   font-weight: 700;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
 }
 
 .jpr-table td {
-  padding: 13px 16px;
+  padding: 10px 14px;
   border-bottom: 1px solid #f1f5f9;
   color: #1e293b;
 }
@@ -423,54 +466,29 @@
   background: #f8fafc;
 }
 
-.jpr-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: capitalize;
-}
-
-.jpr-badge.active {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.jpr-badge.closed {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.jpr-badge.draft {
-  background: #f1f5f9;
-  color: #475569;
-}
-
 /* Toast Message */
 .jpr-toast {
   position: fixed;
-  bottom: 28px;
-  right: 28px;
+  bottom: 24px;
+  right: 24px;
   z-index: 99999;
   background: #0f172a;
   color: #ffffff;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13.5px;
   font-weight: 600;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   animation: jprFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes jprFadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -478,20 +496,100 @@
   }
 }
 
-/* Responsive adjustments */
+/* ══════════════════════════════════════════════════════════════
+   Responsive Adjustments (Tablet & Mobile)
+   ══════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  .jpr-container {
+    padding: 0 4px 40px;
+  }
   .jpr-card {
-    padding: 20px 18px;
+    padding: 16px 14px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+  }
+  .jpr-page-title {
+    font-size: 17px;
+    margin-bottom: 12px;
+  }
+  .jpr-section-title {
+    font-size: 14px;
+    margin-bottom: 12px;
   }
   .jpr-form-row {
     flex-direction: column;
-    gap: 8px;
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 14px;
   }
   .jpr-row-label {
     width: 100%;
+    font-size: 13px;
+    padding-top: 0;
+  }
+  .jpr-row-content {
+    width: 100%;
+    gap: 10px;
   }
   .jpr-date-group {
     flex-direction: column;
-    align-items: flex-start;
+    width: 100%;
+    gap: 8px;
+  }
+  .jpr-date-item {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .jpr-date-input-wrap {
+    flex: 1;
+    width: 100%;
+  }
+  .jpr-date-input {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    font-size: 13px;
+  }
+  .jpr-btn-primary,
+  .jpr-btn-outline {
+    height: 38px;
+    padding: 0 16px;
+    font-size: 12.5px;
+  }
+  .jpr-status-banner {
+    padding: 8px 10px;
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+  .jpr-email-container {
+    max-width: 100%;
+    min-height: 42px;
+    padding: 5px 8px;
+    gap: 5px;
+  }
+  .jpr-email-chip {
+    font-size: 12px;
+    padding: 3px 6px;
+    max-width: 100%;
+  }
+  .jpr-email-chip-text {
+    max-width: 180px;
+  }
+  .jpr-email-input {
+    min-width: 120px;
+    font-size: 12.5px;
+    height: 28px;
+  }
+  .jpr-auto-email-actions {
+    width: 100%;
+    gap: 8px;
+  }
+  .jpr-auto-email-actions .jpr-btn-primary,
+  .jpr-auto-email-actions .jpr-btn-outline {
+    flex: 1;
+    min-width: 120px;
+    height: 38px;
+    font-size: 12.5px;
+    padding: 0 12px;
   }
 }

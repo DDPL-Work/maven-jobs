@@ -254,19 +254,38 @@ export default function UserManagement() {
     setFormErrors({});
   };
 
-  // Close dropdowns on outside click
-  const dropdownRef = useRef(null);
+  // Close dropdowns on outside click & escape
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (
+        !e.target.closest(
+          '.um-popover-menu, .um-security-popover, .um-time-popover, .um-dropdown-trigger, .um-btn-icon-more, .um-msq-container'
+        )
+      ) {
         setOpenDropdown(null);
         setShowWeekendMsq(false);
-      } else if (weekendMsqRef.current && !weekendMsqRef.current.contains(e.target)) {
+      } else if (
+        weekendMsqRef.current &&
+        !weekendMsqRef.current.contains(e.target) &&
+        !e.target.closest('.um-msq-container')
+      ) {
+        setShowWeekendMsq(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setOpenDropdown(null);
         setShowWeekendMsq(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   // Filtered Users List
@@ -703,7 +722,7 @@ export default function UserManagement() {
 
   return (
     <EmployerLayout activeTab="home">
-      <div className="um-container" ref={dropdownRef}>
+      <div className="um-container">
         {/* Breadcrumb Navigation */}
         <EmployerBreadcrumb
           items={[
@@ -780,7 +799,7 @@ export default function UserManagement() {
               Add user
             </button>
 
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
                 className="um-btn-icon-more"
@@ -791,11 +810,14 @@ export default function UserManagement() {
               </button>
 
               {openDropdown === 'options' && (
-                <div className="um-popover-menu">
+                <div className="um-popover-menu align-right" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
                     className="um-popover-item"
-                    onClick={handleExportExcel}
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      handleExportExcel();
+                    }}
                   >
                     Export users Excel
                   </button>
@@ -804,6 +826,17 @@ export default function UserManagement() {
             </div>
           </div>
         </div>
+
+        {/* Backdrop for open dropdowns & popovers */}
+        {openDropdown && (
+          <div
+            className="um-dropdown-backdrop"
+            onClick={() => {
+              setOpenDropdown(null);
+              setShowWeekendMsq(false);
+            }}
+          />
+        )}
 
         {/* Tabs & Top Controls Bar */}
         <div className="um-tabs-row">
@@ -819,71 +852,72 @@ export default function UserManagement() {
 
           <div className="um-tabs-right">
             {/* Allowed Domains Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
-                className="um-dropdown-trigger"
+                className={`um-dropdown-trigger ${openDropdown === 'domains' ? 'active' : ''}`}
                 onClick={() => setOpenDropdown(openDropdown === 'domains' ? null : 'domains')}
               >
-                Allowed Domains <FiChevronDown size={14} />
+                Allowed Domains <FiChevronDown size={14} className={openDropdown === 'domains' ? 'rotate' : ''} />
               </button>
 
               {openDropdown === 'domains' && (
-                <div className="um-popover-menu" style={{ width: 240 }}>
-                  <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                    Allowed Domains
-                  </div>
-                  {allowedDomains.map((dom) => (
-                    <div
-                      key={dom}
-                      onMouseEnter={() => setHoveredDomain(dom)}
-                      onMouseLeave={() => setHoveredDomain(null)}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: 13,
-                        color: '#0f172a',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: hoveredDomain === dom ? '#f8fafc' : 'transparent',
-                      }}
-                    >
-                      <span>{dom}</span>
-                      {hoveredDomain === dom ? (
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdown(null);
-                              handleOpenDomainModal('edit', dom);
-                            }}
-                            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 2 }}
-                            title="Edit Domain"
-                          >
-                            <FiEdit3 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdown(null);
-                              handleOpenDomainModal('delete', dom);
-                            }}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2 }}
-                            title="Delete Domain"
-                          >
-                            <FiTrash2 size={13} />
-                          </button>
-                        </div>
-                      ) : (
-                        <FiCheck size={14} color="#10b981" />
-                      )}
-                    </div>
-                  ))}
-                  <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 4, paddingTop: 4 }}>
+                <div className="um-popover-menu um-domains-popover" onClick={(e) => e.stopPropagation()}>
+                  <div className="um-domains-header">
+                    <span className="um-domains-header-title">Allowed Domains</span>
                     <button
                       type="button"
-                      className="um-popover-item"
-                      style={{ color: '#0284c7', fontWeight: 600 }}
+                      className="um-domains-close-btn"
+                      onClick={() => setOpenDropdown(null)}
+                      aria-label="Close"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </div>
+                  <div className="um-domains-list">
+                    {allowedDomains.length === 0 ? (
+                      <div className="um-domains-empty">No allowed domains configured</div>
+                    ) : (
+                      allowedDomains.map((dom) => (
+                        <div
+                          key={dom}
+                          className="um-domain-row"
+                        >
+                          <span className="um-domain-name">{dom}</span>
+                          <div className="um-domain-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdown(null);
+                                handleOpenDomainModal('edit', dom);
+                              }}
+                              className="um-domain-btn edit"
+                              title="Edit Domain"
+                              aria-label="Edit Domain"
+                            >
+                              <FiEdit3 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdown(null);
+                                handleOpenDomainModal('delete', dom);
+                              }}
+                              className="um-domain-btn delete"
+                              title="Delete Domain"
+                              aria-label="Delete Domain"
+                            >
+                              <FiTrash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="um-domains-footer">
+                    <button
+                      type="button"
+                      className="um-popover-item um-btn-add-domain"
                       onClick={() => {
                         setOpenDropdown(null);
                         handleOpenDomainModal('add', '');
@@ -897,20 +931,32 @@ export default function UserManagement() {
             </div>
 
             {/* Account Security Dropdown (Matching Screenshot 1) */}
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
-                className="um-dropdown-trigger"
+                className={`um-dropdown-trigger ${openDropdown === 'security' ? 'active' : ''}`}
                 onClick={() => setOpenDropdown(openDropdown === 'security' ? null : 'security')}
               >
-                Account Security <FiChevronDown size={14} />
+                Account Security <FiChevronDown size={14} className={openDropdown === 'security' ? 'rotate' : ''} />
               </button>
 
               {openDropdown === 'security' && (
                 <div className="um-security-popover" onClick={(e) => e.stopPropagation()}>
+                  <div className="um-popover-modal-header">
+                    <h3 className="um-popover-modal-title">Account Security</h3>
+                    <button
+                      type="button"
+                      className="um-popover-modal-close"
+                      onClick={() => setOpenDropdown(null)}
+                      aria-label="Close"
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
+
                   {/* Password Settings */}
-                  <div>
-                    <h3 className="um-popover-heading">Password Settings</h3>
+                  <div className="um-security-section">
+                    <h4 className="um-popover-heading">Password Settings</h4>
 
                     <label className="um-toggle-row">
                       <span className="um-switch">
@@ -944,10 +990,10 @@ export default function UserManagement() {
                   </div>
 
                   {/* Enhanced Security (using OTP for login) settings */}
-                  <div>
-                    <h3 className="um-popover-heading">
+                  <div className="um-security-section">
+                    <h4 className="um-popover-heading">
                       Enhanced Security (using OTP for login) settings
-                    </h3>
+                    </h4>
                     <p className="um-popover-subtext">
                       OTP security will shield your account from hackers
                     </p>
@@ -972,18 +1018,28 @@ export default function UserManagement() {
             </div>
 
             {/* Time Restrictions Dropdown (Matching Screenshot 2) */}
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
-                className="um-dropdown-trigger"
+                className={`um-dropdown-trigger ${openDropdown === 'time' ? 'active' : ''}`}
                 onClick={() => setOpenDropdown(openDropdown === 'time' ? null : 'time')}
               >
-                Time Restrictions <FiChevronDown size={14} />
+                Time Restrictions <FiChevronDown size={14} className={openDropdown === 'time' ? 'rotate' : ''} />
               </button>
 
               {openDropdown === 'time' && (
                 <div className="um-time-popover" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="um-popover-heading">Time Restrictions</h3>
+                  <div className="um-popover-modal-header">
+                    <h3 className="um-popover-modal-title">Time Restrictions</h3>
+                    <button
+                      type="button"
+                      className="um-popover-modal-close"
+                      onClick={() => setOpenDropdown(null)}
+                      aria-label="Close"
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
 
                   {/* Block access for RECRUITER on (MSQ Multi-select) */}
                   <div className="um-restriction-field">
@@ -1210,7 +1266,7 @@ export default function UserManagement() {
                 </th>
 
                 <th className="um-th" style={{ minWidth: 260 }}>
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <div className="um-dropdown-wrapper" style={{ position: 'relative', display: 'inline-block' }}>
                     <button
                       type="button"
                       style={{
