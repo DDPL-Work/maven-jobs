@@ -360,8 +360,8 @@ export default function EmployerHeader({
     }
     // If on sidebar/settings pages, do not point out home
     if (
-      pathname.includes('/manage-users') ||
-      pathname.includes('/manage-quota') ||
+      pathname.includes('/employer/settings/users') ||
+      pathname.includes('/employer/settings/quota') ||
       pathname.includes('/company-profile') ||
       pathname.includes('/subscriptions')
     ) {
@@ -935,7 +935,7 @@ export default function EmployerHeader({
                             <button
                               onClick={() => {
                                 setShowProfileSidebar(false);
-                                navigate("/manage-users");
+                                navigate("/employer/settings/users");
                               }}
                               className="ep-sidebar-subbtn"
                               style={{
@@ -957,7 +957,7 @@ export default function EmployerHeader({
                             <button
                               onClick={() => {
                                 setShowProfileSidebar(false);
-                                navigate("/manage-quota");
+                                navigate("/employer/settings/quota");
                               }}
                               className="ep-sidebar-subbtn"
                               style={{
@@ -1844,20 +1844,20 @@ export default function EmployerHeader({
                       <button
                         type="button"
                         onClick={() => {
-                          navigate("/manage-users");
+                          navigate("/employer/settings/users");
                           setMobileMenuOpen(false);
                         }}
-                        className={`ep-mob-subbtn ${location.pathname.includes("manage-users") ? "active" : ""}`}
+                        className={`ep-mob-subbtn ${location.pathname.includes("employer/settings/users") ? "active" : ""}`}
                       >
                         Manage Users
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          navigate("/manage-quota");
+                          navigate("/employer/settings/quota");
                           setMobileMenuOpen(false);
                         }}
-                        className={`ep-mob-subbtn ${location.pathname.includes("manage-quota") ? "active" : ""}`}
+                        className={`ep-mob-subbtn ${location.pathname.includes("employer/settings/quota") ? "active" : ""}`}
                       >
                         Manage Quota
                       </button>
@@ -1878,7 +1878,35 @@ export default function EmployerHeader({
             </div>
 
             {/* 9. Learning Center */}
-            <button
+            <Link
+                        to="/employers/learning-center"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setShowProfileSidebar(false)}
+                        className="ep-sidebar-btn"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: 10,
+                          border: "none",
+                          background: "transparent",
+                          color: "#334155",
+                          fontSize: 14.5,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: "all 0.14s",
+                          textDecoration: "none"
+                        }}
+                      >
+                        <FiBookOpen size={18} color="#64748b" />
+                        <span>Learning Center</span>
+                      </Link>
+
+            {/* <button
               type="button"
               onClick={() => {
                 navigate("/employers/learning-center");
@@ -1888,7 +1916,7 @@ export default function EmployerHeader({
             >
               <FiBookOpen size={18} />
               <span>Learning Center</span>
-            </button>
+            </button> */}
 
             {/* 10. Feedback */}
             <button
@@ -2085,8 +2113,8 @@ export default function EmployerHeader({
         <style>{`
           .pd-notif-overlay { position: fixed; inset: 0; background: rgba(0, 35, 102, 0.35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 100000; opacity: 0; visibility: hidden; transition: all 0.3s; }
           .pd-notif-overlay.show { opacity: 1; visibility: visible; }
-          .pd-notif-sidebar { position: fixed; top: 0; left: -400px; width: 400px; max-width: 90vw; height: 100vh; background: white; z-index: 100001; box-shadow: 12px 0 40px rgba(0, 35, 102, 0.12); display: flex; flex-direction: column; transition: left 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
-          .pd-notif-sidebar.show { left: 0; }
+          .pd-notif-sidebar { position: fixed; top: 0; right: -400px; left: auto !important; width: 400px; max-width: 90vw; height: 100vh; background: white; z-index: 100001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.12); display: flex; flex-direction: column; transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+          .pd-notif-sidebar.show { right: 0 !important; left: auto !important; }
           .pd-notif-head { padding: 20px 22px; border-bottom: 1px solid ${C.s200}; display: flex; align-items: center; justify-content: space-between; }
           .pd-notif-head h3 { font-family: ${C.fd}; font-size: 18px; font-weight: 800; color: ${C.navy}; margin:0;}
           .pd-notif-close { background: ${C.s100}; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: ${C.s500}; cursor: pointer; transition: all 0.2s; }

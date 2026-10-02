@@ -82,14 +82,22 @@ async function esSearchCandidates(req, res) {
     returnship, womenHiring, campusHiring, freshers,
     minAge, maxAge, languages, workPermit, passport, visa,
     openToRemote, portfolio, github, linkedIn,
-    page, limit, sort, saveSearch, searchName,
+    page, limit, sort, activeIn, saveSearch, searchName,
+    uniqueId, uresid, candidateId, simCvSource,
   } = req.query;
+
+  const simTargetId = uniqueId || uresid || candidateId;
+  if (simTargetId && (simCvSource || uniqueId || uresid)) {
+    const candidateController = require("./candidate.controller");
+    req.params = { ...req.params, id: simTargetId };
+    return candidateController.getSimilarCandidates(req, res, next);
+  }
 
   const currentPage = Math.max(1, toInt(page, SEARCH_DEFAULTS.page));
   const currentLimit = Math.min(MAX_LIMIT, Math.max(1, toInt(limit, SEARCH_DEFAULTS.limit)));
 
   const searchStartTime = Date.now();
-  console.log(`[ES:CandidateSearch] 🔍 Hit "/resdex/search" — keyword="${keyword || ''}" skills="${skills || ''}" location="${currentCity || ''}" expMin=${minExperience || 0} expMax=${maxExperience || 0} page=${currentPage} limit=${currentLimit}`);
+  console.log(`[ES:CandidateSearch] 🔍 Hit "/resdex/search" — keyword="${keyword || ''}" skills="${skills || ''}" location="${currentCity || ''}" expMin=${minExperience || 0} expMax=${maxExperience || 0} page=${currentPage} limit=${currentLimit} activeIn=${activeIn || ''} sort=${sort || ''}`);
 
   const esResult = await esService.searchCandidatesEs({
     keyword, skills, booleanQuery, currentCompany, previousCompany,
@@ -106,7 +114,7 @@ async function esSearchCandidates(req, res) {
     returnship, womenHiring, campusHiring, freshers,
     minAge, maxAge, languages, workPermit, passport, visa,
     openToRemote, portfolio, github, linkedIn,
-    page: currentPage, limit: currentLimit, sort,
+    page: currentPage, limit: currentLimit, sort, activeIn,
   });
 
   const { candidates: esHits, total, totalPages } = esResult;

@@ -818,7 +818,7 @@ export default function ProfileDashboard() {
 
   const startCandidateCall = async (mode) => {
     if (!CALLS_ENABLED) {
-      alert("Calls are disabled. Chat-only mode is active.");
+      setToastNotification({ color: '#f59e0b', title: 'Calls Disabled', desc: 'Chat-only mode is currently active. Calls are unavailable.' });
       return;
     }
     if (!activeCandidateThread?.id) return;
@@ -859,13 +859,13 @@ export default function ProfileDashboard() {
     } catch (error) {
       setCandidateCallStatus("failed");
       setCandidateCallModal(false);
-      alert(error?.message || "Unable to start the call");
+      setToastNotification({ color: '#ef4444', title: 'Call Failed', desc: error?.message || 'Unable to start the call.' });
     }
   };
 
   const acceptCandidateCall = async () => {
     if (!CALLS_ENABLED) {
-      alert("Calls are disabled. Chat-only mode is active.");
+      setToastNotification({ color: '#f59e0b', title: 'Calls Disabled', desc: 'Chat-only mode is currently active. Calls are unavailable.' });
       return;
     }
     const callType =
@@ -899,7 +899,7 @@ export default function ProfileDashboard() {
         },
       );
     } catch (error) {
-      alert(error?.message || "Unable to accept the call");
+      setToastNotification({ color: '#ef4444', title: 'Call Failed', desc: error?.message || 'Unable to accept the call.' });
     }
   };
 
@@ -1202,7 +1202,7 @@ export default function ProfileDashboard() {
               className="pd-btn-black"
               onClick={async () => {
                 if (!user?.resume?.url) {
-                  alert("No resume uploaded yet.");
+                  setToastNotification({ color: '#f59e0b', title: 'No Resume', desc: 'No resume has been uploaded yet. Please upload your resume first.' });
                   return;
                 }
 

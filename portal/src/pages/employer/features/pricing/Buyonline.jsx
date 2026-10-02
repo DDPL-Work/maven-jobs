@@ -300,7 +300,7 @@ export default function Buyonline() {
   const handlePremiumUpgrade = async () => {
     setPaymentError("");
     setPaymentSuccess("");
-    if (!user) { alert("Please log in to upgrade."); return; }
+    if (!user) { setPaymentError("Please log in to upgrade."); return; }
 
     try {
       setPaymentLoading(true);
@@ -329,7 +329,7 @@ export default function Buyonline() {
   const handleJobPostPayment = async (plan) => {
     setPaymentError("");
     setPaymentSuccess("");
-    if (!user) { alert("Please log in to continue."); return; }
+    if (!user) { setPaymentError("Please log in to continue."); return; }
 
     const priceNum = parseInt(plan.price.replace(/[^\d]/g, ""));
     if (!priceNum) { setActiveModalPlan(null); return; }

@@ -109,6 +109,7 @@ const TABS = [
   { id: "search-report", label: "Search report" },
   { id: "user-login", label: "User Login" },
   { id: "contacted-candidate-mis", label: "Contacted Candidate MIS" },
+  { id: "cv-downloads-report", label: "CV Downloads Report" },
   { id: "comments-reports", label: "Comments Reports" },
   { id: "call-report", label: "Call Report" },
 ];
@@ -270,6 +271,7 @@ export default function ResdexReport() {
     "search-report": "disabled",
     "user-login": "disabled",
     "contacted-candidate-mis": "disabled",
+    "cv-downloads-report": "disabled",
     "comments-reports": "disabled",
     "call-report": "disabled",
   });

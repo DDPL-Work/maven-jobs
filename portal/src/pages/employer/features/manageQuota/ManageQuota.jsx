@@ -498,7 +498,7 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Total (Editable only in weekly & monthly) */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label="Total" style={{ textAlign: 'right' }}>
                       {allocationPolicy !== 'full' && editDrafts.cvAccess !== null ? (
                         <div className="mq-inline-edit-box">
                           <input
@@ -538,12 +538,12 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Used */}
-                    <td className="mq-td" style={{ textAlign: 'right', color: '#64748b' }}>
+                    <td className="mq-td" data-label="Used" style={{ textAlign: 'right', color: '#64748b' }}>
                       <span className="mq-num-used">{currentCvUsed.toLocaleString()}</span>
                     </td>
 
                     {/* Balance / Remaining */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label={allocationPolicy === 'full' ? 'Remaining' : 'Balance'} style={{ textAlign: 'right' }}>
                       <span className="mq-num-balance">{cvBalance.toLocaleString()}</span>
                     </td>
                   </tr>
@@ -567,7 +567,7 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Total (Editable only in weekly & monthly) */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label="Total" style={{ textAlign: 'right' }}>
                       {allocationPolicy !== 'full' && editDrafts.nvite !== null ? (
                         <div className="mq-inline-edit-box">
                           <input
@@ -607,12 +607,12 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Used */}
-                    <td className="mq-td" style={{ textAlign: 'right', color: '#64748b' }}>
+                    <td className="mq-td" data-label="Used" style={{ textAlign: 'right', color: '#64748b' }}>
                       <span className="mq-num-used">{currentNviteUsed.toLocaleString()}</span>
                     </td>
 
                     {/* Balance / Remaining */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label={allocationPolicy === 'full' ? 'Remaining' : 'Balance'} style={{ textAlign: 'right' }}>
                       <span className="mq-num-balance">{nviteBalance.toLocaleString()}</span>
                     </td>
                   </tr>

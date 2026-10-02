@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useToast } from "../../../../context/ToastContext";
 import { Link } from "react-router-dom";
 import {
   FiZap,
@@ -235,6 +236,7 @@ export default function BlogAIRex() {
   const [isTocOpen, setIsTocOpen] = useState(false);
   const printRef = useRef(null);
   const statsScrollRef = useRef(null);
+  const { showToast: showBlogToast } = useToast();
 
   // Initialize scroll position for infinite carousel
   useEffect(() => {
@@ -884,9 +886,9 @@ export default function BlogAIRex() {
                       console.log("Share API error/abort:", err);
                       try {
                         await navigator.clipboard.writeText(window.location.href);
-                        alert("Link copied to clipboard!");
+                        showBlogToast('Link copied to clipboard!', 'success');
                       } catch (clipErr) {
-                        alert("Share failed and clipboard access denied.");
+                        showBlogToast('Share failed and clipboard access denied.', 'error');
                       }
                     }
                   }

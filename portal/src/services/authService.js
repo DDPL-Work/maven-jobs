@@ -785,9 +785,10 @@ const authService = {
       throw error.response?.data || { message: 'Failed to fetch candidate profile' };
     }
   },
-  getSimilarCandidates: async (id, searchText = '') => {
+  getSimilarCandidates: async (id, options = {}) => {
     try {
-      const response = await api.get(`/candidate/${id}/similar`, { params: { searchText } });
+      const params = typeof options === 'string' ? { searchText: options } : (options || {});
+      const response = await api.get(`/candidate/${id}/similar`, { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch similar candidates' };
@@ -1184,14 +1185,6 @@ const authService = {
     }
   },
 
-  getSimilarCandidates: async (candidateId) => {
-    try {
-      const response = await api.get(`/candidate/${candidateId}/similar`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch similar candidates' };
-    }
-  },
 
   getCompanyUsers: async () => {
     try {

@@ -739,3 +739,64 @@
   margin-top: 16px;
   font-style: italic;
 }
+
+/* Responsive Table for Mobile */
+@media (max-width: 640px) {
+  .mq-table-wrapper {
+    border: none;
+    background: transparent;
+  }
+  .mq-table, .mq-table tbody, .mq-table tr, .mq-table td, .mq-table th {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .mq-table thead {
+    display: none;
+  }
+  .mq-tr {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .mq-table .mq-td {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: left !important;
+  }
+  .mq-table .mq-td:last-child {
+    border-bottom: none;
+  }
+  .mq-table .mq-td::before {
+    content: attr(data-label);
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    text-align: left;
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+  .mq-table .mq-td.font-medium {
+    display: block;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+  .mq-table .mq-td.font-medium::before {
+    display: none;
+  }
+  .mq-metric-title-cell {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+

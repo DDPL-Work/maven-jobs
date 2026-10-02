@@ -416,6 +416,124 @@ Return ONLY valid JSON with:
     });
   }
 
+  async findExactSimilarCandidatesWithAI(baseProfile, candidatesPool, { searchText } = {}) {
+    if (!candidatesPool || candidatesPool.length === 0) {
+      return [];
+    }
+
+    const baseId = String(baseProfile._id || baseProfile.id || "");
+    const baseTitle = baseProfile.currentTitle || baseProfile.headline || baseProfile.designation || "Professional";
+    const baseSkills = (Array.isArray(baseProfile.skills) ? baseProfile.skills : []).slice(0, 15);
+    const baseExp = baseProfile.totalExperience || "N/A";
+    const baseCity = baseProfile.currentCity || "N/A";
+
+    // Hash of candidate pool IDs for reliable caching
+    const poolSignature = candidatesPool.slice(0, 25).map((c) => String(c._id)).join(",");
+    const cacheKey = this.generateCacheKey("exactSimilarAI", {
+      baseId,
+      baseTitle,
+      baseSkills,
+      poolSignature,
+      searchText: searchText || "",
+    });
+
+    const cached = this.getCached(cacheKey);
+    if (cached) return cached;
+
+    return this.deduplicate(cacheKey, async () => {
+      return this.enqueue(async () => {
+        try {
+          const candidatesSummary = candidatesPool.slice(0, 25).map((c) => ({
+            id: String(c._id),
+            title: c.currentTitle || c.headline || c.designation || "N/A",
+            skills: (Array.isArray(c.skills) ? c.skills : []).slice(0, 8),
+            experience: c.totalExperience || "0",
+            city: c.currentCity || "",
+          }));
+
+          const prompt = `You are an expert AI recruiter. Evaluate similarity between a TARGET CANDIDATE and a POOL of candidates.
+Identify candidates who are genuinely SIMILAR in job function, skill domain, tech stack, and role level.
+
+TARGET CANDIDATE:
+- Role/Title: ${baseTitle}
+- Skills: ${baseSkills.join(", ") || "N/A"}
+- Experience: ${baseExp}
+- Location: ${baseCity}
+${searchText ? `- Search Focus Keyword: ${searchText}` : ""}
+
+CANDIDATES POOL:
+${JSON.stringify(candidatesSummary, null, 2)}
+
+Instructions:
+1. Compare each candidate to the TARGET CANDIDATE.
+2. Assign a similarityScore from 0 to 100 based on functional similarity.
+   - 80-100: Very high similarity (same exact role / core technologies)
+   - 60-79: Moderate similarity (adjacent role / overlapping skillset)
+   - Below 50: Low or completely unrelated (different profession, e.g. recruiter vs developer)
+3. Return ONLY a valid JSON array of objects for candidates with similarityScore >= 50, sorted descending by similarityScore:
+[
+  {
+    "id": "candidate_id",
+    "similarityScore": 92,
+    "matchingSkills": ["skill1", "skill2"],
+    "matchingReason": "Brief 1-sentence reason why this candidate is similar"
+  }
+]`;
+
+          const model = process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
+          const response = await this.executeWithTimeout(
+            OpenAIService.createChatCompletion({
+              model,
+              systemPrompt: "You are a precise AI recruiter matching candidate profiles. Return only valid JSON array.",
+              userPrompt: prompt,
+              maxOutputTokens: 2500,
+            }),
+            30000 // 30s timeout
+          );
+
+          const msg = response?.output?.find((o) => o.type === "message");
+          const rawText = msg?.content?.[0]?.text || response?.output_text || "";
+          const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*$/gm, "").trim();
+          const parsed = JSON.parse(cleaned);
+
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.setCache(cacheKey, parsed);
+            return parsed;
+          }
+        } catch (err) {
+          console.warn("[AIService:findExactSimilarCandidatesWithAI] AI similarity error, using fallback:", err.message);
+        }
+
+        // Heuristic fallback if AI call fails
+        const fallbackResults = candidatesPool.map((c) => {
+          let score = 50;
+          const cSkills = (c.skills || []).map((s) => s.toLowerCase());
+          const matching = [];
+          for (const s of baseSkills) {
+            if (cSkills.includes(s.toLowerCase())) {
+              score += 10;
+              matching.push(s);
+            }
+          }
+          const cTitle = (c.currentTitle || c.headline || "").toLowerCase();
+          if (baseTitle && cTitle && (cTitle.includes(baseTitle.toLowerCase()) || baseTitle.toLowerCase().includes(cTitle))) {
+            score += 15;
+          }
+          return {
+            id: String(c._id),
+            similarityScore: Math.min(99, score),
+            matchingSkills: matching,
+            matchingReason: matching.length > 0 ? `Matches on ${matching.slice(0, 3).join(", ")}` : "Related profile",
+          };
+        }).filter((item) => item.similarityScore >= 50);
+
+        fallbackResults.sort((a, b) => b.similarityScore - a.similarityScore);
+        this.setCache(cacheKey, fallbackResults);
+        return fallbackResults;
+      });
+    });
+  }
+
   clearCache() {
     this.cache.clear();
     this.pendingRequests.clear();

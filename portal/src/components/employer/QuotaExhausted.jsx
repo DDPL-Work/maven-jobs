@@ -69,7 +69,7 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                         </p>
 
                         <button 
-                            onClick={() => navigate('/manage-quota')}
+                            onClick={() => navigate('/employer/settings/quota')}
                             style={{
                                 padding: '12px 32px',
                                 background: '#2563EB',

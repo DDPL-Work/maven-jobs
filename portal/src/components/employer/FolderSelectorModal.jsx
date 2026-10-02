@@ -4,8 +4,15 @@ import { useFolders, useCreateFolder, useAddCandidateToFolder } from '../../hook
 
 const KEY = 'fsm-sel-spin';
 
-export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
-  const [activeTab, setActiveTab] = useState('REQUIREMENT');
+export default function FolderSelectorModal({ candidateId, candidateIds, initialTab = 'REQUIREMENT', onClose, onAdded }) {
+  const [activeTab, setActiveTab] = useState(initialTab || 'REQUIREMENT');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
   const { data: folders = [], isLoading, isError, error: fetchError } = useFolders({ limit: 100, folderType: activeTab });
   const createFolder = useCreateFolder();
   const addCandidate = useAddCandidateToFolder();
@@ -34,7 +41,13 @@ export default function FolderSelectorModal({ candidateId, onClose, onAdded }) {
     setErrorMsg('');
     setAddingTo(folderId);
     try {
-      await addCandidate.mutateAsync({ folderId, candidateId });
+      const targetIds = candidateIds?.length ? candidateIds : (candidateId ? [candidateId] : []);
+      if (targetIds.length === 0) {
+        throw new Error('No candidate specified');
+      }
+      for (const id of targetIds) {
+        await addCandidate.mutateAsync({ folderId, candidateId: id });
+      }
       setSuccessFolderId(folderId);
       onAdded?.();
       setTimeout(() => onClose?.(), 600);

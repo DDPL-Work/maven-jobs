@@ -74,6 +74,9 @@ import JobResponsesDetail from "./pages/employer/features/jobs/JobResponsesDetai
 import CandidateFullProfile from "./pages/employer/features/jobs/CandidateFullProfile";
 import ProductSettings from "./pages/employer/features/productSettings/ProductSettings";
 import LearningCenter from "./pages/employer/features/learning/LearningCenter";
+import AiRexGuide from "./pages/employer/features/learning/guides/AiRexGuide";
+import JobPostingGuide from "./pages/employer/features/learning/guides/JobPostingGuide";
+import ResdexGuide from "./pages/employer/features/learning/guides/ResdexGuide";
 import PublicProfileByShareId from "./pages/candidates/features/profile/PublicProfileByShareId";
 import PublicCandidateProfile from "./pages/candidates/features/profile/PublicCandidateProfile";
 import CandidateSitemap from "./pages/candidates/features/landing/CandidateSitemap";
@@ -86,6 +89,7 @@ import Premium3D from "./components/Premium3D";
 import { AuthProvider, useAuth } from "./AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
 import authService from "./services/authService";
+import { ToastProvider } from "./context/ToastContext";
 import TextResume from "./pages/candidates/features/services/TextResume";
 import VisualResume from "./pages/candidates/features/services/VisualResume";
 import ResumeCritique from "./pages/candidates/features/services/ResumeCritique";
@@ -248,13 +252,13 @@ function AppContent() {
         <Route path="/manage-folders/:tab" element={<ProtectedEmployerRoute requiredPermission="resdex"><FolderListPage /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/folders/:folderId" element={<ProtectedEmployerRoute><SingleFolderPage /></ProtectedEmployerRoute>} />
         <Route path="/resume-search/:slug?" element={<ProtectedEmployerRoute requiredPermission="resdex"><SearchResume /></ProtectedEmployerRoute>} />
+        <Route path="/simcv" element={<ProtectedEmployerRoute requiredPermission="resdex"><SearchResume /></ProtectedEmployerRoute>} />
         <Route path="/resdex-requirements" element={<ProtectedEmployerRoute><ResdexRequirements /></ProtectedEmployerRoute>} />
         <Route path="/resume-search/search-results" element={<ProtectedEmployerRoute requiredPermission="resdex"><SearchResults /></ProtectedEmployerRoute>} />
         <Route path="/manage-search" element={<ProtectedEmployerRoute requiredPermission="resdex"><ManageSearch /></ProtectedEmployerRoute>} />
-        <Route path="/manage-users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />
-        <Route path="/employer-dashboard/manage-users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />
-        <Route path="/manage-quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
-        <Route path="/employer-dashboard/manage-quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
+        <Route path="/employer/settings/users" element={<ProtectedEmployerRoute><UserManagement /></ProtectedEmployerRoute>} />
+        <Route path="/employer/settings/quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
+        <Route path="/employer-dashboard/settings/quota" element={<ProtectedEmployerRoute><ManageQuota /></ProtectedEmployerRoute>} />
         <Route path="/product-settings" element={<ProtectedEmployerRoute><ProductSettings /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard/product-settings" element={<ProtectedEmployerRoute><ProductSettings /></ProtectedEmployerRoute>} />
         <Route path="/employer/jobs-responses" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><ManageJobsResponses /></ProtectedEmployerRoute>} />
@@ -266,6 +270,15 @@ function AppContent() {
         <Route path="/report/resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
         <Route path="/reports-resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
         <Route path="/employers/learning-center" element={<LearningCenter />} />
+        <Route path="/employers/learning-center/guides/ai-rex" element={<AiRexGuide />} />
+        <Route path="/employers/learning-center/guides/job-posting" element={<JobPostingGuide />} />
+        <Route path="/employers/learning-center/guides/resdex" element={<ResdexGuide />} />
+        <Route path="/recruit/learning-center/guides/ai-rex" element={<AiRexGuide />} />
+        <Route path="/recruit/learning-center/guides/job-posting" element={<JobPostingGuide />} />
+        <Route path="/recruit/learning-center/guides/resdex" element={<ResdexGuide />} />
+        <Route path="/learning-center/guides/ai-rex" element={<AiRexGuide />} />
+        <Route path="/learning-center/guides/job-posting" element={<JobPostingGuide />} />
+        <Route path="/learning-center/guides/resdex" element={<ResdexGuide />} />
 
         {/* --- Catch-All Route --- */}
         <Route path="*" element={<NotFoundPage />} />
@@ -291,7 +304,9 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </AuthProvider>
     </Router>
   );

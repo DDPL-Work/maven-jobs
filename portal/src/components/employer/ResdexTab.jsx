@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiSearch,
@@ -129,6 +129,24 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
   const [activityError, setActivityError] = useState(false);
   const [copiedSearchId, setCopiedSearchId] = useState(null);
   const [activeQuotaCard, setActiveQuotaCard] = useState(0);
+  const [isQuotaScrollable, setIsQuotaScrollable] = useState(false);
+  const quotaScrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = quotaScrollRef.current;
+    if (!el) return;
+    const updateScrollable = () => {
+      setIsQuotaScrollable(el.scrollWidth > el.clientWidth + 5);
+    };
+    updateScrollable();
+    const ro = new ResizeObserver(updateScrollable);
+    ro.observe(el);
+    window.addEventListener("resize", updateScrollable);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateScrollable);
+    };
+  }, [quotaUsage]);
   const [modal, setModal] = useState({
     open: false,
     type: null,
@@ -629,6 +647,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
             >
               <div
                 id="client-quota-scroll"
+                ref={quotaScrollRef}
                 onScroll={(e) => {
                   const scrollLeft = e.target.scrollLeft;
                   const el = e.target;
@@ -650,7 +669,18 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                   WebkitOverflowScrolling: "touch",
                 }}
               >
-                <style>{`#client-quota-scroll::-webkit-scrollbar { display: none; }`}</style>
+                <style>{`
+                  #client-quota-scroll::-webkit-scrollbar { display: none; }
+                  @media (min-width: 1024px) {
+                    .quota-nav-controls {
+                      display: none !important;
+                    }
+                    .quota-card-slide {
+                      flex: 1 1 0 !important;
+                      min-width: 0 !important;
+                    }
+                  }
+                `}</style>
                 {[
                   {
                     type: "RESDEX",
@@ -807,7 +837,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
 
                       <div
                         onClick={() =>
-                          navigate("/employer-dashboard/manage-users")
+                          navigate("/employer/settings/users")
                         }
                         style={{
                           background: "#f0f9ff",
@@ -830,81 +860,84 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
                 })}
               </div>
 
-              {/* Navigation controls below cards */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 16,
-                  marginTop: 12,
-                }}
-              >
-                <button
-                  className="ep-mob-nav-btn"
-                  onClick={() => {
-                    const el = document.getElementById("client-quota-scroll");
-                    if (el) {
-                      const cardWidth = (el.firstElementChild?.offsetWidth || 0) + 16;
-                      el.scrollBy({ left: -cardWidth, behavior: "smooth" });
-                    }
-                  }}
+              {/* Navigation controls below cards (hidden on desktop view when cards are not scrollable) */}
+              {isQuotaScrollable && (
+                <div
+                  className="quota-nav-controls"
                   style={{
-                    background: "#fff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "50%",
-                    width: 42,
-                    height: 42,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                    cursor: "pointer",
+                    gap: 16,
+                    marginTop: 12,
                   }}
                 >
-                  <FiChevronLeft size={22} color="#475569" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = quotaScrollRef.current || document.getElementById("client-quota-scroll");
+                      if (el) {
+                        const cardWidth = (el.firstElementChild?.offsetWidth || 0) + 16;
+                        el.scrollBy({ left: -cardWidth, behavior: "smooth" });
+                      }
+                    }}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "50%",
+                      width: 42,
+                      height: 42,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FiChevronLeft size={22} color="#475569" />
+                  </button>
 
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[0, 1, 2].map((idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: activeQuotaCard === idx ? "#1E5EFF" : "#cbd5e1",
-                        transition: "background 0.3s ease",
-                      }}
-                    />
-                  ))}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[0, 1, 2].map((idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: activeQuotaCard === idx ? "#1E5EFF" : "#cbd5e1",
+                          transition: "background 0.3s ease",
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = quotaScrollRef.current || document.getElementById("client-quota-scroll");
+                      if (el) {
+                        const cardWidth = (el.firstElementChild?.offsetWidth || 0) + 16;
+                        el.scrollBy({ left: cardWidth, behavior: "smooth" });
+                      }
+                    }}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "50%",
+                      width: 42,
+                      height: 42,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FiChevronRight size={22} color="#475569" />
+                  </button>
                 </div>
-
-                <button
-                  className="ep-mob-nav-btn"
-                  onClick={() => {
-                    const el = document.getElementById("client-quota-scroll");
-                    if (el) {
-                      const cardWidth = (el.firstElementChild?.offsetWidth || 0) + 16;
-                      el.scrollBy({ left: cardWidth, behavior: "smooth" });
-                    }
-                  }}
-                  style={{
-                    background: "#fff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "50%",
-                    width: 42,
-                    height: 42,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                    cursor: "pointer",
-                  }}
-                >
-                  <FiChevronRight size={22} color="#475569" />
-                </button>
-              </div>
+              )}
             </div>
           )}
         </>
@@ -1051,7 +1084,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
             </tbody>
           </table>
         </div>
-        <div
+        {/* <div
           style={{
             padding: "12px 16px",
             borderTop: "1px solid #f1f5f9",
@@ -1071,7 +1104,7 @@ export default function ResdexTab({ isRecruiter = false, overview = null }) {
           >
             <FiSearch size={14} /> Search Again
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Recruiter Folders & Recently Viewed */}
