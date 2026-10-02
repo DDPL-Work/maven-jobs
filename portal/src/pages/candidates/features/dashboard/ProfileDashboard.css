@@ -1122,7 +1122,171 @@
   background: var(--blue-lt);
 }
 
-/* ─── Side Nav ─── */
+/* ─── Quick Links & Side Nav ─── */
+.pd-quick-links-card {
+  padding: 0;
+  overflow: visible;
+}
+
+.pd-quick-links-desktop {
+  display: block;
+}
+
+.pd-quick-links-desktop .pd-quick-links-title {
+  padding: 16px 20px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.pd-quick-links-desktop-items {
+  padding: 4px 8px 12px;
+}
+
+.pd-quick-links-desktop-items .pd-sidenav-item {
+  font-size: 13px;
+  color: #475569;
+  padding: 9px 14px;
+  text-decoration: none;
+  display: block;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.pd-quick-links-desktop-items .pd-sidenav-item:hover {
+  background: var(--slate-1);
+  color: var(--navy);
+}
+
+.pd-quick-links-mobile {
+  display: none;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .pd-quick-links-desktop {
+    display: none;
+  }
+
+  .pd-quick-links-mobile {
+    display: block;
+  }
+
+  .pd-quick-links-card {
+    padding: 0;
+    margin-bottom: 14px;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid var(--slate-3);
+    box-shadow: 0 1px 3px rgba(10, 22, 40, 0.04);
+  }
+
+  .pd-ql-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 12px;
+    background: #ffffff;
+    transition: background 0.15s ease;
+  }
+
+  .pd-ql-dropdown-trigger:hover,
+  .pd-ql-dropdown-trigger.open {
+    background: #f8fafc;
+  }
+
+  .pd-ql-trigger-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pd-ql-badge {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--blue);
+    background: var(--blue-lt);
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .pd-ql-selected-text {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  .pd-ql-chevron {
+    color: #64748b;
+    transition: transform 0.2s ease;
+  }
+
+  .pd-ql-chevron.open {
+    transform: rotate(180deg);
+    color: var(--blue);
+  }
+
+  .pd-ql-dropdown-menu {
+    border-top: 1px solid var(--slate-3);
+    background: #ffffff;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 6px 8px;
+    animation: pd-drop-anim 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .pd-ql-dropdown-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.12s ease;
+  }
+
+  .pd-ql-dropdown-item:hover,
+  .pd-ql-dropdown-item:active {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .pd-ql-dropdown-item.active {
+    background: var(--blue-lt);
+    color: var(--blue);
+    font-weight: 600;
+  }
+
+  .pd-ql-item-arrow {
+    color: #94a3b8;
+  }
+}
+
+@keyframes pd-drop-anim {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .pd-sidenav-card {
   padding: 8px;
 }
@@ -6274,11 +6438,8 @@
 }
 
 .ps-project-item {
-  display: flex;
-  gap: 14px;
-  padding: 14px 0;
+  padding: 16px 0;
   border-bottom: 1px solid #f1f5f9;
-  align-items: flex-start;
 }
 
 .ps-project-item:first-child {
@@ -6288,6 +6449,13 @@
 .ps-project-item:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+.ps-project-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 8px;
 }
 
 .ps-project-icon {
@@ -6302,7 +6470,7 @@
   flex-shrink: 0;
 }
 
-.ps-project-body {
+.ps-project-info {
   flex: 1;
   min-width: 0;
 }
@@ -6336,11 +6504,15 @@
   text-decoration: underline;
 }
 
+.ps-project-desc-wrap {
+  margin-top: 6px;
+}
+
 .ps-project-desc {
   font-size: 13px;
   color: #475569;
   line-height: 1.6;
-  margin: 6px 0 0;
+  margin: 0;
   white-space: pre-wrap;
 }
 
@@ -6354,19 +6526,19 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .ps-skill-chip-sm {
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
+  padding: 3px 10px;
   border-radius: 100px;
   background: #f1f5f9;
   color: #475569;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .ps-project-media-grid {
@@ -6374,6 +6546,12 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .ps-project-item .ps-project-media-grid {
+    display: none !important;
+  }
 }
 
 .ps-project-media-thumb {
@@ -7200,6 +7378,16 @@
   color: #4338ca;
   font-size: 11.5px;
   font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .ps-exp-summary-wrap {
+    margin: 8px 0 8px 0;
+  }
+
+  .ps-exp-skills {
+    margin: 10px 0 0 0;
+  }
 }
 
 .pd-sidenav-card {

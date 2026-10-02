@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import {
   FiFolder, FiPlus, FiTrash2, FiShare2, FiChevronDown,
   FiSliders, FiCheck, FiX, FiCalendar, FiChevronLeft, FiChevronRight,
-  FiChevronsLeft, FiChevronsRight
+  FiChevronsLeft, FiChevronsRight, FiUsers, FiFileText
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
@@ -18,10 +18,10 @@ import CandidateCard from '../../../../components/employer/CandidateCard';
 import './FolderListPage.css';
 
 const TABS = [
-  { id: 'my-folders', label: 'My folders' },
-  { id: 'shared-with-me', label: 'Folders shared with me' },
-  { id: 'contacted-candidates', label: 'Contacted candidates' },
-  { id: 'cv-shared-with-me', label: 'CV shared with me' },
+  { id: 'my-folders', label: 'My folders', icon: FiFolder },
+  { id: 'shared-with-me', label: 'Folders shared with me', icon: FiShare2 },
+  { id: 'contacted-candidates', label: 'Contacted candidates', icon: FiUsers },
+  { id: 'cv-shared-with-me', label: 'CV shared with me', icon: FiFileText },
 ];
 
 const DATE_FILTERS = [
@@ -32,11 +32,103 @@ const DATE_FILTERS = [
   { id: 'custom', label: 'Custom date range' },
 ];
 
+const FOLDER_SORT_OPTIONS = [
+  { value: 'created', label: 'Created date' },
+  { value: 'recent', label: 'Recently Updated' },
+  { value: 'name', label: 'Alphabetical' },
+  { value: 'candidates', label: 'Candidate count' },
+];
+
+const SHARED_SORT_OPTIONS = [
+  { value: 'created', label: 'Created date' },
+  { value: 'recent', label: 'Recently Updated' },
+  { value: 'name', label: 'Alphabetical' },
+];
+
+const PAGE_SIZE_OPTIONS = [
+  { value: 20, label: '20' },
+  { value: 40, label: '40' },
+  { value: 60, label: '60' },
+  { value: 100, label: '100' },
+];
+
+const CONTACTED_SORT_OPTIONS = [
+  { value: 'Date', label: 'Date' },
+  { value: 'Name', label: 'Name' },
+  { value: 'Count', label: 'Candidate count' },
+];
+
+function FlpCustomSelect({ value, options, onChange, activeDropdown, setActiveDropdown, dropdownId, prefix = '', style = {} }) {
+  const isOpen = activeDropdown === dropdownId;
+  const currentOption = options.find(o => String(o.value) === String(value)) || options[0];
+
+  return (
+    <div className="flp-custom-select-wrapper" style={style}>
+      <button
+        type="button"
+        className={`flp-custom-select-btn ${isOpen ? 'open' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setActiveDropdown(isOpen ? null : dropdownId);
+        }}
+      >
+        <span className="flp-custom-select-text">
+          {prefix && <span className="flp-custom-select-prefix">{prefix} </span>}
+          {currentOption.label}
+        </span>
+        <FiChevronDown size={13} className={`flp-custom-select-chevron ${isOpen ? 'rotate' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="flp-custom-select-menu" onClick={(e) => e.stopPropagation()}>
+          {options.map((opt) => {
+            const isSelected = String(opt.value) === String(value);
+            return (
+              <button
+                key={String(opt.value)}
+                type="button"
+                className={`flp-custom-select-option ${isSelected ? 'active' : ''}`}
+                onClick={() => {
+                  onChange(opt.value);
+                  setActiveDropdown(null);
+                }}
+              >
+                <span>{opt.label}</span>
+                {isSelected && <FiCheck size={13} className="flp-custom-select-check" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FolderListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const { tab: pathTab } = useParams();
+
+  // Custom Dropdown State for Mobile/Tablet
+  const [mobileTabDropdownOpen, setMobileTabDropdownOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const mobileTabDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (mobileTabDropdownRef.current && !mobileTabDropdownRef.current.contains(e.target)) {
+        setMobileTabDropdownOpen(false);
+      }
+      setActiveDropdown(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
 
   // Active Tab determination from path param (/manage-folders/:tab) or query param (?tab=xyz or ?xyz)
   const activeTab = useMemo(() => {
@@ -251,8 +343,10 @@ export default function FolderListPage() {
     }
   };
 
+  const [mobileFilterExpanded, setMobileFilterExpanded] = useState(false);
+
   return (
-    <EmployerLayout>
+    <EmployerLayout containerWidth={1240}>
       <div className="flp-root">
         {/* Toast Notification */}
         {toastMessage && (
@@ -272,10 +366,12 @@ export default function FolderListPage() {
 
           {/* Header row: Manage Folders & Create folder button */}
           <div className="flp-header">
-            <h1 className="flp-title">Manage Folders</h1>
+            <div className="flp-header-left">
+              <h1 className="flp-title">Manage Folders</h1>
+            </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              {/* Top Pagination Controls */}
+            <div className="flp-header-right">
+              {/* Top Pagination Controls - Desktop only */}
               <div className="flp-top-pagination">
                 <span>Show</span>
                 <select
@@ -311,7 +407,8 @@ export default function FolderListPage() {
                 className="flp-create-folder-btn"
                 onClick={() => setShowCreate(true)}
               >
-                Create folder
+                <FiPlus size={16} />
+                <span>Create folder</span>
               </button>
             </div>
           </div>
@@ -322,53 +419,92 @@ export default function FolderListPage() {
                 Left Column: Filters Sidebar (Hidden on Contacted candidates tab)
                ───────────────────────────────────────────────────────────── */}
             {activeTab !== 'contacted-candidates' && (
+<<<<<<< Updated upstream
               <aside className="flp-sidebar">
                 <div className="flp-sidebar-header">
                   <FiSliders size={17} color="#64748b" />
                   <span>Filters</span>
+=======
+              <aside className={`flp-sidebar ${mobileFilterExpanded ? 'flp-sidebar--open' : ''}`}>
+                <div
+                  className="flp-sidebar-header"
+                  onClick={() => setMobileFilterExpanded(p => !p)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setMobileFilterExpanded(p => !p)}
+                >
+                  <div className="flp-sidebar-header-left">
+                    <FiSliders size={16} className="flp-filter-icon" />
+                    <span className="flp-filter-title-text">Date Filter</span>
+                    {isFilterActive && (
+                      <span className="flp-filter-active-badge">1</span>
+                    )}
+                  </div>
+                  <div className="flp-sidebar-header-right">
+                    {isFilterActive && (
+                      <button
+                        type="button"
+                        className="flp-clear-filters-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleClearFilters();
+                        }}
+                        title="Clear all filters"
+                      >
+                        <FiX size={12} />
+                        <span>Clear</span>
+                      </button>
+                    )}
+                    <span className="flp-sidebar-chevron">
+                      <FiChevronDown size={16} style={{ transform: mobileFilterExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                    </span>
+                  </div>
+>>>>>>> Stashed changes
                 </div>
 
-                <div className="flp-filter-section">
-                  <div className="flp-filter-label">Created date</div>
-                  <div className="flp-filter-group">
-                    {DATE_FILTERS.map((f) => (
-                      <label key={f.id} className="flp-radio-label">
-                        <input
-                          type="radio"
-                          name="dateFilter"
-                          value={f.id}
-                          checked={dateFilter === f.id}
-                          onChange={() => setDateFilter(f.id)}
-                        />
-                        <span className="flp-radio-custom" />
-                        <span className="flp-radio-text">{f.label}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* Custom Date Range Inputs */}
-                  {dateFilter === 'custom' && (
-                    <div className="flp-custom-date-inputs">
-                      <div className="flp-date-field">
-                        <span>From:</span>
-                        <input
-                          type="date"
-                          value={customFrom}
-                          onChange={(e) => setCustomFrom(e.target.value)}
-                          className="flp-date-input"
-                        />
-                      </div>
-                      <div className="flp-date-field">
-                        <span>To:</span>
-                        <input
-                          type="date"
-                          value={customTo}
-                          onChange={(e) => setCustomTo(e.target.value)}
-                          className="flp-date-input"
-                        />
-                      </div>
+                <div className="flp-sidebar-body">
+                  <div className="flp-filter-section">
+                    <div className="flp-filter-label">Created date</div>
+                    <div className="flp-filter-group">
+                      {DATE_FILTERS.map((f) => (
+                        <label key={f.id} className="flp-radio-label">
+                          <input
+                            type="radio"
+                            name="dateFilter"
+                            value={f.id}
+                            checked={dateFilter === f.id}
+                            onChange={() => setDateFilter(f.id)}
+                          />
+                          <span className="flp-radio-custom" />
+                          <span className="flp-radio-text">{f.label}</span>
+                        </label>
+                      ))}
                     </div>
-                  )}
+
+                    {/* Custom Date Range Inputs */}
+                    {dateFilter === 'custom' && (
+                      <div className="flp-custom-date-inputs">
+                        <div className="flp-date-field">
+                          <span>From:</span>
+                          <input
+                            type="date"
+                            value={customFrom}
+                            onChange={(e) => setCustomFrom(e.target.value)}
+                            className="flp-date-input"
+                          />
+                        </div>
+                        <div className="flp-date-field">
+                          <span>To:</span>
+                          <input
+                            type="date"
+                            value={customTo}
+                            onChange={(e) => setCustomTo(e.target.value)}
+                            className="flp-date-input"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </aside>
             )}
@@ -377,21 +513,105 @@ export default function FolderListPage() {
                 Right Column: Main Tabs and Folder Contents
                ───────────────────────────────────────────────────────────── */}
             <main className="flp-main-content">
-              {/* Tabs Navigation & Top Pagination */}
-              <div className="flp-tabs-header-row">
-                <div className="flp-tabs-list">
-                  {TABS.map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`flp-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                      onClick={() => handleTabChange(tab.id)}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+              {/* Tabs Navigation (Desktop tabs + Tablet/Mobile Dropdown) */}
+              <div className="flp-tabs-container">
+                {/* Desktop Tabs Strip */}
+                <div className="flp-tabs-header-desktop">
+                  <div className="flp-tabs-list">
+                    {TABS.map((tab) => {
+                      const TabIcon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          className={`flp-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                          onClick={() => handleTabChange(tab.id)}
+                        >
+                          {TabIcon && <TabIcon size={15} style={{ marginRight: 6 }} />}
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
+                {/* Mobile & Tablet Professional Custom Dropdown Selector */}
+                <div className="flp-tabs-header-mobile">
+                  <div className="flp-custom-dropdown-container" ref={mobileTabDropdownRef}>
+                    <button
+                      type="button"
+                      className={`flp-custom-dropdown-trigger ${mobileTabDropdownOpen ? 'open' : ''}`}
+                      onClick={() => setMobileTabDropdownOpen(prev => !prev)}
+                      aria-expanded={mobileTabDropdownOpen}
+                    >
+                      <div className="flp-custom-dropdown-selected">
+                        {(() => {
+                          const currentTab = TABS.find(t => t.id === activeTab) || TABS[0];
+                          const Icon = currentTab.icon;
+                          return (
+                            <>
+                              <div className="flp-custom-dropdown-icon">
+                                {Icon && <Icon size={14} />}
+                              </div>
+                              <span className="flp-custom-dropdown-title">{currentTab.label}</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <div className="flp-custom-dropdown-right">
+                        <span className="flp-custom-dropdown-count-badge">
+                          {activeTab === 'my-folders' && `${filteredFolders.length} Folders`}
+                          {activeTab === 'shared-with-me' && `${sharedFolders.length} Folders`}
+                          {activeTab === 'contacted-candidates' && `${contactedFolders.length} Folders`}
+                          {activeTab === 'cv-shared-with-me' && `${sharedCVs.length} CVs`}
+                        </span>
+                        <FiChevronDown
+                          size={15}
+                          className={`flp-custom-dropdown-chevron ${mobileTabDropdownOpen ? 'rotate' : ''}`}
+                        />
+                      </div>
+                    </button>
+
+                    {mobileTabDropdownOpen && (
+                      <div className="flp-custom-dropdown-menu">
+                        {TABS.map((tab) => {
+                          const Icon = tab.icon;
+                          const isSelected = activeTab === tab.id;
+                          let count = 0;
+                          if (tab.id === 'my-folders') count = filteredFolders.length;
+                          else if (tab.id === 'shared-with-me') count = sharedFolders.length;
+                          else if (tab.id === 'contacted-candidates') count = contactedFolders.length;
+                          else if (tab.id === 'cv-shared-with-me') count = sharedCVs.length;
+
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              className={`flp-custom-dropdown-item ${isSelected ? 'active' : ''}`}
+                              onClick={() => {
+                                handleTabChange(tab.id);
+                                setMobileTabDropdownOpen(false);
+                              }}
+                            >
+                              <div className="flp-custom-item-left">
+                                <div className={`flp-custom-item-icon ${isSelected ? 'active' : ''}`}>
+                                  {Icon && <Icon size={14} />}
+                                </div>
+                                <span className="flp-custom-item-text">{tab.label}</span>
+                              </div>
+                              <div className="flp-custom-item-right">
+                                <span className="flp-custom-item-count">
+                                  {tab.id === 'cv-shared-with-me' ? `${count} CVs` : `${count}`}
+                                </span>
+                                {isSelected && <FiCheck size={14} className="flp-custom-item-check" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* ─────────────────────────────────────────────────────────────
@@ -432,16 +652,14 @@ export default function FolderListPage() {
 
                     <div className="flp-toolbar-right">
                       <span>Sort by:</span>
-                      <select
-                        className="flp-sort-select"
+                      <FlpCustomSelect
                         value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                      >
-                        <option value="created">Created date</option>
-                        <option value="recent">Recently Updated</option>
-                        <option value="name">Alphabetical</option>
-                        <option value="candidates">Candidate count</option>
-                      </select>
+                        options={FOLDER_SORT_OPTIONS}
+                        onChange={setSortBy}
+                        activeDropdown={activeDropdown}
+                        setActiveDropdown={setActiveDropdown}
+                        dropdownId="my-folders-sort"
+                      />
                     </div>
                   </div>
 
@@ -495,16 +713,14 @@ export default function FolderListPage() {
                   {/* Bottom Pagination */}
                   <div className="flp-bottom-pagination">
                     <span>Show</span>
-                    <select
-                      className="flp-page-size-select"
+                    <FlpCustomSelect
                       value={pageSize}
-                      onChange={(e) => setPageSize(Number(e.target.value))}
-                    >
-                      <option value={20}>20</option>
-                      <option value={40}>40</option>
-                      <option value={60}>60</option>
-                      <option value={100}>100</option>
-                    </select>
+                      options={PAGE_SIZE_OPTIONS}
+                      onChange={(val) => setPageSize(Number(val))}
+                      activeDropdown={activeDropdown}
+                      setActiveDropdown={setActiveDropdown}
+                      dropdownId="my-folders-page-size"
+                    />
 
                     <button type="button" className="flp-nav-arrow" disabled title="First page">
                       &laquo;
@@ -534,15 +750,14 @@ export default function FolderListPage() {
                   <div className="flp-actions-toolbar" style={{ justifyContent: 'flex-end' }}>
                     <div className="flp-toolbar-right">
                       <span>Sort by:</span>
-                      <select
-                        className="flp-sort-select"
+                      <FlpCustomSelect
                         value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                      >
-                        <option value="created">Created date</option>
-                        <option value="recent">Recently Updated</option>
-                        <option value="name">Alphabetical</option>
-                      </select>
+                        options={SHARED_SORT_OPTIONS}
+                        onChange={setSortBy}
+                        activeDropdown={activeDropdown}
+                        setActiveDropdown={setActiveDropdown}
+                        dropdownId="shared-sort"
+                      />
                     </div>
                   </div>
 
@@ -649,16 +864,14 @@ export default function FolderListPage() {
                   {/* Bottom Pagination */}
                   <div className="flp-bottom-pagination">
                     <span>Show</span>
-                    <select
-                      className="flp-page-size-select"
+                    <FlpCustomSelect
                       value={pageSize}
-                      onChange={(e) => setPageSize(Number(e.target.value))}
-                    >
-                      <option value={20}>20</option>
-                      <option value={40}>40</option>
-                      <option value={60}>60</option>
-                      <option value={100}>100</option>
-                    </select>
+                      options={PAGE_SIZE_OPTIONS}
+                      onChange={(val) => setPageSize(Number(val))}
+                      activeDropdown={activeDropdown}
+                      setActiveDropdown={setActiveDropdown}
+                      dropdownId="shared-page-size"
+                    />
 
                     <button type="button" className="flp-nav-arrow" disabled title="First page">
                       &laquo;
@@ -684,49 +897,52 @@ export default function FolderListPage() {
                  ───────────────────────────────────────────────────────────── */}
               {activeTab === 'contacted-candidates' && (
                 <div className="flp-tab-panel">
-                  {/* Top Bar Controls per Screenshot 3 */}
+                  {/* Top Bar Controls */}
                   <div className="flp-contacted-bar">
                     <div className="flp-contacted-bar-left">
-                      <span>Folders:</span>
-                      <select
-                        className="flp-contacted-select"
-                        value={pageSize}
-                        onChange={(e) => setPageSize(Number(e.target.value))}
-                      >
-                        <option value={20}>20</option>
-                        <option value={40}>40</option>
-                        <option value={60}>60</option>
-                        <option value={100}>100</option>
-                      </select>
-                      <span>per page</span>
+                      <div className="flp-contacted-control-item">
+                        <span className="flp-control-label">Folders:</span>
+                        <FlpCustomSelect
+                          value={pageSize}
+                          options={PAGE_SIZE_OPTIONS}
+                          onChange={(val) => setPageSize(Number(val))}
+                          activeDropdown={activeDropdown}
+                          setActiveDropdown={setActiveDropdown}
+                          dropdownId="contacted-top-page-size"
+                        />
+                        <span className="flp-control-sublabel">per page</span>
+                      </div>
 
-                      <span style={{ marginLeft: 16 }}>Sort by:</span>
-                      <select
-                        className="flp-contacted-select"
-                        value={contactedSortBy}
-                        onChange={(e) => setContactedSortBy(e.target.value)}
-                      >
-                        <option value="Date">Date</option>
-                        <option value="Name">Name</option>
-                        <option value="Count">Candidate count</option>
-                      </select>
+                      <div className="flp-contacted-control-item">
+                        <span className="flp-control-label">Sort by:</span>
+                        <FlpCustomSelect
+                          value={contactedSortBy}
+                          options={CONTACTED_SORT_OPTIONS}
+                          onChange={setContactedSortBy}
+                          activeDropdown={activeDropdown}
+                          setActiveDropdown={setActiveDropdown}
+                          dropdownId="contacted-top-sort"
+                        />
+                      </div>
                     </div>
 
                     <div className="flp-contacted-bar-right">
-                      <span className="flp-bar-pipe">|</span>
-                      <input
-                        type="text"
-                        className="flp-page-input"
-                        value={goToPage}
-                        onChange={(e) => setGoToPage(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="flp-go-btn"
-                        onClick={() => showToast(`Navigated to page ${goToPage}`)}
-                      >
-                        Go
-                      </button>
+                      <div className="flp-contacted-page-jump">
+                        <span className="flp-control-label">Page:</span>
+                        <input
+                          type="text"
+                          className="flp-page-input"
+                          value={goToPage}
+                          onChange={(e) => setGoToPage(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="flp-go-btn"
+                          onClick={() => showToast(`Navigated to page ${goToPage}`)}
+                        >
+                          Go
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -735,34 +951,35 @@ export default function FolderListPage() {
                     <table className="flp-contacted-table">
                       <thead>
                         <tr>
-                          <th style={{ width: '55%', textAlign: 'left' }}>Folder Name</th>
-                          <th style={{ width: '25%', textAlign: 'left' }}>Candidates Contacted</th>
-                          <th style={{ width: '20%', textAlign: 'left' }}>Last Sent</th>
+                          <th className="flp-col-name">Folder Name</th>
+                          <th className="flp-col-candidates">Candidates Contacted</th>
+                          <th className="flp-col-date">Last Sent</th>
                         </tr>
                       </thead>
                       <tbody>
                         {contactedFolders.length > 0 ? (
                           contactedFolders.map((row) => (
                             <tr key={row._id}>
-                              <td>
+                              <td className="flp-col-name">
                                 <button
                                   type="button"
                                   className="flp-table-link-btn"
                                   onClick={() => navigate(`/employer-dashboard/folders/${row._id}`)}
                                 >
-                                  {row.name}
+                                  <FiFolder size={15} className="flp-table-icon" />
+                                  <span>{row.name}</span>
                                 </button>
                               </td>
-                              <td>
+                              <td className="flp-col-candidates">
                                 <button
                                   type="button"
                                   className="flp-table-count-btn"
                                   onClick={() => navigate(`/employer-dashboard/folders/${row._id}?tab=contacted`)}
                                 >
-                                  {row.contactedCount || 0}
+                                  {row.contactedCount || 0} candidates
                                 </button>
                               </td>
-                              <td className="flp-table-date-cell">
+                              <td className="flp-col-date flp-table-date-cell">
                                 {row.lastActivityAt
                                   ? new Date(row.lastActivityAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                                   : new Date(row.updatedAt || row.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -771,65 +988,65 @@ export default function FolderListPage() {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={3} style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
-                              No contacted candidates folders found.
+                            <td colSpan={3} className="flp-table-empty-cell">
+                              <div className="flp-table-empty-content">
+                                <FiUsers size={32} className="flp-table-empty-icon" />
+                                <p className="flp-table-empty-title">No contacted candidates folders found</p>
+                                <p className="flp-table-empty-subtitle">When you contact candidates from a folder, activity records will show up here.</p>
+                              </div>
                             </td>
                           </tr>
                         )}
                       </tbody>
-                      <tfoot>
-                        <tr>
-                          <th style={{ textAlign: 'left' }}>Folder Name</th>
-                          <th style={{ textAlign: 'left' }}>Candidates Contacted</th>
-                          <th style={{ textAlign: 'left' }}>Last Sent</th>
-                        </tr>
-                      </tfoot>
                     </table>
                   </div>
 
-                  {/* Bottom Bar Controls per Screenshot 3 */}
-                  <div className="flp-contacted-bar" style={{ marginTop: 0 }}>
+                  {/* Bottom Bar Controls */}
+                  <div className="flp-contacted-bar flp-contacted-bar-bottom">
                     <div className="flp-contacted-bar-left">
-                      <span>Folders:</span>
-                      <select
-                        className="flp-contacted-select"
-                        value={pageSize}
-                        onChange={(e) => setPageSize(Number(e.target.value))}
-                      >
-                        <option value={20}>20</option>
-                        <option value={40}>40</option>
-                        <option value={60}>60</option>
-                        <option value={100}>100</option>
-                      </select>
-                      <span>per page</span>
+                      <div className="flp-contacted-control-item">
+                        <span className="flp-control-label">Folders:</span>
+                        <FlpCustomSelect
+                          value={pageSize}
+                          options={PAGE_SIZE_OPTIONS}
+                          onChange={(val) => setPageSize(Number(val))}
+                          activeDropdown={activeDropdown}
+                          setActiveDropdown={setActiveDropdown}
+                          dropdownId="contacted-bottom-page-size"
+                        />
+                        <span className="flp-control-sublabel">per page</span>
+                      </div>
 
-                      <span style={{ marginLeft: 16 }}>Sort by:</span>
-                      <select
-                        className="flp-contacted-select"
-                        value={contactedSortBy}
-                        onChange={(e) => setContactedSortBy(e.target.value)}
-                      >
-                        <option value="Date">Date</option>
-                        <option value="Name">Name</option>
-                        <option value="Count">Candidate count</option>
-                      </select>
+                      <div className="flp-contacted-control-item">
+                        <span className="flp-control-label">Sort by:</span>
+                        <FlpCustomSelect
+                          value={contactedSortBy}
+                          options={CONTACTED_SORT_OPTIONS}
+                          onChange={setContactedSortBy}
+                          activeDropdown={activeDropdown}
+                          setActiveDropdown={setActiveDropdown}
+                          dropdownId="contacted-bottom-sort"
+                        />
+                      </div>
                     </div>
 
                     <div className="flp-contacted-bar-right">
-                      <span className="flp-bar-pipe">|</span>
-                      <input
-                        type="text"
-                        className="flp-page-input"
-                        value={goToPage}
-                        onChange={(e) => setGoToPage(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="flp-go-btn"
-                        onClick={() => showToast(`Navigated to page ${goToPage}`)}
-                      >
-                        Go
-                      </button>
+                      <div className="flp-contacted-page-jump">
+                        <span className="flp-control-label">Page:</span>
+                        <input
+                          type="text"
+                          className="flp-page-input"
+                          value={goToPage}
+                          onChange={(e) => setGoToPage(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="flp-go-btn"
+                          onClick={() => showToast(`Navigated to page ${goToPage}`)}
+                        >
+                          Go
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

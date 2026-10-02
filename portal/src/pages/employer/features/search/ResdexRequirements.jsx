@@ -1,11 +1,96 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+<<<<<<< Updated upstream
 import { FiFilter, FiSearch, FiBriefcase, FiMoreVertical, FiClock, FiPlus, FiFolder, FiEdit2, FiCopy, FiTrash2, FiX } from 'react-icons/fi';
+=======
+import {
+  FiFilter,
+  FiSearch,
+  FiBriefcase,
+  FiMoreVertical,
+  FiClock,
+  FiPlus,
+  FiFolder,
+  FiEdit2,
+  FiCopy,
+  FiTrash2,
+  FiX,
+  FiBell,
+  FiShare2,
+  FiPlay,
+  FiUsers,
+  FiCheckCircle,
+  FiMapPin,
+  FiDollarSign,
+  FiTag,
+  FiCheck,
+  FiRefreshCw,
+  FiChevronDown
+} from 'react-icons/fi';
+>>>>>>> Stashed changes
 import { motion, AnimatePresence } from 'framer-motion';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import { useFolders, useCreateFolder, useDeleteFolder, useDuplicateFolder, useUpdateFolder } from '../../../../hooks/useFolderQueries';
 import CreateFolderModal from '../../../../components/employer/CreateFolderModal';
+
+const SCOPE_OPTIONS = [
+  { value: 'me', label: 'Created By Me' },
+  { value: 'anyone', label: 'All Company Requirements' }
+];
+
+function RrCustomScopeSelect({ value, onChange, isOpen, onToggle, onClose }) {
+  const selectRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (selectRef.current && !selectRef.current.contains(e.target)) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  const selectedOpt = SCOPE_OPTIONS.find(o => o.value === value) || SCOPE_OPTIONS[0];
+
+  return (
+    <div className="rr-custom-scope-wrap" ref={selectRef}>
+      <button
+        type="button"
+        className={`rr-custom-scope-btn ${isOpen ? 'active' : ''}`}
+        onClick={onToggle}
+      >
+        <span className="rr-custom-scope-text">{selectedOpt.label}</span>
+        <FiChevronDown size={14} className={`rr-custom-scope-chevron ${isOpen ? 'rotate' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="rr-custom-scope-menu">
+          {SCOPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`rr-custom-scope-option ${value === opt.value ? 'selected' : ''}`}
+              onClick={() => {
+                onChange(opt.value);
+                onClose();
+              }}
+            >
+              <span>{opt.label}</span>
+              {value === opt.value && <FiCheck size={14} className="rr-custom-scope-check" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ResdexRequirements() {
   const navigate = useNavigate();
@@ -15,7 +100,21 @@ export default function ResdexRequirements() {
   const [tagsFilter, setTagsFilter] = useState({ prospect: false, shortlisted: false, rejected: false });
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
+<<<<<<< Updated upstream
   const [editFolderData, setEditFolderData] = useState(null);
+=======
+  const [scopeDropdownOpen, setScopeDropdownOpen] = useState(null); // 'mobile' | 'desktop' | null
+
+  // Alert Modal
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [selectedReqForAlert, setSelectedReqForAlert] = useState(null);
+
+  // Share Modal
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedReqForShare, setSelectedReqForShare] = useState(null);
+
+  // Delete Modal
+>>>>>>> Stashed changes
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState(null);
 
@@ -116,8 +215,13 @@ export default function ResdexRequirements() {
   };
 
   return (
+<<<<<<< Updated upstream
     <EmployerLayout>
       <div style={{ background: '#f8fafc', minHeight: 'calc(100vh - 70px)' }}>
+=======
+    <EmployerLayout containerWidth={1240}>
+      <div className="rr-page-wrapper">
+>>>>>>> Stashed changes
         <EmployerBreadcrumb
           items={[
             { label: 'Dashboard', path: '/employer-dashboard' },
@@ -125,6 +229,7 @@ export default function ResdexRequirements() {
             { label: 'Resdex Requirements', path: null },
           ]}
         />
+<<<<<<< Updated upstream
         
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, background: '#fff', padding: '16px 24px', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
@@ -134,6 +239,25 @@ export default function ResdexRequirements() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8,
                 background: '#002366', color: '#fff', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer'
+=======
+
+        <div className="rr-container">
+          {/* Header Card */}
+          <div className="rr-header-card">
+            <div className="rr-title-area">
+              <h1>
+                Resdex Requirements
+                <span className="rr-title-badge">{requirements.length} Requirements</span>
+              </h1>
+              <p>
+                Saved recruitment workspaces for specific hiring openings with search blueprints, candidates & email alerts.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingRequirement(null);
+                setCreateModalOpen(true);
+>>>>>>> Stashed changes
               }}
             >
               <FiPlus size={16} /> Create Requirement
@@ -147,12 +271,149 @@ export default function ResdexRequirements() {
                 <FiFilter color="#64748b" />
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: '#334155', margin: 0 }}>Filters</h3>
               </div>
+<<<<<<< Updated upstream
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
                 <span style={{ fontSize: 13, color: '#0f172a', fontWeight: 600 }}>{activeFiltersCount} Filter applied</span>
                 {activeFiltersCount > 0 && (
                   <button onClick={clearAllFilters} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
                     Clear all
+=======
+              <div>
+                <div className="rr-metric-val">{metrics.total}</div>
+                <div className="rr-metric-label">Total Requirements</div>
+              </div>
+            </div>
+
+            <div className="rr-metric-card">
+              <div className="rr-metric-icon" style={{ background: '#ecfdf5', color: '#047857' }}>
+                <FiCheckCircle size={22} />
+              </div>
+              <div>
+                <div className="rr-metric-val">{metrics.open}</div>
+                <div className="rr-metric-label">Active / Open Openings</div>
+              </div>
+            </div>
+
+            <div className="rr-metric-card">
+              <div className="rr-metric-icon" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
+                <FiUsers size={22} />
+              </div>
+              <div>
+                <div className="rr-metric-val">{metrics.totalCandidates}</div>
+                <div className="rr-metric-label">Candidates Sourced</div>
+              </div>
+            </div>
+
+            <div className="rr-metric-card">
+              <div className="rr-metric-icon" style={{ background: '#f0f9ff', color: '#0284c7' }}>
+                <FiBell size={22} />
+              </div>
+              <div>
+                <div className="rr-metric-val">{metrics.activeAlerts}</div>
+                <div className="rr-metric-label">Active Match Alerts</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Filter Trigger */}
+          <div className="rr-mobile-filter-bar">
+            <button
+              type="button"
+              className={`rr-mobile-filter-trigger ${activeFiltersCount > 0 ? 'is-active' : ''}`}
+              onClick={() => setMobileDrawerOpen(true)}
+            >
+              <FiFilter size={15} />
+              <span>Filter Requirements</span>
+              {activeFiltersCount > 0 && (
+                <span className="rr-mobile-filter-badge">{activeFiltersCount}</span>
+              )}
+            </button>
+
+            <RrCustomScopeSelect
+              value={filterBy}
+              onChange={setFilterBy}
+              isOpen={scopeDropdownOpen === 'mobile'}
+              onToggle={() => setScopeDropdownOpen(prev => prev === 'mobile' ? null : 'mobile')}
+              onClose={() => setScopeDropdownOpen(null)}
+            />
+          </div>
+
+          {/* Main Grid Layout */}
+          <div className="rr-content-layout">
+            {/* Desktop Sidebar Filters */}
+            <aside className="rr-sidebar">
+              {renderFilterControls()}
+            </aside>
+
+            {/* Mobile Filter Drawer */}
+            <AnimatePresence>
+              {mobileDrawerOpen && (
+                <>
+                  <motion.div
+                    className="rr-mobile-drawer-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setMobileDrawerOpen(false)}
+                  />
+                  <motion.div
+                    className="rr-mobile-drawer"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '-100%' }}
+                    transition={{ type: 'tween', duration: 0.25 }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                      <button
+                        onClick={() => setMobileDrawerOpen(false)}
+                        style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}
+                      >
+                        <FiX size={20} />
+                      </button>
+                    </div>
+                    {renderFilterControls()}
+                    <button
+                      onClick={() => setMobileDrawerOpen(false)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: '#002366',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        marginTop: 20,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Apply Filters
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+
+            {/* Main Area */}
+            <main className="rr-main-area">
+              <div className="rr-top-controls">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="rr-desktop-only-scope">
+                    <RrCustomScopeSelect
+                      value={filterBy}
+                      onChange={setFilterBy}
+                      isOpen={scopeDropdownOpen === 'desktop'}
+                      onToggle={() => setScopeDropdownOpen(prev => prev === 'desktop' ? null : 'desktop')}
+                      onClose={() => setScopeDropdownOpen(null)}
+                    />
+                  </div>
+                  <button
+                    onClick={() => refetch()}
+                    title="Refresh list"
+                    className="rr-refresh-btn"
+                  >
+                    <FiRefreshCw size={14} /> Refresh
+>>>>>>> Stashed changes
                   </button>
                 )}
               </div>

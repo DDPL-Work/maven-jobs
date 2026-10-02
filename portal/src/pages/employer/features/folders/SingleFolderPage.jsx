@@ -276,16 +276,142 @@ export default function SingleFolderPage() {
           </div>
         </div>
 
+<<<<<<< Updated upstream
         <div className="sfp-tabs" style={{ display: 'flex', gap: 24, marginBottom: 16, borderBottom: '1px solid #e2e8f0', paddingBottom: 0 }}>
+=======
+        {/* Resdex Requirement Blueprint Banner*/}
+        {isRequirement && (
+          <div className="sfp-blueprint-card">
+            <div className="sfp-blueprint-top">
+              <div className="sfp-blueprint-title-wrap">
+                <span className="sfp-blueprint-role-title">
+                  Target Role: {folder.jobTitle || folder.criteria?.jobTitle || folder.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = folder.status === 'closed' ? 'open' : 'closed';
+                    try {
+                      await updateFolder.mutateAsync({ id: folderId, status: next });
+                      refetch();
+                      showToast(`Requirement marked as ${next.toUpperCase()}`);
+                    } catch {
+                      showToast('Failed to change status');
+                    }
+                  }}
+                  className="sfp-blueprint-status-toggle"
+                >
+                  {folder.status === 'closed' ? 'Reopen Opening' : 'Close Opening'}
+                </button>
+              </div>
+
+              <div className="sfp-blueprint-actions">
+                <button
+                  type="button"
+                  onClick={() => setAlertModalOpen(true)}
+                  className="sfp-btn-alerts"
+                  title="Configure candidate match alerts"
+                >
+                  <FiBell size={13} />
+                  <span>Alerts: {folder.alerts?.frequency || 'Daily'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRunRequirementSearch}
+                  className="sfp-btn-run-search"
+                  title="Run saved search criteria in Resdex"
+                >
+                  <FiPlay size={13} />
+                  <span>Run Search in Resdex</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Criteria Chips */}
+            <div className="sfp-blueprint-criteria">
+              {(folder.criteria?.skills || folder.skills || []).length > 0 && (
+                <div className="sfp-skills-list">
+                  <span className="sfp-skills-label">Key Skills:</span>
+                  {(folder.criteria?.skills || folder.skills || []).map(s => (
+                    <span key={s} className="sfp-skill-chip">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {(folder.criteria?.experienceMin !== undefined || folder.criteria?.experienceMax !== undefined) && (
+                <span className="sfp-criteria-item">
+                  💼 {folder.criteria?.experienceMin || 0} - {folder.criteria?.experienceMax || 15} Yrs
+                </span>
+              )}
+              {(folder.criteria?.salaryMin !== undefined || folder.criteria?.salaryMax !== undefined) && (
+                <span className="sfp-criteria-item">
+                  💰 ₹{folder.criteria?.salaryMin || 0} - {folder.criteria?.salaryMax || 'Any'} LPA
+                </span>
+              )}
+              {(folder.criteria?.locations || folder.locations || []).length > 0 && (
+                <span className="sfp-criteria-item">
+                  📍 {(folder.criteria?.locations || folder.locations || []).join(', ')}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Pipeline Tabs - Horizontally Scrollable on Mobile */}
+        <div className="sfp-tabs">
+>>>>>>> Stashed changes
           <button
+            type="button"
             onClick={() => setActiveTab('all')}
+<<<<<<< Updated upstream
             style={{ background: 'none', border: 'none', fontSize: '0.95rem', fontWeight: activeTab === 'all' ? 700 : 500, color: activeTab === 'all' ? '#0284c7' : '#64748b', cursor: 'pointer', borderBottom: activeTab === 'all' ? '2px solid #0284c7' : '2px solid transparent', paddingBottom: 10, transition: 'all 0.2s ease' }}
           >
             All Candidates ({filteredCandidates.length})
           </button>
+=======
+            className={`sfp-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+          >
+            All Candidates ({filteredCandidates.length})
+          </button>
+
+          {isRequirement && (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab('prospect')}
+                className={`sfp-tab-btn ${activeTab === 'prospect' ? 'active' : ''}`}
+              >
+                Prospects ({filteredCandidates.filter(c => getCandidateTag(c) === 'prospect').length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('shortlisted')}
+                className={`sfp-tab-btn ${activeTab === 'shortlisted' ? 'active' : ''}`}
+              >
+                Shortlisted ({filteredCandidates.filter(c => getCandidateTag(c) === 'shortlisted').length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('rejected')}
+                className={`sfp-tab-btn ${activeTab === 'rejected' ? 'active' : ''}`}
+              >
+                Rejected ({filteredCandidates.filter(c => getCandidateTag(c) === 'rejected').length})
+              </button>
+            </>
+          )}
+
+>>>>>>> Stashed changes
           <button
+            type="button"
             onClick={() => setActiveTab('contacted')}
+<<<<<<< Updated upstream
             style={{ background: 'none', border: 'none', fontSize: '0.95rem', fontWeight: activeTab === 'contacted' ? 700 : 500, color: activeTab === 'contacted' ? '#0284c7' : '#64748b', cursor: 'pointer', borderBottom: activeTab === 'contacted' ? '2px solid #0284c7' : '2px solid transparent', paddingBottom: 10, transition: 'all 0.2s ease' }}
+=======
+            className={`sfp-tab-btn ${activeTab === 'contacted' ? 'active' : ''}`}
+>>>>>>> Stashed changes
           >
             Contacted ({filteredCandidates.filter(c => getCallStatus(c) === 'Called').length})
           </button>

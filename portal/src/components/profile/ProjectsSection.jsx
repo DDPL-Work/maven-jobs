@@ -1,5 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+<<<<<<< Updated upstream
 import { FiMonitor, FiEdit2, FiTrash2, FiPlus, FiX, FiUploadCloud, FiFolder, FiExternalLink, FiChevronDown } from 'react-icons/fi';
+=======
+import { FiMonitor, FiEdit2, FiTrash2, FiPlus, FiX, FiUploadCloud, FiFolder, FiExternalLink, FiChevronDown, FiImage, FiLoader, FiXCircle } from 'react-icons/fi';
+>>>>>>> Stashed changes
 import authService from "../../services/authService";
 import '../../pages/candidates/features/dashboard/Components/ProfileDashboard/BasicDetailsModal.css';
 import CustomSelect from '../common/CustomSelect';
@@ -121,7 +125,7 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
   if (editing) {
     return (
       <div className="bdm-overlay" onClick={onCancel} style={{ zIndex: 9999 }}>
-        <div className="bdm-container" onClick={e => e.stopPropagation()} style={{ width: '700px' }}>
+        <div className="bdm-container" onClick={e => e.stopPropagation()} style={{ width: '700px', maxWidth: '100vw' }}>
           <div className="bdm-header">
             <div className="bdm-title-row">
               <h2 className="bdm-title">Project</h2>
@@ -167,7 +171,7 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
 
               <div className="bdm-field">
                 <label>Worked from <span>*</span></label>
-                <div style={{ display: 'flex', gap: '16px' }}>
+                <div className="bdm-row" style={{ gap: '12px' }}>
                   <CustomSelect 
                     value={f.workedFromYear} 
                     onChange={e => setF(p => ({ ...p, workedFromYear: e.target.value }))}
@@ -186,7 +190,7 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
               {f.status === 'Finished' && (
                 <div className="bdm-field">
                   <label>Worked till <span>*</span></label>
-                  <div style={{ display: 'flex', gap: '16px' }}>
+                  <div className="bdm-row" style={{ gap: '12px' }}>
                     <CustomSelect 
                       value={f.workedTillYear} 
                       onChange={e => setF(p => ({ ...p, workedTillYear: e.target.value }))}
@@ -205,14 +209,12 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
 
               <div className="bdm-field">
                 <label>Details of project <span>*</span></label>
-                <div style={{ border: '1px solid var(--slate-3)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--slate-3)', background: '#F8FAFC' }}>
-                    <button style={{ background: 'white', border: '1px solid #E2E8F0', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', fontWeight: 600, color: '#D97706', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                      👑 Write with AI
-                    </button>
-                  </div>
-                  <textarea value={f.description} onChange={e => setF(p => ({ ...p, description: e.target.value }))} placeholder="Enter your project details..." rows={5} style={{ width: '100%', border: 'none', padding: '12px', outline: 'none', resize: 'vertical' }} />
-                </div>
+                <textarea
+                  value={f.description}
+                  onChange={e => setF(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Enter your project details..."
+                  rows={5}
+                />
                 <p style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-4)', marginTop: '4px' }}>{f.description?.length || 0}/1000</p>
               </div>
 
@@ -281,55 +283,35 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
                   </div>
 
                   <div className="bdm-field">
-                    <label>Skills used</label>
-                    <input value={f.skillsUsedText} onChange={e => setF(p => ({ ...p, skillsUsedText: e.target.value }))} placeholder="Enter skills used" />
-                    <p style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-4)', marginTop: '4px' }}>{500 - (f.skillsUsedText?.length || 0)} character(s) left</p>
-                  </div>
-
-                  <div className="bdm-field">
                     <label>Link (optional)</label>
                     <input value={f.link} onChange={e => setF(p => ({ ...p, link: e.target.value }))} placeholder="https://github.com/..." />
                   </div>
 
                   <div className="bdm-field">
                     <label>Skills Used</label>
-                    <div className="ps-skills-grid" style={{ marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                      {f.skills.map(s => (
-                        <span key={s} className="ps-skill-chip" style={{ background: '#F8FAFC', color: 'var(--navy)', border: '1px solid var(--slate-4)', borderRadius: '20px', padding: '6px 10px 6px 14px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          {s}
-                          <button onClick={() => handleRemoveSkill(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0, display: 'flex' }}><FiX size={14} /></button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="ps-add-skill-row" style={{ display: 'flex', gap: 12 }}>
-                      <input style={{ flex: 1 }} value={newSkill} onChange={e => setNewSkill(e.target.value)} placeholder="Add skill" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); } }} />
-                      <button className="ps-btn ps-btn-primary" onClick={handleAddSkill} style={{ background: 'var(--blue)', color: 'white', border: 'none', padding: '0 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}><FiPlus size={14} /> Add</button>
-                    </div>
-                  </div>
-
-                  <div className="bdm-field">
-                    <label>Media (screenshots)</label>
-                    <div className="ps-project-media-grid" style={{ marginTop: 8 }}>
-                      {f.media.map((m, i) => (
-                        <div key={m.publicId || i} className="ps-project-media-thumb">
-                          <img src={m.url} alt="" />
-                          <button className="ps-project-media-remove" onClick={() => handleRemoveMedia(i)}><FiXCircle size={16} /></button>
-                        </div>
-                      ))}
-                      <label className={`ps-project-media-add ${uploading ? 'ps-project-media-uploading' : ''}`}>
-                        {uploading ? (
-                          <div className="ps-project-media-upload-progress">
-                            <FiLoader size={20} className="ps-spin" />
-                            <span>{uploadProgress}%</span>
-                          </div>
-                        ) : (
-                          <>
-                            <FiImage size={20} />
-                            <span>Add Image</span>
-                          </>
-                        )}
-                        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading} onChange={e => { const file = e.target.files?.[0]; if (file) { handleUpload(file); e.target.value = ''; } }} />
-                      </label>
+                    {f.skills?.length > 0 && (
+                      <div className="ps-skills-grid" style={{ marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                        {f.skills.map(s => (
+                          <span key={s} className="ps-skill-chip" style={{ background: '#F8FAFC', color: 'var(--navy)', border: '1px solid var(--slate-4)', borderRadius: '20px', padding: '6px 10px 6px 14px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            {s}
+                            <button onClick={() => handleRemoveSkill(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0, display: 'flex' }}><FiX size={14} /></button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="ps-add-skill-row">
+                      <input 
+                        style={{ width: '100%' }} 
+                        value={newSkill} 
+                        onChange={e => setNewSkill(e.target.value)} 
+                        placeholder="Enter skill and press Enter" 
+                        onKeyDown={e => { 
+                          if (e.key === 'Enter') { 
+                            e.preventDefault(); 
+                            handleAddSkill(); 
+                          } 
+                        }} 
+                      />
                     </div>
                   </div>
                 </>
@@ -337,7 +319,7 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
             </div>
 
           </div>
-          <div className="bdm-footer" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '24px 32px' }}>
+          <div className="bdm-footer" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '16px' }}>
               <button className="bdm-btn-cancel" onClick={onCancel} style={{ border: 'none', color: 'var(--blue)', fontWeight: 600, fontSize: '0.95rem', background: 'none' }}>Cancel</button>
               <button className="bdm-btn-save" onClick={() => f.title.trim() && onSaveItem(f)} disabled={!f.title.trim()} style={{ background: f.title.trim() ? 'var(--blue)' : 'var(--slate-3)', color: 'white', border: 'none', padding: '8px 24px', borderRadius: '24px', fontWeight: 600, fontSize: '0.95rem', cursor: f.title.trim() ? 'pointer' : 'not-allowed' }}>Save</button>
@@ -350,51 +332,56 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
 
   return (
     <div className="ps-project-item">
-      <div className="ps-project-icon">
-        <FiFolder size={18} />
-      </div>
-      <div className="ps-project-body">
-        <div className="ps-project-title-row">
-          <div>
-            <h4 className="ps-project-name">{project.title}</h4>
-            {project.link && (
-              <a href={project.link} target="_blank" rel="noopener noreferrer" className="ps-project-link">
-                <FiExternalLink size={12} /> {project.link}
-              </a>
-            )}
-          </div>
-          <div className="ps-project-actions">
-            <button className="ps-icon-btn" onClick={onEdit} aria-label="Edit"><FiEdit2 size={13} /></button>
-            <button className="ps-icon-btn ps-icon-btn-danger" onClick={onDelete} aria-label="Delete"><FiTrash2 size={13} /></button>
+      <div className="ps-project-row">
+        <div className="ps-project-icon">
+          <FiFolder size={18} />
+        </div>
+        <div className="ps-project-info">
+          <div className="ps-project-title-row">
+            <div>
+              <h4 className="ps-project-name">{project.title}</h4>
+              {project.link && (
+                <a href={project.link} target="_blank" rel="noopener noreferrer" className="ps-project-link">
+                  <FiExternalLink size={12} /> {project.link}
+                </a>
+              )}
+            </div>
+            <div className="ps-project-actions">
+              <button className="ps-icon-btn" onClick={onEdit} aria-label="Edit"><FiEdit2 size={13} /></button>
+              <button className="ps-icon-btn ps-icon-btn-danger" onClick={onDelete} aria-label="Delete"><FiTrash2 size={13} /></button>
+            </div>
           </div>
         </div>
-        {project.description && (
-          <div className="ps-project-desc-wrap">
-            <p className="ps-project-desc">{expanded ? project.description : project.description.length > 200 ? project.description.slice(0, 200) + '...' : project.description}</p>
-            {project.description.length > 200 && (
-              <button className="ps-see-more" onClick={() => setExpanded(!expanded)}>
-                {expanded ? 'Show less' : 'See more'} <FiChevronDown size={14} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-              </button>
-            )}
-          </div>
-        )}
-        {project.skills?.length > 0 && (
-          <div className="ps-project-skills">
-            {project.skills.map(s => (
-              <span key={s} className="ps-skill-chip-sm">{s}</span>
-            ))}
-          </div>
-        )}
-        {project.media?.length > 0 && (
-          <div className="ps-project-media-grid">
-            {project.media.map((m, i) => (
-              <div key={m.publicId || i} className="ps-project-media-thumb">
-                <img src={m.url} alt="" />
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {project.description && (
+        <div className="ps-project-desc-wrap">
+          <p className="ps-project-desc">{expanded ? project.description : project.description.length > 200 ? project.description.slice(0, 200) + '...' : project.description}</p>
+          {project.description.length > 200 && (
+            <button className="ps-see-more" onClick={() => setExpanded(!expanded)}>
+              {expanded ? 'Show less' : 'See more'} <FiChevronDown size={14} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {project.skills?.length > 0 && (
+        <div className="ps-project-skills">
+          {project.skills.map(s => (
+            <span key={s} className="ps-skill-chip-sm">{s}</span>
+          ))}
+        </div>
+      )}
+
+      {project.media?.length > 0 && (
+        <div className="ps-project-media-grid">
+          {project.media.map((m, i) => (
+            <div key={m.publicId || i} className="ps-project-media-thumb">
+              <img src={m.url} alt="" />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });

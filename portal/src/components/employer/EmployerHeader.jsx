@@ -1533,6 +1533,7 @@ export default function EmployerHeader({
                     fontSize: 14, fontWeight: 600, fontFamily: C.dm,
                     cursor: 'pointer', textAlign: 'left', width: '100%',
                   }}
+<<<<<<< Updated upstream
                 >
                   <n.icon size={18} />
                   {n.label}
@@ -1560,6 +1561,185 @@ export default function EmployerHeader({
                           background: 'transparent', color: C.s600,
                           fontSize: 13.5, fontWeight: 500, fontFamily: C.dm,
                           cursor: 'pointer', textAlign: 'left', width: '100%',
+=======
+                />
+              </button>
+              {mobileSections.jobs && (
+                <div className="ep-mob-sublist">
+                  {dropdownNavs.find(d => d.id === 'jobs')?.items.map(item => {
+                    const isItemActive = item.path === location.pathname || (item.path.includes('?') && `${location.pathname}${location.search}` === item.path);
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => {
+                          if (item.path !== "#") navigate(item.path);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`ep-mob-subbtn ${isItemActive ? "active" : ""}`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Resdex (Collapsible Accordion) */}
+            <div>
+              <button
+                type="button"
+                onClick={() => toggleMobileSection("resdex")}
+                className={`ep-mob-accordion-btn ${mobileSections.resdex ? "open" : ""}`}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <FiSearch size={18} />
+                  <span>Resdex</span>
+                </div>
+                <FiChevronDown
+                  size={16}
+                  style={{
+                    transition: "transform 0.22s ease",
+                    transform: mobileSections.resdex ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
+              </button>
+              {mobileSections.resdex && (
+                <div className="ep-mob-sublist">
+                  {dropdownNavs.find(d => d.id === 'resdex')?.items.map(item => {
+                    const isItemActive = item.path === location.pathname || 
+                      (item.path.includes('?') && `${location.pathname}${location.search}` === item.path) ||
+                      (item.path === '/employer-dashboard/folders' && (location.pathname.includes('/folders') || location.pathname.includes('/manage-folders'))) ||
+                      (item.path === '/resume-search' && location.pathname === '/resume-search' && !location.search.includes('tab=mivites'));
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => {
+                          if (item.path !== "#") navigate(item.path);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`ep-mob-subbtn ${isItemActive ? "active" : ""}`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 5. Report (Collapsible Accordion) */}
+            <div>
+              <button
+                type="button"
+                onClick={() => toggleMobileSection("report")}
+                className={`ep-mob-accordion-btn ${mobileSections.report ? "open" : ""}`}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <FiBarChart2 size={18} />
+                  <span>Report</span>
+                </div>
+                <FiChevronDown
+                  size={16}
+                  style={{
+                    transition: "transform 0.22s ease",
+                    transform: mobileSections.report ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
+              </button>
+              {mobileSections.report && (
+                <div className="ep-mob-sublist">
+                  {dropdownNavs.find(d => d.id === 'report')?.items.map(item => {
+                    const isItemActive = item.path === location.pathname || (item.path.includes('?') && `${location.pathname}${location.search}` === item.path);
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => {
+                          if (item.path !== "#") navigate(item.path);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`ep-mob-subbtn ${isItemActive ? "active" : ""}`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 6. Company Profile */}
+            <button
+              type="button"
+              onClick={() => {
+                navigate("/employer-dashboard/company-profile");
+                setMobileMenuOpen(false);
+              }}
+              className={`ep-mob-nav-btn ${location.pathname.includes("company-profile") ? "active" : ""}`}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="M2 10h20" />
+                <path d="M10 10v10" />
+              </svg>
+              <span>Company Profile</span>
+            </button>
+
+            {/* 7. My Subscription */}
+            <button
+              type="button"
+              onClick={() => {
+                navigate("/employer-dashboard/subscriptions");
+                setMobileMenuOpen(false);
+              }}
+              className={`ep-mob-nav-btn ${location.pathname.includes("subscriptions") ? "active" : ""}`}
+            >
+              <FiList size={18} />
+              <span>My Subscription</span>
+            </button>
+
+            {/* 8. Settings (Collapsible Accordion with all child tabs) */}
+            <div>
+              <button
+                type="button"
+                onClick={() => toggleMobileSection("settings")}
+                className={`ep-mob-accordion-btn ${mobileSections.settings ? "open" : ""}`}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <FiSettings size={18} />
+                  <span>Settings</span>
+                </div>
+                <FiChevronDown
+                  size={16}
+                  style={{
+                    transition: "transform 0.22s ease",
+                    transform: mobileSections.settings ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
+              </button>
+              {mobileSections.settings && (
+                <div className="ep-mob-sublist">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate("/product-settings");
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`ep-mob-subbtn ${location.pathname.includes("product-settings") ? "active" : ""}`}
+                  >
+                    Product Settings
+                  </button>
+                  {isSuperUser && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigate("/manage-users");
+                          setMobileMenuOpen(false);
+>>>>>>> Stashed changes
                         }}
                       >
                         {item.label}

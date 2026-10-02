@@ -13,11 +13,12 @@ export default function EmployerBreadcrumb({ items = [] }) {
     <nav style={{
       display: 'flex',
       alignItems: 'center',
-      gap: 8,
+      flexWrap: 'wrap',
+      gap: '6px 8px',
       fontSize: '0.82rem',
       fontWeight: 600,
       color: C.s500,
-      marginBottom: 20,
+      marginBottom: 16,
     }}>
       {items.map((item, i) => {
         const isLast = i === items.length - 1;

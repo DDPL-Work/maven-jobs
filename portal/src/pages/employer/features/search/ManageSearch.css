@@ -107,150 +107,312 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Left Sidebar ── */
-.ms-sidebar {
-  width: 230px;
-  flex-shrink: 0;
-  background: white;
+/* ── Modern Dropdown Filter Bar ── */
+.ms-filter-card {
+  background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  overflow: hidden;
-  position: sticky;
-  top: 88px;
-  max-height: calc(100vh - 120px);
-  display: flex;
-  flex-direction: column;
+  padding: 16px 20px 18px;
+  margin-bottom: 22px;
+  box-shadow: 0 2px 10px rgba(0, 35, 102, 0.03);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.ms-sidebar-header {
+.ms-filter-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 14px 10px;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
 }
 
-.ms-sidebar-title {
-  font-family: 'Sora', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #0a1628;
-  margin: 0;
+.ms-filter-header-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 
-.ms-sidebar-reset {
-  background: none;
-  border: none;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #002366;
-  cursor: pointer;
-  padding: 3px 6px;
-  border-radius: 5px;
-  transition: background 0.12s;
-}
-
-.ms-sidebar-reset:hover {
-  background: #eef2ff;
-}
-
-.ms-sidebar-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px 0 10px;
-}
-
-.ms-filter-group {
-  padding: 0 14px;
-  margin-top: 10px;
-}
-
-.ms-filter-group:first-child {
-  margin-top: 6px;
-}
-
-.ms-filter-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 6px;
-  display: block;
-}
-
-.ms-filter-options {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ms-filter-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border: none;
-  border-radius: 7px;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #475569;
-  transition: all 0.12s;
-  text-align: left;
-  width: 100%;
-}
-
-.ms-filter-option:hover {
-  background: #f8fafc;
-  color: #0a1628;
-}
-
-.ms-filter-option.active {
-  background: #eef2ff;
-  color: #002366;
-  font-weight: 700;
-}
-
-.ms-filter-radio {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid #cbd5e1;
+.ms-filter-badge-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ms-filter-title-text {
+  font-family: 'Sora', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.ms-filter-active-pill {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+}
+
+.ms-filter-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  justify-content: flex-end;
+  max-width: 480px;
+}
+
+.ms-search-input-box {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.ms-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.ms-search-input {
+  width: 100%;
+  padding: 8px 30px 8px 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.ms-search-input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.ms-search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.ms-search-clear-btn:hover {
+  color: #475569;
+}
+
+.ms-reset-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ms-reset-filters-btn:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+.ms-dropdowns-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ms-dropdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ms-dropdown-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ms-dropdown-label-icon {
+  color: #64748b;
+}
+
+.ms-custom-select-wrapper {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ms-custom-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  height: 38px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+  background: #ffffff;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.ms-custom-select-btn:hover {
+  border-color: #94a3b8;
+}
+
+.ms-custom-select-btn:focus,
+.ms-custom-select-btn.ms-select-open {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.ms-custom-select-btn.ms-select-active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.ms-custom-select-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.ms-select-chevron {
+  color: #64748b;
   flex-shrink: 0;
-  transition: all 0.15s;
+  transition: transform 0.2s ease;
 }
 
-.ms-filter-option.active .ms-filter-radio {
-  border-color: #002366;
+.ms-select-chevron.rotate {
+  transform: rotate(180deg);
+  color: #2563eb;
 }
 
-.ms-filter-option.active .ms-filter-radio::after {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #002366;
+.ms-custom-select-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  z-index: 120;
+  overflow: hidden;
+  padding: 4px;
+  box-sizing: border-box;
+  animation: msDropdownFade 0.15s ease-out;
 }
 
-.ms-filter-divider {
-  height: 1px;
+@keyframes msDropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ms-custom-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+  text-align: left;
+  margin-bottom: 2px;
+}
+
+.ms-custom-select-option:last-child {
+  margin-bottom: 0;
+}
+
+.ms-custom-select-option:hover {
   background: #f1f5f9;
-  margin: 8px 14px;
+}
+
+.ms-custom-select-option.active {
+  background: #eff6ff;
+}
+
+.ms-custom-option-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.ms-custom-select-option.active .ms-custom-option-label {
+  color: #002366;
+  font-weight: 700;
+}
+
+.ms-custom-option-check {
+  color: #002366;
+  flex-shrink: 0;
 }
 
 /* ── Main Content ── */
 .ms-main {
   flex: 1;
   min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -535,25 +697,29 @@
 .ms-card-list-view {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
 
 .ms-card-list {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .ms-card-list:hover {
   border-color: #cbd5e1;
   box-shadow: 0 4px 16px rgba(0, 35, 102, 0.06);
-  transform: translateX(3px);
+  transform: translateY(-2px);
 }
 
 .ms-card-list-pinned {
@@ -571,26 +737,28 @@
   gap: 12px;
   flex: 1;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .ms-card-list-name {
   font-family: 'Sora', sans-serif;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: #0a1628;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 140px;
+  max-width: 260px;
 }
 
 .ms-card-list-meta {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   font-size: 0.72rem;
   color: #64748b;
   font-weight: 500;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .ms-card-list-meta span {
@@ -602,9 +770,9 @@
 
 .ms-card-list-chips {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   flex-wrap: wrap;
-  min-width: 100px;
+  align-items: center;
 }
 
 .ms-card-list-right {
@@ -1026,12 +1194,18 @@
 }
 
 /* ── Responsive ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (max-width: 1200px) {
   .ms-summary {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
   }
   .ms-insights {
-    width: 240px;
+    width: 230px;
   }
   .ms-card-grid {
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -1039,126 +1213,213 @@
 }
 
 @media (max-width: 1024px) {
+  .ms-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
   .ms-layout {
     flex-direction: column;
-  }
-  .ms-sidebar {
-    width: 100%;
-    position: static;
-    max-height: none;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .ms-sidebar-header {
+    gap: 16px;
     width: 100%;
   }
-  .ms-sidebar-scroll {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 8px 14px;
-    overflow: visible;
+  .ms-filter-card {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border-radius: 14px;
   }
-  .ms-filter-group {
-    margin-top: 0;
-    padding: 0;
-  }
-  .ms-filter-label {
-    display: none;
-  }
-  .ms-filter-options {
+  .ms-filter-card-header {
     flex-direction: row;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
   }
-  .ms-filter-option {
-    padding: 4px 10px;
-    border-radius: 99px;
-    background: #f1f5f9;
-    font-size: 0.72rem;
-    gap: 0;
+  .ms-filter-header-right {
+    max-width: 100%;
   }
-  .ms-filter-option.active {
-    background: #dbeafe;
+  .ms-dropdowns-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
-  .ms-filter-radio {
-    display: none;
-  }
-  .ms-filter-divider {
-    display: none;
+  .ms-main {
+    width: 100%;
+    flex: 1;
+    min-width: 0;
   }
   .ms-insights {
     width: 100%;
     position: static;
     flex-direction: row;
     flex-wrap: wrap;
+    gap: 12px;
   }
   .ms-insight-card {
     flex: 1;
-    min-width: 200px;
+    min-width: 240px;
   }
 }
 
 @media (max-width: 768px) {
   .ms-header {
     flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .ms-header button {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 18px !important;
+    font-size: 0.88rem !important;
+  }
+  .ms-title {
+    font-size: 1.35rem;
+  }
+  .ms-subtitle {
+    font-size: 0.8rem;
   }
   .ms-summary {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+    margin-bottom: 16px;
   }
   .ms-stat-card {
-    padding: 14px 16px;
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+  .ms-stat-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 6px;
   }
   .ms-stat-value {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
+  }
+  .ms-stat-label {
+    font-size: 0.65rem;
+  }
+  .ms-filter-card {
+    padding: 12px 14px 16px;
+    margin-bottom: 14px;
+  }
+  .ms-filter-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+  .ms-filter-header-left {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .ms-filter-header-right {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+  }
+  .ms-search-input-box {
+    flex: 1;
+    min-width: 0;
+  }
+  .ms-dropdowns-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .ms-dropdown-item {
+    gap: 4px;
+  }
+  .ms-dropdown-label {
+    font-size: 0.68rem;
+  }
+  .ms-filter-select {
+    padding: 8px 26px 8px 10px;
+    font-size: 0.78rem;
+    border-radius: 8px;
+  }
+  .ms-select-chevron {
+    right: 8px;
+  }
+  .ms-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
   }
   .ms-card-grid {
     grid-template-columns: 1fr;
-  }
-  .ms-drawer {
     width: 100%;
+    gap: 12px;
   }
-  .ms-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .ms-toolbar-right {
-    justify-content: space-between;
+  .ms-card-list-view {
+    width: 100%;
+    gap: 10px;
   }
   .ms-card-list {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 10px;
+    padding: 14px;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 12px;
   }
   .ms-card-list-left {
     flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
+  .ms-card-list-name {
+    font-size: 0.92rem;
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .ms-card-list-meta {
+    gap: 10px;
+    font-size: 0.72rem;
+  }
+  .ms-card-list-chips {
+    gap: 4px;
+    width: 100%;
   }
   .ms-card-list-right {
-    justify-content: flex-end;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
   }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@media (max-width: 1024px) {
-  .ms-container { padding: 16px; }
-  .ms-layout { grid-template-columns: 1fr; }
-  .ms-sidebar { display: none; }
-  .ms-header { flex-direction: column; gap: 12px; }
-}
-
-@media (max-width: 768px) {
-  .ms-table-wrapper { overflow-x: auto; }
-  .ms-filter-bar { flex-wrap: wrap; }
-  .ms-card { padding: 16px; }
+  .ms-card-list-right .sr-btn {
+    padding: 6px 14px !important;
+    font-size: 0.78rem !important;
+  }
+  .ms-drawer {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
-  .ms-actions { flex-direction: column; gap: 8px; width: 100%; }
-  .ms-actions button { width: 100%; }
+  .ms-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .ms-stat-card {
+    padding: 10px 12px;
+  }
+  .ms-stat-value {
+    font-size: 1.15rem;
+  }
+  .ms-stat-label {
+    font-size: 0.62rem;
+  }
+  .ms-dropdowns-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .ms-modal {
+    padding: 24px 18px 20px;
+  }
 }

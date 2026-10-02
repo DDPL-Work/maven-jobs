@@ -425,7 +425,7 @@ const CandidateCard = memo(function CandidateCard({
         </div>
 
         <div style={{
-          display: "flex", alignItems: "center", gap: 6,
+          display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
           marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.s100}`,
         }}>
           {candidate.email && (
