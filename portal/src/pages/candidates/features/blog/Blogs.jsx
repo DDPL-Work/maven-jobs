@@ -3,7 +3,7 @@ import { LuArrowRight, LuBookOpen, LuClock, LuChevronRight } from "react-icons/l
 import { Link, useLocation } from "react-router-dom";
 import { usePublishedBlogs, useBlogCategories } from "../../../../hooks/useCandidateQueries";
 import SkeletonPage from "../../../../components/Skeleton";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import CandidateHeader from "../../../../components/common/CandidateHeader";
 
 const ALL_CATEGORIES = "All Posts";
@@ -43,17 +43,70 @@ export default function Blogs() {
   const [page, setPage] = useState(1);
   const [referrerPath, setReferrerPath] = useState(null);
 
-  const blogParams = useMemo(() => {
-    const params = { page, limit: 12 };
-    if (activeCategory !== ALL_CATEGORIES) params.category = activeCategory;
-    return params;
-  }, [page, activeCategory]);
-
-  const { data: blogsData, isLoading, error: fetchError } = usePublishedBlogs(blogParams);
-  const blogs = blogsData?.blogs || [];
-  const pagination = blogsData?.pagination || null;
+  // Fetch all published blogs to dynamically power categories and filtering with available data
+  const { data: blogsData, isLoading, error: fetchError } = usePublishedBlogs({ limit: 50, page: 1 });
+  const allPublishedBlogs = blogsData?.blogs || [];
   const { data: rawCategories = [] } = useBlogCategories();
-  const categories = [ALL_CATEGORIES, ...(Array.isArray(rawCategories) ? rawCategories : [])];
+
+  // Dynamically derive categories from available blogs + known categories
+  const categories = useMemo(() => {
+    const fromBlogs = allPublishedBlogs
+      .map((b) => b.category?.trim())
+      .filter(Boolean);
+    const merged = Array.from(new Set([...fromBlogs, ...(Array.isArray(rawCategories) ? rawCategories : [])]));
+    return [ALL_CATEGORIES, ...merged];
+  }, [allPublishedBlogs, rawCategories]);
+
+  // Dynamic filtering against available data
+  const filteredBlogs = useMemo(() => {
+    if (!allPublishedBlogs || allPublishedBlogs.length === 0) return [];
+    if (activeCategory === ALL_CATEGORIES) return allPublishedBlogs;
+
+    const catLower = activeCategory.trim().toLowerCase();
+
+    // 1. Exact match on blog.category
+    const exactMatches = allPublishedBlogs.filter(
+      (b) => b.category?.trim().toLowerCase() === catLower
+    );
+    if (exactMatches.length > 0) return exactMatches;
+
+    // 2. Intelligent keyword / topic matching against available data
+    const categoryKeywords = {
+      "interview tips": ["interview", "call", "recruiter", "hiring", "question", "shortlist", "prep"],
+      "resume & cover letter": ["resume", "cv", "cover letter", "ats", "visibility", "profile"],
+      "it": ["tech", "developer", "software", "architect", "engineer", "devops", "code", "it"],
+      "technology": ["tech", "technology", "software", "system", "code", "ai", "platform"],
+      "career": ["career", "job", "recruiter", "growth", "opportunity", "work", "hiring"],
+      "salary & growth": ["salary", "growth", "compensation", "lpa", "advance", "promotion", "hiring"],
+      "remote work": ["remote", "hybrid", "work from home", "flexibility", "location"],
+      "product updates": ["product", "update", "platform", "maven", "feature", "release"],
+      "english": ["english", "communication", "interview", "write", "clarity"]
+    };
+
+    const keywords = categoryKeywords[catLower] || [catLower];
+
+    const keywordMatches = allPublishedBlogs.filter((blog) => {
+      const title = (blog.title || "").toLowerCase();
+      const excerpt = (blog.excerpt || "").toLowerCase();
+      const content = (blog.content || "").toLowerCase();
+      const tags = Array.isArray(blog.tags) ? blog.tags.join(" ").toLowerCase() : "";
+      const text = `${title} ${excerpt} ${content} ${tags}`;
+
+      return keywords.some((kw) => text.includes(kw));
+    });
+
+    if (keywordMatches.length > 0) return keywordMatches;
+
+    // 3. Fallback: Return available blogs so user is never faced with an empty wall
+    return allPublishedBlogs;
+  }, [allPublishedBlogs, activeCategory]);
+
+  const ITEMS_PER_PAGE = 12;
+  const totalPages = Math.ceil(filteredBlogs.length / ITEMS_PER_PAGE) || 1;
+  const paginatedBlogs = useMemo(() => {
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    return filteredBlogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredBlogs, page]);
 
   useEffect(() => {
     const fromState = location.state?.from || null;
@@ -212,7 +265,7 @@ export default function Blogs() {
           >
             <p style={{ fontSize: 16, fontWeight: 600 }}>{String(fetchError?.message || fetchError || "")}</p>
           </div>
-        ) : blogs.length === 0 ? (
+        ) : filteredBlogs.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 0" }}>
             <LuBookOpen size={48} color="#94a3b8" />
             <p
@@ -231,7 +284,7 @@ export default function Blogs() {
           </div>
         ) : (
           <>
-            {blogs.length > 0 ? (
+            {paginatedBlogs.length > 0 ? (
               <div
                 style={{
                   display: "grid",
@@ -239,7 +292,7 @@ export default function Blogs() {
                   gap: 20,
                 }}
               >
-                {blogs.map((blog) => (
+                {paginatedBlogs.map((blog) => (
                   <Link
                     key={blog.id}
                     to={`/blogs/${blog.slug}`}
@@ -388,7 +441,7 @@ export default function Blogs() {
               </div>
             ) : null}
 
-            {pagination && pagination.totalPages > 1 ? (
+            {totalPages > 1 ? (
               <div
                 style={{
                   display: "flex",
@@ -422,11 +475,11 @@ export default function Blogs() {
                     color: "#94a3b8",
                   }}
                 >
-                  Page {pagination.page} of {pagination.totalPages}
+                  Page {page} of {totalPages}
                 </span>
                 <button
                   type="button"
-                  disabled={page >= pagination.totalPages}
+                  disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                   style={{
                     padding: "10px 24px",
@@ -436,9 +489,9 @@ export default function Blogs() {
                     fontSize: 14,
                     fontWeight: 600,
                     color:
-                      page >= pagination.totalPages ? "#cbd5e1" : "#475569",
+                      page >= totalPages ? "#cbd5e1" : "#475569",
                     cursor:
-                      page >= pagination.totalPages
+                      page >= totalPages
                         ? "not-allowed"
                         : "pointer",
                   }}

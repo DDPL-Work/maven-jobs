@@ -54,7 +54,7 @@ import {
 } from "../../../../hooks/useCandidateQueries";
 import HourglassLoader from "../../../../components/HourglassLoader";
 import ProfileSections from "../../../../components/profile/ProfileSections";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import CandidateHeader from "../../../../components/common/CandidateHeader";
 import FAQModal, {
   FaqAccordionItem as FaqItem,
@@ -147,8 +147,8 @@ export default function ProfileDashboard() {
 
   const [showCompletionModal, setShowCompletionModal] = useState(
     Boolean(user) &&
-      profileCompletion < PROFILE_COMPLETION_MODAL_THRESHOLD &&
-      !wasCompletionModalSeenToday(),
+    profileCompletion < PROFILE_COMPLETION_MODAL_THRESHOLD &&
+    !wasCompletionModalSeenToday(),
   );
   const [showPreview, setShowPreview] = useState(false);
   const [showJobsModal, setShowJobsModal] = useState(false);
@@ -248,9 +248,9 @@ export default function ProfileDashboard() {
   // Production ready unique profile link generation (backend-backed)
   const [publicShareId, setPublicShareId] = useState(
     user?.publicShareId ||
-      user?.profile?.publicShareId ||
-      user?.user?.publicShareId ||
-      "",
+    user?.profile?.publicShareId ||
+    user?.user?.publicShareId ||
+    "",
   );
 
   useEffect(() => {
@@ -788,17 +788,17 @@ export default function ProfileDashboard() {
       current.map((thread, index) =>
         index === activeCandidateConv
           ? normalizeCandidateThread(
-              {
-                ...thread,
-                lastMessageText: outgoing,
-                messages: [
-                  ...(thread.messages || []),
-                  { from: "me", text: outgoing, time: "Just now" },
-                ],
-                unreadCount: 0,
-              },
-              index,
-            )
+            {
+              ...thread,
+              lastMessageText: outgoing,
+              messages: [
+                ...(thread.messages || []),
+                { from: "me", text: outgoing, time: "Just now" },
+              ],
+              unreadCount: 0,
+            },
+            index,
+          )
           : thread,
       ),
     );
@@ -1423,7 +1423,7 @@ export default function ProfileDashboard() {
             </div>
           </div>
           <Link
-            to="/leave"
+            to="/candidate/email-templates"
             style={{
               textDecoration: "none",
               display: "block",
@@ -1626,7 +1626,7 @@ export default function ProfileDashboard() {
                     {CALLS_ENABLED &&
                       activeCandidateThread.activeCall?.state === "RINGING" &&
                       activeCandidateThread.activeCall?.initiatedBy ===
-                        "COMPANY" && (
+                      "COMPANY" && (
                         <div className="pd-incoming-call">
                           <div>
                             <strong>
@@ -1634,7 +1634,7 @@ export default function ProfileDashboard() {
                             </strong>
                             <span>
                               {activeCandidateThread.activeCall.mediaType ===
-                              "VIDEO"
+                                "VIDEO"
                                 ? "Video call"
                                 : "Audio call"}
                             </span>
@@ -1966,13 +1966,13 @@ export default function ProfileDashboard() {
           const appsList = hasApps
             ? appsWithScores
             : [
-                {
-                  companyName: "No recent applications",
-                  jobTitle: "Apply to jobs to see your match scores!",
-                  status: "-",
-                  matchScore: 0,
-                },
-              ];
+              {
+                companyName: "No recent applications",
+                jobTitle: "Apply to jobs to see your match scores!",
+                status: "-",
+                matchScore: 0,
+              },
+            ];
 
           return (
             <div

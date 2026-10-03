@@ -4,7 +4,7 @@ import {
   FaLightbulb, FaSearch, FaStar, FaUsers
 } from "react-icons/fa";
 import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./CompanyResearch.css";
 
 const interviewCategories = [

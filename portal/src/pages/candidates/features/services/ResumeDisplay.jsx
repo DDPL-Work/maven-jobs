@@ -5,7 +5,7 @@ import {
   FiMail, FiSearch, FiStar, FiTarget, FiTrendingUp, FiUsers, FiZap,
 } from "react-icons/fi";
 import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./ResumeDisplay.css";
 
 const FAQItem = ({ q, a }) => (

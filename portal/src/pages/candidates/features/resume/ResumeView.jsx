@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiDownload } from "react-icons/fi";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import { getTemplate, getFontFamily } from "./ResumeTemplates";
 
 const FONT_CSS = `

@@ -11,7 +11,7 @@ import { useCandidateCompanies, useCompanyStats, useCompanyFilterOptions } from 
 import useCompanyFilters from '../../../../hooks/useCompanyFilters';
 import { useProfileAnalysis } from '../../../../hooks/useProfileAnalysis';
 import LandingHeader from '../../../../components/LandingHeader';
-import LandingFooter from '../../../../components/LandingFooter';
+import LandingFooter from '../../../../layout/candidate/LandingFooter';
 import SkeletonPage from '../../../../components/Skeleton';
 import CompanyGrid from '../../../../components/company/CompanyGrid';
 import './CompaniesPage.css';
@@ -378,7 +378,7 @@ export default function CompaniesPage() {
               })}
             </div>
           </aside>
-          
+
           <div
             className={`cp-sidebar-overlay${isMobileFiltersOpen ? ' open' : ''}`}
             onClick={closeMobileFilters}

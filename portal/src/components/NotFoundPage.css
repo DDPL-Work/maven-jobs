@@ -1,60 +1,259 @@
+/* ========================================================
+   NOT FOUND PAGE (404) STYLES
+   Harmonized with MavenJobs brand palette:
+   Navy (#002366), Emerald (#10b981), Slate (#0f172a / #64748b)
+   ======================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --navy: #002366;
+  --green: #10b981;
+  --fd: 'Bricolage Grotesque', sans-serif;
+}
+
 .not-found-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #f8fafc;
-  padding: 20px;
-  text-align: center;
+  background: linear-gradient(180deg, #f0f4fb 0%, #ffffff 100%);
+  padding: 104px 20px 48px;
+  box-sizing: border-box;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #1e293b;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle decorative ambient brand glows */
+.not-found-container::before {
+  content: '';
+  position: absolute;
+  top: 15%;
+  left: 15%;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 35, 102, 0.045) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.not-found-container::after {
+  content: '';
+  position: absolute;
+  bottom: 10%;
+  right: 15%;
+  width: 450px;
+  height: 450px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.055) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes notFoundFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .not-found-content {
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  max-width: 450px;
+  position: relative;
+  z-index: 1;
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 20px 60px rgba(0, 35, 102, 0.08);
+  max-width: 860px;
   width: 100%;
+  padding: 22px;
+  box-sizing: border-box;
+  animation: notFoundFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.not-found-image-wrap {
+  width: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 35, 102, 0.1);
+  position: relative;
+}
+
+.not-found-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1983 / 793;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.not-found-content:hover .not-found-image {
+  transform: scale(1.018);
+}
+
+.not-found-body {
+  padding: 28px 18px 14px;
+  text-align: center;
+}
+
+.not-found-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: #EEF2FF;
+  color: #002366;
+  margin-bottom: 14px;
+  font-family: var(--fd);
+  border: 1px solid rgba(0, 35, 102, 0.08);
+}
+
+.not-found-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  position: relative;
+  display: inline-block;
+}
+
+.not-found-badge-dot::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: #10b981;
+  opacity: 0.45;
+  animation: ping 1.8s infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
 }
 
 .not-found-title {
-  font-size: 80px;
+  font-family: var(--fd);
+  font-size: clamp(24px, 3.8vw, 36px);
   font-weight: 800;
-  color: #2563eb;
+  color: #0f172a;
+  line-height: 1.2;
   margin: 0 0 10px 0;
-  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
-.not-found-subtitle {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 10px 0;
-}
 
-.not-found-text {
-  font-size: 15px;
-  color: #64748b;
-  margin: 0 0 25px 0;
+.not-found-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .not-found-button {
-  background-color: #2563eb;
-  color: white;
+  background: #002366;
+  color: #ffffff;
   border: none;
-  padding: 12px 24px;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 9999px;
+  padding: 13px 30px;
+  font-size: 14.5px;
+  font-weight: 800;
+  border-radius: 100px;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--fd);
+  box-shadow: 0 8px 24px rgba(0, 35, 102, 0.22);
+  transition: all 0.25s ease;
 }
 
 .not-found-button:hover {
-  background-color: #1d4ed8;
-  transform: translateY(-1px);
+  background: #001540;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 35, 102, 0.3);
 }
 
 .not-found-button:active {
   transform: translateY(0);
+}
+
+.not-found-back-button {
+  background: #ffffff;
+  color: #002366;
+  border: 1.5px solid #e2e8f0;
+  padding: 12px 24px;
+  font-size: 14.5px;
+  font-weight: 800;
+  border-radius: 100px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--fd);
+  transition: all 0.25s ease;
+}
+
+.not-found-back-button:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #001540;
+  transform: translateY(-2px);
+}
+
+.not-found-back-button:active {
+  transform: translateY(0);
+}
+
+/* ── Mobile responsiveness ── */
+@media (max-width: 640px) {
+  .not-found-container {
+    padding: 84px 16px 36px;
+  }
+
+  .not-found-content {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .not-found-image-wrap {
+    border-radius: 14px;
+  }
+
+  .not-found-body {
+    padding: 22px 10px 8px;
+  }
+
+  .not-found-title {
+    font-size: 22px;
+  }
+
+  .not-found-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .not-found-button,
+  .not-found-back-button {
+    width: 100%;
+    justify-content: center;
+    padding: 13px 20px;
+  }
 }

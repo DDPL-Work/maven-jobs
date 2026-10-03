@@ -223,13 +223,13 @@ function MiniLineChart({ color = '#10b981', data = [30, 45, 38, 60, 55, 72, 68, 
 /* ─── Floating Stats Card ─────────────────────────────────── */
 function StatCard({ icon, label, value, change, color, bg, delay = 0 }) {
     return (
-        <div style={{ background: '#fff', borderRadius: 18, padding: '18px 20px', border: '1px solid #e2e8f0', boxShadow: '0 8px 28px rgba(0,35,102,.07)', animation: `floatIn .7s ease ${delay}s both`, minWidth: 170 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>{icon}</div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 100, background: '#ecfdf5', fontSize: 10, fontWeight: 800, color: '#059669' }}>↑ {change}</div>
+        <div className="tp-stat-card" style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 8px 28px rgba(0,35,102,.07)', animation: `floatIn .7s ease ${delay}s both` }}>
+            <div className="tp-sc-top" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div className="tp-sc-icon" style={{ width: 34, height: 34, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>{icon}</div>
+                <div className="tp-sc-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 100, background: '#ecfdf5', fontSize: 10, fontWeight: 800, color: '#059669' }}>↑ {change}</div>
             </div>
-            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 22, fontWeight: 800, color: '#0f172a', lineHeight: 1, marginBottom: 3 }}>{value}</div>
-            <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>{label}</div>
+            <div className="tp-sc-val" style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 21, fontWeight: 800, color: '#0f172a', lineHeight: 1, marginBottom: 3 }}>{value}</div>
+            <div className="tp-sc-lbl" style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>{label}</div>
         </div>
     );
 }
@@ -450,91 +450,274 @@ export default function Talent() {
         .sf-field::placeholder{color:#94a3b8;}
         ::-webkit-scrollbar{width:5px}
         ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
+
+        /* ── Responsive Architecture ── */
+        .tp-sec { padding: 96px 44px; }
+        .tp-hero-section { min-height: 94vh; display: flex; align-items: center; position: relative; overflow: hidden; padding: 104px 44px 20px; box-sizing: border-box; width: 100%; max-width: 100vw; }
+        .tp-hero-grid { max-width: 1280px; margin: 0 auto; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; position: relative; z-index: 2; padding: 60px 0; box-sizing: border-box; }
+        .tp-hero-left { display: flex; flex-direction: column; align-items: flex-start; width: 100%; max-width: 100%; box-sizing: border-box; }
+        .tp-hero-badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.28); color: #6ee7b7; font-size: 10.5px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; padding: 6px 16px; border-radius: 100px; margin-bottom: 24px; font-family: var(--fd); backdrop-filter: blur(8px); }
+        .tp-hero-title { font-family: var(--fd); font-size: clamp(34px, 4.8vw, 58px); font-weight: 800; color: #fff; line-height: 1.08; letter-spacing: -0.04em; margin-bottom: 20px; }
+        .tp-hero-sub { font-size: 16.5px; color: rgba(255,255,255,.62); line-height: 1.75; margin-bottom: 16px; max-width: 480px; }
+        .tp-hero-pills { display: flex; gap: 16px; margin-bottom: 34px; box-sizing: border-box; }
+        .tp-hero-pill { display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; backdrop-filter: blur(8px); box-sizing: border-box; }
+        .tp-hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 44px; box-sizing: border-box; }
+        .tp-hero-stats { display: flex; gap: 12px; flex-wrap: wrap; box-sizing: border-box; }
+        .tp-stat-card { padding: 18px 20px; min-width: 160px; flex: 1 1 160px; box-sizing: border-box; }
+        .tp-hero-right { display: flex; justify-content: center; align-items: center; position: relative; width: 100%; max-width: 100%; overflow: hidden; box-sizing: border-box; }
+        .tp-hero-visual-scaler { position: relative; width: 560px; height: 560px; display: flex; align-items: center; justify-content: center; }
+        .tp-features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+        .tp-market-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 48px; }
+        .tp-comp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 48px; }
+        .tp-demo-card { background: linear-gradient(135deg, #050e24, #002366); border-radius: 32px; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; }
+        .tp-demo-left { padding: 60px 52px; position: relative; }
+        .tp-demo-right { background: #fff; padding: 52px 44px; border-left: 1px solid #f1f5f9; }
+        .tp-demo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+        .tp-faq-btn { width: 100%; padding: 22px 30px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; text-align: left; cursor: pointer; transition: background .2s; }
+        .tp-faq-answer { padding: 0 30px 22px 70px; font-size: 14px; color: #475569; line-height: 1.8; }
+
+        @media (max-width: 1024px) {
+          .tp-sec { padding: 72px 32px; }
+          .tp-hero-section { padding: 110px 24px 30px; min-height: auto; }
+          .tp-hero-grid { grid-template-columns: 1fr; gap: 40px; padding: 24px 0 44px; text-align: center; }
+          .tp-hero-left { align-items: center; }
+          .tp-hero-badge { margin-bottom: 20px; }
+          .tp-hero-title { font-size: clamp(32px, 5.5vw, 48px); }
+          .tp-hero-sub { max-width: 560px; text-align: center; }
+          .tp-hero-pills { justify-content: center; margin-bottom: 28px; }
+          .tp-hero-ctas { justify-content: center; margin-bottom: 36px; }
+          .tp-hero-stats { justify-content: center; width: 100%; max-width: 600px; margin: 0 auto; }
+          .tp-hero-right { height: 460px; }
+          .tp-hero-visual-scaler {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 560px;
+            height: 560px;
+            transform: translate(-50%, -50%) scale(0.8);
+            transform-origin: center center;
+          }
+          .tp-features-grid,
+          .tp-market-grid,
+          .tp-comp-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+          .tp-demo-card { grid-template-columns: 1fr; }
+          .tp-demo-right { border-left: none; border-top: 1px solid #f1f5f9; padding: 44px 36px; }
+          .tp-demo-left { padding: 48px 36px; }
+        }
+
+        /* Mobile & Tablet Portrait (<= 768px) */
+        @media (max-width: 768px) {
+          .tp-sec { padding: 60px 20px; }
+          .tp-hero-section { padding: 100px 16px 28px !important; overflow-x: hidden !important; }
+          .tp-hero-grid { grid-template-columns: 1fr !important; gap: 26px !important; padding: 16px 0 28px !important; width: 100% !important; max-width: 100% !important; }
+          .tp-hero-left { width: 100% !important; max-width: 100% !important; align-items: center !important; }
+          .tp-hero-badge { margin-bottom: 14px !important; }
+          .tp-hero-title { font-size: clamp(28px, 7.5vw, 40px) !important; line-height: 1.12 !important; margin-bottom: 14px !important; text-align: center !important; }
+          .tp-hero-sub { font-size: 14.5px !important; line-height: 1.6 !important; margin-bottom: 18px !important; max-width: 100% !important; text-align: center !important; }
+
+          /* Stack pill number and label vertically so both fit 100% within mobile viewport */
+          .tp-hero-pills {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            width: 100% !important;
+            max-width: 360px !important;
+            gap: 10px !important;
+            margin: 0 auto 22px !important;
+          }
+          .tp-hero-pill {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            padding: 10px 8px !important;
+            gap: 3px !important;
+            width: 100% !important;
+            border-radius: 14px !important;
+          }
+          .tp-pill-val { font-size: 18px !important; line-height: 1.1 !important; }
+          .tp-pill-lbl { font-size: 10.5px !important; line-height: 1.25 !important; text-align: center !important; }
+
+          /* Full-width primary & secondary CTAs on mobile */
+          .tp-hero-ctas {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            max-width: 360px !important;
+            gap: 10px !important;
+            margin: 0 auto 24px !important;
+          }
+          .tp-hero-ctas .cta-btn,
+          .tp-hero-ctas .cta-btn-outline {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 13px 20px !important;
+            font-size: 14px !important;
+            box-sizing: border-box !important;
+          }
+
+          /* 2+1 responsive StatCards */
+          .tp-hero-stats {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            width: 100% !important;
+            max-width: 360px !important;
+            gap: 10px !important;
+            margin: 0 auto !important;
+          }
+          .tp-hero-stats .tp-stat-card:nth-child(3) {
+            grid-column: span 2 !important;
+          }
+          .tp-stat-card {
+            padding: 12px 14px !important;
+            min-width: 0 !important;
+            text-align: left !important;
+          }
+          .tp-sc-top { margin-bottom: 6px !important; }
+          .tp-sc-icon { width: 28px !important; height: 28px !important; }
+          .tp-sc-badge { font-size: 9px !important; padding: 2px 6px !important; }
+          .tp-sc-val { font-size: 18px !important; }
+          .tp-sc-lbl { font-size: 10px !important; }
+
+          /* ── Hero 3D Visual: hidden on mobile (< 640px), visible on sm+ (>= 640px) ── */
+          @media (max-width: 639px) {
+            .hidden { display: none !important; }
+            .tp-hero-right,
+            .tp-hero-right.hidden {
+              display: none !important;
+              height: 0 !important;
+              min-height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+            }
+          }
+          @media (min-width: 640px) and (max-width: 768px) {
+            .tp-hero-right,
+            .tp-hero-right.sm\:block {
+              display: flex !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              height: 380px !important;
+              position: relative !important;
+              overflow: hidden !important;
+              margin: 10px auto 0 !important;
+            }
+            .tp-hero-visual-scaler {
+              position: absolute !important;
+              left: 50% !important;
+              top: 50% !important;
+              width: 560px !important;
+              height: 560px !important;
+              transform: translate(-50%, -50%) scale(0.66) !important;
+              transform-origin: center center !important;
+            }
+          }
+
+          .tp-features-grid,
+          .tp-market-grid,
+          .tp-comp-grid { grid-template-columns: 1fr; gap: 18px; }
+          .feature-card { padding: 26px 22px; }
+          .comp-card { padding: 24px 20px; }
+          .tp-faq-btn { padding: 18px 20px; gap: 12px; }
+          .tp-faq-answer { padding: 0 20px 18px 20px; }
+          .tp-demo-card { border-radius: 24px; }
+          .tp-demo-left { padding: 36px 22px; }
+          .tp-demo-right { padding: 36px 22px; }
+        }
+
+        @media (max-width: 380px) {
+          .tp-hero-title { font-size: 26px !important; }
+          .feature-card { padding: 20px 16px; }
+          .comp-card { padding: 20px 16px; }
+        }
       `}</style>
 
             {/* ── FIXED HEADER WRAPPER ── */}
             <LandingEmployeeHeader />
 
             {/* ── HERO ── */}
-            <section style={{ background: 'linear-gradient(135deg,#050e24 0%,#002366 58%,#1a0a4a 100%)', minHeight: '94vh', display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden', padding: '102px 44px 0' }}>
+            <section className="tp-hero-section" style={{ background: 'linear-gradient(135deg,#050e24 0%,#002366 58%,#1a0a4a 100%)' }}>
                 <div style={{ position: 'absolute', inset: 0, opacity: .05, backgroundImage: 'radial-gradient(#fff 1px,transparent 1px)', backgroundSize: '26px 26px' }} />
                 <div style={{ position: 'absolute', top: '-15%', right: '-8%', width: 620, height: 620, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,.22) 0%,transparent 65%)', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', bottom: '-18%', left: '-5%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle,rgba(16,185,129,.16) 0%,transparent 65%)', pointerEvents: 'none' }} />
 
-                <div style={{ maxWidth: 1280, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center', position: 'relative', zIndex: 2, padding: '80px 0' }}>
+                <div className="tp-hero-grid">
                     {/* Left */}
-                    <div style={{ animation: 'fadeUp .85s ease both' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.28)', color: '#6ee7b7', fontSize: 10.5, fontWeight: 800, letterSpacing: '.18em', textTransform: 'uppercase', padding: '6px 16px', borderRadius: 100, marginBottom: 26, fontFamily: 'var(--fd)', backdropFilter: 'blur(8px)' }}>
+                    <div className="tp-hero-left" style={{ animation: 'fadeUp .85s ease both' }}>
+                        <div className="tp-hero-badge">
                             <div style={{ position: 'relative' }}><div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} /><div style={{ position: 'absolute', inset: -1, borderRadius: '50%', background: '#10b981', animation: 'ping 1.5s infinite' }} /></div>
-                            Naukri Talent Pulse · Live
+                            Maven Talent Pulse · Live
                         </div>
 
-                        <h1 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(34px,5vw,60px)', fontWeight: 800, color: '#fff', lineHeight: 1.06, letterSpacing: '-0.04em', marginBottom: 20 }}>
+                        <h1 className="tp-hero-title">
                             AI-Powered<br />
                             <span style={{ color: '#10b981' }}>real-time talent</span><br />
                             intelligence.
                         </h1>
 
-                        <p style={{ fontSize: 16.5, color: 'rgba(255,255,255,.56)', lineHeight: 1.8, marginBottom: 14, maxWidth: 460 }}>
-                            Smarter hiring decisions — powered by instant insights from
+                        <p className="tp-hero-sub">
+                            Smarter hiring decisions — powered by instant insights from India's largest talent network.
                         </p>
-                        <div style={{ display: 'flex', gap: 20, marginBottom: 36 }}>
+                        <div className="tp-hero-pills">
                             {[{ v: '700Cr+', l: 'Actions tracked yearly' }, { v: '2.5Cr+', l: 'Active candidates' }].map((s, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px', background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 14, backdropFilter: 'blur(8px)' }}>
-                                    <span style={{ fontFamily: 'var(--fd)', fontSize: 20, fontWeight: 800, color: '#fff' }}>{s.v}</span>
-                                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)', fontWeight: 600, lineHeight: 1.3 }}>{s.l}</span>
+                                <div key={i} className="tp-hero-pill">
+                                    <span className="tp-pill-val" style={{ fontFamily: 'var(--fd)', fontSize: 20, fontWeight: 800, color: '#fff' }}>{s.v}</span>
+                                    <span className="tp-pill-lbl" style={{ fontSize: 11, color: 'rgba(255,255,255,.65)', fontWeight: 600, lineHeight: 1.3 }}>{s.l}</span>
                                 </div>
                             ))}
                         </div>
 
-                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginBottom: 48 }}>
+                        <div className="tp-hero-ctas">
                             <a href="#demo" className="cta-btn">Request a Call Back <FiArrowRight size={15} /></a>
                             <a href="#features" className="cta-btn-outline"><FiPlay size={14} /> Watch Demo</a>
                         </div>
 
                         {/* Live stat cards */}
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <div className="tp-hero-stats">
                             {STATS_LIVE.map((s, i) => <StatCard key={i} {...s} delay={0.6 + i * 0.1} />)}
                         </div>
                     </div>
 
                     {/* Right — Intelligence Core */}
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', animation: 'floatIn 1s ease .3s both' }}>
-                        <TalentIntelligenceCore />
-                        {/* Floating Data Panels in Orbit */}
-                        <div style={{ position: 'absolute', top: '50%', left: '50%', width: 560, height: 560, animation: 'orbit 45s linear infinite', pointerEvents: 'none', zIndex: 10 }}>
-                            {[
-                                { title: 'Talent Density', value: 'High', trend: 'Bglr, Pune' },
-                                { title: 'Time-to-Hire', value: '24 Days', trend: '-3 Days' },
-                                { title: 'Skill Supply', value: '1.2M', trend: 'Active' },
-                                { title: 'Competitor Attrition', value: '18.2%', trend: '-2.1%' },
-                                { title: 'Market Demand', value: 'High', trend: 'IT/SaaS' },
-                                { title: 'Salary Trends', value: '₹14L - 22L', trend: '+12.5%' },
-                            ].map((panel, i) => {
-                                const angle = (i * 60 - 30) * (Math.PI / 180); // Offset by 30deg to match hexagon corners visually
-                                const radius = 210; // More compact orbit radius
-                                const left = `calc(50% + ${Math.cos(angle) * radius}px)`;
-                                const top = `calc(50% + ${Math.sin(angle) * radius}px)`;
+                    <div className="tp-hero-right hidden sm:block" style={{ animation: 'floatIn 1s ease .3s both' }}>
+                        <div className="tp-hero-visual-scaler">
+                            <TalentIntelligenceCore />
+                            {/* Floating Data Panels in Orbit */}
+                            <div style={{ position: 'absolute', top: '50%', left: '50%', width: 560, height: 560, animation: 'orbit 45s linear infinite', pointerEvents: 'none', zIndex: 10 }}>
+                                {[
+                                    { title: 'Talent Density', value: 'High', trend: 'Bglr, Pune' },
+                                    { title: 'Time-to-Hire', value: '24 Days', trend: '-3 Days' },
+                                    { title: 'Skill Supply', value: '1.2M', trend: 'Active' },
+                                    { title: 'Competitor Attrition', value: '18.2%', trend: '-2.1%' },
+                                    { title: 'Market Demand', value: 'High', trend: 'IT/SaaS' },
+                                    { title: 'Salary Trends', value: '₹14L - 22L', trend: '+12.5%' },
+                                ].map((panel, i) => {
+                                    const angle = (i * 60 - 30) * (Math.PI / 180); // Offset by 30deg to match hexagon corners visually
+                                    const radius = 210; // More compact orbit radius
+                                    const left = `calc(50% + ${Math.cos(angle) * radius}px)`;
+                                    const top = `calc(50% + ${Math.sin(angle) * radius}px)`;
 
-                                return (
-                                    <div key={i} style={{
-                                        position: 'absolute', top, left,
-                                        background: 'rgba(20, 30, 50, 0.7)', backdropFilter: 'blur(12px)',
-                                        border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px',
-                                        boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
-                                        animation: `counterOrbit 45s linear infinite`,
-                                        color: '#fff', minWidth: 150,
-                                        pointerEvents: 'auto'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-                                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', color: '#94a3b8', textTransform: 'uppercase' }}>{panel.title}</div>
+                                    return (
+                                        <div key={i} style={{
+                                            position: 'absolute', top, left,
+                                            background: 'rgba(20, 30, 50, 0.75)', backdropFilter: 'blur(12px)',
+                                            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: '12px 16px',
+                                            boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+                                            animation: `counterOrbit 45s linear infinite`,
+                                            color: '#fff', minWidth: 145, whiteSpace: 'nowrap',
+                                            pointerEvents: 'auto'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+                                                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', color: '#94a3b8', textTransform: 'uppercase' }}>{panel.title}</div>
+                                            </div>
+                                            <div style={{ fontFamily: 'var(--fd)', fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 2 }}>{panel.value}</div>
+                                            <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>{panel.trend}</div>
                                         </div>
-                                        <div style={{ fontFamily: 'var(--fd)', fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 2 }}>{panel.value}</div>
-                                        <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>{panel.trend}</div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -552,7 +735,7 @@ export default function Talent() {
             </div>
 
             {/* ── FEATURES ── */}
-            <section id="features" style={{ background: '#fff', padding: '96px 44px' }}>
+            <section id="features" className="tp-sec" style={{ background: '#fff' }}>
                 <div style={{ maxWidth: 1280, margin: '0 auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: 60 }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}>✦ Core Capabilities</div>
@@ -560,7 +743,7 @@ export default function Talent() {
                         <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 16px' }} />
                         <p style={{ fontSize: 16, color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.75 }}>Our 200+ domain experts powered by real-time AI insights from India's largest active candidate dataset.</p>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 26 }}>
+                    <div className="tp-features-grid">
                         {FEATURES.map((f, i) => (
                             <div key={i} className="feature-card">
                                 <div style={{ width: 50, height: 50, borderRadius: 15, background: f.bg, border: `1px solid ${f.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: f.color, marginBottom: 22 }}>{f.icon}</div>
@@ -576,14 +759,14 @@ export default function Talent() {
             </section>
 
             {/* ── MARKET INSIGHTS ── */}
-            <section id="market-insights" style={{ background: 'linear-gradient(135deg,#f0f4fb,#e8f0fe)', padding: '96px 44px' }}>
+            <section id="market-insights" className="tp-sec" style={{ background: 'linear-gradient(135deg,#f0f4fb,#e8f0fe)' }}>
                 <div style={{ maxWidth: 1280, margin: '0 auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: 60 }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}>✦ Talent Market Insights</div>
                         <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 12 }}>Optimise hiring with market-ready insights</h2>
                         <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto' }} />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, marginBottom: 48 }}>
+                    <div className="tp-market-grid">
                         {MARKET_CARDS.map((m, i) => (
                             <div key={i} className="market-card">
                                 {/* Mock chart area */}
@@ -614,14 +797,14 @@ export default function Talent() {
             </section>
 
             {/* ── COMPETITIVE INTEL ── */}
-            <section id="competitive-intel" style={{ background: '#fff', padding: '96px 44px' }}>
+            <section id="competitive-intel" className="tp-sec" style={{ background: '#fff' }}>
                 <div style={{ maxWidth: 1280, margin: '0 auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: 60 }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}>✦ Competitive Workforce Insights</div>
                         <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 12 }}>Compare, track, and strengthen your talent strategy</h2>
                         <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto' }} />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, marginBottom: 48 }}>
+                    <div className="tp-comp-grid">
                         {COMPETITIVE.map((c, i) => (
                             <div key={i} className="comp-card">
                                 {/* Mock analytics visual */}
@@ -674,7 +857,7 @@ export default function Talent() {
             </section>
 
             {/* ── FAQ ── */}
-            <section style={{ background: 'linear-gradient(135deg,#f0f4fb,#e8f0fe)', padding: '96px 44px' }}>
+            <section className="tp-sec" style={{ background: 'linear-gradient(135deg,#f0f4fb,#e8f0fe)' }}>
                 <div style={{ maxWidth: 860, margin: '0 auto' }}>
                     <div style={{ textAlign: 'center', marginBottom: 56 }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}>✦ Got Questions?</div>
@@ -684,7 +867,7 @@ export default function Talent() {
                     <div style={{ background: '#fff', borderRadius: 24, border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
                         {FAQS.map((faq, i) => (
                             <div key={i} style={{ borderBottom: i < FAQS.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                                <button onClick={() => setExpandedFaq(expandedFaq === i ? null : i)} style={{ width: '100%', padding: '22px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', transition: 'background .2s' }}
+                                <button className="tp-faq-btn" onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
                                     onMouseEnter={e => e.currentTarget.style.background = '#fafbfc'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -697,8 +880,8 @@ export default function Talent() {
                                         <FiChevronDown size={15} />
                                     </div>
                                 </button>
-                                <div style={{ maxHeight: expandedFaq === i ? 200 : 0, overflow: 'hidden', transition: 'max-height .35s cubic-bezier(.4,0,.2,1)' }}>
-                                    <div style={{ padding: '0 30px 22px 70px', fontSize: 14, color: '#475569', lineHeight: 1.8 }}>{faq.a}</div>
+                                <div style={{ maxHeight: expandedFaq === i ? 400 : 0, overflow: 'hidden', transition: 'max-height .35s cubic-bezier(.4,0,.2,1)' }}>
+                                    <div className="tp-faq-answer">{faq.a}</div>
                                 </div>
                             </div>
                         ))}
@@ -707,10 +890,10 @@ export default function Talent() {
             </section>
 
             {/* ── DEMO CTA ── */}
-            <section id="demo" style={{ background: '#fff', padding: '96px 44px' }}>
+            <section id="demo" className="tp-sec" style={{ background: '#fff' }}>
                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-                    <div style={{ background: 'linear-gradient(135deg,#050e24,#002366)', borderRadius: 32, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-                        <div style={{ padding: '60px 52px', position: 'relative' }}>
+                    <div className="tp-demo-card">
+                        <div className="tp-demo-left">
                             <div style={{ position: 'absolute', inset: 0, opacity: .05, backgroundImage: 'radial-gradient(#fff 1px,transparent 1px)', backgroundSize: '22px 22px' }} />
                             <div style={{ position: 'relative', zIndex: 1 }}>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.18em', textTransform: 'uppercase', color: '#6ee7b7', marginBottom: 16, fontFamily: 'var(--fd)' }}>✦ Get Started Today</div>
@@ -726,11 +909,11 @@ export default function Talent() {
                                 ))}
                             </div>
                         </div>
-                        <div style={{ background: '#fff', padding: '52px 44px', borderLeft: '1px solid #f1f5f9' }}>
+                        <div className="tp-demo-right">
                             <div style={{ height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, marginBottom: 28 }} />
                             <h3 style={{ fontFamily: 'var(--fd)', fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 22 }}>Book your personalized demo</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+                                <div className="tp-demo-row">
                                     <input className="sf-field" type="text" placeholder="Full Name" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
                                     <input className="sf-field" type="tel" placeholder="Contact Number" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
                                 </div>

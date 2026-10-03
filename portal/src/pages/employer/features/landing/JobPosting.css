@@ -1,0 +1,623 @@
+/* ========================================================
+   JOB POSTING LANDING PAGE STYLES
+   Scoped strictly to .jp-page-root to prevent any style leak
+   or conflicts on page refresh/navigation
+   ======================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+.jp-page-root {
+  --navy: #002366;
+  --green: #10b981;
+  --fd: 'Bricolage Grotesque', sans-serif;
+  background: #f8fafc;
+  color: #1e293b;
+  overflow-x: hidden;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  width: 100%;
+}
+
+.jp-page-root *,
+.jp-page-root *::before,
+.jp-page-root *::after {
+  box-sizing: border-box;
+}
+
+.jp-page-root h1,
+.jp-page-root h2,
+.jp-page-root h3,
+.jp-page-root p {
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Hardware-Accelerated Animations ── */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes jpFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.jp-eyebrow {
+  animation: jpFadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.jp-hero-title {
+  animation: jpFadeInUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+
+.jp-hero-sub {
+  animation: jpFadeInUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+
+.jp-ctas {
+  animation: jpFadeInUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+}
+
+.jp-badges-wrap {
+  animation: jpFadeInUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+
+.jp-mockup {
+  animation: jpFadeInUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+.jp-step-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 16px 40px rgba(0, 35, 102, .09) !important;
+  border-color: rgba(0, 35, 102, .15) !important;
+}
+
+.jp-plan-card:hover {
+  transform: translateY(-6px) !important;
+  box-shadow: 0 22px 56px rgba(0, 35, 102, .13) !important;
+}
+
+/* ── Hero Section ── */
+.jp-hero-sec {
+  padding-top: 66px;
+  background: linear-gradient(180deg, #f0f4fb 0%, #fff 100%);
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.jp-hero-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 44px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.jp-hero-title {
+  font-family: var(--fd);
+  font-size: clamp(34px, 4.5vw, 60px);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  color: #0f172a;
+  margin-bottom: 20px;
+}
+
+.jp-hero-sub {
+  font-size: 17px;
+  color: #64748b;
+  line-height: 1.72;
+  margin-bottom: 32px;
+  max-width: 480px;
+}
+
+.jp-btn-primary {
+  padding: 14px 28px;
+  border-radius: 100px;
+  border: none;
+  background: #002366;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: var(--fd);
+  box-shadow: 0 8px 24px rgba(0, 35, 102, .25);
+  transition: all .25s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.jp-btn-primary:hover {
+  background: #001540;
+  transform: translateY(-2px);
+}
+
+.jp-btn-secondary {
+  padding: 13px 26px;
+  border-radius: 100px;
+  border: 2px solid #10b981;
+  background: #10b981;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: var(--fd);
+  transition: all .25s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.jp-btn-secondary:hover {
+  background: #0da371;
+}
+
+.jp-mockup-card {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 20px 64px rgba(0, 35, 102, .13);
+  border: 1.5px solid #e2e8f0;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Stats Section ── */
+.jp-stats-sec {
+  background: linear-gradient(135deg, #050e24, #002366);
+  padding: 60px 44px;
+  width: 100%;
+}
+
+.jp-stats-grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.jp-stat-card {
+  text-align: center;
+  padding: 24px 20px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.jp-stat-num {
+  font-family: var(--fd);
+  font-size: clamp(32px, 3.5vw, 48px);
+  font-weight: 800;
+  color: #10b981;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+/* ── How It Works Section ── */
+.jp-how-sec {
+  background: #fff;
+  padding: 96px 44px;
+  width: 100%;
+}
+
+.jp-sec-header {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.jp-sec-title {
+  font-family: var(--fd);
+  font-size: clamp(28px, 3.5vw, 44px);
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+}
+
+.jp-how-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+
+/* ── Pricing Section ── */
+.jp-plans-sec {
+  background: linear-gradient(135deg, #f0f4fb, #e8f0fe);
+  padding: 96px 44px;
+  width: 100%;
+}
+
+.jp-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+/* ── FAQ Section ── */
+.jp-faqs-sec {
+  background: #fff;
+  padding: 96px 44px;
+  width: 100%;
+}
+
+.jp-faqs-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.jp-faq-btn {
+  width: 100%;
+  padding: 22px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background .2s;
+}
+
+.jp-faq-btn:hover {
+  background: #fafbfc;
+}
+
+.jp-faq-answer {
+  padding: 0 28px 20px 67px;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.8;
+}
+
+/* ── CTA Banner Section ── */
+.jp-cta-sec {
+  padding: 0 44px 88px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.jp-cta-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.jp-cta-box {
+  background: linear-gradient(135deg, #050e24, #002366);
+  border-radius: 28px;
+  padding: 72px 64px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+.jp-cta-btn {
+  position: relative;
+  z-index: 1;
+  padding: 16px 38px;
+  border-radius: 100px;
+  border: none;
+  background: #10b981;
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  font-family: var(--fd);
+  box-shadow: 0 8px 28px rgba(16, 185, 129, .35);
+  transition: all .25s;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.jp-cta-btn:hover {
+  background: #0da371;
+  transform: translateY(-2px);
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Tablet / Small Laptop (max-width: 1024px) ── */
+@media (max-width: 1024px) {
+  .jp-hero-inner {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    padding: 60px 32px;
+    max-width: 760px;
+  }
+  .jp-hero-sub {
+    max-width: 100%;
+  }
+  .jp-stats-sec {
+    padding: 50px 32px;
+  }
+  .jp-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    max-width: 680px;
+  }
+  .jp-how-sec, .jp-plans-sec, .jp-faqs-sec {
+    padding: 72px 32px;
+  }
+  .jp-plans-grid {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+    margin: 0 auto;
+    gap: 24px;
+  }
+  .jp-cta-sec {
+    padding: 0 32px 72px;
+  }
+  .jp-cta-box {
+    padding: 54px 40px;
+    gap: 32px;
+  }
+}
+
+/* ── Mobile Landscape & Tablets (max-width: 768px) ── */
+@media (max-width: 768px) {
+  .jp-hero-sec {
+    padding-top: 56px;
+  }
+  .jp-hero-inner {
+    padding: 40px 20px 48px;
+    gap: 36px;
+  }
+  .jp-hero-title {
+    font-size: clamp(30px, 8vw, 42px);
+    margin-bottom: 16px;
+  }
+  .jp-hero-sub {
+    font-size: 15px;
+    line-height: 1.65;
+    margin-bottom: 24px;
+  }
+  .jp-ctas {
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .jp-stats-sec {
+    padding: 40px 20px;
+  }
+  .jp-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .jp-stat-card {
+    padding: 18px 12px;
+    border-radius: 14px;
+  }
+  .jp-stat-num {
+    font-size: 32px;
+  }
+  .jp-how-sec, .jp-plans-sec, .jp-faqs-sec {
+    padding: 56px 20px;
+  }
+  .jp-sec-header {
+    margin-bottom: 36px;
+  }
+  .jp-sec-title {
+    font-size: clamp(24px, 6vw, 34px);
+  }
+  .jp-how-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .jp-step-card {
+    padding: 24px 20px !important;
+    border-radius: 16px !important;
+  }
+  .jp-step-number {
+    font-size: 52px !important;
+    top: 12px !important;
+    right: 14px !important;
+    opacity: 0.55 !important;
+  }
+  .jp-plans-grid {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+    gap: 18px;
+  }
+  .jp-plan-card {
+    padding: 28px 20px !important;
+    border-radius: 20px !important;
+  }
+  .jp-faq-btn {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+  .jp-faq-btn span {
+    font-size: 14px !important;
+  }
+  .jp-faq-answer {
+    padding: 0 18px 16px 52px;
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+  .jp-cta-sec {
+    padding: 0 20px 56px;
+  }
+  .jp-cta-box {
+    padding: 40px 24px;
+    border-radius: 22px;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    gap: 24px;
+  }
+  .jp-cta-btn {
+    width: 100%;
+    padding: 15px 24px;
+    font-size: 14.5px;
+  }
+}
+
+/* ── Small Mobile (max-width: 480px) ── */
+@media (max-width: 480px) {
+  .jp-hero-inner {
+    padding: 28px 16px 36px;
+    gap: 28px;
+  }
+  .jp-eyebrow {
+    font-size: 11px !important;
+    padding: 6px 12px !important;
+    margin-bottom: 14px !important;
+    max-width: 100%;
+    white-space: normal !important;
+    text-align: left;
+  }
+  .jp-hero-title {
+    font-size: 28px;
+    line-height: 1.12;
+  }
+  .jp-hero-sub {
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+  .jp-ctas {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+  .jp-btn-primary, .jp-btn-secondary {
+    width: 100%;
+    padding: 13px 20px;
+    font-size: 13.5px;
+  }
+  .jp-badges-wrap {
+    gap: 6px !important;
+  }
+  .jp-badge {
+    font-size: 11px !important;
+    padding: 5px 9px !important;
+  }
+  .jp-mockup-card {
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+  .jp-mockup-header {
+    padding: 12px 14px !important;
+    margin-bottom: 12px !important;
+  }
+  .jp-mockup-header-title {
+    font-size: 12.5px !important;
+  }
+  .jp-cand-row {
+    gap: 9px !important;
+    padding: 10px 0 !important;
+  }
+  .jp-cand-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 12px !important;
+    border-radius: 9px !important;
+  }
+  .jp-cand-name {
+    font-size: 13px !important;
+  }
+  .jp-cand-role {
+    font-size: 11px !important;
+  }
+  .jp-cand-score {
+    font-size: 10.5px !important;
+    padding: 3px 8px !important;
+  }
+  .jp-mockup-footer {
+    padding: 10px 12px !important;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 6px;
+  }
+  .jp-mockup-footer span {
+    font-size: 11.5px !important;
+  }
+  .jp-stats-sec {
+    padding: 32px 14px;
+  }
+  .jp-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .jp-stat-card {
+    padding: 14px 8px;
+  }
+  .jp-stat-num {
+    font-size: 26px;
+  }
+  .jp-stat-label {
+    font-size: 11px !important;
+  }
+  .jp-how-sec, .jp-plans-sec, .jp-faqs-sec {
+    padding: 44px 16px;
+  }
+  .jp-step-card h3 {
+    font-size: 17px !important;
+  }
+  .jp-step-card p {
+    font-size: 13px !important;
+  }
+  .jp-faq-btn {
+    padding: 14px 12px;
+    gap: 8px;
+  }
+  .jp-faq-answer {
+    padding: 0 12px 14px 12px;
+    font-size: 13px;
+  }
+  .jp-cta-sec {
+    padding: 0 14px 44px;
+  }
+  .jp-cta-box {
+    padding: 32px 18px;
+    border-radius: 18px;
+  }
+  .jp-cta-box h2 {
+    font-size: 24px !important;
+  }
+  .jp-cta-box p {
+    font-size: 13.5px !important;
+  }
+}
+
+/* ── Extra narrow devices (max-width: 340px) ── */
+@media (max-width: 340px) {
+  .jp-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

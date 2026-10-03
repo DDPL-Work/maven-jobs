@@ -1,0 +1,683 @@
+/* ==========================================================================
+   ZoneMapPage.css — Responsive styles for India Sales Zones page
+   Breakpoints:
+     - Desktop Large: >= 1200px
+     - Desktop / Laptop: 1025px - 1199px
+     - Tablet: 768px - 1024px
+     - Mobile: <= 767px
+     - Small Mobile: <= 420px
+   ========================================================================== */
+
+.zmp-page-root {
+  background-color: #f8fafc;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* ---------------- Hero Section ---------------- */
+.zmp-hero {
+  background: linear-gradient(145deg, #001a4d 0%, #002366 55%, #0a3585 100%);
+  padding: 60px 24px 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+.zmp-hero::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(0, 35, 102, 0) 70%);
+  pointer-events: none;
+}
+
+.zmp-hero-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.zmp-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.zmp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  border-radius: 9999px;
+  padding: 6px 14px;
+}
+
+.zmp-badge-text {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.zmp-help-link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.zmp-help-link-badge:hover {
+  background: rgba(16, 185, 129, 0.25);
+  color: #ffffff;
+  border-color: #10b981;
+  transform: translateY(-1px);
+}
+
+.zmp-title {
+  font-size: clamp(26px, 4vw, 42px);
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0 0 12px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+
+.zmp-subtitle {
+  color: #cbd5e1;
+  font-size: clamp(14px, 1.8vw, 16px);
+  max-width: 620px;
+  margin: 0;
+  line-height: 1.65;
+}
+
+/* Quick Filter / Navigation Pills */
+.zmp-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.zmp-filter-pill {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.zmp-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.zmp-filter-pill.active {
+  background: #ffffff;
+  color: #002366;
+  border-color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* ---------------- Main Content Layout ---------------- */
+.zmp-content-wrapper {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 36px 24px 64px;
+  box-sizing: border-box;
+}
+
+.zmp-grid-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 32px;
+  align-items: start;
+}
+
+/* ---------------- Map Column (Sticky on Desktop) ---------------- */
+.zmp-map-column {
+  position: sticky;
+  top: 90px;
+  z-index: 5;
+}
+
+.zmp-map-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 35, 102, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.zmp-map-inner {
+  padding: 16px;
+}
+
+.zmp-map-img {
+  width: 100%;
+  height: auto;
+  max-height: 560px;
+  object-fit: contain;
+  border-radius: 10px;
+  display: block;
+  background-color: #f1f5f9;
+}
+
+.zmp-map-caption {
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+  margin: 12px 0 2px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ---------------- Cards Column ---------------- */
+.zmp-cards-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.zmp-zone-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1.5px solid #e2e8f0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.zmp-zone-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 16px rgba(0, 35, 102, 0.08);
+}
+
+.zmp-zone-card.active {
+  transform: translateY(-2px);
+}
+
+/* Card Header Container */
+.zmp-card-header {
+  display: flex;
+  align-items: stretch;
+}
+
+/* Illustration block */
+.zmp-illustration-wrapper {
+  width: 110px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  transition: background-color 0.2s ease;
+}
+
+.zmp-illustration-box {
+  width: 86px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card Info Block */
+.zmp-card-info {
+  flex: 1;
+  min-width: 0; /* Prevents overflow inside flex child */
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.zmp-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.zmp-zone-title {
+  font-weight: 800;
+  font-size: 16px;
+  color: #0f172a;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  line-height: 1.25;
+}
+
+.zmp-zone-meta {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 3px;
+}
+
+.zmp-chevron-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.25s ease, background-color 0.2s ease;
+}
+
+/* State pills */
+.zmp-states-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.zmp-state-pill {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+  line-height: 1.3;
+  transition: transform 0.15s ease;
+}
+
+/* ---------------- Expanded Support Drawer (Connects to Help Page) ---------------- */
+.zmp-help-drawer {
+  padding: 16px 20px;
+  animation: zmpFadeSlideDown 0.25s ease-out forwards;
+}
+
+@keyframes zmpFadeSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.zmp-help-drawer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.zmp-help-drawer-text {
+  flex: 1;
+  min-width: 200px;
+}
+
+.zmp-help-drawer-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.zmp-help-drawer-desc {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.zmp-help-drawer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #ffffff !important;
+  border: none;
+  border-radius: 9999px;
+  padding: 9px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.zmp-help-drawer-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.zmp-help-drawer-btn:active {
+  transform: translateY(0);
+}
+
+/* ---------------- Bottom Help Center Banner ---------------- */
+.zmp-help-banner {
+  margin-top: 48px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 16px rgba(0, 35, 102, 0.04);
+}
+
+.zmp-help-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.zmp-help-banner-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 35, 102, 0.08);
+}
+
+.zmp-help-banner-text {
+  flex: 1;
+}
+
+.zmp-help-banner-title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #002366;
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+
+.zmp-help-banner-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.zmp-help-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #002366;
+  color: #ffffff;
+  border-radius: 9999px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 35, 102, 0.2);
+  transition: all 0.2s ease;
+}
+
+.zmp-help-banner-btn:hover {
+  background: #001a4d;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 35, 102, 0.3);
+}
+
+/* ==========================================================================
+   Responsive Media Queries
+   ========================================================================== */
+
+/* Laptop & Tablet Landscape: <= 1024px */
+@media (max-width: 1024px) {
+  .zmp-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .zmp-map-column {
+    position: relative;
+    top: auto;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .zmp-map-img {
+    max-height: 480px;
+  }
+
+  .zmp-content-wrapper {
+    padding: 28px 20px 48px;
+  }
+}
+
+/* Tablet Portrait & Mobile: <= 768px */
+@media (max-width: 768px) {
+  .zmp-hero {
+    padding: 40px 18px 32px;
+  }
+
+  .zmp-content-wrapper {
+    padding: 20px 16px 44px;
+  }
+
+  .zmp-filter-bar {
+    margin-top: 18px;
+    gap: 6px;
+  }
+
+  .zmp-filter-pill {
+    padding: 5px 12px;
+    font-size: 11.5px;
+  }
+
+  .zmp-illustration-wrapper {
+    width: 90px;
+    padding: 10px 8px;
+  }
+
+  .zmp-illustration-box {
+    width: 72px;
+    height: 48px;
+  }
+
+  .zmp-card-info {
+    padding: 12px 14px;
+  }
+
+  .zmp-zone-title {
+    font-size: 15px;
+  }
+
+  .zmp-zone-meta {
+    font-size: 11.5px;
+  }
+
+  .zmp-state-pill {
+    font-size: 10.5px;
+    padding: 2px 8px;
+  }
+
+  .zmp-help-drawer-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .zmp-help-drawer-btn {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .zmp-help-banner {
+    padding: 20px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .zmp-help-banner-btn {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* Small Mobile: <= 480px */
+@media (max-width: 480px) {
+  .zmp-hero {
+    padding: 32px 14px 26px;
+  }
+
+  .zmp-content-wrapper {
+    padding: 16px 12px 40px;
+  }
+
+  .zmp-badge-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .zmp-badge {
+    padding: 4px 10px;
+  }
+
+  .zmp-badge-text {
+    font-size: 10px;
+  }
+
+  .zmp-help-link-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .zmp-title {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .zmp-subtitle {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .zmp-map-inner {
+    padding: 10px;
+  }
+
+  .zmp-illustration-wrapper {
+    width: 76px;
+    padding: 8px 6px;
+  }
+
+  .zmp-illustration-box {
+    width: 62px;
+    height: 42px;
+  }
+
+  .zmp-card-info {
+    padding: 10px 12px;
+  }
+
+  .zmp-zone-title {
+    font-size: 14.5px;
+  }
+
+  .zmp-zone-meta {
+    font-size: 11px;
+  }
+
+  .zmp-chevron-btn {
+    width: 26px;
+    height: 26px;
+  }
+
+  .zmp-states-container {
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .zmp-state-pill {
+    font-size: 10px;
+    padding: 2px 7px;
+  }
+
+  .zmp-help-drawer {
+    padding: 12px 14px;
+  }
+
+  .zmp-help-banner {
+    padding: 16px 14px;
+  }
+
+  .zmp-help-banner-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .zmp-help-banner-title {
+    font-size: 15.5px;
+  }
+
+  .zmp-help-banner-desc {
+    font-size: 12px;
+  }
+}
+
+/* Extra Small Mobile: <= 360px */
+@media (max-width: 360px) {
+  .zmp-card-header {
+    flex-direction: column;
+  }
+
+  .zmp-illustration-wrapper {
+    width: 100%;
+    height: 56px;
+    padding: 6px;
+  }
+
+  .zmp-illustration-box {
+    width: 80px;
+    height: 48px;
+  }
+}

@@ -21,7 +21,7 @@ import {
 } from "react-icons/fi";
 import { FaRupeeSign, FaStar } from "react-icons/fa";
 import { useAuth } from "../../../../AuthContext";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import { TOP_CATEGORIES } from "../../../../data/jobs";
 import { usePublicJobs, useLandingHome } from "../../../../hooks/useLandingQueries";
 import {
@@ -569,11 +569,11 @@ export default function JobListingPage() {
     } else if (category.id === "loc") {
       options = dedupeLocations(
         fromApi?.locations ||
-          jobs.reduce(
-            (acc, job) =>
-              appendUnique(acc, toCanonicalLocation(job.loc || job.location)),
-            [],
-          ),
+        jobs.reduce(
+          (acc, job) =>
+            appendUnique(acc, toCanonicalLocation(job.loc || job.location)),
+          [],
+        ),
       );
     } else if (category.id === "salaryRange") {
       options = jobs.reduce(
@@ -1043,17 +1043,17 @@ export default function JobListingPage() {
                   <div className="jlp-filter-options">
                     {displayOptions.map((opt) => {
                       const isAll = opt === "All" || opt === "All Domain";
-                        const isChecked = isAll
-                          ? selected.length === 0
-                          : selected.some(s => {
-                              const S = s.toLowerCase();
-                              const O = opt.toLowerCase();
-                              if (O === S) return true;
-                              if (urlKey === "location" && O.includes(S)) return true;
-                              if (urlKey === "jobType" && O.includes(S)) return true;
-                              if (urlKey === "department" && O.includes(S)) return true;
-                              return false;
-                            });
+                      const isChecked = isAll
+                        ? selected.length === 0
+                        : selected.some(s => {
+                          const S = s.toLowerCase();
+                          const O = opt.toLowerCase();
+                          if (O === S) return true;
+                          if (urlKey === "location" && O.includes(S)) return true;
+                          if (urlKey === "jobType" && O.includes(S)) return true;
+                          if (urlKey === "department" && O.includes(S)) return true;
+                          return false;
+                        });
                       return (
                         <div
                           key={opt}
@@ -1174,9 +1174,9 @@ export default function JobListingPage() {
                     style={
                       !job.logoUrl
                         ? {
-                            background: job.logoColor || "#002366",
-                            color: "#fff",
-                          }
+                          background: job.logoColor || "#002366",
+                          color: "#fff",
+                        }
                         : undefined
                     }
                   >
@@ -1236,11 +1236,11 @@ export default function JobListingPage() {
                     </span>
                   ))}
                   {job.tags.length > 5 && (
-                    <button 
+                    <button
                       className="jlp-tag"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setExpandedSkills(prev => ({...prev, [job.id]: !prev[job.id]}));
+                        setExpandedSkills(prev => ({ ...prev, [job.id]: !prev[job.id] }));
                       }}
                       style={{ background: "transparent", border: "1px dashed var(--brand-blue)", color: "var(--brand-blue)" }}
                     >
@@ -1444,9 +1444,9 @@ export default function JobListingPage() {
                         style={
                           !c.logoUrl
                             ? {
-                                background: c.color || "#002366",
-                                color: "white",
-                              }
+                              background: c.color || "#002366",
+                              color: "white",
+                            }
                             : undefined
                         }
                       >
@@ -1574,8 +1574,8 @@ export default function JobListingPage() {
           const selectedSet = new Set(draftFilters[activeModal] || []);
           const filteredOptions = modalSearch
             ? allOptions.filter((opt) =>
-                opt.toLowerCase().includes(modalSearch.toLowerCase()),
-              )
+              opt.toLowerCase().includes(modalSearch.toLowerCase()),
+            )
             : allOptions;
           const selectedCount = selectedSet.size;
           const showSearch = allOptions.length > 8;
@@ -1648,17 +1648,17 @@ export default function JobListingPage() {
                     <div className="jlp-modal-grid">
                       {filteredOptions.map((opt) => {
                         const isAll = opt === "All" || opt === "All Domain";
-                          const isChecked = isAll
-                            ? (draftFilters[activeModal] || []).length === 0
-                            : [...selectedSet].some(s => {
-                                const S = s.toLowerCase();
-                                const O = opt.toLowerCase();
-                                if (O === S) return true;
-                                if (activeModal === "loc" && O.includes(S)) return true;
-                                if (activeModal === "type" && O.includes(S)) return true;
-                                if (activeModal === "dept" && O.includes(S)) return true;
-                                return false;
-                              });
+                        const isChecked = isAll
+                          ? (draftFilters[activeModal] || []).length === 0
+                          : [...selectedSet].some(s => {
+                            const S = s.toLowerCase();
+                            const O = opt.toLowerCase();
+                            if (O === S) return true;
+                            if (activeModal === "loc" && O.includes(S)) return true;
+                            if (activeModal === "type" && O.includes(S)) return true;
+                            if (activeModal === "dept" && O.includes(S)) return true;
+                            return false;
+                          });
                         return (
                           <div
                             key={opt}

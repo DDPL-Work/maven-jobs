@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Link } from 'react-router-dom';
 import {
     FiZap, FiAward, FiTrendingUp, FiTruck, FiHome, FiMonitor,
     FiPlusCircle, FiSend, FiLayers, FiShoppingCart, FiPlus,
@@ -10,6 +9,7 @@ import {
 import mavenLogo from '../../../../../assets/maven-logo-BdiSsfJk.svg';
 import EmployerFooter from '../../../../components/EmployerFooter';
 import LandingEmployeeHeader from '../../../../components/employer/LandingEmployeeHeader';
+import './Artist.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -62,7 +62,7 @@ const STATS = [
 /* ─── Marquee ────────────────────────────────────────────── */
 function Marquee({ items }) {
     return (
-        <div style={{ overflow: 'hidden', display: 'flex', gap: 0 }}>
+        <div style={{ overflow: 'hidden', display: 'flex', gap: 0, width: '100%' }}>
             {[0, 1].map(k => (
                 <div key={k} style={{
                     display: 'flex', gap: 56, alignItems: 'center',
@@ -78,26 +78,6 @@ function Marquee({ items }) {
     );
 }
 
-/* ─── Counter ────────────────────────────────────────────── */
-function CounterStat({ val, label, delay }) {
-    const ref = useRef(null);
-    useEffect(() => {
-        const el = ref.current;
-        const trig = ScrollTrigger.create({
-            trigger: el,
-            start: 'top 85%',
-            once: true,
-            onEnter: () => gsap.fromTo(el, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', delay }),
-        });
-        return () => trig.kill();
-    }, [delay]);
-    return (
-        <div ref={ref} style={{ opacity: 0, textAlign: 'center' }}>
-            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>{val}</div>
-            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.5)', fontWeight: 600, marginTop: 5, textTransform: 'uppercase', letterSpacing: '.12em' }}>{label}</div>
-        </div>
-    );
-}
 
 /* ─── Main Page ──────────────────────────────────────────── */
 export default function ExpertAssist() {
@@ -115,20 +95,20 @@ export default function ExpertAssist() {
     useEffect(() => {
         const ctx = gsap.context(() => {
             gsap.fromTo(headRef.current,
-                { y: 60, opacity: 0 },
-                { y: 0, opacity: 1, duration: 1.1, ease: 'power4.out', delay: 0.2 }
+                { y: 50, opacity: 0 },
+                { y: 0, opacity: 1, duration: 1, ease: 'power4.out', delay: 0.15 }
             );
             gsap.fromTo(subRef.current,
                 { y: 30, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out', delay: 0.55 }
+                { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out', delay: 0.4 }
             );
             gsap.fromTo(btnRef.current,
                 { y: 20, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', delay: 0.8 }
+                { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', delay: 0.6 }
             );
             gsap.fromTo(vidRef.current,
-                { x: 60, opacity: 0, scale: 0.94 },
-                { x: 0, opacity: 1, scale: 1, duration: 1.1, ease: 'power4.out', delay: 0.4 }
+                { opacity: 0, scale: 0.95 },
+                { opacity: 1, scale: 1, duration: 0.9, ease: 'power4.out', delay: 0.35 }
             );
         }, heroRef);
         return () => ctx.revert();
@@ -144,11 +124,11 @@ export default function ExpertAssist() {
     /* ── Scroll reveals ── */
     useEffect(() => {
         const triggers = [];
-        document.querySelectorAll('.reveal').forEach((el, i) => {
+        document.querySelectorAll('.reveal').forEach((el) => {
             triggers.push(ScrollTrigger.create({
                 trigger: el, start: 'top 88%', once: true,
                 onEnter: () => gsap.fromTo(el,
-                    { y: 36, opacity: 0 },
+                    { y: 30, opacity: 0 },
                     { y: 0, opacity: 1, duration: 0.75, ease: 'power3.out', delay: parseFloat(el.dataset.delay || 0) }
                 ),
             }));
@@ -163,71 +143,47 @@ export default function ExpertAssist() {
     }, []);
 
     return (
-        <div style={{ background: '#f8fafc', fontFamily: "'DM Sans',system-ui,sans-serif", color: '#1e293b', overflowX: 'clip' }}>
-            <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{--navy:#002366;--green:#10b981;--gd:#0da371;--s200:#e2e8f0;--s400:#94a3b8;--s500:#64748b;--s600:#475569;--s900:#0f172a;--fd:'Bricolage Grotesque',sans-serif}
-        @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-        @keyframes spin-slow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-        .reveal{opacity:0}
-        .plan-card{transition:all .3s}
-        .plan-card:hover{transform:translateY(-6px);box-shadow:0 24px 56px rgba(0,0,0,.12)}
-        .domain-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px 18px;cursor:default;transition:all .25s}
-        .domain-card:hover{border-color:rgba(0,35,102,.2);box-shadow:0 8px 28px rgba(0,35,102,.07);transform:translateY(-3px)}
-        .step-dot{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#002366,#10b981);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:16px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 8px 20px rgba(0,35,102,.3)}
-        .cta-btn{padding:14px 32px;background:#10b981;color:#fff;font-weight:800;font-size:14px;border-radius:100px;border:none;cursor:pointer;font-family:var(--fd);letter-spacing:.02em;display:inline-flex;align-items:center;gap:8px;transition:all .25s;box-shadow:0 8px 24px rgba(16,185,129,.35);text-decoration:none}
-        .cta-btn:hover{background:#0da371;transform:translateY(-2px);box-shadow:0 12px 32px rgba(16,185,129,.45)}
-        .cta-btn-outline{padding:13px 30px;background:transparent;color:var(--navy);font-weight:800;font-size:14px;border-radius:100px;border:2px solid var(--navy);cursor:pointer;font-family:var(--fd);letter-spacing:.02em;display:inline-flex;align-items:center;gap:8px;transition:all .25s;text-decoration:none}
-        .cta-btn-outline:hover{background:var(--navy);color:#fff}
-        .sf-field{width:100%;padding:10px 14px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;outline:none;font-size:13px;font-weight:500;color:#0f172a;font-family:'DM Sans',sans-serif;transition:border-color .2s,background .2s}
-        .sf-field:focus{border-color:rgba(0,35,102,.3);background:#fff}
-        .sf-field::placeholder{color:#94a3b8}
-        ::-webkit-scrollbar{width:5px}
-        ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
-      `}</style>
-
+        <div className="ea-page-root">
             {/* ── NAV ── */}
-           <LandingEmployeeHeader />
+            <LandingEmployeeHeader solid={true} />
+
             {/* ── HERO ── */}
-            <section ref={heroRef} style={{ background: 'linear-gradient(135deg,#050e24 0%,#002366 55%,#1a0a4a 100%)', minHeight: '92vh', display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+            <section ref={heroRef} className="ea-hero-sec">
                 <div style={{ position: 'absolute', inset: 0, opacity: .05, backgroundImage: 'radial-gradient(#fff 1px,transparent 1px)', backgroundSize: '28px 28px' }} />
                 <div style={{ position: 'absolute', top: '-20%', right: '-5%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,.25) 0%,transparent 65%)', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', bottom: '-15%', left: '-5%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle,rgba(16,185,129,.18) 0%,transparent 65%)', pointerEvents: 'none' }} />
 
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '80px 44px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center', position: 'relative', zIndex: 2, width: '100%' }}>
+                <div className="ea-hero-inner">
                     <div>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.28)', color: '#6ee7b7', fontSize: 9.5, fontWeight: 800, letterSpacing: '.16em', textTransform: 'uppercase', padding: '5px 14px', borderRadius: 100, marginBottom: 24, fontFamily: 'var(--fd)', backdropFilter: 'blur(8px)' }}>
                             <FiActivity size={10} /> MavenJobs Expert Assist
                         </div>
-                        <h1 ref={headRef} style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(32px,4.5vw,54px)', fontWeight: 800, color: '#fff', lineHeight: 1.08, letterSpacing: '-0.04em', marginBottom: 18, opacity: 0 }}>
+                        <h1 ref={headRef} className="ea-hero-title">
                             Leave sourcing,<br />
                             <span style={{ color: '#10b981' }}>shortlisting</span> and<br />
                             scheduling to us.
                         </h1>
-                        <p ref={subRef} style={{ fontSize: 15.5, color: 'rgba(255,255,255,.54)', lineHeight: 1.72, marginBottom: 32, maxWidth: 440, opacity: 0 }}>
+                        <p ref={subRef} className="ea-hero-sub">
                             Our 200+ domain experts with 15+ years of experience act as an extension of your recruitment team — so you focus only on interviewing the best.
                         </p>
-                        <div ref={btnRef} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', opacity: 0 }}>
+                        <div ref={btnRef} className="ea-hero-ctas">
                             <a href="#demo" className="cta-btn">Request a Call Back →</a>
-                            <a href="#how-it-works" className="cta-btn-outline" style={{ color: '#fff', borderColor: 'rgba(255,255,255,.3)' }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,.1)' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>See How It Works</a>
+                            <a href="#how-it-works" className="cta-btn-outline">See How It Works</a>
                         </div>
 
                         {/* mini stats */}
-                        <div style={{ display: 'flex', gap: 32, marginTop: 44, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+                        <div className="ea-hero-stats">
                             {[{ v: '30K+', l: 'Clients' }, { v: '1L+', l: 'Roles Filled' }, { v: '6L+', l: 'Interviews' }].map((s, i) => (
                                 <div key={i}>
                                     <div style={{ fontFamily: 'var(--fd)', fontSize: 22, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{s.v}</div>
-                                    <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.35)', fontWeight: 700, marginTop: 3, textTransform: 'uppercase', letterSpacing: '.1em' }}>{s.l}</div>
+                                    <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.45)', fontWeight: 700, marginTop: 3, textTransform: 'uppercase', letterSpacing: '.1em' }}>{s.l}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
                     {/* Video card */}
-                    <div ref={vidRef} style={{ opacity: 0 }}>
+                    <div ref={vidRef} style={{ width: '100%' }}>
                         <div
                             onClick={() => setShowVideo(true)}
                             style={{
@@ -236,7 +192,7 @@ export default function ExpertAssist() {
                                 boxShadow: '0 32px 80px rgba(0,0,0,.4)', cursor: 'pointer',
                                 transition: 'transform .3s ease, border-color .3s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)'; e.currentTarget.style.borderColor = 'rgba(16,185,129,.3)' }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px) scale(1.01)'; e.currentTarget.style.borderColor = 'rgba(16,185,129,.3)' }}
                             onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.1)' }}
                         >
                             <div style={{ height: 3, background: 'linear-gradient(90deg,#002366,#10b981)' }} />
@@ -254,7 +210,7 @@ export default function ExpertAssist() {
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ padding: '16px 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ padding: '16px 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                                 <div>
                                     <div style={{ fontFamily: 'var(--fd)', fontSize: 14, fontWeight: 800, color: '#fff' }}>Watch how it works</div>
                                     <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>1:01 · Product overview</div>
@@ -270,24 +226,24 @@ export default function ExpertAssist() {
             </section>
 
             {/* ── CLIENTS MARQUEE ── */}
-            <div style={{ background: '#fff', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '22px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 40, maxWidth: 1280, margin: '0 auto', padding: '0 44px' }}>
-                    <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trusted by<br />30,000+ clients</div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}><Marquee items={CLIENTS} /></div>
+            <div className="ea-marquee-sec">
+                <div className="ea-marquee-inner">
+                    <div className="ea-marquee-label">Trusted by<br />30,000+ clients</div>
+                    <div style={{ flex: 1, overflow: 'hidden', width: '100%' }}><Marquee items={CLIENTS} /></div>
                 </div>
             </div>
 
             {/* ── FEATURES ── */}
-            <section style={{ background: '#fff', padding: '96px 0' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 44px' }}>
-                    <div className="reveal" style={{ textAlign: 'center', marginBottom: 60 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}><FiActivity size={10} /> Why Choose Us</div>
-                        <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 14 }}>What makes Expert Assist different?</h2>
-                        <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 20px' }} />
-                        <p style={{ fontSize: 16, color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.75 }}>Our 200+ domain recruitment experts with 15+ years of experience act as an extension of your recruitment team.</p>
+            <section className="ea-features-sec">
+                <div className="ea-container">
+                    <div className="reveal ea-sec-header">
+                        <div className="ea-sec-tag"><FiActivity size={10} /> Why Choose Us</div>
+                        <h2 className="ea-sec-title">What makes Expert Assist different?</h2>
+                        <div className="ea-sec-line" />
+                        <p className="ea-sec-sub">Our 200+ domain recruitment experts with 15+ years of experience act as an extension of your recruitment team.</p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 28 }}>
+                    <div className="ea-features-grid">
                         {FEATURES.map((f, i) => (
                             <div key={i} className="reveal plan-card" data-delay={i * 0.1} style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 24, overflow: 'hidden', cursor: 'default' }}>
                                 <div style={{ height: 220, overflow: 'hidden', position: 'relative' }}>
@@ -314,21 +270,18 @@ export default function ExpertAssist() {
             </section>
 
             {/* ── HOW IT WORKS ── */}
-            <section id="how-it-works" style={{ background: 'linear-gradient(135deg,#f0f4fb 0%,#e8f0fe 100%)', padding: '96px 0' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 44px' }}>
-                    <div className="reveal" style={{ textAlign: 'center', marginBottom: 72 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}>✦ Simple Process</div>
-                        <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 12 }}>How it works</h2>
-                        <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 16px' }} />
-                        <p style={{ fontSize: 16, color: '#64748b', maxWidth: 480, margin: '0 auto', lineHeight: 1.75 }}>Get your next best-fit candidates in just 3 simple steps</p>
+            <section id="how-it-works" className="ea-steps-sec">
+                <div className="ea-container">
+                    <div className="reveal ea-sec-header">
+                        <div className="ea-sec-tag">✦ Simple Process</div>
+                        <h2 className="ea-sec-title">How it works</h2>
+                        <div className="ea-sec-line" />
+                        <p className="ea-sec-sub">Get your next best-fit candidates in just 3 simple steps</p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 32 }}>
+                    <div className="ea-steps-grid">
                         {STEPS.map((s, i) => (
                             <div key={i} className="reveal" data-delay={i * 0.12} style={{ position: 'relative' }}>
-                                {i < STEPS.length - 1 && (
-                                    <div style={{ position: 'absolute', top: 26, left: 'calc(100% - 16px)', width: 32, height: 2, background: 'linear-gradient(90deg,#002366,#10b981)', zIndex: 1, display: 'none' }} />
-                                )}
                                 <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 22, padding: '32px 28px', height: '100%', position: 'relative', overflow: 'hidden' }}>
                                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)' }} />
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
@@ -352,16 +305,16 @@ export default function ExpertAssist() {
             </section>
 
             {/* ── PLANS ── */}
-            <section id="plans" style={{ background: '#fff', padding: '96px 0' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 44px' }}>
-                    <div className="reveal" style={{ textAlign: 'center', marginBottom: 64 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}>✦ Flexible Plans</div>
-                        <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 12 }}>Custom solutions for your hiring needs</h2>
-                        <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 16px' }} />
-                        <p style={{ fontSize: 16, color: '#64748b', maxWidth: 480, margin: '0 auto', lineHeight: 1.75 }}>Choose the right service based on your hiring requirements</p>
+            <section id="plans" className="ea-plans-sec">
+                <div className="ea-container">
+                    <div className="reveal ea-sec-header">
+                        <div className="ea-sec-tag">✦ Flexible Plans</div>
+                        <h2 className="ea-sec-title">Custom solutions for your hiring needs</h2>
+                        <div className="ea-sec-line" />
+                        <p className="ea-sec-sub">Choose the right service based on your hiring requirements</p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+                    <div className="ea-plans-grid">
                         {PLANS.map((p, i) => (
                             <div key={i} className="reveal plan-card" data-delay={i * 0.08} style={{ position: 'relative', padding: '32px 24px', background: p.name === 'Premium' ? 'linear-gradient(135deg,#002366,#003da8)' : '#f8fafc', border: `1.5px solid ${p.name === 'Premium' ? 'transparent' : '#e2e8f0'}`, borderRadius: 22, display: 'flex', flexDirection: 'column' }}>
                                 {p.hot && <div style={{ position: 'absolute', top: 16, right: 16, background: '#10b981', color: '#fff', fontSize: 9.5, fontWeight: 800, padding: '3px 10px', borderRadius: 100, textTransform: 'uppercase', letterSpacing: '.08em', fontFamily: 'var(--fd)' }}>Most Popular</div>}
@@ -392,15 +345,15 @@ export default function ExpertAssist() {
             </section>
 
             {/* ── DOMAINS ── */}
-            <section id="domains" style={{ background: 'linear-gradient(135deg,#f0f4fb,#e8f0fe)', padding: '96px 0' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 44px' }}>
-                    <div className="reveal" style={{ textAlign: 'center', marginBottom: 60 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}>✦ Domain Expertise</div>
-                        <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 12 }}>Our domain expertise</h2>
-                        <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 16px' }} />
-                        <p style={{ fontSize: 16, color: '#64748b', maxWidth: 520, margin: '0 auto', lineHeight: 1.75 }}>Specialised in talent sourcing and shortlisting across multiple domains</p>
+            <section id="domains" className="ea-domains-sec">
+                <div className="ea-container">
+                    <div className="reveal ea-sec-header">
+                        <div className="ea-sec-tag">✦ Domain Expertise</div>
+                        <h2 className="ea-sec-title">Our domain expertise</h2>
+                        <div className="ea-sec-line" />
+                        <p className="ea-sec-sub">Specialised in talent sourcing and shortlisting across multiple domains</p>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+                    <div className="ea-domains-grid">
                         {DOMAINS.map((d, i) => (
                             <div key={i} className="reveal domain-card" data-delay={i * 0.06}>
                                 <div style={{ fontSize: 28, marginBottom: 10 }}>{d.icon}</div>
@@ -412,96 +365,7 @@ export default function ExpertAssist() {
                 </div>
             </section>
 
-            {/* ── TESTIMONIALS ── */}
-            <section style={{ background: '#fff', padding: '96px 0' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 44px' }}>
-                    <div className="reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 12, fontFamily: 'var(--fd)' }}><FiActivity size={10} /> Client Stories</div>
-                        <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 12 }}>What our clients say</h2>
-                        <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, margin: '0 auto 16px' }} />
-                        <p style={{ fontSize: 16, color: '#64748b', maxWidth: 520, margin: '0 auto', lineHeight: 1.75 }}>See how Expert Assist has helped companies solve their hiring needs</p>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
-                        {TESTIMONIALS.map((t, i) => (
-                            <div key={i} className="reveal plan-card" data-delay={i * 0.1} style={{ background: i === activeTestimonial ? 'linear-gradient(135deg,#002366,#003da8)' : '#f8fafc', border: `1.5px solid ${i === activeTestimonial ? 'transparent' : '#e2e8f0'}`, borderRadius: 22, padding: '32px 28px', cursor: 'pointer', transition: 'all .4s' }} onClick={() => setActiveTestimonial(i)}>
-                                <div style={{ display: 'flex', gap: 4, marginBottom: 18 }}>
-                                    {[0, 1, 2, 3, 4].map(s => <div key={s} style={{ width: 14, height: 14, background: '#f59e0b', borderRadius: 4, clipPath: 'polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)' }} />)}
-                                </div>
-                                <p style={{ fontSize: 14, color: i === activeTestimonial ? 'rgba(255,255,255,.8)' : '#475569', lineHeight: 1.75, marginBottom: 24, fontStyle: 'italic' }}>"{t.text}"</p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 20, borderTop: `1px solid ${i === activeTestimonial ? 'rgba(255,255,255,.1)' : '#f1f5f9'}` }}>
-                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: i === activeTestimonial ? 'rgba(16,185,129,.3)' : '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--fd)', fontSize: 15, fontWeight: 800, color: i === activeTestimonial ? '#10b981' : '#002366' }}>
-                                        {t.name.split(' ').map(w => w[0]).join('')}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontFamily: 'var(--fd)', fontSize: 14, fontWeight: 800, color: i === activeTestimonial ? '#fff' : '#0f172a' }}>{t.name}</div>
-                                        <div style={{ fontSize: 11.5, color: i === activeTestimonial ? 'rgba(255,255,255,.5)' : '#94a3b8', marginTop: 1 }}>{t.role}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── STATS STRIP ── */}
-            <section style={{ background: 'linear-gradient(135deg,#050e24,#002366)', padding: '80px 0', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, opacity: .05, backgroundImage: 'radial-gradient(#fff 1px,transparent 1px)', backgroundSize: '28px 28px' }} />
-                <div style={{ position: 'absolute', top: '-30%', right: '-5%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle,rgba(16,185,129,.15) 0%,transparent 65%)', pointerEvents: 'none' }} />
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 44px', position: 'relative', zIndex: 2 }}>
-                    <div className="reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
-                        <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(24px,3vw,38px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', marginBottom: 8 }}>Simplifying hiring nationwide</h2>
-                        <p style={{ fontSize: 15, color: 'rgba(255,255,255,.45)', fontWeight: 500 }}>with pan-India presence</p>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 32 }}>
-                        {STATS.map((s, i) => <CounterStat key={i} val={s.val} label={s.label} delay={i * 0.1} />)}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── DEMO CTA ── */}
-            <section id="demo" style={{ background: '#fff', padding: '96px 0' }}>
-                <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 44px' }}>
-                    <div style={{ background: 'linear-gradient(135deg,#f0f4fb,#e8f0fe)', border: '1.5px solid #e2e8f0', borderRadius: 32, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 480 }}>
-                        {/* Left */}
-                        <div className="reveal" style={{ padding: '60px 52px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 16, fontFamily: 'var(--fd)' }}><FiActivity size={10} /> Get Started Today</div>
-                            <h2 style={{ fontFamily: 'var(--fd)', fontSize: 'clamp(26px,3vw,38px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 16, lineHeight: 1.1 }}>Know more about<br /><span style={{ color: '#002366' }}>MavenJobs Expert Assist</span></h2>
-                            <div style={{ width: 44, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, marginBottom: 20 }} />
-                            {[{ t: 'Get a personalized consultation', s: 'Our experts will understand your exact hiring needs.' }, { t: 'Learn how it will help you', s: 'See exactly how we save you time and cost in hiring.' }].map((b, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-                                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#ecfdf5', border: '1.5px solid rgba(16,185,129,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>{b.t}</div>
-                                        <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{b.s}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Right — form */}
-                        <div className="reveal" data-delay={0.1} style={{ background: '#fff', padding: '52px 44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1.5px solid #e2e8f0' }}>
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: '0 0 0 0' }}>
-                                <div style={{ height: 3, background: 'linear-gradient(90deg,#002366,#10b981)', borderRadius: 3, marginBottom: 28 }} />
-                            </div>
-                            <h3 style={{ fontFamily: 'var(--fd)', fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 24, letterSpacing: '-0.02em' }}>Book your personalized demo</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {[{ ph: 'Your Full Name', type: 'text', k: 'name' }, { ph: '10-digit Mobile Number', type: 'tel', k: 'phone' }, { ph: 'Work Email Address', type: 'email', k: 'email' }].map(f => (
-                                    <input key={f.k} type={f.type} placeholder={f.ph} className="sf-field" value={formData[f.k]} onChange={e => setFormData(prev => ({ ...prev, [f.k]: e.target.value }))} />
-                                ))}
-                                <select className="sf-field" style={{ appearance: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', cursor: 'pointer' }}>
-                                    <option value="">Select Hiring Plan</option>
-                                    {PLANS.map(p => <option key={p.name}>{p.name}</option>)}
-                                </select>
-                                <button className="cta-btn" style={{ width: '100%', justifyContent: 'center', padding: '14px', borderRadius: 12 }}>Book My Demo →</button>
-                            </div>
-                            <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginTop: 14, fontWeight: 600 }}>No spam. Our team will reach out within 2 business hours.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+           
 
             {/* ── FOOTER ── */}
             <EmployerFooter />

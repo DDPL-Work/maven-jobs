@@ -4,7 +4,7 @@ import { gsap } from "gsap";
 import { FiArrowLeft, FiArrowRight, FiBriefcase, FiCheckCircle, FiHelpCircle, FiLock, FiShield, FiUsers } from "react-icons/fi";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import CandidateHeader from "../../../../components/common/CandidateHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 
 const PAGE_CONTENT = {
   about: {

@@ -80,10 +80,12 @@ import ResdexGuide from "./pages/employer/features/learning/guides/ResdexGuide";
 import PublicProfileByShareId from "./pages/candidates/features/profile/PublicProfileByShareId";
 import PublicCandidateProfile from "./pages/candidates/features/profile/PublicCandidateProfile";
 import CandidateSitemap from "./pages/candidates/features/landing/CandidateSitemap";
+import EmployerSideMap from "./pages/employer/features/landing/EmployerSideMap";
 import InterviewQuestions from "./pages/candidates/features/company/InterviewQuestions";
 import SalaryCalculator from "./pages/candidates/features/company/SalaryCalculator";
 import MIvitesPage from "./pages/candidates/features/engagement/MIvitesPage";
 import AppDownloadPage from "./pages/candidates/features/landing/AppDownloadPage";
+import RecruiterAppDownloadPage from "./pages/employer/features/landing/RecruiterAppDownloadPage";
 import NotFoundPage from "./components/NotFoundPage";
 import Premium3D from "./components/Premium3D";
 import { AuthProvider, useAuth } from "./AuthContext";
@@ -154,13 +156,41 @@ function AppContent() {
     return () => window.removeEventListener("candidate-logged-in", handler);
   }, [navigate]);
 
+  // Global safe detection: Ensure any clickable text, line, or element with an onClick handler shows cursor: pointer
+  useEffect(() => {
+    const handlePointerOver = (e) => {
+      let el = e.target;
+      while (el && el !== document.body && el !== document.documentElement) {
+        if (
+          el.tagName === "BUTTON" ||
+          el.tagName === "A" ||
+          el.getAttribute("role") === "button" ||
+          el.classList.contains("cursor-pointer") ||
+          el.style.cursor === "pointer" ||
+          el.style.cursor.includes("pointer")
+        ) {
+          break;
+        }
+        const key = Object.keys(el).find((k) => k.startsWith("__reactProps$"));
+        if (key && (el[key]?.onClick || el[key]?.onMouseDown)) {
+          if (!el.style.cursor) {
+            el.style.cursor = "var(--cursor-pointer, pointer)";
+          }
+          break;
+        }
+        el = el.parentElement;
+      }
+    };
+    document.addEventListener("pointerover", handlePointerOver, { passive: true });
+    return () => document.removeEventListener("pointerover", handlePointerOver);
+  }, []);
+
   return (
     <>
       <ScrollToTop />
       <Routes>
         {/* --- Public & Common Routes --- */}
         <Route path="/" element={<NaukriLandingPage />} />
-        <Route path="/download" element={<AppDownloadPage />} />
         <Route path="/blogs" element={<Blogs />} />
         <Route path="/blogs/:slug" element={<BlogArticle />} />
         <Route path="/blog-article" element={<BlogAIRex />} />
@@ -185,6 +215,7 @@ function AppContent() {
 
         {/* --- Candidate Routes --- */}
         {/* --- Public Candidate Routes --- */}
+        <Route path="/download/candidate-app" element={<AppDownloadPage />} />
         <Route path="/jobs" element={<JobListingPage />} />
         <Route path="/jobs/info" element={<JobsInfo />} />
         <Route path="/salary-insights" element={<SalaryInsights />} />
@@ -212,8 +243,8 @@ function AppContent() {
         <Route path="/pro" element={<MavenPro />} /> 
         <Route path="/premium" element={<Premium />} />
         <Route path="/info" element={<Info />} />
-        <Route path="/sitemap" element={<CandidateSitemap />} />
-        <Route path="/leave" element={<Leave />} />
+        <Route path="/candidate/sitemap" element={<CandidateSitemap />} />
+        <Route path="/candidate/email-templates" element={<Leave />} />
 
         {/* --- Protected Candidate Routes --- */}
         <Route path="/dashboard" element={<ProtectedRoute><HomeDashboard /></ProtectedRoute>} />
@@ -228,6 +259,7 @@ function AppContent() {
 
         {/* --- Employer Routes --- */}
         <Route path="/employer-login" element={<EmployerLandingPage />} />
+        <Route path="/download/recruiter-app" element={<RecruiterAppDownloadPage />} />
         <Route path="/recruit/client-registration-form" element={<ClientRegistrationForm />} />
         <Route path="/buy-online" element={<Buyonline />} />
         <Route path="/expert-assist" element={<ExpertAssist />} />
@@ -238,6 +270,19 @@ function AppContent() {
         <Route path="/resume-database" element={<ResumeDatabase />} />
         <Route path="/hiring-automation" element={<HiringAutomation />} />
         <Route path="/review/:reviewId" element={<ReviewSharePage />} />
+         <Route path="/employers/learning-center" element={<LearningCenter />} />
+        <Route path="/employers/learning-center/guides/ai-rex" element={<AiRexGuide />} />
+        <Route path="/employers/learning-center/guides/job-posting" element={<JobPostingGuide />} />
+        <Route path="/employers/learning-center/guides/resdex" element={<ResdexGuide />} />
+        <Route path="/recruit/learning-center/guides/ai-rex" element={<AiRexGuide />} />
+        <Route path="/recruit/learning-center/guides/job-posting" element={<JobPostingGuide />} />
+        <Route path="/recruit/learning-center/guides/resdex" element={<ResdexGuide />} />
+        <Route path="/learning-center/guides/ai-rex" element={<AiRexGuide />} />
+        <Route path="/learning-center/guides/job-posting" element={<JobPostingGuide />} />
+        <Route path="/learning-center/guides/resdex" element={<ResdexGuide />} />
+        <Route path="/employer/site-map" element={<EmployerSideMap />} />
+        
+        {/* --- Protected Employer Routes --- */}
         <Route path="/post-job" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><PostJob /></ProtectedEmployerRoute>} />
         <Route path="/employer-draft-jobs" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><DraftJobs /></ProtectedEmployerRoute>} />
         <Route path="/employer-dashboard" element={<ProtectedEmployerRoute><EmployerDashboard /></ProtectedEmployerRoute>} />
@@ -269,16 +314,7 @@ function AppContent() {
         <Route path="/reports-job-posting" element={<ProtectedEmployerRoute requiredPermission="jobPosting"><JobPostingReport /></ProtectedEmployerRoute>} />
         <Route path="/report/resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
         <Route path="/reports-resdex" element={<ProtectedEmployerRoute requiredPermission="resdex"><ResdexReport /></ProtectedEmployerRoute>} />
-        <Route path="/employers/learning-center" element={<LearningCenter />} />
-        <Route path="/employers/learning-center/guides/ai-rex" element={<AiRexGuide />} />
-        <Route path="/employers/learning-center/guides/job-posting" element={<JobPostingGuide />} />
-        <Route path="/employers/learning-center/guides/resdex" element={<ResdexGuide />} />
-        <Route path="/recruit/learning-center/guides/ai-rex" element={<AiRexGuide />} />
-        <Route path="/recruit/learning-center/guides/job-posting" element={<JobPostingGuide />} />
-        <Route path="/recruit/learning-center/guides/resdex" element={<ResdexGuide />} />
-        <Route path="/learning-center/guides/ai-rex" element={<AiRexGuide />} />
-        <Route path="/learning-center/guides/job-posting" element={<JobPostingGuide />} />
-        <Route path="/learning-center/guides/resdex" element={<ResdexGuide />} />
+       
 
         {/* --- Catch-All Route --- */}
         <Route path="*" element={<NotFoundPage />} />

@@ -55,7 +55,7 @@ export default function AvatarDropdown({ dropdownAlign = 'right', variant = 'dro
     { label: 'Profile', icon: FiUser, onClick: () => { navigate('/profile'); setOpen(false); }, active: window.location.pathname === '/profile' },
     { label: 'Home', icon: FiHome, onClick: () => { navigate('/dashboard'); setOpen(false); }, active: window.location.pathname === '/dashboard' },
     { label: 'Premium', icon: FiAward, onClick: () => { navigate('/premium'); setOpen(false); }, active: window.location.pathname === '/premium' },
-    { label: 'Site Map', icon: FiMap, onClick: () => { navigate('/sitemap'); setOpen(false); }, active: window.location.pathname === '/sitemap' },
+    { label: 'Site Map', icon: FiMap, onClick: () => { navigate('/candidate/sitemap'); setOpen(false); }, active: window.location.pathname === '/candidate/sitemap' },
     { separator: true },
     { label: 'Logout', icon: FiLogOut, onClick: () => { setOpen(false); setShowLogoutModal(true); }, danger: true },
   ];

@@ -10,7 +10,7 @@ import { useAuth } from '../../../../AuthContext';
 import paymentService from '../../../../services/paymentService';
 import AvatarDropdown from '../../../../components/common/AvatarDropdown';
 import mavenLogo from '../../../../../assets/maven-logo-BdiSsfJk.svg';
-import LandingFooter from '../../../../components/LandingFooter';
+import LandingFooter from '../../../../layout/candidate/LandingFooter';
 
 const NAV_H = 72;
 
@@ -264,16 +264,16 @@ export default function Premium() {
                 </span>
               </div>
             )}
-            
+
             <h1 className="hh1">
               Supercharge your<br />
               <span className="acc">career with Premium</span>
             </h1>
-            
+
             <p className="hsub">
               Unlock AI-powered tools, unlimited career insights, and get discovered by India's top recruiters. Choose the plan that fits your journey.
             </p>
-            
+
             <div className="hbtns">
               <a href="#plans" className="hbp">
                 Compare plans <FiArrowRight size={16} />
@@ -282,10 +282,10 @@ export default function Premium() {
                 View features
               </a>
             </div>
-            
+
             <div className="htrust">
-              <div className="htp"><div className="htpdot"/> 3× more profile views</div>
-              <div className="htp"><div className="htpdot"/> Dedicated support</div>
+              <div className="htp"><div className="htpdot" /> 3× more profile views</div>
+              <div className="htp"><div className="htpdot" /> Dedicated support</div>
             </div>
           </div>
         </div>
@@ -331,7 +331,7 @@ export default function Premium() {
                 background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 20,
                 padding: '36px 28px', transition: 'all .3s', cursor: 'default',
               }} onMouseEnter={e => { e.currentTarget.style.borderColor = `${f.color}30`; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 16px 40px ${f.color}10`; }}
-                 onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
                 <div style={{
                   width: 48, height: 48, borderRadius: 12,
                   background: `${f.color}12`, border: `1px solid ${f.color}28`,
@@ -376,7 +376,7 @@ export default function Premium() {
               border: '1.5px solid #e2e8f0', transition: 'all .3s',
               opacity: isElite ? .7 : 1,
             }} onMouseEnter={e => { if (!isElite) { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 20px 48px rgba(0,0,0,.06)'; } }}
-               onMouseLeave={e => { if (!isElite) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; } }}>
+              onMouseLeave={e => { if (!isElite) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; } }}>
               <div style={{ fontFamily: 'var(--fd)', fontSize: 16, fontWeight: 800, color: '#64748b', marginBottom: 6, letterSpacing: '.05em', textTransform: 'uppercase' }}>BASIC</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
                 <span style={{ fontSize: 40, fontWeight: 800, color: '#0f172a' }}>Free</span>
@@ -417,8 +417,8 @@ export default function Premium() {
               transform: 'translateY(-8px)',
               border: isElite ? '1.5px solid rgba(251,191,36,.3)' : '1.5px solid transparent',
             }} className={isElite ? 'elite-glow' : ''}
-               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-14px)'; e.currentTarget.style.boxShadow = '0 32px 64px rgba(0,35,102,.3)'; }}
-               onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-14px)'; e.currentTarget.style.boxShadow = '0 32px 64px rgba(0,35,102,.3)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = 'none'; }}>
               {/* Gold accent circle */}
               <div style={{
                 position: 'absolute', top: -80, right: -80, width: 240, height: 240,
@@ -575,7 +575,7 @@ export default function Premium() {
                   transition: 'all .2s', opacity: paying ? .7 : 1,
                   letterSpacing: '.01em',
                 }} onMouseEnter={e => { if (!paying) e.currentTarget.style.background = '#f1f5f9'; }}
-                   onMouseLeave={e => { if (!paying) e.currentTarget.style.background = '#fff'; }}>
+                  onMouseLeave={e => { if (!paying) e.currentTarget.style.background = '#fff'; }}>
                   {paying ? 'Processing…' : 'Upgrade to ELITE — ₹999/3 months'}
                 </button>
               )}
@@ -664,7 +664,7 @@ export default function Premium() {
                 textDecoration: 'none', fontFamily: 'var(--fd)',
                 transition: 'all .2s',
               }} onMouseEnter={e => { e.target.style.background = '#003da8'; }}
-                 onMouseLeave={e => { e.target.style.background = '#002366'; }}>
+                onMouseLeave={e => { e.target.style.background = '#002366'; }}>
                 Go to Dashboard <FiArrowRight size={14} />
               </Link>
             </div>
@@ -719,7 +719,7 @@ export default function Premium() {
                   textDecoration: 'none', fontFamily: 'var(--fd)',
                   boxShadow: '0 8px 28px rgba(16,185,129,.35)', transition: 'all .25s',
                 }} onMouseEnter={e => { e.target.style.background = '#0da371'; e.target.style.transform = 'translateY(-2px)'; }}
-                   onMouseLeave={e => { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; }}>
+                  onMouseLeave={e => { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; }}>
                   Go to Dashboard <FiArrowRight size={16} />
                 </Link>
               </div>
@@ -745,7 +745,7 @@ export default function Premium() {
                 fontFamily: 'var(--fd)', opacity: paying ? .7 : 1,
                 boxShadow: '0 8px 28px rgba(16,185,129,.35)', transition: 'all .25s',
               }} onMouseEnter={e => { if (!paying) { e.target.style.background = '#0da371'; e.target.style.transform = 'translateY(-2px)'; } }}
-                 onMouseLeave={e => { if (!paying) { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; } }}>
+                onMouseLeave={e => { if (!paying) { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; } }}>
                 {paying ? 'Processing…' : 'Upgrade Now — ₹999/3 months'} <FiArrowRight size={16} />
               </button>
             </>
@@ -761,7 +761,7 @@ export default function Premium() {
           padding: 20,
         }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,15,40,.6)', backdropFilter: 'blur(10px)' }}
-               onClick={() => { setShowSuccess(false); navigate('/dashboard'); }} />
+            onClick={() => { setShowSuccess(false); navigate('/dashboard'); }} />
           <div style={{
             position: 'relative', background: '#fff', borderRadius: 24,
             padding: '48px 40px', maxWidth: 400, width: '100%',

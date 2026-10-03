@@ -120,7 +120,7 @@ const PremiumPromoCard = ({ className = "" }) => (
   </div>
 );
 
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import CandidateHeader from "../../../../components/common/CandidateHeader";
 
 // ─── Section data ────────────────────────────────────────────
@@ -255,7 +255,7 @@ export default function BlogAIRex() {
     const el = e.currentTarget;
     const { scrollLeft, scrollWidth, clientWidth } = el;
     const blockWidth = scrollWidth / 3;
-    
+
     if (scrollLeft <= 5) {
       el.style.scrollBehavior = "auto";
       el.scrollLeft = scrollLeft + blockWidth;
@@ -514,7 +514,7 @@ export default function BlogAIRex() {
           .stat-card-inner { background-color: inherit !important; }
         }
       `}</style>
-{/* <CandidateHeader /> */}
+      {/* <CandidateHeader /> */}
       {/* ── PRINT-ONLY HEADER (shows only in PDF) ── */}
       <div
         className="print-header"
@@ -588,7 +588,7 @@ export default function BlogAIRex() {
           <Link to="/" style={{ textDecoration: "none" }}>
             <img src={mavenLogo} alt="MavenJobs" style={{ height: 28 }} />
           </Link>
-          
+
           <div className="desktop-nav">
             <Link
               to="/blogs"
@@ -818,9 +818,9 @@ export default function BlogAIRex() {
                 </div>
               </div>
             </div>
-            
+
             <div className="hero-divider" />
-            
+
             <div className="hero-date-row">
               {[
                 { icon: <FiCalendar size={13} />, text: "27 Apr 2026" },
@@ -845,7 +845,7 @@ export default function BlogAIRex() {
 
             <div className="hero-divider" />
 
-            
+
           </div>
 
           {/* Action row */}
@@ -905,11 +905,11 @@ export default function BlogAIRex() {
 
       {/* ── MAIN CONTENT AREA ── */}
       <div className="main-content-container" style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 44px" }}>
-        
+
         {/* Mobile TOC Dropdown */}
         <div className="mobile-toc-container no-print">
-          <button 
-            className="mobile-toc-btn" 
+          <button
+            className="mobile-toc-btn"
             onClick={() => setIsTocOpen(!isTocOpen)}
           >
             <span style={{ letterSpacing: ".1em", textTransform: "uppercase" }}>In This Article</span>
@@ -1578,104 +1578,104 @@ export default function BlogAIRex() {
                   <div key={i} className={`related-card ${isDup ? "desktop-hidden" : ""}`}>
                     <div
                       style={{
-                    height: 140,
-                    borderRadius: 12,
-                    background: `linear-gradient(135deg,${r.color}22,${r.color}44)`,
-                    marginBottom: 18,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      opacity: 0.06,
-                      backgroundImage:
-                        "radial-gradient(#000 1px,transparent 1px)",
-                      backgroundSize: "18px 18px",
-                    }}
-                  />
-                  <div
-                    style={{
-                      fontFamily: "var(--fd)",
-                      fontSize: 22,
-                      fontWeight: 800,
-                      color: r.color,
-                      opacity: 0.6,
-                      textAlign: "center",
-                      padding: "0 20px",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    MavenJobs
+                        height: 140,
+                        borderRadius: 12,
+                        background: `linear-gradient(135deg,${r.color}22,${r.color}44)`,
+                        marginBottom: 18,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          opacity: 0.06,
+                          backgroundImage:
+                            "radial-gradient(#000 1px,transparent 1px)",
+                          backgroundSize: "18px 18px",
+                        }}
+                      />
+                      <div
+                        style={{
+                          fontFamily: "var(--fd)",
+                          fontSize: 22,
+                          fontWeight: 800,
+                          color: r.color,
+                          opacity: 0.6,
+                          textAlign: "center",
+                          padding: "0 20px",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        MavenJobs
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "inline-block",
+                        padding: "3px 12px",
+                        borderRadius: 100,
+                        background: `${r.color}14`,
+                        border: `1px solid ${r.color}30`,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: r.color,
+                        fontFamily: "var(--fd)",
+                        letterSpacing: ".08em",
+                        textTransform: "uppercase",
+                        marginBottom: 12,
+                      }}
+                    >
+                      {r.tag}
+                    </div>
+                    <h3
+                      style={{
+                        fontFamily: "var(--fd)",
+                        fontSize: 16,
+                        fontWeight: 800,
+                        color: "#0f172a",
+                        marginBottom: 10,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {r.title}
+                    </h3>
+                    <p
+                      style={{ fontSize: 13.5, color: "#64748b", lineHeight: 1.65 }}
+                    >
+                      {r.excerpt}
+                    </p>
+                    <div
+                      style={{
+                        marginTop: 16,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: r.color,
+                      }}
+                    >
+                      Read More <FiArrowRight size={13} />
+                    </div>
                   </div>
-                </div>
-                <div
-                  style={{
-                    display: "inline-block",
-                    padding: "3px 12px",
-                    borderRadius: 100,
-                    background: `${r.color}14`,
-                    border: `1px solid ${r.color}30`,
-                    fontSize: 11,
-                    fontWeight: 800,
-                    color: r.color,
-                    fontFamily: "var(--fd)",
-                    letterSpacing: ".08em",
-                    textTransform: "uppercase",
-                    marginBottom: 12,
-                  }}
-                >
-                  {r.tag}
-                </div>
-                <h3
-                  style={{
-                    fontFamily: "var(--fd)",
-                    fontSize: 16,
-                    fontWeight: 800,
-                    color: "#0f172a",
-                    marginBottom: 10,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {r.title}
-                </h3>
-                <p
-                  style={{ fontSize: 13.5, color: "#64748b", lineHeight: 1.65 }}
-                >
-                  {r.excerpt}
-                </p>
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: r.color,
-                  }}
-                >
-                  Read More <FiArrowRight size={13} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {/* PremiumX Promo for Mobile */}
-        <div className="desktop-hidden no-print" style={{ marginTop: 24, padding: "0 20px" }}>
-          <PremiumPromoCard />
+                );
+              })}
+            </div>
+            {/* PremiumX Promo for Mobile */}
+            <div className="desktop-hidden no-print" style={{ marginTop: 24, padding: "0 20px" }}>
+              <PremiumPromoCard />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
 
       {/* ── SITE FOOTER ── */}
-     <LandingFooter />
+      <LandingFooter />
 
       {/* ── PDF hint toast ── */}
       {showPdfHint && (

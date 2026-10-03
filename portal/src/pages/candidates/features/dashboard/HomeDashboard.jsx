@@ -71,7 +71,7 @@ import EarlyAccessModal from "../../../../components/EarlyAccessModal";
 import ApplicationModal from "../../../../components/application/ApplicationModal";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import "../dashboard/ProfileDashboard.css";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import CandidateHeader from "../../../../components/common/CandidateHeader";
 
 const styleId = "hd-chat-keyframes";
@@ -576,7 +576,7 @@ export default function HomeDashboard() {
                     });
                   }
                 })
-                .catch(() => {});
+                .catch(() => { });
             }
           }}
         >
@@ -959,7 +959,7 @@ export default function HomeDashboard() {
                 </button>
                 <div className="pd-job-scroll" ref={jobScrollRef}>
                   {!recommendedJobs[activeTab] ||
-                  recommendedJobs[activeTab].length === 0 ? (
+                    recommendedJobs[activeTab].length === 0 ? (
                     activeTab.startsWith("Preferences") ? (
                       <div
                         style={{
@@ -2128,13 +2128,13 @@ export default function HomeDashboard() {
           const appsList = hasApps
             ? appsWithScores.slice(0, 5)
             : [
-                {
-                  companyName: "No recent applications",
-                  jobTitle: "Apply to jobs to see your match scores!",
-                  status: "-",
-                  matchScore: 0,
-                },
-              ];
+              {
+                companyName: "No recent applications",
+                jobTitle: "Apply to jobs to see your match scores!",
+                status: "-",
+                matchScore: 0,
+              },
+            ];
 
           return (
             <div
@@ -2838,9 +2838,9 @@ export function CareerPreferencesSidebar({
       ? Array.isArray(candidateProfile.preferredRoles)
         ? candidateProfile.preferredRoles
         : String(candidateProfile.preferredRoles)
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [],
   );
 
@@ -2856,9 +2856,9 @@ export function CareerPreferencesSidebar({
       ? Array.isArray(candidateProfile.preferredLocations)
         ? candidateProfile.preferredLocations
         : String(candidateProfile.preferredLocations)
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : [],
   );
 

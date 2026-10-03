@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FiBarChart2, FiCheckCircle, FiArrowRight, FiZap, FiClock, FiUsers, FiTrendingUp, FiChevronDown } from "react-icons/fi";
-import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
 import EmployerFooter from "../../../../components/EmployerFooter";
+import "./JobPosting.css";
 
 const PLANS = [
     { name: "Starter", price: "₹4,999", period: "/month", tag: "Best for SMBs", feats: ["5 Active Job Postings", "500 Applications/month", "Basic Candidate Filters", "Email Notifications", "7-day Free Trial"], cta: "Start Free Trial" },
@@ -35,6 +35,7 @@ const CANDS = [
 ];
 
 export default function JobPosting() {
+    const navigate = useNavigate();
     const [openFaq, setOpenFaq] = useState(null);
     const [scrolled, setScrolled] = useState(false);
 
@@ -45,120 +46,46 @@ export default function JobPosting() {
         return () => window.removeEventListener("scroll", fn);
     }, []);
 
-    useEffect(() => {
-        let ctx;
-        const initGsap = () => {
-            const { gsap } = window;
-            const { ScrollTrigger } = window || {};
-            if (!gsap) return;
-            try { gsap.registerPlugin && gsap.registerPlugin(ScrollTrigger); } catch { }
-
-            if (gsap.context) {
-                ctx = gsap.context(() => {
-                    gsap.timeline({ defaults: { ease: "power3.out" } })
-                        .from(".jp-eyebrow", { opacity: 0, y: 20, duration: 0.6 })
-                        .from(".jp-word", { opacity: 0, y: 55, stagger: 0.07, duration: 0.85 }, "-=0.2")
-                        .from(".jp-sub", { opacity: 0, y: 20, duration: 0.6 }, "-=0.3")
-                        .from(".jp-ctas", { opacity: 0, y: 18, duration: 0.5 }, "-=0.25")
-                        .from(".jp-badge", { opacity: 0, scale: 0.88, stagger: 0.08, duration: 0.45 }, "-=0.2")
-                        .from(".jp-mockup", { opacity: 0, x: 70, duration: 0.95 }, "-=0.7");
-
-                    gsap.from(".jp-stat", { scrollTrigger: { trigger: ".jp-stats", start: "top 80%" }, opacity: 0, y: 36, stagger: 0.12, duration: 0.7 });
-                    gsap.from(".jp-step", { scrollTrigger: { trigger: ".jp-how", start: "top 75%" }, opacity: 0, x: -36, stagger: 0.13, duration: 0.65 });
-                    gsap.from(".jp-plan", { scrollTrigger: { trigger: ".jp-plans", start: "top 75%" }, opacity: 0, y: 56, stagger: 0.14, duration: 0.75, ease: "back.out(1.3)" });
-                    gsap.from(".jp-faq", { scrollTrigger: { trigger: ".jp-faqs", start: "top 80%" }, opacity: 0, y: 28, stagger: 0.1, duration: 0.6 });
-                });
-            }
-        };
-
-        const load = async () => {
-            // Check if BOTH are loaded
-            if (typeof window.gsap !== "undefined" && window.gsap.version && typeof window.ScrollTrigger !== "undefined") {
-                initGsap();
-                return;
-            }
-            
-            const loadScript = (src) => new Promise((resolve, reject) => {
-                if (typeof window === 'undefined') return resolve();
-                if (document.querySelector(`script[src="${src}"]`)) return resolve();
-                const s = document.createElement('script');
-                s.src = src;
-                s.async = true;
-                s.onload = () => resolve();
-                s.onerror = (e) => reject(e);
-                document.head.appendChild(s);
-            });
-
-            try {
-                if (typeof window.gsap === "undefined" || !window.gsap.version) {
-                    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js');
-                }
-                if (typeof window.ScrollTrigger === "undefined") {
-                    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js');
-                }
-                initGsap();
-            } catch (err) {
-                // ignore
-            }
-        };
-        
-        load();
-        
-        return () => {
-            if (ctx) ctx.revert();
-        };
-    }, []);
-
     return (
-        <>
-            <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700;800&display=swap');
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{--navy:#002366;--green:#10b981;--fd:'Bricolage Grotesque',sans-serif}
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-        @keyframes ping{75%,100%{transform:scale(2);opacity:0}}
-        .jp-step-card:hover{transform:translateY(-4px)!important;box-shadow:0 16px 40px rgba(0,35,102,.09)!important;border-color:rgba(0,35,102,.15)!important}
-        .jp-plan-card:hover{transform:translateY(-6px)!important;box-shadow:0 22px 56px rgba(0,35,102,.13)!important}
-        ::-webkit-scrollbar{width:4px}
-        ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
-      `}</style>
-
-            <div style={{ background: "#f8fafc", color: "#1e293b", overflowX: "hidden", fontFamily: "'DM Sans',system-ui,sans-serif" }}>
-
-                {/* ── NAV ── */}
-                <LandingEmployeeHeader solid={true} />
+        <div className="jp-page-root">
+            {/* ── NAV ── */}
+            <LandingEmployeeHeader solid={true} />
 
                 {/* ── HERO ── */}
-                <section style={{ paddingTop: 66, background: "linear-gradient(180deg,#f0f4fb 0%,#fff 100%)" }}>
-                    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "80px 44px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
-                        <div>
+                <section className="jp-hero-sec">
+                    <div className="jp-hero-inner">
+                        <div className="jp-hero-content">
                             <div className="jp-eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#EEF2FF", color: "#002366", borderRadius: 100, padding: "7px 16px", fontSize: 12, fontWeight: 800, marginBottom: 20, letterSpacing: ".05em", textTransform: "uppercase", fontFamily: "var(--fd)" }}>
                                 <div style={{ position: "relative" }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: "#002366" }} /><div style={{ position: "absolute", inset: -1, borderRadius: "50%", background: "#002366", animation: "ping 1.5s infinite" }} /></div>
                                 India's #1 Job Posting Platform
                             </div>
-                            <h1 style={{ fontFamily: "var(--fd)", fontSize: "clamp(36px,4.5vw,60px)", fontWeight: 800, lineHeight: 1.06, letterSpacing: "-0.04em", color: "#0f172a", marginBottom: 20 }}>
+                            <h1 className="jp-hero-title">
                                 {["Post.", "Attract.", "Hire."].map(w => <span key={w} className="jp-word" style={{ display: "inline-block", marginRight: "0.22em" }}>{w}</span>)}
                                 <br />
                                 <span className="jp-word" style={{ display: "inline-block", color: "#002366", marginRight: "0.16em" }}>Repeat</span>
                                 <span className="jp-word" style={{ display: "inline-block", color: "#10b981" }}>.</span>
                             </h1>
-                            <p className="jp-sub" style={{ fontSize: 17, color: "#64748b", lineHeight: 1.72, marginBottom: 32, maxWidth: 480 }}>
+                            <p className="jp-sub jp-hero-sub">
                                 Reach 10 crore+ active jobseekers across India. Get quality applications within 48 hours of posting — guaranteed.
                             </p>
                             <div className="jp-ctas" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 32 }}>
-                                <button style={{ padding: "14px 28px", borderRadius: 100, border: "none", background: "#002366", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "var(--fd)", boxShadow: "0 8px 24px rgba(0,35,102,.25)", transition: "all .25s" }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = "#001540"; e.currentTarget.style.transform = "translateY(-2px)" }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = "#002366"; e.currentTarget.style.transform = "" }}>
+                                <button
+                                    className="jp-btn-primary"
+                                    onClick={() => navigate("/recruit/client-registration-form")}
+                                >
                                     Post a Job — Free Trial
                                 </button>
-                                <button style={{ padding: "13px 26px", borderRadius: 100, border: "2px solid #10b981", background: "#10b981", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "var(--fd)", transition: "all .25s" }}
-                                    onMouseEnter={e => e.currentTarget.style.background = "#0da371"}
-                                    onMouseLeave={e => e.currentTarget.style.background = "#10b981"}>
+                                <button
+                                    className="jp-btn-secondary"
+                                    onClick={() => {
+                                        const el = document.getElementById("pricing");
+                                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                                    }}
+                                >
                                     See Pricing
                                 </button>
                             </div>
-                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                            <div className="jp-badges-wrap" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                                 {["✓ No credit card required", "✓ Go live in 60 seconds", "✓ 40+ ATS integrations"].map(b => (
                                     <span key={b} className="jp-badge" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 9, padding: "7px 13px", fontSize: 12.5, fontWeight: 600, color: "#475569" }}>{b}</span>
                                 ))}
@@ -166,59 +93,64 @@ export default function JobPosting() {
                         </div>
 
                         {/* Mockup */}
-                        <div className="jp-mockup" style={{ background: "#fff", borderRadius: 22, boxShadow: "0 20px 64px rgba(0,35,102,.13)", border: "1.5px solid #e2e8f0", padding: 24 }}>
-                            <div style={{ background: "linear-gradient(135deg,#002366,#003da8)", borderRadius: 14, padding: "18px 20px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div style={{ fontFamily: "var(--fd)", fontWeight: 800, fontSize: 15, color: "#fff" }}>Applicant Inbox · Senior UX Designer</div>
-                                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(16,185,129,.2)", color: "#10b981", fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 100, border: "1px solid rgba(16,185,129,.3)" }}>
+                        <div className="jp-mockup jp-mockup-card">
+                            <div className="jp-mockup-header" style={{ background: "linear-gradient(135deg,#002366,#003da8)", borderRadius: 14, padding: "18px 20px", marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                <div className="jp-mockup-header-title" style={{ fontFamily: "var(--fd)", fontWeight: 800, fontSize: 15, color: "#fff" }}>Applicant Inbox · Senior UX Designer</div>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(16,185,129,.2)", color: "#10b981", fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 100, border: "1px solid rgba(16,185,129,.3)", flexShrink: 0 }}>
                                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981" }} /> LIVE
                                 </div>
                             </div>
                             {CANDS.map((c, i) => (
-                                <div key={i} style={{ display: "flex", alignItems: "center", gap: 13, padding: "13px 4px", borderBottom: i < CANDS.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-                                    <div style={{ width: 42, height: 42, borderRadius: 12, background: c.color, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--fd)", fontSize: 14, fontWeight: 800, color: "#fff", flexShrink: 0 }}>{c.initials}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", marginBottom: 2 }}>{c.name}</div>
-                                        <div style={{ fontSize: 12, color: "#94a3b8" }}>{c.role} · {c.exp} exp</div>
+                                <div key={i} className="jp-cand-row" style={{ display: "flex", alignItems: "center", gap: 13, padding: "13px 4px", borderBottom: i < CANDS.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+                                    <div className="jp-cand-avatar" style={{ width: 42, height: 42, borderRadius: 12, background: c.color, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--fd)", fontSize: 14, fontWeight: 800, color: "#fff", flexShrink: 0 }}>{c.initials}</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div className="jp-cand-name" style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
+                                        <div className="jp-cand-role" style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.role} · {c.exp} exp</div>
                                     </div>
-                                    <div style={{ fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 100, background: c.scoreBg, color: c.scoreColor }}>{c.score}% match</div>
+                                    <div className="jp-cand-score" style={{ fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 100, background: c.scoreBg, color: c.scoreColor, flexShrink: 0, whiteSpace: "nowrap" }}>{c.score}% match</div>
                                 </div>
                             ))}
-                            <div style={{ marginTop: 16, background: "#f8fafc", borderRadius: 10, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div className="jp-mockup-footer" style={{ marginTop: 16, background: "#f8fafc", borderRadius: 10, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                                 <span style={{ fontSize: 13, color: "#64748b", fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
-                                    <FiBarChart2 size={14} /> 247 total applicants · Posted 2h ago
+                                    <FiBarChart2 size={14} style={{ flexShrink: 0 }} /> 247 total applicants · Posted 2h ago
                                 </span>
-                                <span style={{ fontSize: 12, fontWeight: 800, color: "#002366", cursor: "pointer" }}>View all →</span>
+                                <span
+                                    onClick={() => navigate("/recruit/client-registration-form")}
+                                    style={{ fontSize: 12, fontWeight: 800, color: "#002366", cursor: "pointer", whiteSpace: "nowrap" }}
+                                >
+                                    View all →
+                                </span>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 {/* ── STATS ── */}
-                <div className="jp-stats" style={{ background: "linear-gradient(135deg,#050e24,#002366)", padding: "60px 44px" }}>
-                    <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 24 }}>
+                <div className="jp-stats jp-stats-sec">
+                    <div className="jp-stats-grid">
                         {STATS.map((s, i) => (
-                            <div key={i} className="jp-stat" style={{ textAlign: "center", padding: "24px 20px", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 18 }}>
+                            <div key={i} className="jp-stat jp-stat-card">
                                 <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(16,185,129,.15)", border: "1px solid rgba(16,185,129,.22)", display: "flex", alignItems: "center", justifyContent: "center", color: "#10b981", margin: "0 auto 12px" }}>{s.icon}</div>
-                                <div style={{ fontFamily: "var(--fd)", fontSize: "clamp(32px,3.5vw,48px)", fontWeight: 800, color: "#10b981", letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6 }}>{s.val}</div>
-                                <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", fontWeight: 600 }}>{s.label}</div>
+                                <div className="jp-stat-num">{s.val}</div>
+                                <div className="jp-stat-label" style={{ fontSize: 13, color: "rgba(255,255,255,.45)", fontWeight: 600 }}>{s.label}</div>
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* ── HOW IT WORKS ── */}
-                <section className="jp-how" style={{ background: "#fff", padding: "96px 44px" }}>
+                <section className="jp-how jp-how-sec">
                     <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-                        <div style={{ textAlign: "center", marginBottom: 56 }}>
+                        <div className="jp-sec-header">
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: ".2em", textTransform: "uppercase", color: "#10b981", marginBottom: 12, fontFamily: "var(--fd)" }}>✦ How It Works</div>
-                            <h2 style={{ fontFamily: "var(--fd)", fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", marginBottom: 12 }}>From post to hire<br />in four steps</h2>
+                            <h2 className="jp-sec-title">From post to hire<br />in four steps</h2>
                             <div style={{ width: 44, height: 3, background: "linear-gradient(90deg,#002366,#10b981)", borderRadius: 3, margin: "0 auto" }} />
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
+                        <div className="jp-how-grid">
                             {HOW.map((h, i) => (
                                 <div key={i} className="jp-step">
                                     <div className="jp-step-card" style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: 20, padding: "32px 28px", position: "relative", overflow: "hidden", transition: "all .25s", height: "100%" }}>
-                                        <div style={{ position: "absolute", top: 16, right: 20, fontFamily: "var(--fd)", fontSize: 72, fontWeight: 800, color: "#f1f5f9", lineHeight: 1, userSelect: "none" }}>{h.n}</div>
+                                        <div className="jp-step-number" style={{ position: "absolute", top: 16, right: 20, fontFamily: "var(--fd)", fontSize: 72, fontWeight: 800, color: "#f1f5f9", lineHeight: 1, userSelect: "none" }}>{h.n}</div>
                                         <div style={{ width: 40, height: 4, background: "linear-gradient(90deg,#002366,#10b981)", borderRadius: 2, marginBottom: 18 }} />
                                         <h3 style={{ fontFamily: "var(--fd)", fontSize: 20, fontWeight: 800, color: "#0f172a", marginBottom: 10 }}>{h.title}</h3>
                                         <p style={{ fontSize: 14.5, color: "#64748b", lineHeight: 1.72 }}>{h.desc}</p>
@@ -230,14 +162,14 @@ export default function JobPosting() {
                 </section>
 
                 {/* ── PLANS ── */}
-                <section className="jp-plans" style={{ background: "linear-gradient(135deg,#f0f4fb,#e8f0fe)", padding: "96px 44px" }}>
+                <section id="pricing" className="jp-plans jp-plans-sec">
                     <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-                        <div style={{ textAlign: "center", marginBottom: 56 }}>
+                        <div className="jp-sec-header">
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: ".2em", textTransform: "uppercase", color: "#10b981", marginBottom: 12, fontFamily: "var(--fd)" }}>✦ Pricing</div>
-                            <h2 style={{ fontFamily: "var(--fd)", fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", marginBottom: 12 }}>Transparent plans,<br />zero hidden fees</h2>
+                            <h2 className="jp-sec-title">Transparent plans,<br />zero hidden fees</h2>
                             <div style={{ width: 44, height: 3, background: "linear-gradient(90deg,#002366,#10b981)", borderRadius: 3, margin: "0 auto" }} />
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 22 }}>
+                        <div className="jp-plans-grid">
                             {PLANS.map((p, i) => (
                                 <div key={i} className="jp-plan" style={{ display: "flex" }}>
                                     <div className="jp-plan-card" style={{ position: "relative", padding: "36px 28px", background: p.popular ? "linear-gradient(135deg,#002366,#003da8)" : "#fff", border: p.popular ? "none" : "1.5px solid #e2e8f0", borderRadius: 24, display: "flex", flexDirection: "column", overflow: "hidden", transition: "all .28s", flex: 1, width: "100%" }}>
@@ -261,9 +193,12 @@ export default function JobPosting() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <button style={{ padding: "13px", background: p.popular ? "#fff" : "#002366", color: p.popular ? "#002366" : "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "var(--fd)", transition: "all .2s" }}
+                                        <button
+                                            style={{ padding: "13px", background: p.popular ? "#fff" : "#002366", color: p.popular ? "#002366" : "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "var(--fd)", transition: "all .2s" }}
                                             onMouseEnter={e => e.currentTarget.style.opacity = ".9"}
-                                            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                                            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                                            onClick={() => navigate(p.cta === "Contact Sales" ? "/recruit/client-registration-form" : p.cta === "Get Started" ? "/buy-online" : "/recruit/client-registration-form")}
+                                        >
                                             {p.cta}
                                         </button>
                                     </div>
@@ -274,19 +209,20 @@ export default function JobPosting() {
                 </section>
 
                 {/* ── FAQ ── */}
-                <section className="jp-faqs" style={{ background: "#fff", padding: "96px 44px" }}>
-                    <div style={{ maxWidth: 860, margin: "0 auto" }}>
-                        <div style={{ textAlign: "center", marginBottom: 48 }}>
+                <section className="jp-faqs jp-faqs-sec">
+                    <div className="jp-faqs-wrap">
+                        <div className="jp-sec-header">
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 800, letterSpacing: ".2em", textTransform: "uppercase", color: "#10b981", marginBottom: 12, fontFamily: "var(--fd)" }}>✦ FAQ</div>
-                            <h2 style={{ fontFamily: "var(--fd)", fontSize: "clamp(26px,3.2vw,38px)", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", marginBottom: 12 }}>Common questions</h2>
+                            <h2 className="jp-sec-title">Common questions</h2>
                             <div style={{ width: 44, height: 3, background: "linear-gradient(90deg,#002366,#10b981)", borderRadius: 3, margin: "0 auto" }} />
                         </div>
                         <div style={{ background: "#fff", borderRadius: 22, border: "1.5px solid #e2e8f0", overflow: "hidden" }}>
                             {FAQS.map((f, i) => (
                                 <div key={i} className="jp-faq" style={{ borderBottom: i < FAQS.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-                                    <button onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ width: "100%", padding: "22px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-                                        onMouseEnter={e => e.currentTarget.style.background = "#fafbfc"}
-                                        onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                                    <button
+                                        className="jp-faq-btn"
+                                        onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                                    >
                                         <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
                                             <div style={{ width: 26, height: 26, borderRadius: 8, background: openFaq === i ? "#002366" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .25s" }}>
                                                 <span style={{ fontFamily: "var(--fd)", fontSize: 10.5, fontWeight: 800, color: openFaq === i ? "#fff" : "#94a3b8" }}>{String(i + 1).padStart(2, "0")}</span>
@@ -297,8 +233,8 @@ export default function JobPosting() {
                                             <FiChevronDown size={15} />
                                         </div>
                                     </button>
-                                    <div style={{ maxHeight: openFaq === i ? 200 : 0, overflow: "hidden", transition: "max-height .35s cubic-bezier(.4,0,.2,1)" }}>
-                                        <div style={{ padding: "0 28px 20px 67px", fontSize: 14, color: "#475569", lineHeight: 1.8 }}>{f.a}</div>
+                                    <div style={{ maxHeight: openFaq === i ? 400 : 0, overflow: "hidden", transition: "max-height .35s cubic-bezier(.4,0,.2,1)" }}>
+                                        <div className="jp-faq-answer">{f.a}</div>
                                     </div>
                                 </div>
                             ))}
@@ -307,9 +243,9 @@ export default function JobPosting() {
                 </section>
 
                 {/* ── CTA ── */}
-                <section style={{ padding: "0 44px 88px" }}>
-                    <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-                        <div style={{ background: "linear-gradient(135deg,#050e24,#002366)", borderRadius: 28, padding: "72px 64px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40, flexWrap: "wrap" }}>
+                <section className="jp-cta-sec">
+                    <div className="jp-cta-inner">
+                        <div className="jp-cta-box">
                             <div style={{ position: "absolute", inset: 0, opacity: .05, backgroundImage: "radial-gradient(#fff 1px,transparent 1px)", backgroundSize: "22px 22px" }} />
                             <div style={{ position: "absolute", top: "-30%", right: "30%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle,rgba(16,185,129,.12) 0%,transparent 65%)", pointerEvents: "none" }} />
                             <div style={{ position: "relative", zIndex: 1, maxWidth: 480 }}>
@@ -318,9 +254,10 @@ export default function JobPosting() {
                                 </h2>
                                 <p style={{ fontSize: 16, color: "rgba(255,255,255,.55)", lineHeight: 1.7 }}>Join 40,000+ companies who trust MavenJobs to find their next great hire.</p>
                             </div>
-                            <button style={{ position: "relative", zIndex: 1, padding: "16px 38px", borderRadius: 100, border: "none", background: "#10b981", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "var(--fd)", boxShadow: "0 8px 28px rgba(16,185,129,.35)", transition: "all .25s", flexShrink: 0 }}
-                                onMouseEnter={e => { e.currentTarget.style.background = "#0da371"; e.currentTarget.style.transform = "translateY(-2px)" }}
-                                onMouseLeave={e => { e.currentTarget.style.background = "#10b981"; e.currentTarget.style.transform = "" }}>
+                            <button
+                                className="jp-cta-btn"
+                                onClick={() => navigate("/recruit/client-registration-form")}
+                            >
                                 Post Your First Job — Free <FiArrowRight size={15} style={{ display: "inline", verticalAlign: "middle", marginLeft: 6 }} />
                             </button>
                         </div>
@@ -330,6 +267,5 @@ export default function JobPosting() {
                 {/* ── FOOTER ── */}
                 <EmployerFooter />
             </div>
-        </>
     );
 }

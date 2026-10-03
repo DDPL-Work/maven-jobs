@@ -102,6 +102,7 @@ export default function EmployerFooter() {
               <FooterLink to="/post-job">Jobs & Responses</FooterLink>
               <FooterLink to="/resume-search">Resdex</FooterLink>
               <FooterLink to="/report/resdex">Reports</FooterLink>
+              <FooterLink to="/download/recruiter-app">Recruiter Mobile App</FooterLink>
             </div>
           </div>
 
@@ -123,8 +124,8 @@ export default function EmployerFooter() {
               <FooterLink to="/maven-jobs/careers">Careers</FooterLink>
               
               <FooterLink to="/employers/learning-center" target="_blank" rel="noopener noreferrer">Learning Center</FooterLink>
-              <FooterLink to="/sitemap">Site Map</FooterLink>
-          <FooterLink to="/maven-jobs/zones">Find Your Zone</FooterLink>
+              <FooterLink to="/employer/site-map">Site Map</FooterLink>
+              <FooterLink to="/maven-jobs/zones">Find Your Zone</FooterLink>
             </div>
           </div>
 

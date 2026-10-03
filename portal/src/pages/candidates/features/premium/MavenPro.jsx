@@ -14,7 +14,7 @@ import mavenLogo from '../../../../../assets/maven-logo-BdiSsfJk.svg';
 import { useAuth } from "../../../../AuthContext";
 import paymentService from "../../../../services/paymentService";
 import AvatarDropdown from "../../../../components/common/AvatarDropdown";
-import LandingFooter from '../../../../components/LandingFooter';
+import LandingFooter from '../../../../layout/candidate/LandingFooter';
 
 function useFadeIn(threshold = 0.12) {
   const ref = useRef(null);
@@ -1106,7 +1106,7 @@ const MavenPro = () => {
                   textDecoration: 'none', fontFamily: 'var(--fd)',
                   boxShadow: '0 8px 28px rgba(16,185,129,.35)', transition: 'all .25s',
                 }} onMouseEnter={e => { e.target.style.background = '#0da371'; e.target.style.transform = 'translateY(-2px)'; }}
-                   onMouseLeave={e => { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; }}>
+                  onMouseLeave={e => { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; }}>
                   Go to Dashboard <FiArrowRight size={16} />
                 </Link>
               </div>
@@ -1132,7 +1132,7 @@ const MavenPro = () => {
                 fontFamily: 'var(--fd)', opacity: paymentLoading ? .7 : 1,
                 boxShadow: '0 8px 28px rgba(16,185,129,.35)', transition: 'all .25s',
               }} onMouseEnter={e => { if (!paymentLoading) { e.target.style.background = '#0da371'; e.target.style.transform = 'translateY(-2px)'; } }}
-                 onMouseLeave={e => { if (!paymentLoading) { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; } }}>
+                onMouseLeave={e => { if (!paymentLoading) { e.target.style.background = '#10b981'; e.target.style.transform = 'none'; } }}>
                 {paymentLoading ? 'Processing…' : 'Upgrade Now — ₹999/3 months'} <FiArrowRight size={16} />
               </button>
               {paymentError && (
