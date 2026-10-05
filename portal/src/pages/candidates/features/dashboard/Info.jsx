@@ -15,7 +15,7 @@ import { useCandidateApplications, useCandidateSavedJobs } from '../../../../hoo
 import { useSaveJob } from '../../../../hooks/useCandidateMutations';
 import { SkeletonStatsRow, SkeletonTable } from '../../../../components/Skeleton';
 import LandingFooter from '../../../../layout/candidate/LandingFooter';
-import CandidateHeader from '../../../../components/common/CandidateHeader';
+import CandidateHeader from '../../../../layout/candidate/CandidateHeader';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

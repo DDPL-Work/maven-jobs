@@ -37,7 +37,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../AuthContext";
 import authService from "../../../../services/authService";
 import SkeletonPage from "../../../../components/Skeleton";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import ReviewModal from "../../../../components/ReviewModal";
 

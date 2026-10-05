@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import EmployerFooter from '../../../../components/EmployerFooter';
+import EmployerFooter from '../../../../layout/employer/LandingEmployeeFooter';
 import mavenVideo from '../../../../../assets/Maven.mp4';
 import {
   FiBook, FiVideo, FiAward, FiUsers, FiChevronRight,

@@ -7,8 +7,8 @@ import {
     FiX, FiHeadphones, FiBookOpen,
     FiShield, FiZap, FiCopy, FiCheck, FiMessageCircle
 } from 'react-icons/fi';
-import LandingEmployeeHeader from '../../../../components/employer/LandingEmployeeHeader';
-import EmployerFooter from '../../../../components/EmployerFooter';
+import LandingEmployeeHeader from '../../../../layout/employer/LandingEmployeeHeader';
+import EmployerFooter from '../../../../layout/employer/LandingEmployeeFooter';
 import './Help.css';
 
 /* ─── Data ──────────────────────────────────────────────── */

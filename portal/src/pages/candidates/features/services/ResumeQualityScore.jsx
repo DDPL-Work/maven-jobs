@@ -4,7 +4,7 @@ import {
   FiArrowRight, FiCheck, FiChevronRight, FiCpu, FiDownload,
   FiFileText, FiActivity, FiSearch, FiTrendingUp, FiUpload, FiZap,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./ResumeQualityScore.css";
 

@@ -13,7 +13,7 @@ import SkeletonPage from '../../../../components/Skeleton';
 import RateLimitModal from '../../../../components/common/RateLimitModal';
 import { isRateLimitError } from '../../../../utils/errorUtils';
 import LandingFooter from '../../../../layout/candidate/LandingFooter';
-import CandidateHeader from '../../../../components/common/CandidateHeader';
+import CandidateHeader from '../../../../layout/candidate/CandidateHeader';
 
 const QUESTIONS = [
   {

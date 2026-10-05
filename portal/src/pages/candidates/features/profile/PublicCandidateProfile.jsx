@@ -27,7 +27,7 @@ import {
 import { FaWhatsapp, FaLinkedinIn } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import authService from "../../../../services/authService";
-import EmployerHeader from "../../../../components/employer/EmployerHeader";
+import EmployerHeader from "../../../../layout/employer/EmployerHeader";
 import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
 import ForwardCVModal from "../../../../components/employer/ForwardCVModal";
 import SetReminderModal from "../../../../components/employer/SetReminderModal";

@@ -4,7 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { usePublishedBlogs, useBlogCategories } from "../../../../hooks/useCandidateQueries";
 import SkeletonPage from "../../../../components/Skeleton";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 const ALL_CATEGORIES = "All Posts";
 

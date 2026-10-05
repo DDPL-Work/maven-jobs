@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
-import EmployerFooter from "../../../../components/EmployerFooter";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import indiaMap from "../../../../../assets/india-zones-map.jpg";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import "./ZoneMapPage.css";

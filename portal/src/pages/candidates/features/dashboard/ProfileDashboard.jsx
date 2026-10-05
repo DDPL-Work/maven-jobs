@@ -55,7 +55,7 @@ import {
 import HourglassLoader from "../../../../components/HourglassLoader";
 import ProfileSections from "../../../../components/profile/ProfileSections";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 import FAQModal, {
   FaqAccordionItem as FaqItem,
 } from "./Components/ProfileDashboard/FAQModal";

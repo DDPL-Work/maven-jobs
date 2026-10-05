@@ -39,7 +39,7 @@ import formatCompactCount from "../../../../utils/formatCompactCount";
 import computeRelevanceScore from "../../../../utils/computeRelevanceScore";
 import AvatarDropdown from "../../../../components/common/AvatarDropdown";
 import GlobalSearchForm from "../../../../components/common/GlobalSearchForm";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 // Data moved to data/jobs.js
 const FILTER_CATEGORIES = [

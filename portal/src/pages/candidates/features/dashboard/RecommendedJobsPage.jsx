@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../../../AuthContext";
 import { useDashboard } from "../../../../hooks/useCandidateQueries";
 import HourglassLoader from "../../../../components/HourglassLoader";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import RecommendedJobs from "../jobs/RecommendedJobs";
 import { CareerPreferencesSidebar } from "./HomeDashboard";

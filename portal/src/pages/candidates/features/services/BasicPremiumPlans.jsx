@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   FiArrowRight, FiCheck, FiChevronRight, FiMinus, FiStar, FiZap,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./BasicPremiumPlans.css";
 

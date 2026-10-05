@@ -38,7 +38,7 @@ import { FaXTwitter } from "react-icons/fa6";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import qrImage from "../../../../../assets/QR.png";
 import "./NaukriLandingPage.css";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import { useLandingHome } from "../../../../hooks/useLandingQueries";
 import { usePublishedBlogs } from "../../../../hooks/useCandidateQueries";
 import GlobalSearchForm from "../../../../components/common/GlobalSearchForm";

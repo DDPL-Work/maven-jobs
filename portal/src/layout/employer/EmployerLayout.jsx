@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EmployerHeader from './EmployerHeader';
-import EmployerFooter from '../../layout/employer/EmployerFooter';
+import EmployerFooter from './EmployerFooter';
 import { useEmployerAuth } from '../../hooks/useEmployerAuth';
 
 const C = {

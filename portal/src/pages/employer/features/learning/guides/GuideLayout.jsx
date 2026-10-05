@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import EmployerFooter from '../../../../../components/EmployerFooter';
+import EmployerFooter from '../../../../../layout/employer/LandingEmployeeFooter';
 import mavenLogo from '../../../../../../assets/maven-logo-BdiSsfJk.svg';
 import mentor1 from '../../../../../../assets/mentor1.png';
 import mentor2 from '../../../../../../assets/mentor2.png';

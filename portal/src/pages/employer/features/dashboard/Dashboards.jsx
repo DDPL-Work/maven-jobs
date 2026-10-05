@@ -91,7 +91,7 @@ import {
   flushIceCandidates,
   stopMediaStream,
 } from "../../../../utils/webrtc";
-import EmployerHeader from "../../../../components/employer/EmployerHeader";
+import EmployerHeader from "../../../../layout/employer/EmployerHeader";
 import { SkeletonPage } from "../../../../components/Skeleton";
 import Cropper from "react-easy-crop";
 import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";

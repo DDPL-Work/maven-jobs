@@ -3,7 +3,7 @@ import {
   FaArrowRight, FaBriefcase, FaBullhorn, FaChartBar, FaLaptopCode,
   FaLightbulb, FaSearch, FaStar, FaUsers
 } from "react-icons/fa";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./CompanyResearch.css";
 

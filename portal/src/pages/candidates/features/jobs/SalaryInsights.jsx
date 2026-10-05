@@ -8,7 +8,7 @@ import {
   FiStar, FiX, FiTrendingDown
 } from "react-icons/fi";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 
 gsap.registerPlugin(ScrollTrigger);

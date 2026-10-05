@@ -121,7 +121,7 @@ const PremiumPromoCard = ({ className = "" }) => (
 );
 
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 // ─── Section data ────────────────────────────────────────────
 const STAGES = [

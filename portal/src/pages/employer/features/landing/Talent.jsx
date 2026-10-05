@@ -7,8 +7,8 @@ import {
     FiCheckCircle, FiPlay
 } from 'react-icons/fi';
 import mavenLogo from '../../../../../assets/maven-logo-BdiSsfJk.svg';
-import EmployerFooter from '../../../../components/EmployerFooter';
-import LandingEmployeeHeader from '../../../../components/employer/LandingEmployeeHeader';
+import EmployerFooter from '../../../../layout/employer/LandingEmployeeFooter';
+import LandingEmployeeHeader from '../../../../layout/employer/LandingEmployeeHeader';
 
 /* ─── Orb Canvas ──────────────────────────────────────────── */
 function TalentOrb() {

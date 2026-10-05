@@ -5,8 +5,8 @@ import {
     FiDatabase, FiBarChart2, FiLink, FiShield, FiCheckCircle,
     FiZap, FiArrowRight, FiClock
 } from "react-icons/fi";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
-import EmployerFooter from "../../../../components/EmployerFooter";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import "./HiringAutomation.css";
 
 const WORKFLOW = [

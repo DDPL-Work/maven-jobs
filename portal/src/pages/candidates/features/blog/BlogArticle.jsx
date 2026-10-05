@@ -4,7 +4,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import authService from "../../../../services/authService";
 import SkeletonPage from "../../../../components/Skeleton";
 import LandingFooter from "../../../../layout/candidate/LandingFooter.jsx";
-import CandidateHeader from "../../../../components/common/CandidateHeader.jsx";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 
 const BACK_LINKS = {

@@ -10,7 +10,7 @@ import { useAuth } from '../../../../AuthContext';
 import { useCandidateCompanies, useCompanyStats, useCompanyFilterOptions } from '../../../../hooks/useCandidateQueries';
 import useCompanyFilters from '../../../../hooks/useCompanyFilters';
 import { useProfileAnalysis } from '../../../../hooks/useProfileAnalysis';
-import LandingHeader from '../../../../components/LandingHeader';
+import LandingHeader from '../../../../layout/candidate/LandingHeader';
 import LandingFooter from '../../../../layout/candidate/LandingFooter';
 import SkeletonPage from '../../../../components/Skeleton';
 import CompanyGrid from '../../../../components/company/CompanyGrid';

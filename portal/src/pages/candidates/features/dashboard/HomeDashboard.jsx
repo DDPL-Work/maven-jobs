@@ -72,7 +72,7 @@ import ApplicationModal from "../../../../components/application/ApplicationModa
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import "../dashboard/ProfileDashboard.css";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 const styleId = "hd-chat-keyframes";
 if (!document.getElementById(styleId)) {

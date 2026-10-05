@@ -4,7 +4,7 @@ import {
   FiArrowRight, FiBarChart2, FiCheck, FiChevronRight, FiEye,
   FiMail, FiSearch, FiStar, FiTarget, FiTrendingUp, FiUsers, FiZap,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./ResumeDisplay.css";
 

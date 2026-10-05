@@ -4,7 +4,7 @@ import {
   FiArrowRight, FiCheck, FiChevronRight, FiClock, FiHeadphones,
   FiMail, FiMapPin, FiPhone, FiSend, FiZap,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./ContactUs.css";
 

@@ -4,7 +4,7 @@ import { FiHome, FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../AuthContext';
 import notFoundImage from '../../assets/lost.png';
 import './NotFoundPage.css';
-import LandingEmployeeHeader from './employer/LandingEmployeeHeader';
+import LandingEmployeeHeader from '../layout/employer/LandingEmployeeHeader';
 
 export default function NotFoundPage() {
   const navigate = useNavigate();

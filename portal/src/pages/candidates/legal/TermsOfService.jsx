@@ -1,5 +1,5 @@
 import { FiShield, FiUserCheck, FiBriefcase, FiAlertOctagon, FiInfo, FiFileText } from "react-icons/fi";
-import CandidateHeader from "../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../layout/candidate/CandidateHeader";
 import LandingFooter from "../../../layout/candidate/LandingFooter";
 import "./TermsOfService.css";
 

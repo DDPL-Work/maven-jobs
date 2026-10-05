@@ -9,8 +9,8 @@ import {
 } from "react-icons/fi";
 import authService from "../../../../services/authService";
 import CandidateResumeModal from "../../../../components/CandidateResumeModal";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
-import EmployerFooter from "../../../../components/EmployerFooter";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 
 const AVATAR_COLORS = ["#002366", "#0D9488", "#7C3AED", "#DC2626", "#B45309", "#065F46", "#2563EB", "#9333EA", "#0891B2", "#BE123C"];
 const getInitials = (name = "") => name.trim().split(/\s+/).slice(0, 2).map(p => p[0] || "").join("").toUpperCase() || "C";

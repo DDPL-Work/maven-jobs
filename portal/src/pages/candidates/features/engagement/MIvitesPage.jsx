@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { FiChevronRight, FiHome, FiMail, FiClock, FiUser, FiArrowLeft, FiChevronLeft, FiChevronRight as FiChevronRightIcon, FiMessageSquare, FiTrash2, FiMapPin, FiBriefcase, FiDollarSign, FiHelpCircle } from 'react-icons/fi';
 import authService from '../../../../services/authService';
-import CandidateHeader from '../../../../components/common/CandidateHeader';
+import CandidateHeader from '../../../../layout/candidate/CandidateHeader';
 import LandingFooter from '../../../../layout/candidate/LandingFooter';
 import './MIvitesPage.css';
 

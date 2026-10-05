@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import EmployerHeader from "../../../../components/employer/EmployerHeader";
+import EmployerHeader from "../../../../layout/employer/EmployerHeader";
 import EmployerFooter from "../../../../layout/employer/EmployerFooter";
 import {
   FiSmartphone,

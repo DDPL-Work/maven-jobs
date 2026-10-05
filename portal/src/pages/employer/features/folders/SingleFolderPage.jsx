@@ -11,7 +11,7 @@ import RequirementAlertModal from '../../../../components/employer/RequirementAl
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
 import './SingleFolderPage.css';
 import '../jobs/JobResponsesDetail.css';
-import EmployerHeader from '../../../../components/employer/EmployerHeader';
+import EmployerHeader from '../../../../layout/employer/EmployerHeader';
 
 export default function SingleFolderPage() {
   const { folderId } = useParams();

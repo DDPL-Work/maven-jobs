@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiBarChart2, FiCheckCircle, FiArrowRight, FiZap, FiClock, FiUsers, FiTrendingUp, FiChevronDown } from "react-icons/fi";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
-import EmployerFooter from "../../../../components/EmployerFooter";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import "./JobPosting.css";
 
 const PLANS = [

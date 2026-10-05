@@ -7,8 +7,8 @@ import {
     FiPhone, FiMail, FiCheck, FiX, FiArrowRight, FiTarget, FiActivity, FiHeart
 } from 'react-icons/fi';
 import mavenLogo from '../../../../../assets/maven-logo-BdiSsfJk.svg';
-import EmployerFooter from '../../../../components/EmployerFooter';
-import LandingEmployeeHeader from '../../../../components/employer/LandingEmployeeHeader';
+import EmployerFooter from '../../../../layout/employer/LandingEmployeeFooter';
+import LandingEmployeeHeader from '../../../../layout/employer/LandingEmployeeHeader';
 import './Artist.css';
 
 gsap.registerPlugin(ScrollTrigger);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import EmployerFooter from "../../../../components/EmployerFooter";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import {
   FiCheck,
   FiX,
@@ -26,7 +26,7 @@ import {
 import { useAuth } from "../../../../AuthContext";
 import paymentService from "../../../../services/paymentService";
 import commercialService from "../../../../services/commercialService";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
 import "./Buyonline.css";
 
 /* ── Helpers ── */

@@ -9,7 +9,7 @@ import {
 } from 'react-icons/fi';
 import EmployerFooter from '../../../../layout/employer/EmployerFooter';
 import './EmployerSideMap.css';
-import EmployerHeader from '../../../../components/employer/EmployerHeader';
+import EmployerHeader from '../../../../layout/employer/EmployerHeader';
 
 /* --------------------------------------------------------------------------
    Data Architecture: Grouped by operational modules for Clients & Recruiters

@@ -1,5 +1,5 @@
 import { FiGlobe, FiLock, FiSettings, FiBarChart2, FiMonitor, FiCheckCircle, FiInfo } from "react-icons/fi";
-import CandidateHeader from "../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../layout/candidate/CandidateHeader";
 import LandingFooter from "../../../layout/candidate/LandingFooter";
 import "./CookiePolicy.css";
 

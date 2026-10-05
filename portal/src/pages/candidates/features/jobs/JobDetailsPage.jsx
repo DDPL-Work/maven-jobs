@@ -44,7 +44,7 @@ import SkeletonPage from "../../../../components/Skeleton";
 import { AITrigger } from "../../../../components/LazyAI";
 import { aiService } from "../../../../services/aiService";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 import { calculateJobMatch } from "../../../../utils/jobMatching";
 import ReviewModal from "../../../../components/ReviewModal";
 
