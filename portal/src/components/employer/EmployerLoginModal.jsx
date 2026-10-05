@@ -15,7 +15,7 @@ const card = {
   position: 'relative',
 };
 
-export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) {
+export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess, context }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,7 +62,11 @@ export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) 
         </button>
 
         <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: '#0F172A' }}>Employer Login</h2>
-        <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748B', fontWeight: 500 }}>Sign in to your employer account</p>
+        <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748B', fontWeight: 500 }}>
+          {context === 'purchase'
+            ? 'Sign in to your employer account to continue your purchase.'
+            : 'Sign in to your employer account'}
+        </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
@@ -115,7 +119,7 @@ export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) 
 
         <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#64748B', fontWeight: 500 }}>
           Don't have an account?{' '}
-          <button type="button" onClick={() => navigate('/employer-login')}
+          <button type="button" onClick={() => { onClose?.(); navigate('/employer-login'); }}
             style={{ background: 'none', border: 'none', color: '#002366', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
             Create one
           </button>

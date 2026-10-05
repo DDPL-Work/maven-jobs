@@ -29,12 +29,39 @@ import {
   deleteCommercialOffer,
 } from "../../services/adminApi";
 
+export const STANDARD_PRODUCT_CODES = [
+  { code: "SMB_JOB",          label: "SMB_JOB — SMB Job Posting" },
+  { code: "HOT_VACANCY",      label: "HOT_VACANCY — Hot Vacancy Job" },
+  { code: "INTERNSHIP_JOB",   label: "INTERNSHIP_JOB — Internship Job" },
+  { code: "RESDEX",           label: "RESDEX — ResDex Resume Search" },
+  { code: "MIVITE",           label: "MIVITE — MIvites Candidate Outreach" },
+  { code: "JOB_BOOSTER",      label: "JOB_BOOSTER — Job Booster" },
+  { code: "AI_CREDIT",        label: "AI_CREDIT — AI Credits" },
+  { code: "RESDEX_SEAT",      label: "RESDEX_SEAT — ResDex User Seat" },
+  { code: "JOB_POSTING_SEAT", label: "JOB_POSTING_SEAT — Job Posting User Seat" },
+];
+
+// Auto-fill defaults per product code: category, productType, unit, and form labels
+export const PRODUCT_CODE_DEFAULTS = {
+  SMB_JOB:          { name: "SMB Job Posting",            category: "JOB_POSTING",   productType: "CREDIT_BASED", unit: "Job",          unitLabel: "Job Unit",         priceLabel: "Per SMB Job Post Price (\u20b9)" },
+  HOT_VACANCY:      { name: "Hot Vacancy Job",            category: "JOB_POSTING",   productType: "CREDIT_BASED", unit: "Job",          unitLabel: "Job Unit",         priceLabel: "Per Hot Vacancy Post Price (\u20b9)" },
+  INTERNSHIP_JOB:   { name: "Internship Job",             category: "JOB_POSTING",   productType: "CREDIT_BASED", unit: "Job",          unitLabel: "Job Unit",         priceLabel: "Per Internship Post Price (\u20b9)" },
+  JOB_POSTING:      { name: "Standard Job Posting",       category: "JOB_POSTING",   productType: "CREDIT_BASED", unit: "Job",          unitLabel: "Job Unit",         priceLabel: "Per Job Post Price (\u20b9)" },
+  RESDEX:           { name: "ResDex Resume Search",       category: "RESUME_SEARCH", productType: "CREDIT_BASED", unit: "Resume View",  unitLabel: "Resume View Unit", priceLabel: "Per Resume View Price (\u20b9)" },
+  AI_CREDIT:        { name: "AI Credits",                 category: "AI",            productType: "CREDIT_BASED", unit: "AI Use",       unitLabel: "AI Credit Unit",   priceLabel: "Per AI Credit Price (\u20b9)" },
+  MIVITE:           { name: "MIvites Candidate Outreach", category: "MIVITES",       productType: "CREDIT_BASED", unit: "Invite",       unitLabel: "Invite Unit",      priceLabel: "Per Invite Price (\u20b9)" },
+  JOB_BOOSTER:      { name: "Job Booster",                category: "ADD_ONS",       productType: "CREDIT_BASED", unit: "Boost",        unitLabel: "Boost Unit",       priceLabel: "Per Boost Price (\u20b9)" },
+  RESDEX_SEAT:      { name: "ResDex User Seat",           category: "USER_SEATS",    productType: "SEAT_BASED",   unit: "Seat",         unitLabel: "Seat Unit",        priceLabel: "Per ResDex Seat Price (\u20b9)" },
+  JOB_POSTING_SEAT: { name: "Job Posting User Seat",      category: "USER_SEATS",    productType: "SEAT_BASED",   unit: "Seat",         unitLabel: "Seat Unit",        priceLabel: "Per Job Posting Seat Price (\u20b9)" },
+};
+
 export default function CommercialProductsPage() {
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [isCustomProductCode, setIsCustomProductCode] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -52,14 +79,11 @@ export default function CommercialProductsPage() {
     productType: "CREDIT_BASED",
     unit: "Job",
     allowStandalone: true,
-    defaultPrice: 0,
-    validity: 30,
-    validityUnit: "DAYS",
+    defaultPrice: "",
     minQuantity: 1,
     maxQuantity: 10000,
     autoRenewalAllowed: false,
     description: "",
-    features: [],
   });
 
   // Offers Modal State
@@ -159,6 +183,7 @@ export default function CommercialProductsPage() {
   // Open Create Product Drawer
   const handleOpenCreateProduct = () => {
     setEditingProduct(null);
+    setIsCustomProductCode(false);
     setProductForm({
       name: "",
       code: "",
@@ -166,20 +191,11 @@ export default function CommercialProductsPage() {
       productType: "CREDIT_BASED",
       unit: "Job",
       allowStandalone: true,
-      defaultPrice: 0,
-      validity: 30,
-      validityUnit: "DAYS",
+      defaultPrice: "",
       minQuantity: 1,
       maxQuantity: 10000,
       autoRenewalAllowed: false,
       description: "",
-      features: [
-        { key: "companyLogo", name: "Company Logo", enabled: false, value: true },
-        { key: "candidateAlerts", name: "Candidate Alerts", enabled: false, value: true },
-        { key: "topSearchPlacement", name: "Top Search Placement", enabled: false, value: true },
-        { key: "multipleCities", name: "Multiple Cities Support", enabled: false, value: 3 },
-        { key: "extendedDescription", name: "Extended Job Description", enabled: false, value: true },
-      ],
     });
     setIsProductDrawerOpen(true);
   };
@@ -187,25 +203,19 @@ export default function CommercialProductsPage() {
   // Open Edit Product Drawer
   const handleOpenEditProduct = (prod) => {
     setEditingProduct(prod);
+    setIsCustomProductCode(Boolean(prod.code && !STANDARD_PRODUCT_CODES.some((c) => c.code === prod.code)));
     setProductForm({
-      name: prod.name,
-      code: prod.code,
-      category: prod.category,
-      productType: prod.productType,
-      unit: prod.unit,
-      allowStandalone: prod.allowStandalone,
-      defaultPrice: prod.defaultPrice,
-      validity: prod.validity,
-      validityUnit: prod.validityUnit || "DAYS",
+      name: prod.name || "",
+      code: prod.code || "",
+      category: prod.category || "JOB_POSTING",
+      productType: prod.productType || "CREDIT_BASED",
+      unit: prod.unit || "Unit",
+      allowStandalone: Boolean(prod.allowStandalone),
+      defaultPrice: prod.defaultPrice ?? "",
       minQuantity: prod.minQuantity || 1,
       maxQuantity: prod.maxQuantity || 10000,
       autoRenewalAllowed: Boolean(prod.autoRenewalAllowed),
       description: prod.description || "",
-      features: Array.isArray(prod.features) && prod.features.length > 0 ? prod.features : [
-        { key: "companyLogo", name: "Company Logo", enabled: false, value: true },
-        { key: "candidateAlerts", name: "Candidate Alerts", enabled: false, value: true },
-        { key: "topSearchPlacement", name: "Top Search Placement", enabled: false, value: true },
-      ],
     });
     setIsProductDrawerOpen(true);
   };
@@ -326,12 +336,6 @@ export default function CommercialProductsPage() {
         }
       },
     });
-  };
-
-  const toggleFeature = (index) => {
-    const updated = [...productForm.features];
-    updated[index].enabled = !updated[index].enabled;
-    setProductForm({ ...productForm, features: updated });
   };
 
   return (
@@ -460,8 +464,8 @@ export default function CommercialProductsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="font-medium text-slate-800">{prod.productType.replace("_", " ")}</div>
-                      <div className="text-[11px] text-slate-400">Unit: {prod.unit}</div>
+                      <div className="font-medium text-slate-800">{(prod.productType || "CREDIT_BASED").replace(/_/g, " ")}</div>
+                      <div className="text-[11px] text-slate-400">Unit: {prod.unit || "Unit"}</div>
                     </td>
                     <td className="px-4 py-4">
                       {prod.allowStandalone ? (
@@ -475,9 +479,9 @@ export default function CommercialProductsPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 font-semibold text-slate-900">
-                      ₹{prod.defaultPrice?.toLocaleString()}
+                      ₹{prod.defaultPrice?.toLocaleString() ?? 0}
                       <span className="text-[10px] text-slate-400 block font-normal">
-                        per {prod.unit || "unit"} • {prod.validity} {prod.validityUnit?.toLowerCase()}
+                        per {prod.unit || "unit"}
                       </span>
                       {prod.category === "JOB_POSTING" && (
                         <span className="inline-block mt-1 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
@@ -574,6 +578,63 @@ export default function CommercialProductsPage() {
             <form onSubmit={handleSaveProduct} className="mt-5 space-y-4 max-h-[75vh] overflow-y-auto pr-1">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
+                  <label className="block text-xs font-semibold text-slate-700">Product Code * (Unique)</label>
+                  <select
+                    required
+                    value={isCustomProductCode ? "CUSTOM" : productForm.code}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "CUSTOM") {
+                        setIsCustomProductCode(true);
+                        setProductForm({ ...productForm, code: "" });
+                      } else {
+                        setIsCustomProductCode(false);
+                        // Auto-fill name, category, productType, and unit from the defaults map
+                        const defaults = PRODUCT_CODE_DEFAULTS[val] || {};
+                        setProductForm({
+                          ...productForm,
+                          code: val,
+                          ...(defaults.name        && { name:        defaults.name }),
+                          ...(defaults.category    && { category:    defaults.category }),
+                          ...(defaults.productType && { productType: defaults.productType }),
+                          ...(defaults.unit        && { unit:        defaults.unit }),
+                        });
+                      }
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                  >
+                    <option value="">-- Select Product Code --</option>
+                    {STANDARD_PRODUCT_CODES.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.label}
+                      </option>
+                    ))}
+                    <option value="CUSTOM">Custom / Other Product Code...</option>
+                  </select>
+
+                  {isCustomProductCode && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="ENTER CUSTOM PRODUCT CODE (e.g. CAMPUS_HIRE)"
+                      value={productForm.code}
+                      onChange={(e) => {
+                        const rawUpper = e.target.value.toUpperCase().replace(/\s+/g, "_");
+                        const words = rawUpper.split("_").filter(Boolean);
+                        const suggestedName = words
+                          .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+                          .join(" ");
+                        setProductForm((prev) => ({
+                          ...prev,
+                          code: rawUpper,
+                          ...(suggestedName ? { name: suggestedName } : {}),
+                        }));
+                      }}
+                      className="mt-2 w-full rounded-xl border border-indigo-300 bg-indigo-50/30 px-3 py-2 text-xs font-mono font-bold uppercase text-indigo-950 focus:border-indigo-500 focus:outline-none"
+                    />
+                  )}
+                </div>
+                <div>
                   <label className="block text-xs font-semibold text-slate-700">Product Name *</label>
                   <input
                     type="text"
@@ -582,17 +643,6 @@ export default function CommercialProductsPage() {
                     value={productForm.name}
                     onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700">Product Code * (Unique)</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. HOT_VACANCY"
-                    value={productForm.code}
-                    onChange={(e) => setProductForm({ ...productForm, code: e.target.value.toUpperCase() })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-semibold uppercase text-slate-800 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -623,16 +673,17 @@ export default function CommercialProductsPage() {
                   >
                     <option value="CREDIT_BASED">Credit Based</option>
                     <option value="SEAT_BASED">Seat Based</option>
-                    <option value="FEATURE_BASED">Feature Based</option>
-                    <option value="USAGE_BASED">Usage Based</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700">Credit Unit *</label>
+                  {/* Label derives from selected code, falls back to generic */}
+                  <label className="block text-xs font-semibold text-slate-700">
+                    {(PRODUCT_CODE_DEFAULTS[productForm.code]?.unitLabel || "Credit Unit")} *
+                  </label>
                   <input
                     type="text"
                     required
-                    placeholder="Job, Resume View, AI Use"
+                    placeholder="e.g. Job, Resume View, AI Use, Seat"
                     value={productForm.unit}
                     onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none"
@@ -642,31 +693,21 @@ export default function CommercialProductsPage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
+                  {/* Price label derives from selected code */}
                   <label className="block text-xs font-semibold text-slate-700">
-                    Single Post / Unit Price (₹) *
+                    {PRODUCT_CODE_DEFAULTS[productForm.code]?.priceLabel || "Unit Price (₹)"} *
                   </label>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
-                    Drives dynamic quantity counter on /buy-online
-                  </span>
                   <input
                     type="number"
                     min="0"
+                    required
+                    placeholder="e.g. 500"
                     value={productForm.defaultPrice}
-                    onChange={(e) => setProductForm({ ...productForm, defaultPrice: Number(e.target.value) })}
+                    onChange={(e) => setProductForm({ ...productForm, defaultPrice: e.target.value === "" ? "" : Number(e.target.value) })}
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700">Validity (Days)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={productForm.validity}
-                    onChange={(e) => setProductForm({ ...productForm, validity: Number(e.target.value) })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none"
-                  />
-                </div>
-                <div className="flex items-center pt-5">
+                <div className="flex items-end pb-0.5">
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-800">
                     <input
                       type="checkbox"
@@ -688,35 +729,6 @@ export default function CommercialProductsPage() {
                   placeholder="Describe this product and who it is suitable for..."
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none"
                 />
-              </div>
-
-              {/* Configurable Capabilities / Feature Matrix */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Configurable Product Features / Capabilities
-                </h3>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  These capabilities will automatically be granted when this product is purchased.
-                </p>
-
-                <div className="space-y-2">
-                  {productForm.features.map((feat, idx) => (
-                    <div
-                      key={feat.key}
-                      onClick={() => toggleFeature(idx)}
-                      className={`flex items-center justify-between rounded-xl border p-2.5 text-xs cursor-pointer transition ${
-                        feat.enabled
-                          ? "border-indigo-200 bg-indigo-50/70 text-indigo-900"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100/60"
-                      }`}
-                    >
-                      <span className="font-semibold">{feat.name}</span>
-                      <span className="text-[11px] font-bold">
-                        {feat.enabled ? "✓ Enabled" : "✗ Disabled"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

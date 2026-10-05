@@ -45,7 +45,7 @@ function loadRazorpayScript() {
   });
 }
 
-async function openRazorpayCheckout({ order, keyId, user, onSuccess, onError }) {
+async function openRazorpayCheckout({ order, keyId, user, onSuccess, onError, skipAutoConfirm = false }) {
   try {
     const Razorpay = await loadRazorpayScript();
 
@@ -57,12 +57,18 @@ async function openRazorpayCheckout({ order, keyId, user, onSuccess, onError }) 
       description: order.planLabel || "Premium Membership",
       order_id: order.orderId,
       prefill: {
-        name: user?.name || "",
+        name: user?.name || user?.fullName || "",
         email: user?.email || "",
-        contact: user?.phone || "",
+        contact: user?.phone || user?.mobile || "",
       },
       theme: { color: "#002366" },
       handler: async (response) => {
+        if (skipAutoConfirm) {
+          // Caller is responsible for server-side verification & activation
+          onSuccess?.(response);
+          return;
+        }
+        // Legacy flow: auto-confirm via /payment/confirm
         try {
           const result = await paymentService.confirmPayment({
             razorpayOrderId: response.razorpay_order_id,

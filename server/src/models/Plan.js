@@ -47,6 +47,21 @@ const planSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    basePrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    finalPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    sellPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );

@@ -97,6 +97,147 @@ class PlanService {
     };
   }
 
+  /**
+   * Helper to recalculate plan items and catalog pricing according to product duration cycle vs plan duration.
+   * If a product (except AI credit) was defined for a 30-day cycle, and the plan has e.g. 90 days validity:
+   * Multiplier = planValidity / productValidity (e.g. 90 / 30 = 3).
+   * Total credits = baseQuantity * multiplier (e.g. 10 * 3 = 30).
+   * Item validity = planValidity (90 days, full plan cycle).
+   * Product price / subtotal = totalCredits * unitPrice.
+   * AI credits are strictly monthly (30 days validity, no carry forward) and their subtotal charges for the months in the plan.
+   */
+  static async recalculatePlanItemsAndPricing({
+    items = [],
+    planValidity = 90,
+    planValidityUnit = "DAYS",
+    basePrice = 0,
+    discount = 0,
+    taxPercent = 18,
+    recalculatePrice = false,
+    finalPrice,
+    sellPrice,
+  }) {
+    const rawFinalPrice = finalPrice !== undefined ? finalPrice : sellPrice;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      const numBase = Number(basePrice || 0);
+      const numDisc = Number(discount || 0);
+      const numTax = Number(taxPercent !== undefined ? taxPercent : 18);
+      const taxable = Math.max(0, numBase - numDisc);
+      const taxAmount = (taxable * numTax) / 100;
+      const computedFinal = Math.round(taxable + taxAmount);
+      const resolvedFinal =
+        rawFinalPrice !== undefined && rawFinalPrice !== null && !isNaN(Number(rawFinalPrice)) && Number(rawFinalPrice) >= 0
+          ? Math.round(Number(rawFinalPrice))
+          : computedFinal;
+
+      return {
+        items: [],
+        basePrice: numBase,
+        discount: numDisc,
+        taxPercent: numTax,
+        taxAmount,
+        finalPrice: resolvedFinal,
+        sellPrice: resolvedFinal,
+      };
+    }
+
+    const Product = require("../../models/Product");
+    const productIds = items.map((i) => i.productId).filter(Boolean);
+    const catalogProducts = await Product.find({ _id: { $in: productIds } }).lean();
+    const productMap = new Map(catalogProducts.map((p) => [String(p._id), p]));
+
+    let calculatedCatalogSum = 0;
+
+    const recalculatedItems = items.map((item) => {
+      const prod = productMap.get(String(item.productId));
+      const code = String(item.productCode || prod?.code || "").toUpperCase();
+      const cat = String(prod?.category || "").toUpperCase();
+      const isAi = code === "AI_CREDIT" || code.includes("AI") || cat === "AI";
+
+      const prodValidity = Number(prod?.validity || 30);
+      const validityDays = Number(planValidity || 90);
+
+      const multiplier = Math.max(
+        1,
+        validityDays >= 360 && validityDays <= 366 && prodValidity === 30
+          ? 12
+          : Math.round(validityDays / prodValidity)
+      );
+
+      const unitPrice = Number(prod?.defaultPrice ?? item.unitPrice ?? 0);
+
+      if (isAi) {
+        // AI credits: monthly quota, 30 days validity, strictly no carry forward
+        const monthlyQty = Number(item.baseQuantity || item.quantity || 10);
+        const subtotal = monthlyQty * unitPrice * multiplier;
+        calculatedCatalogSum += subtotal;
+
+        return {
+          productId: item.productId,
+          productCode: item.productCode || prod?.code || code,
+          productName: item.productName || prod?.name || "AI Credits",
+          quantity: monthlyQty,
+          baseQuantity: monthlyQty,
+          unit: item.unit || prod?.unit || "AI Use",
+          validity: 30, // monthly cycle
+          validityUnit: "DAYS",
+          features: item.features || prod?.features || [],
+          expiryRule: "FIXED_DAYS",
+        };
+      } else {
+        // Non-AI products (Jobs, Search Resume, MIvites, Seats, etc.):
+        // Defined directly as TOTAL plan credits - no multiplier applied!
+        const totalQty = Math.max(
+          0,
+          Number(item.quantity !== undefined ? item.quantity : (item.baseQuantity || 1))
+        );
+        const subtotal = totalQty * unitPrice;
+        calculatedCatalogSum += subtotal;
+
+        return {
+          productId: item.productId,
+          productCode: item.productCode || prod?.code || code,
+          productName: item.productName || prod?.name || "Product",
+          quantity: totalQty,
+          baseQuantity: totalQty,
+          unit: item.unit || prod?.unit || "Unit",
+          validity: validityDays, // full plan cycle
+          validityUnit: planValidityUnit || "DAYS",
+          features: item.features || prod?.features || [],
+          expiryRule: "SUBSCRIPTION_END",
+        };
+      }
+    });
+
+    const finalBasePrice =
+      !recalculatePrice && basePrice !== undefined && basePrice !== null && !isNaN(Number(basePrice))
+        ? Math.max(0, Number(basePrice))
+        : calculatedCatalogSum > 0
+        ? calculatedCatalogSum
+        : Math.max(0, Number(basePrice || 0));
+
+    const numDiscount = Math.max(0, Number(discount || 0));
+    const numTaxPercent = Math.max(0, Number(taxPercent !== undefined ? taxPercent : 18));
+    const taxable = Math.max(0, finalBasePrice - numDiscount);
+    const taxAmount = (taxable * numTaxPercent) / 100;
+    const computedFinal = Math.round(taxable + taxAmount);
+
+    const resolvedFinalPrice = (rawFinalPrice !== undefined && rawFinalPrice !== null && !isNaN(Number(rawFinalPrice)) && Number(rawFinalPrice) >= 0)
+      ? Math.round(Number(rawFinalPrice))
+      : computedFinal;
+
+    return {
+      items: recalculatedItems,
+      basePrice: finalBasePrice,
+      discount: numDiscount,
+      taxPercent: numTaxPercent,
+      taxAmount,
+      finalPrice: resolvedFinalPrice,
+      sellPrice: resolvedFinalPrice,
+    };
+  }
+
   static async createPlan(data, actor = {}) {
     const code = String(data.code || "").trim().toUpperCase();
     if (!code) {
@@ -112,6 +253,23 @@ class PlanService {
       throw error;
     }
 
+    // Calculate item quotas and catalog prices based on product duration cycle vs plan duration
+    const validity = Math.max(1, Number(data.validity || 90));
+    const validityUnit = data.validityUnit || "DAYS";
+    const explicitFinalPrice = data.finalPrice !== undefined ? data.finalPrice : data.sellPrice;
+
+    const calcResult = await PlanService.recalculatePlanItemsAndPricing({
+      items: Array.isArray(data.items) ? data.items : [],
+      planValidity: validity,
+      planValidityUnit: validityUnit,
+      basePrice: data.basePrice,
+      discount: data.discount,
+      taxPercent: data.taxPercent,
+      finalPrice: explicitFinalPrice,
+      sellPrice: data.sellPrice,
+      recalculatePrice: Boolean(data.recalculatePrice),
+    });
+
     const plan = await Plan.create({
       name: String(data.name || "").trim(),
       code,
@@ -122,15 +280,10 @@ class PlanService {
       featured: Boolean(data.featured),
       isDefault: Boolean(data.isDefault),
       displayOrder: Number(data.displayOrder || 0),
+      basePrice: calcResult.basePrice,
+      finalPrice: calcResult.finalPrice,
+      sellPrice: calcResult.sellPrice,
     });
-
-    // Create initial PlanVersion v1 in DRAFT or PUBLISHED
-    const basePrice = Math.max(0, Number(data.basePrice || 0));
-    const discount = Math.max(0, Number(data.discount || 0));
-    const taxPercent = Math.max(0, Number(data.taxPercent !== undefined ? data.taxPercent : 18));
-    const taxableAmount = Math.max(0, basePrice - discount);
-    const taxAmount = (taxableAmount * taxPercent) / 100;
-    const finalPrice = Math.round(taxableAmount + taxAmount);
 
     const initialVersion = await PlanVersion.create({
       planId: plan._id,
@@ -138,15 +291,16 @@ class PlanService {
       name: `${plan.name} v1`,
       description: plan.description,
       billingCycle: data.billingCycle || "CUSTOM",
-      validity: Math.max(1, Number(data.validity || 90)),
-      validityUnit: data.validityUnit || "DAYS",
-      basePrice,
-      discount,
-      taxPercent,
-      taxAmount,
-      finalPrice,
+      validity,
+      validityUnit,
+      basePrice: calcResult.basePrice,
+      discount: calcResult.discount,
+      taxPercent: calcResult.taxPercent,
+      taxAmount: calcResult.taxAmount,
+      finalPrice: calcResult.finalPrice,
+      sellPrice: calcResult.sellPrice,
       currency: data.currency || "INR",
-      items: Array.isArray(data.items) ? data.items : [],
+      items: calcResult.items,
       status: data.publishImmediately ? "PUBLISHED" : "DRAFT",
       publishedAt: data.publishImmediately ? new Date() : null,
       publishedBy: data.publishImmediately
@@ -205,14 +359,14 @@ class PlanService {
     if (data.isDefault !== undefined) plan.isDefault = Boolean(data.isDefault);
     if (data.displayOrder !== undefined) plan.displayOrder = Number(data.displayOrder);
 
-    await plan.save();
-
     // Also update the active/published plan version if pricing or items are provided
     if (
       data.items !== undefined ||
       data.basePrice !== undefined ||
       data.discount !== undefined ||
       data.taxPercent !== undefined ||
+      data.finalPrice !== undefined ||
+      data.sellPrice !== undefined ||
       data.validity !== undefined ||
       data.billingCycle !== undefined
     ) {
@@ -231,35 +385,43 @@ class PlanService {
         if (data.name !== undefined) activeVer.name = `${plan.name} v${activeVer.version}`;
         if (data.description !== undefined) activeVer.description = data.description;
         if (data.billingCycle !== undefined) activeVer.billingCycle = data.billingCycle;
-        if (data.validity !== undefined) activeVer.validity = Math.max(1, Number(data.validity));
-        if (data.validityUnit !== undefined) activeVer.validityUnit = data.validityUnit;
-        if (data.items !== undefined && Array.isArray(data.items)) activeVer.items = data.items;
 
-        const basePrice = Math.max(
-          0,
-          Number(data.basePrice !== undefined ? data.basePrice : activeVer.basePrice)
-        );
-        const discount = Math.max(
-          0,
-          Number(data.discount !== undefined ? data.discount : activeVer.discount)
-        );
-        const taxPercent = Math.max(
-          0,
-          Number(data.taxPercent !== undefined ? data.taxPercent : activeVer.taxPercent)
-        );
-        const taxableAmount = Math.max(0, basePrice - discount);
-        const taxAmount = (taxableAmount * taxPercent) / 100;
-        const finalPrice = Math.round(taxableAmount + taxAmount);
+        const validityDays = Math.max(1, Number(data.validity !== undefined ? data.validity : activeVer.validity));
+        const validityUnit = data.validityUnit || activeVer.validityUnit || "DAYS";
+        const itemsToUpdate = Array.isArray(data.items) ? data.items : activeVer.items;
+        const explicitFinalPrice = data.finalPrice !== undefined ? data.finalPrice : data.sellPrice;
 
-        activeVer.basePrice = basePrice;
-        activeVer.discount = discount;
-        activeVer.taxPercent = taxPercent;
-        activeVer.taxAmount = taxAmount;
-        activeVer.finalPrice = finalPrice;
+        const calcResult = await PlanService.recalculatePlanItemsAndPricing({
+          items: itemsToUpdate,
+          planValidity: validityDays,
+          planValidityUnit: validityUnit,
+          basePrice: data.basePrice !== undefined ? data.basePrice : activeVer.basePrice,
+          discount: data.discount !== undefined ? data.discount : activeVer.discount,
+          taxPercent: data.taxPercent !== undefined ? data.taxPercent : activeVer.taxPercent,
+          finalPrice: explicitFinalPrice !== undefined ? explicitFinalPrice : activeVer.finalPrice,
+          sellPrice: data.sellPrice !== undefined ? data.sellPrice : activeVer.sellPrice,
+          recalculatePrice: Boolean(data.recalculatePrice),
+        });
+
+        activeVer.validity = validityDays;
+        activeVer.validityUnit = validityUnit;
+        activeVer.items = calcResult.items;
+        activeVer.basePrice = calcResult.basePrice;
+        activeVer.discount = calcResult.discount;
+        activeVer.taxPercent = calcResult.taxPercent;
+        activeVer.taxAmount = calcResult.taxAmount;
+        activeVer.finalPrice = calcResult.finalPrice;
+        activeVer.sellPrice = calcResult.sellPrice;
 
         await activeVer.save();
+
+        plan.basePrice = calcResult.basePrice;
+        plan.finalPrice = calcResult.finalPrice;
+        plan.sellPrice = calcResult.sellPrice;
       }
     }
+
+    await plan.save();
 
     await AuditLogService.log({
       action: "UPDATE_PLAN",
@@ -287,12 +449,22 @@ class PlanService {
     const latestVersionDoc = await PlanVersion.findOne({ planId }).sort({ version: -1 });
     const nextVersion = (latestVersionDoc?.version || plan.currentVersion || 0) + 1;
 
-    const basePrice = Math.max(0, Number(data.basePrice ?? latestVersionDoc?.basePrice ?? 0));
-    const discount = Math.max(0, Number(data.discount ?? latestVersionDoc?.discount ?? 0));
-    const taxPercent = Math.max(0, Number(data.taxPercent ?? latestVersionDoc?.taxPercent ?? 18));
-    const taxableAmount = Math.max(0, basePrice - discount);
-    const taxAmount = (taxableAmount * taxPercent) / 100;
-    const finalPrice = Math.round(taxableAmount + taxAmount);
+    const validity = Math.max(1, Number(data.validity || latestVersionDoc?.validity || 90));
+    const validityUnit = data.validityUnit || latestVersionDoc?.validityUnit || "DAYS";
+    const rawItems = Array.isArray(data.items) ? data.items : (latestVersionDoc?.items || []);
+    const explicitFinalPrice = data.finalPrice !== undefined ? data.finalPrice : data.sellPrice;
+
+    const calcResult = await PlanService.recalculatePlanItemsAndPricing({
+      items: rawItems,
+      planValidity: validity,
+      planValidityUnit: validityUnit,
+      basePrice: data.basePrice ?? latestVersionDoc?.basePrice ?? 0,
+      discount: data.discount ?? latestVersionDoc?.discount ?? 0,
+      taxPercent: data.taxPercent ?? latestVersionDoc?.taxPercent ?? 18,
+      finalPrice: explicitFinalPrice !== undefined ? explicitFinalPrice : latestVersionDoc?.finalPrice,
+      sellPrice: data.sellPrice !== undefined ? data.sellPrice : latestVersionDoc?.sellPrice,
+      recalculatePrice: false,
+    });
 
     const newVersion = await PlanVersion.create({
       planId: plan._id,
@@ -300,15 +472,16 @@ class PlanService {
       name: `${plan.name} v${nextVersion}`,
       description: data.description || latestVersionDoc?.description || plan.description,
       billingCycle: data.billingCycle || latestVersionDoc?.billingCycle || "CUSTOM",
-      validity: Math.max(1, Number(data.validity || latestVersionDoc?.validity || 90)),
-      validityUnit: data.validityUnit || latestVersionDoc?.validityUnit || "DAYS",
-      basePrice,
-      discount,
-      taxPercent,
-      taxAmount,
-      finalPrice,
+      validity,
+      validityUnit,
+      basePrice: calcResult.basePrice,
+      discount: calcResult.discount,
+      taxPercent: calcResult.taxPercent,
+      taxAmount: calcResult.taxAmount,
+      finalPrice: calcResult.finalPrice,
+      sellPrice: calcResult.sellPrice,
       currency: data.currency || latestVersionDoc?.currency || "INR",
-      items: Array.isArray(data.items) ? data.items : (latestVersionDoc?.items || []),
+      items: calcResult.items,
       status: "DRAFT",
       changelog: data.changelog || `Version ${nextVersion} created as draft`,
     });
@@ -341,26 +514,35 @@ class PlanService {
     }
 
     if (data.billingCycle !== undefined) version.billingCycle = data.billingCycle;
-    if (data.validity !== undefined) version.validity = Math.max(1, Number(data.validity));
-    if (data.validityUnit !== undefined) version.validityUnit = data.validityUnit;
     if (data.description !== undefined) version.description = data.description;
     if (data.changelog !== undefined) version.changelog = data.changelog;
 
-    if (data.basePrice !== undefined || data.discount !== undefined || data.taxPercent !== undefined) {
-      const basePrice = Math.max(0, Number(data.basePrice !== undefined ? data.basePrice : version.basePrice));
-      const discount = Math.max(0, Number(data.discount !== undefined ? data.discount : version.discount));
-      const taxPercent = Math.max(0, Number(data.taxPercent !== undefined ? data.taxPercent : version.taxPercent));
-      const taxable = Math.max(0, basePrice - discount);
-      version.basePrice = basePrice;
-      version.discount = discount;
-      version.taxPercent = taxPercent;
-      version.taxAmount = (taxable * taxPercent) / 100;
-      version.finalPrice = Math.round(taxable + version.taxAmount);
-    }
+    const validity = Math.max(1, Number(data.validity !== undefined ? data.validity : version.validity));
+    const validityUnit = data.validityUnit || version.validityUnit || "DAYS";
+    const rawItems = Array.isArray(data.items) ? data.items : version.items;
+    const explicitFinalPrice = data.finalPrice !== undefined ? data.finalPrice : data.sellPrice;
 
-    if (Array.isArray(data.items)) {
-      version.items = data.items;
-    }
+    const calcResult = await PlanService.recalculatePlanItemsAndPricing({
+      items: rawItems,
+      planValidity: validity,
+      planValidityUnit: validityUnit,
+      basePrice: data.basePrice !== undefined ? data.basePrice : version.basePrice,
+      discount: data.discount !== undefined ? data.discount : version.discount,
+      taxPercent: data.taxPercent !== undefined ? data.taxPercent : version.taxPercent,
+      finalPrice: explicitFinalPrice !== undefined ? explicitFinalPrice : version.finalPrice,
+      sellPrice: data.sellPrice !== undefined ? data.sellPrice : version.sellPrice,
+      recalculatePrice: false,
+    });
+
+    version.validity = validity;
+    version.validityUnit = validityUnit;
+    version.items = calcResult.items;
+    version.basePrice = calcResult.basePrice;
+    version.discount = calcResult.discount;
+    version.taxPercent = calcResult.taxPercent;
+    version.taxAmount = calcResult.taxAmount;
+    version.finalPrice = calcResult.finalPrice;
+    version.sellPrice = calcResult.sellPrice;
 
     await version.save();
     return version;
@@ -388,6 +570,27 @@ class PlanService {
       throw error;
     }
 
+    // Recalculate item quotas and catalog prices based on product duration cycle vs plan duration before publishing
+    const calcResult = await PlanService.recalculatePlanItemsAndPricing({
+      items: versionToPublish.items,
+      planValidity: versionToPublish.validity,
+      planValidityUnit: versionToPublish.validityUnit,
+      basePrice: versionToPublish.basePrice,
+      discount: versionToPublish.discount,
+      taxPercent: versionToPublish.taxPercent,
+      finalPrice: versionToPublish.finalPrice,
+      sellPrice: versionToPublish.sellPrice,
+      recalculatePrice: false,
+    });
+
+    versionToPublish.items = calcResult.items;
+    versionToPublish.basePrice = calcResult.basePrice;
+    versionToPublish.discount = calcResult.discount;
+    versionToPublish.taxPercent = calcResult.taxPercent;
+    versionToPublish.taxAmount = calcResult.taxAmount;
+    versionToPublish.finalPrice = calcResult.finalPrice;
+    versionToPublish.sellPrice = calcResult.sellPrice;
+
     // Archive previous published versions
     await PlanVersion.updateMany(
       { planId, status: "PUBLISHED" },
@@ -405,6 +608,9 @@ class PlanService {
 
     plan.currentVersion = versionToPublish.version;
     plan.status = "ACTIVE";
+    plan.basePrice = versionToPublish.basePrice;
+    plan.finalPrice = versionToPublish.finalPrice;
+    plan.sellPrice = versionToPublish.sellPrice;
     await plan.save();
 
     await AuditLogService.log({

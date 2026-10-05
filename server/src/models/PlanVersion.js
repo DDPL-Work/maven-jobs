@@ -21,6 +21,10 @@ const planItemSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    baseQuantity: {
+      type: Number,
+      default: 0,
+    },
     unit: {
       type: String,
       default: "Job",
@@ -33,10 +37,6 @@ const planItemSchema = new mongoose.Schema(
       type: String,
       enum: ["DAYS", "MONTHS", "YEARS"],
       default: "DAYS",
-    },
-    userLimit: {
-      type: Number,
-      default: 0,
     },
     features: [
       {
@@ -120,6 +120,11 @@ const planVersionSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
+    sellPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     currency: {
       type: String,
       default: "INR",
@@ -156,6 +161,15 @@ const planVersionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+planVersionSchema.pre("validate", function () {
+  if (this.sellPrice && !this.finalPrice) {
+    this.finalPrice = this.sellPrice;
+  }
+  if (this.finalPrice && !this.sellPrice) {
+    this.sellPrice = this.finalPrice;
+  }
+});
 
 planVersionSchema.index({ planId: 1, version: 1 }, { unique: true });
 

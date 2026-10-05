@@ -175,7 +175,6 @@ const companySchema = new mongoose.Schema(
           unit: { type: String, default: "" },
           validity: { type: Number, default: 30 },
           validityUnit: { type: String, default: "DAYS" },
-          userLimit: { type: Number, default: 0 },
           features: [
             {
               key: String,

@@ -27,6 +27,7 @@ import { useAuth } from "../../../../AuthContext";
 import paymentService from "../../../../services/paymentService";
 import commercialService from "../../../../services/commercialService";
 import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import EmployerLoginModal from "../../../../components/employer/EmployerLoginModal";
 import "./Buyonline.css";
 
 /* ── Helpers ── */
@@ -113,6 +114,10 @@ export default function Buyonline() {
   const [smbJobCount, setSmbJobCount] = useState(1);
   const [hotJobCount, setHotJobCount] = useState(1);
   const [internshipJobCount, setInternshipJobCount] = useState(1);
+
+  // Employer Login Gate State
+  const [isLoginGateOpen, setIsLoginGateOpen] = useState(false);
+  const pendingPaymentRef = useRef(null); // stores callback to invoke after login
 
   // Purchase Modal State
   const [selectedItemForPurchase, setSelectedItemForPurchase] = useState(null);
@@ -250,123 +255,139 @@ export default function Buyonline() {
     setIsPurchaseModalOpen(true);
   };
 
-  // Confirm and Execute Payment
+  // Confirm and Execute Payment — Production-grade 3-step flow:
+  // 1. Create Razorpay order on server (get real orderId)
+  // 2. Open Razorpay checkout with that orderId
+  // 3. On success, call /confirm-payment to verify HMAC + activate entitlement atomically
   const handleExecutePayment = async () => {
-    if (!user) {
-      alert("Please log in with your recruiter account to proceed with purchase.");
-      navigate("/employer-login");
+    // Gate: verify employer session
+    const employerUser = (() => {
+      try { return JSON.parse(localStorage.getItem("employerUser") || "null"); } catch { return null; }
+    })();
+    if (!employerUser) {
+      pendingPaymentRef.current = handleExecutePayment;
+      setIsLoginGateOpen(true);
       return;
     }
 
     if (!selectedItemForPurchase) return;
 
-    setPaymentLoading(true);
-    setPaymentError("");
-
     const isPlan = selectedItemForPurchase.itemType === "PLAN";
     const isDirectProduct = selectedItemForPurchase.itemType === "PRODUCT";
     const ver = selectedItemForPurchase.activeVersion || selectedItemForPurchase;
-    const finalAmount = isPlan ? ver.finalPrice : selectedItemForPurchase.price * 1.18;
 
+    // Compute base + GST amount
+    const basePrice = isPlan ? ver.basePrice : selectedItemForPurchase.price;
+    const discount  = isPlan ? (ver.discount || 0) : 0;
+    const taxable   = Math.max(0, basePrice - discount);
+    const gst       = Math.round(taxable * 0.18);
+    const total     = taxable + gst; // in INR (not paise)
 
+    setPaymentLoading(true);
+    setPaymentError("");
+
+    // ── FREE plan path: skip Razorpay entirely ───────────────────────────────
+    if (total === 0) {
+      try {
+        const purchaseRes = await commercialService.purchasePlan({
+          planId: selectedItemForPurchase._id,
+          versionId: ver._id,
+          paymentMethod: "FREE",
+          transactionId: `FREE-${Date.now()}`,
+        });
+        setPurchaseSuccessData({ item: selectedItemForPurchase, isPlan: true, details: purchaseRes });
+        setIsPurchaseModalOpen(false);
+        setIsSuccessModalOpen(true);
+        loadCommercialData();
+      } catch (err) {
+        setPaymentError(err?.response?.data?.message || err.message || "Plan activation failed");
+      } finally {
+        setPaymentLoading(false);
+      }
+      return;
+    }
+
+    // ── Paid path: Razorpay 3-step flow ─────────────────────────────────────
     try {
-      // Step 1: Open Razorpay checkout or perform simulated payment
+      // Resolve company planType: "FREE", "SMB", "CORPORATE", "ENTERPRISE", "CUSTOM"
+      const resolvedCompanyPlanType = isPlan
+        ? (selectedItemForPurchase.planType || "SMB")
+        : "CUSTOM";
+
+      // Step 1 — Create a real Razorpay order on the server
+      const orderData = await commercialService.createOrder({
+        amount: total, // server multiplies by 100 for paise
+        label: selectedItemForPurchase.name,
+        planId: isPlan ? selectedItemForPurchase._id : undefined,
+        versionId: isPlan ? ver._id : undefined,
+        planType: resolvedCompanyPlanType,
+        offerId: (!isPlan && !isDirectProduct) ? selectedItemForPurchase._id : undefined,
+        productId: isDirectProduct ? selectedItemForPurchase._id : undefined,
+        quantity: selectedItemForPurchase.quantity || 1,
+        validity: ver.validity || selectedItemForPurchase.validity || 30,
+      });
+
+      if (!orderData?.orderId) {
+        throw new Error("Failed to create payment order. Please try again.");
+      }
+
+      // Step 2 — Open Razorpay checkout with real orderId
+      // skipAutoConfirm=true: onSuccess receives raw Razorpay response for our own verification
       await paymentService.openCheckout({
         order: {
-          orderId: `ORD-${Date.now()}`,
-          amount: Math.round(finalAmount * 100),
-          currency: "INR",
-          planLabel: selectedItemForPurchase.name,
-          durationDays: ver.validity || selectedItemForPurchase.validity || 30,
+          orderId:    orderData.orderId,
+          amount:     orderData.amount,      // paise from server
+          currency:   orderData.currency || "INR",
+          planLabel:  orderData.planLabel,
         },
-        keyId: "rzp_test_maven",
-        user,
-        onSuccess: async () => {
+        keyId: orderData.keyId,
+        user: employerUser,
+        skipAutoConfirm: true,
+        onSuccess: async (razorpayResponse) => {
+          // Step 3 — Verify HMAC + activate entitlement in one server call
           try {
-            let purchaseRes;
-            if (isPlan) {
-              purchaseRes = await commercialService.purchasePlan({
-                planId: selectedItemForPurchase._id,
-                versionId: ver._id,
-                paymentMethod: "ONLINE",
-                transactionId: `PAY-${Date.now()}`,
-              });
-            } else if (isDirectProduct) {
-              purchaseRes = await commercialService.purchaseProductOffer({
-                productId: selectedItemForPurchase._id,
-                quantity: selectedItemForPurchase.quantity,
-                paymentMethod: "ONLINE",
-                transactionId: `PAY-${Date.now()}`,
-              });
-            } else {
-              purchaseRes = await commercialService.purchaseProductOffer({
-                offerId: selectedItemForPurchase._id,
-                quantity: selectedItemForPurchase.quantity || 1,
-                paymentMethod: "ONLINE",
-                transactionId: `PAY-${Date.now()}`,
-              });
-            }
+            const purchaseRes = await commercialService.confirmPayment({
+              razorpayOrderId:   razorpayResponse.razorpay_order_id,
+              razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+              razorpaySignature: razorpayResponse.razorpay_signature,
+              planId:      isPlan ? selectedItemForPurchase._id : undefined,
+              versionId:   isPlan ? ver._id : undefined,
+              planType:    resolvedCompanyPlanType,
+              offerId:     (!isPlan && !isDirectProduct) ? selectedItemForPurchase._id : undefined,
+              productId:   isDirectProduct ? selectedItemForPurchase._id : undefined,
+              quantity:    selectedItemForPurchase.quantity || 1,
+            });
 
             setPurchaseSuccessData({
               item: selectedItemForPurchase,
               isPlan,
               details: purchaseRes,
+              razorpayPaymentId: razorpayResponse.razorpay_payment_id,
             });
             setIsPurchaseModalOpen(false);
             setIsSuccessModalOpen(true);
-            loadCommercialData(); // Refresh company balances
+            loadCommercialData();
           } catch (apiErr) {
-            setPaymentError(apiErr?.response?.data?.message || apiErr.message || "Purchase activation failed");
+            // Payment was captured but entitlement activation failed
+            // Show a specific message — support can manually activate
+            setPaymentError(
+              `Payment received but activation failed: ${apiErr?.response?.data?.message || apiErr.message}. ` +
+              `Please contact support with Payment ID: ${razorpayResponse.razorpay_payment_id}`
+            );
           } finally {
             setPaymentLoading(false);
           }
         },
         onError: (msg) => {
-          console.warn("Razorpay notice:", msg);
-          (async () => {
-            try {
-              let purchaseRes;
-              if (isPlan) {
-                purchaseRes = await commercialService.purchasePlan({
-                  planId: selectedItemForPurchase._id,
-                  versionId: ver._id,
-                  paymentMethod: "SIMULATED",
-                  transactionId: `SIM-${Date.now()}`,
-                });
-              } else if (isDirectProduct) {
-                purchaseRes = await commercialService.purchaseProductOffer({
-                  productId: selectedItemForPurchase._id,
-                  quantity: selectedItemForPurchase.quantity,
-                  paymentMethod: "SIMULATED",
-                  transactionId: `SIM-${Date.now()}`,
-                });
-              } else {
-                purchaseRes = await commercialService.purchaseProductOffer({
-                  offerId: selectedItemForPurchase._id,
-                  quantity: selectedItemForPurchase.quantity || 1,
-                  paymentMethod: "SIMULATED",
-                  transactionId: `SIM-${Date.now()}`,
-                });
-              }
-
-              setPurchaseSuccessData({
-                item: selectedItemForPurchase,
-                isPlan,
-                details: purchaseRes,
-              });
-              setIsPurchaseModalOpen(false);
-              setIsSuccessModalOpen(true);
-              loadCommercialData();
-            } catch (err2) {
-              setPaymentError(err2?.response?.data?.message || err2.message || "Payment failed");
-            } finally {
-              setPaymentLoading(false);
-            }
-          })();
+          // User cancelled or gateway error — no charge was made
+          if (msg && msg !== "Payment cancelled") {
+            setPaymentError(msg);
+          }
+          setPaymentLoading(false);
         },
       });
     } catch (err) {
-      setPaymentError(err.message || "Failed to initiate payment");
+      setPaymentError(err?.response?.data?.message || err.message || "Failed to initiate payment");
       setPaymentLoading(false);
     }
   };
@@ -470,8 +491,30 @@ export default function Buyonline() {
   const resdexOffers = offers.filter((o) => o.product?.category === "RESUME_SEARCH");
   const aiOffers = offers.filter((o) => o.product?.category === "AI");
 
+  // Called by EmployerLoginModal after a successful employer login
+  const handleLoginSuccess = () => {
+    setIsLoginGateOpen(false);
+    const resume = pendingPaymentRef.current;
+    pendingPaymentRef.current = null;
+    if (resume) {
+      // Small delay to let modal close cleanly before payment UI opens
+      setTimeout(() => resume(), 120);
+    }
+  };
+
   return (
     <div className="bo-page-wrapper">
+      {/* Employer Login Gate Modal */}
+      <EmployerLoginModal
+        isOpen={isLoginGateOpen}
+        context="purchase"
+        onClose={() => {
+          setIsLoginGateOpen(false);
+          pendingPaymentRef.current = null;
+        }}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
       {/* Navigation Header */}
       <LandingEmployeeHeader />
 
@@ -1719,9 +1762,12 @@ export default function Buyonline() {
                 <span style={{ fontWeight: 700, color: "#059669" }}>Active</span>
               </div>
               <div className="bo-success-row">
-                <span style={{ color: "#94a3b8" }}>Transaction ID:</span>
-                <span style={{ fontFamily: "monospace", color: "#64748b" }}>
-                  {purchaseSuccessData.details?.payment?.gatewayPaymentId || "TXN-OK"}
+                <span style={{ color: "#94a3b8" }}>Payment ID:</span>
+                <span style={{ fontFamily: "monospace", color: "#64748b", fontSize: "11px" }}>
+                  {purchaseSuccessData.razorpayPaymentId ||
+                   purchaseSuccessData.details?.transactionId ||
+                   purchaseSuccessData.details?.payment?.gatewayPaymentId ||
+                   "—"}
                 </span>
               </div>
             </div>

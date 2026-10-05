@@ -120,7 +120,7 @@ jobSchema.pre("save", function (next) {
   if (this.isModified("jobCategory") || this.isHotVacancy === undefined) {
     this.isHotVacancy = this.jobCategory === "hot";
   }
-  next();
+  if (typeof next === "function") next();
 });
 
 // Automatically sync deletions to OpenSearch and trigger debounced reindex

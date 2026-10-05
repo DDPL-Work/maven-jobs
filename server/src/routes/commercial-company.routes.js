@@ -26,6 +26,10 @@ router.get("/ledger", controller.getCompanyLedger);
 router.get("/ai/quota", controller.getAiQuota);
 router.post("/ai/use", controller.useAiCredit);
 
+// Commercial Payment Flow
+router.post("/create-order", controller.createCommercialOrder);
+router.post("/confirm-payment", controller.confirmCommercialPayment);
+
 // Purchase flows
 router.post("/purchase-plan", controller.purchasePlan);
 router.post("/purchase-product", controller.purchaseProductOffer);

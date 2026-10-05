@@ -4,6 +4,21 @@ const PlanService = require("../services/commercial/plan.service");
 const OfferService = require("../services/commercial/offer.service");
 const CreditLedgerService = require("../services/commercial/credit-ledger.service");
 const asyncHandler = require("../middleware/async.middleware");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
+const PaymentTransaction = require("../models/PaymentTransaction");
+
+// ── Helper: get a lazily-initialized Razorpay instance ──────────────────────
+let _rzp = null;
+function getRzp() {
+  if (!_rzp) {
+    const key_id = process.env.RAZORPAY_KEY_ID;
+    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!key_id || !key_secret) throw new Error("Razorpay credentials not configured");
+    _rzp = new Razorpay({ key_id, key_secret });
+  }
+  return _rzp;
+}
 
 // 1. Get Company Entitlements & Credit Balances
 exports.getEntitlements = asyncHandler(async (req, res) => {
@@ -73,6 +88,139 @@ exports.getProductsCatalog = asyncHandler(async (req, res) => {
   res.json({ success: true, products: filtered });
 });
 
+// PAYMENT-A. Create Razorpay Order for a Commercial Purchase
+exports.createCommercialOrder = asyncHandler(async (req, res) => {
+  const companyId = req.company?._id || req.user?.companyId;
+  const userId = req.user?._id;
+  const { amount, label, planId, versionId, offerId, productId, quantity, validity, planType } = req.body;
+
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ success: false, message: "Invalid purchase amount" });
+  }
+
+  const rzp = getRzp();
+  let rzpOrder;
+  try {
+    rzpOrder = await rzp.orders.create({
+      amount: Math.round(amount * 100), // Razorpay expects paise
+      currency: "INR",
+      receipt: `com_${Date.now().toString(36)}${String(userId).slice(-4)}`,
+      notes: {
+        companyId: String(companyId),
+        userId: String(userId),
+        planId: planId || "",
+        versionId: versionId || "",
+        offerId: offerId || "",
+        productId: productId || "",
+        quantity: String(quantity || 1),
+      },
+    });
+  } catch (err) {
+    const detail = err.error?.description || err.error?.message || err.message || "Order creation failed";
+    console.error("[Commercial] Razorpay createOrder error:", detail);
+    return res.status(502).json({ success: false, message: `Payment gateway error: ${detail}` });
+  }
+
+  // Persist a pending transaction record for audit & webhook safety
+  let resolvedPlanType = planType;
+  if (!resolvedPlanType && planId) {
+    try {
+      const Plan = require("../models/Plan");
+      const planDoc = await Plan.findById(planId).select("planType").lean();
+      if (planDoc?.planType) {
+        resolvedPlanType = planDoc.planType;
+      }
+    } catch (_) {}
+  }
+  if (!resolvedPlanType) {
+    resolvedPlanType = (productId || offerId) ? "CUSTOM" : "SMB";
+  }
+  resolvedPlanType = String(resolvedPlanType).toUpperCase();
+
+  const tx = await PaymentTransaction.create({
+    userId,
+    role: req.user?.role || "CLIENT",
+    companyId: companyId || null,
+    razorpayOrderId: rzpOrder.id,
+    amount: Math.round(Number(amount)),
+    currency: "INR",
+    planType: resolvedPlanType,
+    durationDays: Number(validity || 90),
+    status: "CREATED",
+    metadata: { planId, versionId, offerId, productId, quantity, label, validity, rzpOrder },
+  });
+
+  res.json({
+    success: true,
+    data: {
+      orderId: rzpOrder.id,
+      amount: rzpOrder.amount,       // in paise
+      currency: rzpOrder.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      transactionId: String(tx._id),
+      planLabel: label || "Commercial Purchase",
+    },
+  });
+});
+
+// PAYMENT-B. Verify Razorpay Signature + Atomically Activate Entitlement
+exports.confirmCommercialPayment = asyncHandler(async (req, res) => {
+  const companyId = req.company?._id || req.user?.companyId;
+  const userId = req.user?._id;
+  const {
+    razorpayOrderId, razorpayPaymentId, razorpaySignature,
+    planId, versionId, offerId, productId, quantity,
+  } = req.body;
+
+  if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+    return res.status(400).json({ success: false, message: "Missing Razorpay payment fields" });
+  }
+
+  // 1. Verify HMAC signature
+  const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+  const expected = crypto
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+    .update(body)
+    .digest("hex");
+  if (expected !== razorpaySignature) {
+    return res.status(400).json({ success: false, message: "Payment signature verification failed" });
+  }
+
+  // 2. Mark the pending transaction as PAID (idempotent)
+  const tx = await PaymentTransaction.findOneAndUpdate(
+    { razorpayOrderId },
+    { razorpayPaymentId, razorpaySignature, status: "PAID" },
+    { new: true }
+  );
+
+  // 3. Activate entitlement via PurchaseService
+  let result;
+  if (planId) {
+    result = await PurchaseService.purchasePlan({
+      companyId,
+      userId,
+      planId,
+      versionId,
+      paymentMethod: "ONLINE",
+      transactionId: razorpayPaymentId,
+      actor: req.user,
+    });
+  } else {
+    result = await PurchaseService.purchaseProductOffer({
+      companyId,
+      userId,
+      offerId,
+      productId,
+      quantity: quantity || 1,
+      paymentMethod: "ONLINE",
+      transactionId: razorpayPaymentId,
+      actor: req.user,
+    });
+  }
+
+  res.status(201).json({ ...result, transactionId: tx?._id || razorpayPaymentId });
+});
+
 // 4. Purchase Plan
 exports.purchasePlan = asyncHandler(async (req, res) => {
   const companyId = req.company?._id || req.user?.companyId;
@@ -124,16 +272,18 @@ exports.purchaseProductOffer = asyncHandler(async (req, res) => {
 exports.upgradePlan = asyncHandler(async (req, res) => {
   const companyId = req.company?._id || req.user?.companyId;
   const userId = req.user?._id;
-  const { newPlanId, paymentMethod, transactionId } = req.body;
+  const { newPlanId, planId, versionId, paymentMethod, transactionId } = req.body;
+  const targetPlanId = newPlanId || planId;
 
-  if (!newPlanId) {
-    return res.status(400).json({ success: false, message: "newPlanId is required" });
+  if (!targetPlanId) {
+    return res.status(400).json({ success: false, message: "newPlanId or planId is required" });
   }
 
   const result = await PurchaseService.upgradePlan({
     companyId,
     userId,
-    newPlanId,
+    newPlanId: targetPlanId,
+    versionId,
     paymentMethod: paymentMethod || "ONLINE",
     transactionId,
     actor: req.user,

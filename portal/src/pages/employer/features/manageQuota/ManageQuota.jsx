@@ -278,12 +278,15 @@ export default function ManageQuota() {
     showToast('Settings restored to company default allocations.');
   };
 
-  // Filter extra services from planSnapshot that are not already in CV Access or NVite
+  // Filter extra services from planSnapshot that are not already in CV Access or NVite, and exclude seat products (which are recruiter licenses)
   const extraServices = useMemo(() => {
     return servicesData.filter((s) => {
       const code = String(s.productCode || '').toUpperCase();
       const cat = String(s.category || '').toUpperCase();
-      return !code.includes('CV') && !code.includes('RESDEX') && cat !== 'RESUME_SEARCH' &&
+      const unitStr = String(s.unit || '').toLowerCase();
+      const isSeat = s.isSeat || code.includes('SEAT') || cat === 'USER_SEATS' || unitStr.includes('seat');
+      return !isSeat &&
+             !code.includes('CV') && !code.includes('RESDEX') && cat !== 'RESUME_SEARCH' &&
              !code.includes('NVITE') && !code.includes('MIVITE') && cat !== 'MIVITES';
     });
   }, [servicesData]);
@@ -324,7 +327,7 @@ export default function ManageQuota() {
           <div>
             <h1 className="mq-title">Manage Quota</h1>
             <p className="mq-subtitle">
-              Configure and distribute your active CV view limits, candidate outreach messaging, job posting slots, and AI credits across your recruitment team.
+              Configure and distribute your active CV view limits, candidate outreach messaging, and job posting slots across your recruitment team. Job posting, Search Resume, and Send MIvite credits are allocated for your full plan cycle ({planData?.validity || 90} days), while AI credits refresh monthly without rollover.
             </p>
           </div>
 
@@ -464,13 +467,13 @@ export default function ManageQuota() {
             <div className="mq-stat-label">Current Release Cycle</div>
             <div className="mq-stat-value-row">
               <span className="mq-stat-value">
-                {allocationPolicy === 'weekly' ? 'Weekly' : allocationPolicy === 'monthly' ? 'Monthly' : 'Full Access'}
+                {allocationPolicy === 'weekly' ? 'Weekly' : allocationPolicy === 'monthly' ? 'Monthly' : 'Full Plan Cycle'}
               </span>
             </div>
             <div className="mq-cycle-desc">
               {allocationPolicy === 'weekly' && 'Weekly assigned quota resets every Monday 00:00 IST.'}
               {allocationPolicy === 'monthly' && 'Monthly assigned quota replenishes on the 1st of each month.'}
-              {allocationPolicy === 'full' && 'Total pool credits unlocked without periodic limits (read-only).'}
+              {allocationPolicy === 'full' && `Job postings, CV access, and NVites are allocated for your full plan cycle (${planData?.validity || 90} days). AI credits refresh monthly without rollover.`}
             </div>
           </div>
 
@@ -495,13 +498,13 @@ export default function ManageQuota() {
                     )}
                   </div>
                   <span className={`mq-stat-badge ${iconVariant}`}>
-                    {percentRemaining}% Remaining
+                    {isAi ? 'Monthly • No Rollover' : isJob ? 'Full Plan Cycle' : `${percentRemaining}% Remaining`}
                   </span>
                 </div>
-                <div className="mq-stat-label">{service.productName || 'Service'} Quota</div>
+                <div className="mq-stat-label">{isAi ? 'AI Credits (Current Month)' : `${service.productName || 'Service'} Quota`}</div>
                 <div className="mq-stat-value-row">
                   <span className="mq-stat-value">{service.remaining?.toLocaleString() ?? 0}</span>
-                  <span className="mq-stat-total">/ {(service.total || 0).toLocaleString()} {service.unit}s</span>
+                  <span className="mq-stat-total">/ {(service.total || 0).toLocaleString()} {service.total === 1 ? service.unit : (service.unit?.endsWith('s') ? service.unit : `${service.unit}s`)}</span>
                 </div>
                 <div className="mq-stat-progress-bar">
                   <div
@@ -513,6 +516,18 @@ export default function ManageQuota() {
                   <span>{(service.used || 0).toLocaleString()} Used</span>
                   <span>{(service.remaining || 0).toLocaleString()} Available</span>
                 </div>
+                {isAi && (
+                  <div style={{ fontSize: '11px', color: '#6d28d9', marginTop: '8px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FiInfo size={12} />
+                    <span>Monthly allowance — remaining credits do not carry forward to next month</span>
+                  </div>
+                )}
+                {isJob && (
+                  <div style={{ fontSize: '11px', color: '#be185d', marginTop: '8px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FiInfo size={12} />
+                    <span>Allocated for full plan cycle ({planData?.validity || service.validity || 90} days)</span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -586,7 +601,8 @@ export default function ManageQuota() {
                 <div className="mq-policy-option-content">
                   <div className="mq-policy-title-row">
                     <FiZap size={16} />
-                    <span className="mq-policy-title">Full access</span>
+                    <span className="mq-policy-title">Full Plan Cycle</span>
+                    <span className="mq-pill-recommended">Default</span>
                   </div>
                 </div>
               </label>
@@ -622,7 +638,7 @@ export default function ManageQuota() {
                               ? 'Weekly assigned resume unlock quota'
                               : allocationPolicy === 'monthly'
                               ? 'Monthly assigned resume unlock quota'
-                              : 'Total pool resume views & contact unlocks'}
+                              : `Total pool resume views & contact unlocks allocated for full plan cycle (${planData?.validity || 90} days)`}
                           </div>
                         </div>
                       </div>
@@ -695,7 +711,7 @@ export default function ManageQuota() {
                               ? 'Weekly assigned candidate outreach credits'
                               : allocationPolicy === 'monthly'
                               ? 'Monthly assigned candidate outreach credits'
-                              : 'Total pool email & WhatsApp invitation credits'}
+                              : `Total pool candidate outreach credits allocated for full plan cycle (${planData?.validity || 90} days)`}
                           </div>
                         </div>
                       </div>
@@ -768,7 +784,7 @@ export default function ManageQuota() {
               </button>
               <span className="mq-footer-tip">
                 {allocationPolicy === 'full'
-                  ? 'Full access mode provides unrestricted access to the total pool; no allocation limits can be edited.'
+                  ? `Full access mode provides unrestricted access to the total pool allocated for the full cycle of your plan days (${planData?.validity || 90} days).`
                   : 'Changes apply instantly across all active recruiters in your company account.'}
               </span>
             </div>
@@ -895,19 +911,61 @@ export default function ManageQuota() {
                       <th className="mq-services-th" style={{ textAlign: 'right' }}>Used</th>
                       <th className="mq-services-th" style={{ textAlign: 'right' }}>Remaining Balance</th>
                       <th className="mq-services-th">Validity</th>
-                      <th className="mq-services-th">User Seats</th>
                     </tr>
                   </thead>
                   <tbody>
                     {servicesData.map((service) => {
                       const percent = service.percentUsed || 0;
+                      const code = String(service.productCode || '').toUpperCase();
+                      const cat = String(service.category || '').toUpperCase();
+                      const unitStr = String(service.unit || '').toLowerCase();
+                      const isSeat = service.isSeat || code.includes('SEAT') || cat === 'USER_SEATS' || unitStr.includes('seat');
+                      const isAi = !isSeat && (code.includes('AI') || cat === 'AI' || service.isAi);
+
                       return (
                         <tr key={service._id || service.productCode} className="mq-services-tr">
                           <td className="mq-services-td">
                             <div className="mq-prod-name">
                               <span>{service.productName || 'Product'}</span>
+                              {isSeat && (
+                                <span style={{
+                                  marginLeft: 8,
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  color: '#0284c7',
+                                  background: '#e0f2fe',
+                                  padding: '2px 7px',
+                                  borderRadius: 10,
+                                  display: 'inline-block'
+                                }}>
+                                  Recruiter Seat
+                                </span>
+                              )}
                             </div>
                             <div className="mq-prod-code">{service.productCode}</div>
+                            {isSeat && (
+                              <div style={{ marginTop: 4 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/employer/settings/users')}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    color: '#002366',
+                                    fontSize: 11.5,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3
+                                  }}
+                                >
+                                  Manage Seat Assignments →
+                                </button>
+                              </div>
+                            )}
                             {Array.isArray(service.features) && service.features.length > 0 && (
                               <div style={{ marginTop: 6 }}>
                                 {service.features.map((feat) => (
@@ -920,7 +978,7 @@ export default function ManageQuota() {
                           </td>
                           <td className="mq-services-td">
                             <strong style={{ color: '#0f172a', fontSize: 13.5 }}>
-                              {(service.total || 0).toLocaleString()} {service.unit}s
+                              {(service.total || 0).toLocaleString()} {service.total === 1 ? service.unit : (service.unit?.endsWith('s') ? service.unit : `${service.unit}s`)}
                             </strong>
                           </td>
                           <td className="mq-services-td">
@@ -931,21 +989,43 @@ export default function ManageQuota() {
                           </td>
                           <td className="mq-services-td" style={{ textAlign: 'right', color: '#64748b' }}>
                             <span className="mq-num-used">{(service.used || 0).toLocaleString()}</span>
+                            {isSeat && (
+                              <div style={{ fontSize: 11, color: '#64748b' }}>assigned</div>
+                            )}
                           </td>
                           <td className="mq-services-td" style={{ textAlign: 'right' }}>
-                            <span className="mq-num-balance" style={{ color: '#047857' }}>
+                            <span className="mq-num-balance" style={{ color: service.remaining > 0 ? '#047857' : '#dc2626' }}>
                               {(service.remaining || 0).toLocaleString()}
                             </span>
+                            {isSeat && (
+                              <div style={{ fontSize: 11, color: service.remaining > 0 ? '#047857' : '#dc2626' }}>available</div>
+                            )}
                           </td>
                           <td className="mq-services-td">
-                            <span style={{ fontSize: 12, fontWeight: 500, color: '#475569' }}>
-                              {service.validity || 30} {service.validityUnit || 'DAYS'}
-                            </span>
-                          </td>
-                          <td className="mq-services-td">
-                            <span style={{ fontSize: 12, fontWeight: 600, color: '#002366' }}>
-                              {service.userLimit || 1} Seat{service.userLimit > 1 ? 's' : ''}
-                            </span>
+                            {(() => {
+                              if (isAi) {
+                                return (
+                                  <div>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#6d28d9', background: '#f5f3ff', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
+                                      Monthly Cycle
+                                    </span>
+                                    <div style={{ fontSize: 11, color: '#7c3aed', marginTop: 3, fontWeight: 500 }}>
+                                      No carry forward
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
+                                    {planData?.validity || service.validity || 30} {service.validityUnit || 'DAYS'}
+                                  </span>
+                                  <div style={{ fontSize: 11, color: '#047857', marginTop: 3, fontWeight: 600 }}>
+                                    Full Plan Cycle
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </td>
                         </tr>
                       );

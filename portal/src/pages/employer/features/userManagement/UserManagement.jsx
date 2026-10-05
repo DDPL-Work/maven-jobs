@@ -43,6 +43,14 @@ export default function UserManagement() {
 
   // Users state — loaded from API
   const [users, setUsers] = useState([]);
+  const [seatLimits, setSeatLimits] = useState({
+    planName: '',
+    planType: '',
+    isExpired: false,
+    jobPosting: { total: 0, used: 0, remaining: 0 },
+    resdex: { total: 0, used: 0, remaining: 0 },
+    jobBooster: { total: 0, used: 0, remaining: 0 },
+  });
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
 
@@ -53,6 +61,9 @@ export default function UserManagement() {
     try {
       const result = await userManagementService.getUsers();
       setUsers(result.data || []);
+      if (result.seatLimits) {
+        setSeatLimits(result.seatLimits);
+      }
     } catch (err) {
       setApiError(err?.message || 'Failed to load users');
     } finally {
@@ -64,6 +75,21 @@ export default function UserManagement() {
 
   // Selected Users
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+
+  // Plan Seat Quota Calculations
+  const resdexCount = useMemo(() => users.filter((u) => u.resdex).length, [users]);
+  const jobPostingCount = useMemo(() => users.filter((u) => u.jobPosting).length, [users]);
+  const jobBoosterCount = useMemo(() => users.filter((u) => u.jobBooster).length, [users]);
+
+  const totalResdexLimit = seatLimits?.resdex?.total ?? 0;
+  const totalJobPostingLimit = seatLimits?.jobPosting?.total ?? 0;
+  const totalJobBoosterLimit = seatLimits?.jobBooster?.total ?? totalJobPostingLimit;
+
+  const isResdexFull = totalResdexLimit > 0 && resdexCount >= totalResdexLimit;
+  const isResdexLocked = totalResdexLimit === 0;
+  const isJobPostingFull = totalJobPostingLimit > 0 && jobPostingCount >= totalJobPostingLimit;
+  const isJobPostingLocked = totalJobPostingLimit === 0;
+  const isJobBoosterFull = totalJobBoosterLimit > 0 && jobBoosterCount >= totalJobBoosterLimit;
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -248,8 +274,8 @@ export default function UserManagement() {
     setEditingUser(null);
     setFormName('');
     setFormEmail('');
-    setFormJobPosting(true);
-    setFormJobBooster(true);
+    setFormJobPosting(!isJobPostingFull && !isJobPostingLocked);
+    setFormJobBooster(!isJobPostingFull && !isJobPostingLocked && !isJobBoosterFull);
     setFormResdex(false);
     setFormErrors({});
   };
@@ -337,6 +363,37 @@ export default function UserManagement() {
     if (!target) return;
 
     const newValue = !target[field];
+
+    // Client-side quota guard when enabling
+    if (newValue) {
+      if (field === 'resdex') {
+        if (isResdexLocked) {
+          showToast('ResDex is not included in your current plan. Please upgrade to unlock.');
+          return;
+        }
+        if (isResdexFull) {
+          showToast(`ResDex seat limit (${totalResdexLimit}) reached. Upgrade plan or unassign another user's seat.`);
+          return;
+        }
+      }
+      if (field === 'jobPosting') {
+        if (isJobPostingLocked) {
+          showToast('Job Posting is not available in your current plan.');
+          return;
+        }
+        if (isJobPostingFull) {
+          showToast(`Job Posting seat limit (${totalJobPostingLimit}) reached. Upgrade plan or unassign another user's seat.`);
+          return;
+        }
+      }
+      if (field === 'jobBooster') {
+        if (isJobBoosterFull) {
+          showToast(`Job Booster seat limit (${totalJobBoosterLimit}) reached.`);
+          return;
+        }
+      }
+    }
+
     const updatedPermissions = {
       jobPosting: target.jobPosting,
       jobBooster: target.jobBooster,
@@ -357,6 +414,7 @@ export default function UserManagement() {
     try {
       await userManagementService.updateUser(userId, updatedPermissions);
       showToast(`Updated ${field === 'jobPosting' ? 'Job Posting' : field === 'jobBooster' ? 'Job Booster' : 'Resdex'} permission`);
+      fetchUsers();
     } catch (err) {
       // Roll back on failure
       setUsers((prev) =>
@@ -433,12 +491,13 @@ export default function UserManagement() {
       });
       setUsers((prev) => [...prev, result.data]);
       showToast(`User "${trimmedName}" added successfully!`);
+      fetchUsers();
 
       // Reset inputs
       setFormName('');
       setFormEmail('');
-      setFormJobPosting(true);
-      setFormJobBooster(true);
+      setFormJobPosting(!isJobPostingFull && !isJobPostingLocked);
+      setFormJobBooster(!isJobPostingFull && !isJobPostingLocked && !isJobBoosterFull);
       setFormResdex(false);
       setFormErrors({});
 
@@ -715,11 +774,6 @@ export default function UserManagement() {
     showToast('Data exported to Excel successfully.');
   };
 
-  // Calculate dynamic permission counts
-  const resdexCount = users.filter(u => u.resdex).length;
-  const jobPostingCount = users.filter(u => u.jobPosting).length;
-  const jobBoosterCount = users.filter(u => u.jobBooster).length;
-
   return (
     <EmployerLayout activeTab="home">
       <div className="um-container">
@@ -778,7 +832,22 @@ export default function UserManagement() {
 
         {/* Page Top Header */}
         <div className="um-header">
-          <h1 className="um-title">Manage users & permissions</h1>
+          <div>
+            <h1 className="um-title">Manage users & permissions</h1>
+            {/* {seatLimits?.planName && (
+              <div className="um-plan-badge-row">
+                <span className="um-plan-badge">
+                  Plan: <strong>{seatLimits.planName}</strong>
+                </span>
+                <span className="um-plan-seat-pill">
+                  Job Posting Seats: <strong>{jobPostingCount}/{totalJobPostingLimit}</strong>
+                </span>
+                <span className="um-plan-seat-pill">
+                  ResDex Seats: <strong>{resdexCount}/{totalResdexLimit}</strong>
+                </span>
+              </div>
+            )} */}
+          </div>
 
           <div className="um-header-actions">
             <button
@@ -788,8 +857,8 @@ export default function UserManagement() {
                 setEditingUser(null);
                 setFormName('');
                 setFormEmail('');
-                setFormJobPosting(true);
-                setFormJobBooster(true);
+                setFormJobPosting(!isJobPostingFull && !isJobPostingLocked);
+                setFormJobBooster(!isJobPostingFull && !isJobPostingLocked && !isJobBoosterFull);
                 setFormResdex(false);
                 setFormErrors({});
                 setShowAddModal(true);
@@ -1330,17 +1399,29 @@ export default function UserManagement() {
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Resdex</div>
-                  <div className="um-th-metric-sub">{resdexCount} ({resdexCount} licenses)</div>
+                  <div className="um-th-metric-sub">
+                    {totalResdexLimit > 0
+                      ? `${resdexCount} / ${totalResdexLimit} licenses`
+                      : '0 / 0 (No licenses)'}
+                  </div>
                 </th>
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Job Posting</div>
-                  <div className="um-th-metric-sub">{jobPostingCount}</div>
+                  <div className="um-th-metric-sub">
+                    {totalJobPostingLimit > 0
+                      ? `${jobPostingCount} / ${totalJobPostingLimit} seats`
+                      : `${jobPostingCount} seats`}
+                  </div>
                 </th>
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Job Booster</div>
-                  <div className="um-th-metric-sub">{jobBoosterCount}</div>
+                  <div className="um-th-metric-sub">
+                    {totalJobBoosterLimit > 0
+                      ? `${jobBoosterCount} / ${totalJobBoosterLimit} seats`
+                      : `${jobBoosterCount} seats`}
+                  </div>
                 </th>
 
                 <th className="um-th um-th-actions" style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
@@ -1427,14 +1508,22 @@ export default function UserManagement() {
                       <td className="um-td um-metric-cell">
                         <button
                           type="button"
-                          className="um-permission-badge"
-                          title="Click to toggle Resdex access"
+                          className={`um-permission-badge ${!u.resdex && (isResdexLocked || isResdexFull) ? 'disabled-seat' : ''}`}
+                          title={
+                            u.resdex
+                              ? 'Click to remove Resdex access'
+                              : isResdexLocked
+                              ? 'ResDex is not included in current plan (Upgrade to unlock)'
+                              : isResdexFull
+                              ? `ResDex seat limit reached (${totalResdexLimit}/${totalResdexLimit} assigned)`
+                              : 'Click to toggle Resdex access'
+                          }
                           onClick={() => handleTogglePermission(u.id, 'resdex')}
                         >
                           {u.resdex ? (
                             <FiCheck className="um-icon-check" size={18} />
                           ) : (
-                            <FiX className="um-icon-cross" size={18} />
+                            <FiX className={`um-icon-cross ${isResdexLocked ? 'locked' : ''}`} size={18} />
                           )}
                         </button>
                       </td>
@@ -1443,8 +1532,16 @@ export default function UserManagement() {
                       <td className="um-td um-metric-cell">
                         <button
                           type="button"
-                          className="um-permission-badge"
-                          title="Click to toggle Job Posting access"
+                          className={`um-permission-badge ${!u.jobPosting && (isJobPostingLocked || isJobPostingFull) ? 'disabled-seat' : ''}`}
+                          title={
+                            u.jobPosting
+                              ? 'Click to remove Job Posting access'
+                              : isJobPostingLocked
+                              ? 'Job Posting is not available in current plan'
+                              : isJobPostingFull
+                              ? `Job Posting seat limit reached (${totalJobPostingLimit}/${totalJobPostingLimit} assigned)`
+                              : 'Click to toggle Job Posting access'
+                          }
                           onClick={() => handleTogglePermission(u.id, 'jobPosting')}
                         >
                           {u.jobPosting ? (
@@ -1459,8 +1556,14 @@ export default function UserManagement() {
                       <td className="um-td um-metric-cell">
                         <button
                           type="button"
-                          className="um-permission-badge"
-                          title="Click to toggle Job Booster access"
+                          className={`um-permission-badge ${!u.jobBooster && isJobBoosterFull ? 'disabled-seat' : ''}`}
+                          title={
+                            u.jobBooster
+                              ? 'Click to remove Job Booster access'
+                              : isJobBoosterFull
+                              ? `Job Booster seat limit reached (${totalJobBoosterLimit}/${totalJobBoosterLimit} assigned)`
+                              : 'Click to toggle Job Booster access'
+                          }
                           onClick={() => handleTogglePermission(u.id, 'jobBooster')}
                         >
                           {u.jobBooster ? (
@@ -1583,24 +1686,41 @@ export default function UserManagement() {
 
                   <div className="um-permissions-card">
                     {/* Job Posting */}
-                    <label className="um-checkbox-row">
+                    <label className={`um-checkbox-row ${isJobPostingFull && (!editingUser || !editingUser.jobPosting) ? 'disabled-seat' : ''}`}>
                       <input
                         type="checkbox"
                         checked={formJobPosting}
+                        disabled={isJobPostingLocked || (isJobPostingFull && (!editingUser || !editingUser.jobPosting))}
                         onChange={(e) => {
                           const checked = e.target.checked;
                           setFormJobPosting(checked);
                           if (!checked) setFormJobBooster(false); // Booster requires Job Posting
                         }}
                       />
-                      <span>Job Posting</span>
+                      <div className="um-checkbox-label-content">
+                        <span>Job Posting</span>
+                        {isJobPostingLocked ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Not available in current plan)
+                          </span>
+                        ) : isJobPostingFull && (!editingUser || !editingUser.jobPosting) ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Seat limit reached: {jobPostingCount}/{totalJobPostingLimit} used)
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#64748b' }}>
+                            ({Math.max(0, totalJobPostingLimit - jobPostingCount)} of {totalJobPostingLimit} seats available)
+                          </span>
+                        )}
+                      </div>
                     </label>
 
                     {/* Job Booster */}
-                    <label className="um-checkbox-row">
+                    <label className={`um-checkbox-row ${(!formJobPosting || (isJobBoosterFull && (!editingUser || !editingUser.jobBooster))) ? 'disabled-seat' : ''}`}>
                       <input
                         type="checkbox"
                         checked={formJobBooster}
+                        disabled={!formJobPosting || (isJobBoosterFull && (!editingUser || !editingUser.jobBooster))}
                         onChange={(e) => {
                           const checked = e.target.checked;
                           setFormJobBooster(checked);
@@ -1621,15 +1741,28 @@ export default function UserManagement() {
                     </label>
 
                     {/* Resdex */}
-                    <label className="um-checkbox-row">
+                    <label className={`um-checkbox-row ${(isResdexLocked || (isResdexFull && (!editingUser || !editingUser.resdex))) ? 'disabled-seat' : ''}`}>
                       <input
                         type="checkbox"
                         checked={formResdex}
+                        disabled={isResdexLocked || (isResdexFull && (!editingUser || !editingUser.resdex))}
                         onChange={(e) => setFormResdex(e.target.checked)}
                       />
                       <div className="um-checkbox-label-content">
                         <span>Resdex</span>
-                        <span style={{ fontSize: 12.5, color: '#64748b' }}>(includes NVite)</span>
+                        {isResdexLocked ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Not in plan - Upgrade to unlock ResDex)
+                          </span>
+                        ) : isResdexFull && (!editingUser || !editingUser.resdex) ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Seat limit reached: {resdexCount}/{totalResdexLimit} used)
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#64748b' }}>
+                            ({Math.max(0, totalResdexLimit - resdexCount)} of {totalResdexLimit} licenses available)
+                          </span>
+                        )}
                         <FiLock size={13} color="#64748b" title="Consumes 1 Resdex license" />
                       </div>
                     </label>

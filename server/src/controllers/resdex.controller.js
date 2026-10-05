@@ -257,6 +257,19 @@ async function esSearchCandidates(req, res) {
 }
 
 exports.searchCandidates = asyncHandler(async (req, res) => {
+  // ── Quota Check: Ensure company has active Resume Search / CV access ──
+  const { checkAndEnforceQuota } = require("../services/quota-enforcement.service");
+  try {
+    await checkAndEnforceQuota(req.company, "cvAccess", 1);
+  } catch (quotaErr) {
+    return res.status(429).json({
+      success: false,
+      code: quotaErr.code || "RESDEX_QUOTA_EXHAUSTED",
+      message: quotaErr.message || "No active Resume Search plan or credits found for your account.",
+      quotaInfo: quotaErr.quotaInfo || null,
+    });
+  }
+
   // ── OpenSearch path ──────────────────────────────────────────
   if (await esAvailable()) {
     try {

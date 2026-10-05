@@ -73,6 +73,30 @@ const commercialService = {
     const res = await api.post("/company-panel/commercial/contact-sales", payload);
     return res.data;
   },
+
+  // ── Payment Integration ───────────────────────────────────────────────────
+
+  /**
+   * Step 1 of the commercial payment flow.
+   * Creates a real Razorpay order on the server and returns the orderId + keyId.
+   * @param {{ amount: number, label: string, planId?: string, versionId?: string,
+   *           offerId?: string, productId?: string, quantity?: number, validity?: number }} payload
+   */
+  createOrder: async (payload) => {
+    const res = await api.post("/company-panel/commercial/create-order", payload);
+    return res.data?.data; // { orderId, amount, currency, keyId, transactionId, planLabel }
+  },
+
+  /**
+   * Step 2 of the commercial payment flow.
+   * Verifies Razorpay HMAC signature on the server, then atomically activates the entitlement.
+   * @param {{ razorpayOrderId, razorpayPaymentId, razorpaySignature,
+   *           planId?, versionId?, offerId?, productId?, quantity? }} payload
+   */
+  confirmPayment: async (payload) => {
+    const res = await api.post("/company-panel/commercial/confirm-payment", payload);
+    return res.data;
+  },
 };
 
 export default commercialService;

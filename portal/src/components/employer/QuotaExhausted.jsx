@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import EmployerLayout from './EmployerLayout';
 import notAllowedImg from '../../../assets/notAllowed.png';
 
-export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
+export default function QuotaExhausted({ 
+    jobTypeLabel, 
+    availablePlans = [], 
+    activeTab = "jobs", 
+    purchaseUrl = "/manage-quota",
+    wrapLayout = true 
+}) {
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -23,22 +29,25 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
 
     const handlePostJobClick = (url) => {
         setDropdownOpen(false);
-        // Force clean mount to reset form state when switching job categories
-        window.location.href = url;
+        if (url.startsWith('/resume-search')) {
+            navigate(url);
+        } else {
+            // Force clean mount to reset form state when switching job categories
+            window.location.href = url;
+        }
     };
 
-    return (
-        <EmployerLayout activeTab="jobs">
-            <div style={{
-                minHeight: '80vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '40px 20px',
-                background: '#fff',
-                fontFamily: "'Inter', sans-serif"
-            }}>
+    const content = (
+        <div style={{
+            minHeight: wrapLayout ? '80vh' : '60vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '40px 20px',
+            background: '#fff',
+            fontFamily: "'Inter', sans-serif"
+        }}>
                 <img 
                     src={notAllowedImg} 
                     alt="Not Allowed" 
@@ -151,7 +160,13 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                                     e.currentTarget.style.transform = 'translateY(0)';
                                 }}
                             >
-                                <span>Post {availablePlans[0].label}</span>
+                                <span>
+                                    {availablePlans[0].label.toLowerCase().includes('job') || 
+                                     availablePlans[0].label.toLowerCase().includes('vacancy') || 
+                                     availablePlans[0].label.toLowerCase().includes('internship') 
+                                        ? `Post ${availablePlans[0].label}` 
+                                        : `Use ${availablePlans[0].label}`}
+                                </span>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                     <polyline points="12 5 19 12 12 19"></polyline>
@@ -185,7 +200,7 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                                         e.currentTarget.style.transform = 'translateY(0)';
                                     }}
                                 >
-                                    <span>Post with Active Plan</span>
+                                    <span>{activeTab === 'resdex' ? 'Switch to Active Service' : 'Post with Active Plan'}</span>
                                     <svg
                                         width="18"
                                         height="18"
@@ -249,7 +264,11 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                                             >
                                                 <div>
                                                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>
-                                                        Post {plan.label}
+                                                        {plan.label.toLowerCase().includes('job') || 
+                                                         plan.label.toLowerCase().includes('vacancy') || 
+                                                         plan.label.toLowerCase().includes('internship') 
+                                                            ? `Post ${plan.label}` 
+                                                            : `Use ${plan.label}`}
                                                     </div>
                                                     <div style={{ fontSize: '12px', color: '#16A34A', fontWeight: 500, marginTop: '2px' }}>
                                                         {plan.left} credit{plan.left !== 1 ? 's' : ''} available
@@ -269,7 +288,7 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                         {!isRecruiter && (
                             <div style={{ marginTop: '24px' }}>
                                 <button
-                                    onClick={() => navigate('/manage-quota')}
+                                    onClick={() => navigate(purchaseUrl || '/manage-quota')}
                                     style={{
                                         background: 'transparent',
                                         border: 'none',
@@ -312,7 +331,7 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                             </p>
 
                             <button 
-                                onClick={() => navigate('/manage-quota')}
+                                onClick={() => navigate(purchaseUrl || '/manage-quota')}
                                 style={{
                                     padding: '12px 32px',
                                     background: '#2563EB',
@@ -339,11 +358,20 @@ export default function QuotaExhausted({ jobTypeLabel, availablePlans = [] }) {
                         </div>
                     ) : (
                         <p style={{ fontSize: '15px', color: '#64748B', marginTop: '12px' }}>
-                            Please contact your administrator to purchase job posting credits.
+                            Please contact your administrator to purchase {jobTypeLabel ? jobTypeLabel.toLowerCase() : 'service'} credits.
                         </p>
                     )
                 )}
             </div>
+    );
+
+    if (!wrapLayout) {
+        return content;
+    }
+
+    return (
+        <EmployerLayout activeTab={activeTab}>
+            {content}
         </EmployerLayout>
     );
 }

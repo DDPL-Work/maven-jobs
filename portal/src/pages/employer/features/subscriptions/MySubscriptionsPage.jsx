@@ -187,13 +187,15 @@ export default function MySubscriptionsPage() {
                     >
                       {/* Left 3 Data Columns */}
                       <div className="msp-meta-grid">
-                        {/* Transaction ID */}
+                        {/* Plan Type */}
                         <div className="msp-meta-item">
                           <div className="msp-meta-label">
-                            Transaction ID
+                            Plan Type
                           </div>
                           <div className="msp-meta-value msp-meta-val-tx">
-                            {sub.transactionId}
+                            <span className="msp-plan-type-pill">
+                              {sub.planType || (sub.amountPaid === 0 ? 'FREE' : 'SMB')}
+                            </span>
                           </div>
                         </div>
 

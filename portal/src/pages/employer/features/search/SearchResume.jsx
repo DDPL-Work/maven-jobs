@@ -18,6 +18,7 @@ import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import CandidateCard from '../../../../components/employer/CandidateCard';
 import SendMivite from './SendMivite';
+import QuotaExhausted from '../../../../components/employer/QuotaExhausted';
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
 import SetReminderModal from '../../../../components/employer/SetReminderModal';
 import './SearchResume.css';
@@ -116,6 +117,8 @@ export default function SearchResume() {
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [quotaUsage, setQuotaUsage] = useState(null);
+  const [quotaLoading, setQuotaLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") === "mivites" ? "mivites" : "search");
   const [activeSections, setActiveSections] = useState(["basic", "experience", "location"]);
@@ -231,11 +234,12 @@ export default function SearchResume() {
     if (!userStored) { setSessionExpired(true); setLoading(false); return; }
     const load = async () => {
       try {
-        const [dashRes, filtersRes, searchesRes, recentRes] = await Promise.all([
+        const [dashRes, filtersRes, searchesRes, recentRes, quotaRes] = await Promise.all([
           authService.getEmployerDashboard().catch(() => null),
           authService.getResdexFilters().catch(() => ({ success: true, data: { skills: [], groupedSkills: {}, cities: [], companies: [], titles: [], noticePeriods: NOTICE_OPTIONS, certifications: [] } })),
           authService.getResdexSearches().catch(() => ({ success: true, data: [] })),
           authService.getResdexRecentSearches().catch(() => ({ success: true, data: [] })),
+          authService.getQuotaUsage().catch(() => null),
         ]);
         if (dashRes?.success) {
           setCompany(dashRes.data.company || dashRes.data);
@@ -244,8 +248,14 @@ export default function SearchResume() {
         if (filtersRes?.success) setFilterOptions(filtersRes.data);
         if (searchesRes?.success) setSavedSearches(searchesRes.data);
         if (recentRes?.success) setRecentSearches(recentRes.data);
+        if (quotaRes) {
+          setQuotaUsage(quotaRes.data || quotaRes);
+        }
       } catch { setSessionExpired(true); }
-      finally { setLoading(false); }
+      finally {
+        setLoading(false);
+        setQuotaLoading(false);
+      }
     };
     load();
   }, []);
@@ -368,6 +378,118 @@ export default function SearchResume() {
     return count;
   }, [filters]);
 
+  const isSearchExhausted = useMemo(() => {
+    if (quotaLoading) return false;
+    return !quotaUsage?.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0;
+  }, [quotaUsage, quotaLoading]);
+
+  const isMivitesExhausted = useMemo(() => {
+    if (quotaLoading) return false;
+    return !quotaUsage?.nvite || Number(quotaUsage.nvite.left || 0) <= 0;
+  }, [quotaUsage, quotaLoading]);
+
+  const availablePlansForSearch = useMemo(() => {
+    if (!quotaUsage) return [];
+    const available = [];
+    if (Number(quotaUsage.nvite?.left || 0) > 0) {
+      available.push({
+        label: "Send MIvites",
+        type: "mivite",
+        url: "/resume-search?tab=mivites",
+        left: Number(quotaUsage.nvite.left || 0),
+        total: Number(quotaUsage.nvite.total || 0),
+      });
+    }
+    if (Number(quotaUsage.hotVacancy?.left || 0) > 0) {
+      available.push({
+        label: "Hot Vacancy",
+        type: "hot",
+        url: "/post-job?type=hot",
+        left: Number(quotaUsage.hotVacancy.left || 0),
+        total: Number(quotaUsage.hotVacancy.total || 0),
+      });
+    }
+    if (Number(quotaUsage.jobPosting?.left || 0) > 0) {
+      available.push({
+        label: "Standard Job",
+        type: "standard",
+        url: "/post-job",
+        left: Number(quotaUsage.jobPosting.left || 0),
+        total: Number(quotaUsage.jobPosting.total || 0),
+      });
+    }
+    if (Number(quotaUsage.internship?.left || 0) > 0) {
+      available.push({
+        label: "Internship",
+        type: "internship",
+        url: "/post-job?type=internship",
+        left: Number(quotaUsage.internship.left || 0),
+        total: Number(quotaUsage.internship.total || 0),
+      });
+    }
+    if (Number(quotaUsage.smbJobPosting?.left || 0) > 0) {
+      available.push({
+        label: "SMB Job",
+        type: "management",
+        url: "/post-job?type=management",
+        left: Number(quotaUsage.smbJobPosting.left || 0),
+        total: Number(quotaUsage.smbJobPosting.total || 0),
+      });
+    }
+    return available;
+  }, [quotaUsage]);
+
+  const availablePlansForMivites = useMemo(() => {
+    if (!quotaUsage) return [];
+    const available = [];
+    if (Number(quotaUsage.cvAccess?.left || 0) > 0) {
+      available.push({
+        label: "Resume Search",
+        type: "resdex",
+        url: "/resume-search",
+        left: Number(quotaUsage.cvAccess.left || 0),
+        total: Number(quotaUsage.cvAccess.total || 0),
+      });
+    }
+    if (Number(quotaUsage.hotVacancy?.left || 0) > 0) {
+      available.push({
+        label: "Hot Vacancy",
+        type: "hot",
+        url: "/post-job?type=hot",
+        left: Number(quotaUsage.hotVacancy.left || 0),
+        total: Number(quotaUsage.hotVacancy.total || 0),
+      });
+    }
+    if (Number(quotaUsage.jobPosting?.left || 0) > 0) {
+      available.push({
+        label: "Standard Job",
+        type: "standard",
+        url: "/post-job",
+        left: Number(quotaUsage.jobPosting.left || 0),
+        total: Number(quotaUsage.jobPosting.total || 0),
+      });
+    }
+    if (Number(quotaUsage.internship?.left || 0) > 0) {
+      available.push({
+        label: "Internship",
+        type: "internship",
+        url: "/post-job?type=internship",
+        left: Number(quotaUsage.internship.left || 0),
+        total: Number(quotaUsage.internship.total || 0),
+      });
+    }
+    if (Number(quotaUsage.smbJobPosting?.left || 0) > 0) {
+      available.push({
+        label: "SMB Job",
+        type: "management",
+        url: "/post-job?type=management",
+        left: Number(quotaUsage.smbJobPosting.left || 0),
+        total: Number(quotaUsage.smbJobPosting.total || 0),
+      });
+    }
+    return available;
+  }, [quotaUsage]);
+
   const generateSlug = (activeFilters) => {
     const parts = [];
     if (activeFilters.keyword) parts.push(activeFilters.keyword.replace(/[^a-zA-Z0-9]+/g, '-'));
@@ -393,6 +515,11 @@ export default function SearchResume() {
     overrideActiveIn = null,
     overrideLimit = null
   ) => {
+    if (quotaUsage && (!quotaUsage.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0)) {
+      setSearchLoading(false);
+      return;
+    }
+
     const activeFilters = overrideFilters || filters;
     const currentSort = overrideSort !== null && overrideSort !== undefined ? overrideSort : sortBy;
     const currentActiveIn = overrideActiveIn !== null && overrideActiveIn !== undefined ? overrideActiveIn : activeIn;
@@ -471,7 +598,7 @@ export default function SearchResume() {
       setSearchPagination({ page: 1, limit: currentLimit, total: 0, totalPages: 0 });
     }
     setSearchLoading(false);
-  }, [filters, location.search, sortBy, activeIn, pageSize, activeTab]);
+  }, [filters, location.search, sortBy, activeIn, pageSize, activeTab, quotaUsage]);
 
   // Toolbar Actions & Logics
   const allCurrentSelected = useMemo(() => {
@@ -583,6 +710,7 @@ export default function SearchResume() {
   }, []);
 
   const handleSearch = () => {
+    if (isSearchExhausted) return;
     if (!hasAppliedFilters(filters)) {
       showFilterWarning("Please apply at least one filter before searching for candidates.");
       return;
@@ -697,8 +825,17 @@ export default function SearchResume() {
 
 
         {activeTab === "search" ? (
-          <>
-            <div className="sr-header">
+          isSearchExhausted ? (
+            <QuotaExhausted
+              jobTypeLabel="Resume Search"
+              availablePlans={availablePlansForSearch}
+              activeTab="resdex"
+              purchaseUrl="/buy-online"
+              wrapLayout={false}
+            />
+          ) : (
+            <>
+              <div className="sr-header">
               <div>
                 <h1 className="sr-title">Search Resume</h1>
                 <p className="sr-subtitle">Find the best candidates using advanced AI-powered search filters.</p>
@@ -1629,13 +1766,24 @@ export default function SearchResume() {
               </main>
             </div>
           </>
+          )
         ) : (
-          <SendMivite company={company} user={user}
-            initialResults={cachedResults}
-            initialSelectedIds={Array.from(selectedCandidates.keys())}
-            onClearSelection={() => setSelectedCandidates(new Map())}
-            startStep={location.state?.startAtJobStep ? 1 : 0}
-          />
+          isMivitesExhausted ? (
+            <QuotaExhausted
+              jobTypeLabel="Send MIvites"
+              availablePlans={availablePlansForMivites}
+              activeTab="resdex"
+              purchaseUrl="/buy-online"
+              wrapLayout={false}
+            />
+          ) : (
+            <SendMivite company={company} user={user}
+              initialResults={cachedResults}
+              initialSelectedIds={Array.from(selectedCandidates.keys())}
+              onClearSelection={() => setSelectedCandidates(new Map())}
+              startStep={location.state?.startAtJobStep ? 1 : 0}
+            />
+          )
         )}
 
       <AnimatePresence>

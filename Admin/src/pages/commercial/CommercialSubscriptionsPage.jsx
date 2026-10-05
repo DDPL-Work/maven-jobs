@@ -304,7 +304,6 @@ export default function CommercialSubscriptionsPage() {
                         </div>
                         <div className="mt-1 flex justify-between text-[10px] text-slate-400">
                           <span>Expires: {new Date(ent.expiryDate).toLocaleDateString()}</span>
-                          <span>User Limit: {ent.userLimit || 1} seat(s)</span>
                         </div>
                       </div>
                     );

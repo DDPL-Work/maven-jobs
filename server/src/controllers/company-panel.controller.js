@@ -2670,15 +2670,36 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
 
   // 1. Build subscriptions from commercial Subscription records in DB
   const Subscription = require("../models/Subscription");
-  const commercialSubs = companyId ? await Subscription.find({ companyId }).sort({ createdAt: -1 }).lean() : [];
+  const CommercialPayment = require("../models/CommercialPayment");
+  const commercialSubs = companyId
+    ? await Subscription.find({ companyId })
+        .populate("planId", "name code planType")
+        .sort({ createdAt: -1 })
+        .lean()
+    : [];
+
+  const subOrderIds = commercialSubs.map((s) => s.orderId).filter(Boolean);
+  const commercialPayments = subOrderIds.length > 0
+    ? await CommercialPayment.find({ orderId: { $in: subOrderIds } }).lean()
+    : [];
+  const paymentByOrderId = new Map(commercialPayments.map((p) => [String(p.orderId), p]));
+
   if (commercialSubs && commercialSubs.length > 0) {
     commercialSubs.forEach((sub) => {
       const isStillActive = sub.status === "ACTIVE" && new Date(sub.endDate) > new Date();
       const planName = sub.commercialSnapshot?.planName || sub.planName || "MavenJobs Plan";
+      const resolvedPlanType =
+        sub.planId?.planType ||
+        sub.commercialSnapshot?.planType ||
+        (sub.commercialSnapshot?.pricePaid === 0 ? "FREE" : "SMB");
+      const payment = paymentByOrderId.get(String(sub.orderId));
+      const displayTxId = payment?.gatewayPaymentId || (sub.orderId ? `MJ-ORD-${String(sub.orderId).slice(-6).toUpperCase()}` : `SUB-${String(sub._id).slice(-8).toUpperCase()}`);
+
       subscriptions.push({
         id: String(sub._id),
         planName,
-        transactionId: sub.orderId ? `MJ-ORD-${String(sub.orderId).slice(-6).toUpperCase()}` : `SUB-${String(sub._id).slice(-8).toUpperCase()}`,
+        planType: resolvedPlanType,
+        transactionId: displayTxId,
         date: formatDate(sub.startDate),
         amountPaid: sub.commercialSnapshot?.pricePaid || 0,
         amountFormatted: (sub.commercialSnapshot?.pricePaid || 0) > 0 ? `₹ ${Number(sub.commercialSnapshot.pricePaid).toLocaleString("en-IN")}` : "Free Plan",
@@ -2702,9 +2723,29 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
     });
   }
 
-  // 2. Build subscriptions from real PaymentTransaction records in DB
+  // 2. Build subscriptions from legacy standalone job package PaymentTransaction records in DB ONLY
+  // (Filter out commercial transactions to avoid duplicates)
   if (transactions && transactions.length > 0) {
+    const commercialPlanTypes = new Set(["FREE", "SMB", "CORPORATE", "ENTERPRISE", "CUSTOM", "COMMERCIAL"]);
+    const existingTxIds = new Set(
+      subscriptions.map((s) => String(s.transactionId)).filter(Boolean)
+    );
+    for (const p of commercialPayments) {
+      if (p.gatewayPaymentId) existingTxIds.add(String(p.gatewayPaymentId));
+    }
+
     transactions.forEach((tx) => {
+      const isCommercial =
+        commercialPlanTypes.has(String(tx.planType || "").toUpperCase()) ||
+        Boolean(tx.metadata?.planId) ||
+        Boolean(tx.metadata?.offerId) ||
+        Boolean(tx.metadata?.productId) ||
+        (tx.razorpayPaymentId && existingTxIds.has(String(tx.razorpayPaymentId)));
+
+      if (isCommercial) {
+        return; // Skip duplicate commercial transaction
+      }
+
       const createdAt = tx.createdAt ? new Date(tx.createdAt) : new Date();
       const expiresAt = new Date(createdAt.getTime() + (tx.durationDays || 30) * 86400000);
       const isStillActive = expiresAt > new Date();
@@ -2721,13 +2762,18 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
 
       const planName = planNameMap[tx.planType] || `${tx.planType || "Corporate"} Package`;
 
+      let amountInRupees = Number(tx.amount || 0);
+      if (amountInRupees >= 100000) {
+        amountInRupees = Math.round(amountInRupees / 100);
+      }
+
       subscriptions.push({
         id: String(tx._id),
         planName,
         transactionId: tx.razorpayPaymentId || `TX-${String(tx._id).slice(-8).toUpperCase()}`,
         date: formatDate(createdAt),
-        amountPaid: tx.amount || 0,
-        amountFormatted: `₹ ${Number(tx.amount || 0).toLocaleString("en-IN")}`,
+        amountPaid: amountInRupees,
+        amountFormatted: `₹ ${amountInRupees.toLocaleString("en-IN")}`,
         status: isStillActive ? "ACTIVE" : "EXPIRED",
         products: [
           {
@@ -3010,7 +3056,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   }
 
   const cvUsedByAll = await PaidResume.countDocuments({ companyId: company._id, ...dateFilter });
-  const cvLeft = Math.max(0, cvTotal - cvUsedByAll);
+  let cvLeft = Math.max(0, cvTotal - cvUsedByAll);
   
   let cvUsedByYou = 0;
   if (isRecruiter) {
@@ -3033,7 +3079,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
     { $group: { _id: null, sum: { $sum: "$totalCount" } } }
   ]);
   const nviteUsedByAll = nviteAllAgg[0]?.sum || 0;
-  const nviteLeft = Math.max(0, nviteTotal - nviteUsedByAll);
+  let nviteLeft = Math.max(0, nviteTotal - nviteUsedByAll);
   
   let nviteUsedByYou = 0;
   if (isRecruiter) {
@@ -3102,56 +3148,74 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   let internshipJobLeft = Math.max(0, internshipJobTotal - internshipJobUsedByAll);
   let jobLeft = Math.max(0, jobTotal - jobUsedByAll);
 
-  // Also factor in active Entitlements if present
-  try {
-    const Entitlement = require("../models/Entitlement");
-    const activeEnts = await Entitlement.find({
-      companyId: company._id,
-      status: "ACTIVE",
-      expiryDate: { $gte: now },
-      remainingQuantity: { $gt: 0 },
-    }).lean();
+  // Also factor in active Entitlements if company does NOT have planSnapshot
+  if (!company.planSnapshot) {
+    try {
+      const Entitlement = require("../models/Entitlement");
+      const activeEnts = await Entitlement.find({
+        companyId: company._id,
+        status: "ACTIVE",
+        expiryDate: { $gte: now },
+        remainingQuantity: { $gt: 0 },
+      }).lean();
 
-    let entSmbRemaining = 0;
-    let entHotRemaining = 0;
-    let entInternRemaining = 0;
-    let entStandardRemaining = 0;
+      let entSmbRemaining = 0;
+      let entHotRemaining = 0;
+      let entInternRemaining = 0;
+      let entStandardRemaining = 0;
+      let entCvRemaining = 0;
+      let entNviteRemaining = 0;
 
-    for (const ent of activeEnts) {
-      const pCode = String(ent.productCode || "").toUpperCase();
-      if (pCode === "SMB_JOB") {
-        entSmbRemaining += (ent.remainingQuantity || 0);
-      } else if (pCode === "HOT_VACANCY") {
-        entHotRemaining += (ent.remainingQuantity || 0);
-      } else if (pCode === "INTERNSHIP_JOB") {
-        entInternRemaining += (ent.remainingQuantity || 0);
-      } else if (pCode === "JOB_POSTING") {
-        entStandardRemaining += (ent.remainingQuantity || 0);
+      for (const ent of activeEnts) {
+        const pCode = String(ent.productCode || "").toUpperCase();
+        if (pCode === "SMB_JOB") {
+          entSmbRemaining += (ent.remainingQuantity || 0);
+        } else if (pCode === "HOT_VACANCY") {
+          entHotRemaining += (ent.remainingQuantity || 0);
+        } else if (pCode === "INTERNSHIP_JOB") {
+          entInternRemaining += (ent.remainingQuantity || 0);
+        } else if (pCode === "JOB_POSTING" || pCode === "STANDARD_JOB") {
+          entStandardRemaining += (ent.remainingQuantity || 0);
+        } else if (pCode.includes("CV") || pCode.includes("RESDEX") || pCode.includes("RESUME")) {
+          entCvRemaining += (ent.remainingQuantity || 0);
+        } else if (pCode.includes("NVITE") || pCode.includes("MIVITE")) {
+          entNviteRemaining += (ent.remainingQuantity || 0);
+        }
       }
-    }
 
-    if (entSmbRemaining > 0) {
-      smbJobLeft = Math.max(smbJobLeft, entSmbRemaining);
-      smbJobTotal = Math.max(smbJobTotal, smbJobUsedByAll + smbJobLeft);
-    }
-    if (entHotRemaining > 0) {
-      hotJobLeft = Math.max(hotJobLeft, entHotRemaining);
-      hotJobTotal = Math.max(hotJobTotal, hotJobUsedByAll + hotJobLeft);
-    }
-    if (entInternRemaining > 0) {
-      internshipJobLeft = Math.max(internshipJobLeft, entInternRemaining);
-      internshipJobTotal = Math.max(internshipJobTotal, internshipJobUsedByAll + internshipJobLeft);
-    }
-    if (entStandardRemaining > 0) {
-      jobLeft = Math.max(jobLeft, entStandardRemaining);
-      jobTotal = Math.max(jobTotal, jobUsedByAll + jobLeft);
-    }
-  } catch (_) {}
+      if (entSmbRemaining > 0) {
+        smbJobLeft = Math.max(smbJobLeft, entSmbRemaining);
+        smbJobTotal = Math.max(smbJobTotal, smbJobUsedByAll + smbJobLeft);
+      }
+      if (entHotRemaining > 0) {
+        hotJobLeft = Math.max(hotJobLeft, entHotRemaining);
+        hotJobTotal = Math.max(hotJobTotal, hotJobUsedByAll + hotJobLeft);
+      }
+      if (entInternRemaining > 0) {
+        internshipJobLeft = Math.max(internshipJobLeft, entInternRemaining);
+        internshipJobTotal = Math.max(internshipJobTotal, internshipJobUsedByAll + internshipJobLeft);
+      }
+      if (entStandardRemaining > 0) {
+        jobLeft = Math.max(jobLeft, entStandardRemaining);
+        jobTotal = Math.max(jobTotal, jobUsedByAll + jobLeft);
+      }
+      if (entCvRemaining > 0) {
+        cvLeft = Math.max(cvLeft, entCvRemaining);
+        cvTotal = Math.max(cvTotal, cvUsedByAll + cvLeft);
+      }
+      if (entNviteRemaining > 0) {
+        nviteLeft = Math.max(nviteLeft, entNviteRemaining);
+        nviteTotal = Math.max(nviteTotal, nviteUsedByAll + nviteLeft);
+      }
+    } catch (_) {}
+  }
 
   const smbJobLeftFinal = Math.max(0, smbJobLeft);
   const hotJobLeftFinal = Math.max(0, hotJobLeft);
   const internshipJobLeftFinal = Math.max(0, internshipJobLeft);
   const jobLeftFinal = Math.max(0, jobLeft);
+  const cvLeftFinal = Math.max(0, cvLeft);
+  const nviteLeftFinal = Math.max(0, nviteLeft);
 
   const CompanySubUser = require("../models/CompanySubUser");
   
@@ -3162,21 +3226,21 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   let aiTotal = 0;
   let aiLeft = 0;
   let aiUsedByAll = 0;
-  try {
-    const AiCreditService = require("../services/commercial/ai-credit.service");
-    const aiQuota = await AiCreditService.getAiQuota(company._id);
-    aiTotal = aiQuota.allocatedCredits || 0;
-    aiLeft = aiQuota.availableCredits || 0;
-    aiUsedByAll = aiQuota.consumedCredits || 0;
-  } catch (_) {
-    if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
-      const aiSvc = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
-      if (aiSvc) {
-        aiTotal = aiSvc.quantity || 0;
-        aiUsedByAll = aiSvc.usedQuantity || 0;
-        aiLeft = Math.max(0, aiTotal - aiUsedByAll);
-      }
+  if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+    const aiSvc = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
+    if (aiSvc) {
+      aiTotal = Number(aiSvc.quantity || 0);
+      aiUsedByAll = Number(aiSvc.usedQuantity || 0);
+      aiLeft = Math.max(0, aiTotal - aiUsedByAll);
     }
+  } else {
+    try {
+      const AiCreditService = require("../services/commercial/ai-credit.service");
+      const aiQuota = await AiCreditService.getAiQuota(company._id);
+      aiTotal = aiQuota.allocatedCredits || 0;
+      aiLeft = aiQuota.availableCredits || 0;
+      aiUsedByAll = aiQuota.consumedCredits || 0;
+    } catch (_) {}
   }
 
   res.status(200).json({
@@ -3184,7 +3248,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
     data: {
       cvAccess: {
         total: cvTotal,
-        left: cvLeft,
+        left: cvLeftFinal,
         usedByAll: cvUsedByAll,
         usedByYou: isRecruiter ? cvUsedByYou : null,
         licensesAssigned: `${resdexSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -3192,7 +3256,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       nvite: {
         total: nviteTotal,
-        left: nviteLeft,
+        left: nviteLeftFinal,
         usedByAll: nviteUsedByAll,
         usedByYou: isRecruiter ? nviteUsedByYou : null,
         licensesAssigned: `${resdexSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -3243,6 +3307,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
 
 exports.getQuotaManagement = asyncHandler(async (req, res) => {
   const { company } = await resolveClientUserAndCompany(req.user._id);
+  const now = new Date();
 
   const Credit = require("../models/Credit");
   const PaidResume = require("../models/PaidResume");
@@ -3270,12 +3335,16 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
   const planServices = Array.isArray(planSnapshot?.services) ? planSnapshot.services : [];
 
   if (planSnapshot) {
-    actualFullCvTotal = credit?.lifetimePurchased || 0;
+    actualFullCvTotal = 0;
     fullNviteTotal = 0;
     for (const s of planServices) {
       const code = String(s.productCode || "").toUpperCase();
       const cat = String(s.category || "").toUpperCase();
-      if (code.includes("CV") || code.includes("RESDEX") || code.includes("RESUME") || cat === "RESUME_SEARCH") {
+      const unitStr = String(s.unit || "").toLowerCase();
+      const isSeat = code.includes("SEAT") || cat === "USER_SEATS" || unitStr.includes("seat");
+
+      // Only count actual CV / Resume search balance, not recruiter seats
+      if (!isSeat && (code.includes("CV") || code === "RESDEX" || code.includes("RESUME") || cat === "RESUME_SEARCH")) {
         actualFullCvTotal += (s.quantity || 0);
       }
       if (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES") {
@@ -3284,15 +3353,46 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
     }
   }
 
-  const [activeSmbJobs, activeHotJobs, activeInternshipJobs, activeStandardJobs, aiUsageAgg] = await Promise.all([
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const CompanySubUser = require("../models/CompanySubUser");
+
+  // Migration for legacy companies: ensure super user exists
+  const hasSuperUser = await CompanySubUser.exists({ companyId: company._id, isSuperUser: true });
+  if (!hasSuperUser && company.clientUserId) {
+    const existingSuperUser = await User.findById(company.clientUserId);
+    if (existingSuperUser) {
+      await CompanySubUser.create({
+        userId: existingSuperUser._id,
+        companyId: company._id,
+        createdBy: existingSuperUser._id,
+        isSuperUser: true,
+        permissions: { jobPosting: true, jobBooster: true, resdex: true },
+      });
+    }
+  }
+
+  const [
+    activeSmbJobs,
+    activeHotJobs,
+    activeInternshipJobs,
+    activeStandardJobs,
+    aiUsageAgg,
+    activeJobPostingSeats,
+    activeResdexSeats,
+    activeJobBoosterSeats
+  ] = await Promise.all([
     Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" }),
     Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot" }),
     Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship" }),
     Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
     AiUsageLog.aggregate([
-      { $match: { companyId: company._id, status: "SUCCESS" } },
+      { $match: { companyId: company._id, status: "SUCCESS", createdAt: { $gte: startOfMonth } } },
       { $group: { _id: null, sum: { $sum: "$creditsUsed" } } }
-    ])
+    ]),
+    CompanySubUser.countDocuments({ companyId: company._id, "permissions.jobPosting": true }),
+    CompanySubUser.countDocuments({ companyId: company._id, "permissions.resdex": true }),
+    CompanySubUser.countDocuments({ companyId: company._id, "permissions.jobBooster": true }),
   ]);
   const totalAiUsed = aiUsageAgg[0]?.sum || 0;
 
@@ -3301,9 +3401,25 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
     const cat = String(s.category || "").toUpperCase();
     const unitStr = String(s.unit || "").toLowerCase();
     const total = Number(s.quantity || 0);
-    let used = s.usedQuantity || 0;
+    let used = Number(s.usedQuantity || 0);
 
-    if (code === "SMB_JOB" || code.includes("SMB")) {
+    const isSeat = code.includes("SEAT") || cat === "USER_SEATS" || unitStr.includes("seat");
+    const isJobPostingSeat = isSeat && (code === "JOB_POSTING_SEAT" || code.includes("JOB"));
+    const isResdexSeat = isSeat && (code === "RESDEX_SEAT" || code.includes("RESDEX"));
+    const isBoosterSeat = isSeat && (code === "JOB_BOOSTER_SEAT" || code.includes("BOOSTER"));
+
+    const isAi = !isSeat && (code.includes("AI") || cat === "AI" || unitStr.includes("ai"));
+    const isJob = !isSeat && (code.includes("JOB") || cat === "JOB_POSTING" || unitStr.includes("job") || code === "HOT_VACANCY");
+    const isResdex = !isSeat && (code.includes("CV") || code.includes("RESDEX") || cat === "RESUME_SEARCH");
+    const isNvite = !isSeat && (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES");
+
+    if (isJobPostingSeat) {
+      used = activeJobPostingSeats;
+    } else if (isResdexSeat) {
+      used = activeResdexSeats;
+    } else if (isBoosterSeat) {
+      used = activeJobBoosterSeats;
+    } else if (code === "SMB_JOB" || code.includes("SMB")) {
       used = Math.max(used, activeSmbJobs);
     } else if (code === "HOT_VACANCY" || code.includes("HOT")) {
       used = Math.max(used, activeHotJobs);
@@ -3311,16 +3427,29 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
       used = Math.max(used, activeInternshipJobs);
     } else if (code === "JOB_POSTING" || cat === "JOB_POSTING" || unitStr.includes("job")) {
       used = Math.max(used, activeStandardJobs);
-    } else if (code.includes("AI") || cat === "AI" || unitStr.includes("ai")) {
+    } else if (isAi) {
       used = Math.max(used, totalAiUsed);
-    } else if (code.includes("CV") || code.includes("RESDEX") || cat === "RESUME_SEARCH") {
+    } else if (isResdex) {
       used = Math.max(used, actualFullCvUsed);
-    } else if (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES") {
+    } else if (isNvite) {
       used = Math.max(used, fullNviteUsed);
     }
 
     const remaining = Math.max(0, total - used);
     const percentUsed = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+
+    let serviceValidity = s.validity;
+    let serviceValidityUnit = s.validityUnit || "DAYS";
+
+    if (planSnapshot && planSnapshot.validity && (isJob || isResdex || isNvite || isSeat)) {
+      // Allocated on full cycle of plan days
+      serviceValidity = planSnapshot.validity;
+      serviceValidityUnit = planSnapshot.validityUnit || "DAYS";
+    } else if (isAi) {
+      // Monthly cycle - no carry forward
+      serviceValidity = 30;
+      serviceValidityUnit = "DAYS";
+    }
 
     return {
       _id: s._id,
@@ -3331,20 +3460,20 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
       productType: s.productType,
       quantity: total,
       unit: s.unit || "Unit",
-      validity: s.validity,
-      validityUnit: s.validityUnit || "DAYS",
-      userLimit: s.userLimit || 1,
+      validity: serviceValidity,
+      validityUnit: serviceValidityUnit,
       features: s.features || [],
       total,
       used,
       remaining,
       percentUsed,
+      isAi,
+      isSeat,
+      isFullPlanCycle: isJob || isResdex || isNvite || isSeat,
     };
   });
 
-  const now = new Date();
-
-  // Also include active standalone entitlements not in planServices
+  // Only include active standalone entitlements if they are separate standalone purchases not in planServices
   try {
     const Entitlement = require("../models/Entitlement");
     const activeEnts = await Entitlement.find({
@@ -3352,17 +3481,12 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
       status: "ACTIVE",
       expiryDate: { $gte: now },
       remainingQuantity: { $gt: 0 },
+      source: "STANDALONE_PURCHASE",
     }).lean();
 
     for (const ent of activeEnts) {
       const existing = enrichedServices.find((s) => s.productCode === ent.productCode);
-      if (existing) {
-        existing.total += (ent.allocatedQuantity || ent.remainingQuantity);
-        existing.remaining += ent.remainingQuantity;
-        existing.used = Math.max(0, existing.total - existing.remaining);
-        existing.quantity = existing.total;
-        existing.percentUsed = existing.total > 0 ? Math.min(100, Math.round((existing.used / existing.total) * 100)) : 0;
-      } else {
+      if (!existing) {
         let used = ent.consumedQuantity || 0;
         if (ent.productCode === "INTERNSHIP_JOB") used = Math.max(used, activeInternshipJobs);
         else if (ent.productCode === "HOT_VACANCY") used = Math.max(used, activeHotJobs);
@@ -3383,7 +3507,6 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
           unit: ent.unit || "Job",
           validity: 30,
           validityUnit: "DAYS",
-          userLimit: 1,
           features: ent.features || [],
           total,
           used,
@@ -3399,8 +3522,6 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
   const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
   startOfWeek.setDate(diff);
   startOfWeek.setHours(0,0,0,0);
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const monthlyCvUsed = await PaidResume.countDocuments({ companyId: company._id, createdAt: { $gte: startOfMonth } });
   const monthlyNviteAgg = await Nvite.aggregate([

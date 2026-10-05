@@ -88,7 +88,7 @@ const entitlementSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["ACTIVE", "EXHAUSTED", "EXPIRED"],
+      enum: ["ACTIVE", "EXHAUSTED", "EXPIRED", "SUPERSEDED"],
       default: "ACTIVE",
       index: true,
     },

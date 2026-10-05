@@ -19,6 +19,95 @@ const LoginOTP = require("../models/LoginOTP");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 
+// --- Helper: Get Company Plan Seat Limits ---
+const getCompanySeatLimits = async (companyId) => {
+  const company = await Company.findById(companyId);
+  if (!company) return null;
+
+  let jobPostingLimit = 0;
+  let resdexLimit = 0;
+  let jobBoosterLimit = 0;
+  let planName = company.packageType || "Free Plan";
+  let planType = "FREE";
+  let isExpired = false;
+
+  const now = new Date();
+
+  // 1. Check company.planSnapshot first (authoritative commercial snapshot)
+  if (company.planSnapshot) {
+    planName = company.planSnapshot.planName || planName;
+    planType = company.planSnapshot.planType || "COMMERCIAL";
+
+    if (company.planSnapshot.endDate && new Date(company.planSnapshot.endDate) < now) {
+      isExpired = true;
+    }
+
+    const services = Array.isArray(company.planSnapshot.services) ? company.planSnapshot.services : [];
+    for (const s of services) {
+      const code = String(s.productCode || "").toUpperCase();
+      const qty = Number(s.quantity || 0);
+
+      if (code === "JOB_POSTING_SEAT" || code === "JOB_SEAT" || code === "JOB_POST_SEAT") {
+        jobPostingLimit += qty;
+      } else if (code === "RESDEX_SEAT" || code === "RESUME_SEARCH_SEAT") {
+        resdexLimit += qty;
+      } else if (code === "JOB_BOOSTER_SEAT" || code === "BOOSTER_SEAT") {
+        jobBoosterLimit += qty;
+      }
+    }
+  }
+
+  // 2. Fallback to active Subscription if planSnapshot didn't define seat items
+  if (jobPostingLimit === 0 && resdexLimit === 0) {
+    const Subscription = require("../models/Subscription");
+    const activeSub = await Subscription.findOne({
+      companyId,
+      status: "ACTIVE",
+      endDate: { $gte: now },
+    }).sort({ createdAt: -1 });
+
+    if (activeSub) {
+      planName = activeSub.commercialSnapshot?.planName || planName;
+      planType = activeSub.commercialSnapshot?.planType || "COMMERCIAL";
+      const snapItems = Array.isArray(activeSub.entitlementSnapshot) ? activeSub.entitlementSnapshot : [];
+      for (const item of snapItems) {
+        const code = String(item.productCode || "").toUpperCase();
+        const qty = Number(item.quantity || 0);
+
+        if (code === "JOB_POSTING_SEAT" || code === "JOB_SEAT" || code === "JOB_POST_SEAT") {
+          jobPostingLimit += qty;
+        } else if (code === "RESDEX_SEAT" || code === "RESUME_SEARCH_SEAT") {
+          resdexLimit += qty;
+        } else if (code === "JOB_BOOSTER_SEAT" || code === "BOOSTER_SEAT") {
+          jobBoosterLimit += qty;
+        }
+      }
+    }
+  }
+
+  // 3. Fallback for Free/legacy tier:
+  // Free tier has 1 Job Posting seat, 0 ResDex seats (per Q1.3 "Free: 1 job, no resume search")
+  if (jobPostingLimit === 0 && resdexLimit === 0) {
+    jobPostingLimit = 1;
+    resdexLimit = 0;
+    jobBoosterLimit = 1;
+  }
+
+  // If jobBoosterLimit was not explicitly configured, default to jobPostingLimit
+  if (jobBoosterLimit === 0 && jobPostingLimit > 0) {
+    jobBoosterLimit = jobPostingLimit;
+  }
+
+  return {
+    planName,
+    planType,
+    isExpired,
+    jobPostingLimit,
+    resdexLimit,
+    jobBoosterLimit,
+  };
+};
+
 // --- Sub-User CRUD ---
 
 exports.getUsers = asyncHandler(async (req, res) => {
@@ -28,6 +117,9 @@ exports.getUsers = asyncHandler(async (req, res) => {
   if (!company) {
     throw createHttpError(404, "Company not found");
   }
+
+  const limits = await getCompanySeatLimits(companyId);
+  const { jobPostingLimit, resdexLimit, jobBoosterLimit, planName, planType, isExpired } = limits;
 
   let subUsers = await CompanySubUser.find({ companyId }).populate(
     "userId",
@@ -39,12 +131,16 @@ exports.getUsers = asyncHandler(async (req, res) => {
   if (!hasSuperUser && company.clientUserId) {
     const existingSuperUser = await User.findById(company.clientUserId);
     if (existingSuperUser) {
-      const superSubUser = await CompanySubUser.create({
+      await CompanySubUser.create({
         userId: existingSuperUser._id,
         companyId: company._id,
         createdBy: existingSuperUser._id,
         isSuperUser: true,
-        permissions: { jobPosting: true, jobBooster: true, resdex: true },
+        permissions: {
+          jobPosting: jobPostingLimit > 0,
+          jobBooster: jobBoosterLimit > 0,
+          resdex: resdexLimit > 0,
+        },
       });
       // Re-fetch to get populated fields
       subUsers = await CompanySubUser.find({ companyId }).populate(
@@ -72,9 +168,33 @@ exports.getUsers = asyncHandler(async (req, res) => {
     avatarColor: su.avatarColor || "#b45309",
   })).sort((a, b) => (b.isSuperUser ? 1 : 0) - (a.isSuperUser ? 1 : 0));
 
+  const jobPostingCount = subUsers.filter((su) => su.permissions?.jobPosting).length;
+  const resdexCount = subUsers.filter((su) => su.permissions?.resdex).length;
+  const jobBoosterCount = subUsers.filter((su) => su.permissions?.jobBooster).length;
+
   res.status(200).json({
     success: true,
     data: formattedUsers,
+    seatLimits: {
+      planName,
+      planType,
+      isExpired,
+      jobPosting: {
+        total: jobPostingLimit,
+        used: jobPostingCount,
+        remaining: Math.max(0, jobPostingLimit - jobPostingCount),
+      },
+      resdex: {
+        total: resdexLimit,
+        used: resdexCount,
+        remaining: Math.max(0, resdexLimit - resdexCount),
+      },
+      jobBooster: {
+        total: jobBoosterLimit,
+        used: jobBoosterCount,
+        remaining: Math.max(0, jobBoosterLimit - jobBoosterCount),
+      },
+    },
   });
 });
 
@@ -108,6 +228,34 @@ exports.createUser = asyncHandler(async (req, res) => {
     throw createHttpError(400, "A user with this email already exists");
   }
 
+  // Validate seat limit moderation based on subscribed plan
+  const limits = await getCompanySeatLimits(companyId);
+  if (limits.isExpired) {
+    throw createHttpError(400, "Your plan has expired. Please renew your subscription to add team members with active permissions.");
+  }
+
+  const existingSubUsers = await CompanySubUser.find({ companyId });
+  const currentJobPostingCount = existingSubUsers.filter((su) => su.permissions?.jobPosting).length;
+  const currentResdexCount = existingSubUsers.filter((su) => su.permissions?.resdex).length;
+  const currentJobBoosterCount = existingSubUsers.filter((su) => su.permissions?.jobBooster).length;
+
+  if (jobPosting && currentJobPostingCount >= limits.jobPostingLimit) {
+    throw createHttpError(400, `Job Posting seat limit of ${limits.jobPostingLimit} reached. Upgrade plan or release a seat to assign Job Posting.`);
+  }
+
+  if (resdex) {
+    if (limits.resdexLimit === 0) {
+      throw createHttpError(400, "ResDex (resume search) is not included in your current plan. Please upgrade your plan to unlock ResDex seats.");
+    }
+    if (currentResdexCount >= limits.resdexLimit) {
+      throw createHttpError(400, `ResDex seat limit of ${limits.resdexLimit} reached. Upgrade plan or release a seat to assign ResDex.`);
+    }
+  }
+
+  if (jobBooster && currentJobBoosterCount >= limits.jobBoosterLimit) {
+    throw createHttpError(400, `Job Booster seat limit of ${limits.jobBoosterLimit} reached.`);
+  }
+
   // Set default password for new sub-users
   const defaultPassword = "Maven@123";
   const hashedPassword = await bcrypt.hash(defaultPassword, 10);
@@ -126,9 +274,9 @@ exports.createUser = asyncHandler(async (req, res) => {
     companyId,
     createdBy,
     permissions: {
-      jobPosting,
-      jobBooster,
-      resdex,
+      jobPosting: Boolean(jobPosting),
+      jobBooster: Boolean(jobBooster),
+      resdex: Boolean(resdex),
     },
   });
 
@@ -199,6 +347,44 @@ exports.updateUser = asyncHandler(async (req, res) => {
   }
 
   await subUser.userId.save();
+
+  // Validate seat limit moderation if turning ON any permission that was previously OFF
+  const willEnableJobPosting = jobPosting === true && !subUser.permissions.jobPosting;
+  const willEnableResdex = resdex === true && !subUser.permissions.resdex;
+  const willEnableJobBooster = jobBooster === true && !subUser.permissions.jobBooster;
+
+  if (willEnableJobPosting || willEnableResdex || willEnableJobBooster) {
+    const limits = await getCompanySeatLimits(companyId);
+    if (limits.isExpired) {
+      throw createHttpError(400, "Your plan has expired. Please renew your subscription to assign permissions.");
+    }
+
+    const allSubUsers = await CompanySubUser.find({ companyId });
+
+    if (willEnableJobPosting) {
+      const currentJobPostingCount = allSubUsers.filter((su) => su.permissions?.jobPosting).length;
+      if (currentJobPostingCount >= limits.jobPostingLimit) {
+        throw createHttpError(400, `Job Posting seat limit of ${limits.jobPostingLimit} reached. Upgrade plan or unassign another user's seat.`);
+      }
+    }
+
+    if (willEnableResdex) {
+      if (limits.resdexLimit === 0) {
+        throw createHttpError(400, "ResDex (resume search) is not included in your current plan. Please upgrade your plan to unlock ResDex seats.");
+      }
+      const currentResdexCount = allSubUsers.filter((su) => su.permissions?.resdex).length;
+      if (currentResdexCount >= limits.resdexLimit) {
+        throw createHttpError(400, `ResDex seat limit of ${limits.resdexLimit} reached. Upgrade plan or unassign another user's seat.`);
+      }
+    }
+
+    if (willEnableJobBooster) {
+      const currentJobBoosterCount = allSubUsers.filter((su) => su.permissions?.jobBooster).length;
+      if (currentJobBoosterCount >= limits.jobBoosterLimit) {
+        throw createHttpError(400, `Job Booster seat limit of ${limits.jobBoosterLimit} reached.`);
+      }
+    }
+  }
 
   if (jobPosting !== undefined) subUser.permissions.jobPosting = jobPosting;
   if (jobBooster !== undefined) subUser.permissions.jobBooster = jobBooster;

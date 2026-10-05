@@ -17,6 +17,7 @@ const NotFound = lazy(() => import("../pages/NotFound"));
 const CommercialDashboardPage = lazy(() => import("../pages/commercial/CommercialDashboardPage"));
 const CommercialProductsPage = lazy(() => import("../pages/commercial/CommercialProductsPage"));
 const CommercialPlansPage = lazy(() => import("../pages/commercial/CommercialPlansPage"));
+const CommercialPlanBuilderPage = lazy(() => import("../pages/commercial/CommercialPlanBuilderPage"));
 const CommercialSubscriptionsPage = lazy(() => import("../pages/commercial/CommercialSubscriptionsPage"));
 const CommercialCreditLedgerPage = lazy(() => import("../pages/commercial/CommercialCreditLedgerPage"));
 const CommercialAuditLogsPage = lazy(() => import("../pages/commercial/CommercialAuditLogsPage"));
@@ -79,6 +80,38 @@ const router = createBrowserRouter([
             element: (
               <Suspense fallback={<SuspenseSpinner />}>
                 <CommercialPlansPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/plans/builder",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialPlanBuilderPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/plans/builder/:planId",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialPlanBuilderPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/plans/new",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialPlanBuilderPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/commercial/plans/:planId/edit",
+            element: (
+              <Suspense fallback={<SuspenseSpinner />}>
+                <CommercialPlanBuilderPage />
               </Suspense>
             ),
           },

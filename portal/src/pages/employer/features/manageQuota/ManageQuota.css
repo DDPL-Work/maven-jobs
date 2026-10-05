@@ -167,6 +167,24 @@
   color: #15803d;
 }
 
+.mq-stat-badge.ai {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.mq-stat-badge.job {
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.mq-stat-icon-wrapper.ai {
+  background: #f5f3ff;
+}
+
+.mq-stat-icon-wrapper.job {
+  background: #fdf2f8;
+}
+
 .mq-stat-label {
   font-size: 12.5px;
   font-weight: 600;
@@ -217,6 +235,14 @@
 
 .mq-stat-progress-fill.nvite {
   background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.mq-stat-progress-fill.ai {
+  background: linear-gradient(90deg, #a855f7, #6d28d9);
+}
+
+.mq-stat-progress-fill.job {
+  background: linear-gradient(90deg, #f43f5e, #be185d);
 }
 
 .mq-stat-footer {

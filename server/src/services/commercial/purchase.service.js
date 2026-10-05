@@ -31,6 +31,7 @@ class PurchaseService {
     paymentMethod = "ONLINE",
     transactionId = "",
     actor = {},
+    isUpgrade = false,
   }) {
     const plan = await Plan.findById(planId);
     if (!plan || plan.status === "ARCHIVED") {
@@ -59,7 +60,61 @@ class PurchaseService {
 
     const effectiveUserId = userId || actor.id || actor._id || null;
 
-    // 1. Create CommercialOrder
+    // Detect if this is an upgrade of an existing active plan (per Mobile Recharge Model)
+    let currentActiveSub = await Subscription.findOne({
+      companyId,
+      subscriptionType: "PLAN",
+      status: "ACTIVE",
+      endDate: { $gte: now },
+    });
+
+    if (!currentActiveSub && isUpgrade) {
+      currentActiveSub = await Subscription.findOne({
+        companyId,
+        subscriptionType: "PLAN",
+        status: "ACTIVE",
+      }).sort({ createdAt: -1 });
+    }
+
+    const isPlanUpgrade = Boolean(isUpgrade || currentActiveSub);
+
+    // Compute unused rollover credits from previous active plan if upgrading
+    const rolloverCreditsMap = {}; // { [productCode]: number }
+
+    if (isPlanUpgrade) {
+      // 1. Gather remaining quantity from active entitlements
+      const oldActiveEntitlements = await Entitlement.find({
+        companyId,
+        status: "ACTIVE",
+        expiryDate: { $gte: now },
+        remainingQuantity: { $gt: 0 },
+        ...(currentActiveSub ? { subscriptionId: currentActiveSub._id } : {}),
+      });
+
+      for (const ent of oldActiveEntitlements) {
+        const code = String(ent.productCode || "").toUpperCase();
+        const isAi = code === "AI_CREDIT" || code.includes("AI");
+        // Non-AI products roll over their remaining unused balance on upgrade
+        if (!isAi && ent.remainingQuantity > 0) {
+          rolloverCreditsMap[code] = (rolloverCreditsMap[code] || 0) + ent.remainingQuantity;
+        }
+      }
+
+      // 2. Also check company.planSnapshot.services for remaining unused balance
+      const currentCompany = await Company.findById(companyId);
+      if (currentCompany?.planSnapshot?.services && Array.isArray(currentCompany.planSnapshot.services)) {
+        for (const s of currentCompany.planSnapshot.services) {
+          const code = String(s.productCode || "").toUpperCase();
+          const isAi = code === "AI_CREDIT" || code.includes("AI");
+          if (!isAi) {
+            const unusedInSnapshot = Math.max(0, (s.quantity || 0) - (s.usedQuantity || 0));
+            rolloverCreditsMap[code] = Math.max(rolloverCreditsMap[code] || 0, unusedInSnapshot);
+          }
+        }
+      }
+    }
+
+    // 1. Create CommercialOrder (Full listed price of upgraded plan per Q2.3)
     const orderNumber = this.generateOrderNumber();
     const order = await CommercialOrder.create({
       orderNumber,
@@ -97,25 +152,132 @@ class PurchaseService {
       status: "SUCCESS",
     });
 
-    // 3. Build Immutable Entitlement Snapshot
+    // 3. Mark old active subscription as UPGRADED and supersede its active entitlements
+    if (currentActiveSub) {
+      currentActiveSub.status = "UPGRADED";
+      await currentActiveSub.save();
+
+      await Entitlement.updateMany(
+        {
+          companyId,
+          subscriptionId: currentActiveSub._id,
+          status: "ACTIVE",
+        },
+        {
+          $set: {
+            status: "SUPERSEDED",
+            remainingQuantity: 0,
+          },
+        }
+      );
+    }
+
+    if (isPlanUpgrade) {
+      // Supersede active AI_CREDIT entitlement from previous plan so the new tier's monthly quota applies
+      await Entitlement.updateMany(
+        {
+          companyId,
+          productCode: "AI_CREDIT",
+          status: "ACTIVE",
+          ...(currentActiveSub ? { subscriptionId: currentActiveSub._id } : {}),
+        },
+        {
+          $set: {
+            status: "SUPERSEDED",
+            remainingQuantity: 0,
+          },
+        }
+      );
+
+      // If no subscription record (e.g. initial free tier), supersede only non-standalone plan entitlements
+      if (!currentActiveSub) {
+        const standaloneSubs = await Subscription.find({
+          companyId,
+          subscriptionType: { $in: ["STANDALONE", "ADD_ON"] },
+        }).select("_id");
+        const standaloneSubIds = standaloneSubs.map((s) => s._id);
+
+        const rolledOverCodes = Object.keys(rolloverCreditsMap);
+        if (rolledOverCodes.length > 0) {
+          await Entitlement.updateMany(
+            {
+              companyId,
+              productCode: { $in: rolledOverCodes },
+              status: "ACTIVE",
+              subscriptionId: { $nin: standaloneSubIds },
+            },
+            {
+              $set: {
+                status: "SUPERSEDED",
+                remainingQuantity: 0,
+              },
+            }
+          );
+        }
+      }
+    }
+
+    // 4. Build Immutable Entitlement Snapshot (Stacking new credits on top of old remaining credits)
+    const handledProductCodes = new Set();
+
     const entitlementSnapshot = (planVersion.items || []).map((item) => {
-      const itemValidityDays = Number(item.validity || validityDays);
-      const itemExpiry = new Date(now.getTime() + itemValidityDays * 24 * 60 * 60 * 1000);
+      const code = String(item.productCode || "").toUpperCase();
+      handledProductCodes.add(code);
+      const isAiCredit = code === "AI_CREDIT" || code.includes("AI");
+
+      let itemValidityDays;
+      let itemExpiry;
+
+      if (isAiCredit) {
+        // AI credits are strictly monthly: expire at the end of the current month (no carry forward)
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        itemExpiry = new Date(Math.min(endOfMonth.getTime(), endDate.getTime()));
+        itemValidityDays = Math.max(1, Math.ceil((itemExpiry - now) / (1000 * 60 * 60 * 24)));
+      } else {
+        // Job posting, search resume, and send mivites are allocated for the full cycle of the plan days
+        itemValidityDays = validityDays;
+        itemExpiry = endDate;
+      }
+
+      const rolloverQty = !isAiCredit ? (rolloverCreditsMap[code] || 0) : 0;
+      const totalQuantity = (item.quantity || 0) + rolloverQty;
 
       return {
         productId: item.productId,
         productCode: item.productCode,
         productName: item.productName,
-        quantity: item.quantity,
+        quantity: totalQuantity,
+        basePlanQuantity: item.quantity,
+        rolledOverQuantity: rolloverQty,
         unit: item.unit,
         validityDays: itemValidityDays,
-        userLimit: item.userLimit || 0,
         features: item.features || [],
         expiryDate: itemExpiry,
       };
     });
 
-    // 4. Create Subscription
+    // If previous plan had unused credits for a product not in the new plan, preserve them
+    for (const [code, leftoverQty] of Object.entries(rolloverCreditsMap)) {
+      if (!handledProductCodes.has(code) && leftoverQty > 0) {
+        const prod = await Product.findOne({ code });
+        if (prod) {
+          entitlementSnapshot.push({
+            productId: prod._id,
+            productCode: prod.code,
+            productName: prod.name,
+            quantity: leftoverQty,
+            basePlanQuantity: 0,
+            rolledOverQuantity: leftoverQty,
+            unit: prod.unit || "Job",
+            validityDays,
+            features: prod.features || [],
+            expiryDate: endDate,
+          });
+        }
+      }
+    }
+
+    // 5. Create Subscription
     const subscription = await Subscription.create({
       companyId,
       subscriptionType: "PLAN",
@@ -134,12 +296,14 @@ class PurchaseService {
         planName: plan.name,
         validityDays,
         purchasedAt: now,
+        isUpgrade: isPlanUpgrade,
+        upgradedFromSubscriptionId: currentActiveSub ? currentActiveSub._id : null,
       },
       entitlementSnapshot,
       orderId: order._id,
     });
 
-    // 5. Create Live Entitlements & Record Credit Ledger Entries
+    // 6. Create Live Entitlements & Record Credit Ledger Entries
     for (const snapItem of entitlementSnapshot) {
       const entitlement = await Entitlement.create({
         companyId,
@@ -152,7 +316,6 @@ class PurchaseService {
         remainingQuantity: snapItem.quantity,
         unit: snapItem.unit,
         features: snapItem.features,
-        userLimit: snapItem.userLimit,
         startDate: now,
         expiryDate: snapItem.expiryDate,
         status: "ACTIVE",
@@ -168,47 +331,59 @@ class PurchaseService {
       });
       const balanceAfter = activeSameProducts.reduce((sum, e) => sum + (e.remainingQuantity || 0), 0);
 
+      const rolledOver = snapItem.rolledOverQuantity || 0;
       await CreditLedgerService.recordEntry({
         companyId,
         subscriptionId: subscription._id,
         entitlementId: entitlement._id,
         productId: snapItem.productId,
         productCode: snapItem.productCode,
-        transactionType: "PLAN_PURCHASE",
+        transactionType: isPlanUpgrade ? "PLAN_UPGRADE" : "PLAN_PURCHASE",
         quantity: snapItem.quantity,
         balanceAfter,
         referenceType: "Order",
         referenceId: String(order._id),
         expiryDate: snapItem.expiryDate,
-        notes: `Plan purchase: ${plan.name} v${planVersion.version}`,
+        notes: isPlanUpgrade
+          ? `Plan upgrade to ${plan.name} v${planVersion.version}${rolledOver > 0 ? ` (Includes ${rolledOver} rolled-over credits)` : ""}`
+          : `Plan purchase: ${plan.name} v${planVersion.version}`,
         createdBy: actor,
       });
     }
 
     await AuditLogService.log({
-      action: "PURCHASE_PLAN",
+      action: isPlanUpgrade ? "UPGRADE_PLAN" : "PURCHASE_PLAN",
       targetType: "SUBSCRIPTION",
       targetId: subscription._id,
       targetName: `${plan.name} v${planVersion.version}`,
       performedBy: actor,
+      beforeSnapshot: currentActiveSub ? currentActiveSub.toObject() : null,
       afterSnapshot: { subscription: subscription.toObject(), order: order.toObject() },
-      reason: "Plan purchased successfully",
+      reason: isPlanUpgrade
+        ? "Customer upgraded plan, previous unused credits rolled over on top"
+        : "Plan purchased successfully",
     });
 
-    // 6. Save plan snapshot and consumed services/products into Company profile
-    const servicesSnapshot = (planVersion.items || []).map((item) => ({
-      productId: item.productId,
-      productCode: item.productCode,
-      productName: item.productName,
-      category: item.category || "",
-      productType: item.productType || "",
-      quantity: item.quantity,
-      unit: item.unit,
-      validity: item.validity || validityDays,
-      validityUnit: item.validityUnit || "DAYS",
-      userLimit: item.userLimit || 0,
-      features: item.features || [],
-    }));
+    // 7. Save plan snapshot and services into Company profile
+    const servicesSnapshot = entitlementSnapshot.map((snap) => {
+      const code = String(snap.productCode || "").toUpperCase();
+      const isAiCredit = code === "AI_CREDIT" || code.includes("AI");
+      const itemValidity = isAiCredit ? 30 : validityDays;
+
+      return {
+        productId: snap.productId,
+        productCode: snap.productCode,
+        productName: snap.productName,
+        category: "",
+        productType: "",
+        quantity: snap.quantity,
+        usedQuantity: 0,
+        unit: snap.unit,
+        validity: itemValidity,
+        validityUnit: "DAYS",
+        features: snap.features || [],
+      };
+    });
 
     const companyUpdate = {
       planSnapshot: {
@@ -227,6 +402,7 @@ class PurchaseService {
         services: servicesSnapshot,
       },
       packageExpiresAt: endDate,
+      packageType: plan.name,
     };
 
     const jobItem = servicesSnapshot.find(
@@ -243,6 +419,7 @@ class PurchaseService {
       subscription,
       order,
       payment,
+      isUpgrade: isPlanUpgrade,
     };
   }
 
@@ -423,7 +600,6 @@ class PurchaseService {
           quantity: totalCredits,
           unit: product.unit,
           validityDays,
-          userLimit: 0,
           features: product.features || [],
           expiryDate,
         },
@@ -507,43 +683,21 @@ class PurchaseService {
     companyId,
     userId,
     newPlanId,
+    versionId = null,
     paymentMethod = "ONLINE",
     transactionId = "",
     actor = {},
   }) {
-    const currentSub = await Subscription.findOne({
-      companyId,
-      subscriptionType: "PLAN",
-      status: "ACTIVE",
-    });
-
-    if (currentSub) {
-      currentSub.status = "UPGRADED";
-      await currentSub.save();
-    }
-
-    // Purchase new plan
-    const result = await this.purchasePlan({
+    return await this.purchasePlan({
       companyId,
       userId,
       planId: newPlanId,
+      versionId,
       paymentMethod,
       transactionId,
       actor,
+      isUpgrade: true,
     });
-
-    await AuditLogService.log({
-      action: "UPGRADE_PLAN",
-      targetType: "SUBSCRIPTION",
-      targetId: result.subscription._id,
-      targetName: `Upgrade to Plan ID: ${newPlanId}`,
-      performedBy: actor,
-      beforeSnapshot: currentSub ? currentSub.toObject() : null,
-      afterSnapshot: result.subscription.toObject(),
-      reason: "Customer upgraded plan, previous unused credits preserved",
-    });
-
-    return result;
   }
 
   /**
