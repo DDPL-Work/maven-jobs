@@ -10,6 +10,7 @@ import EmployerLayout from '../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../components/employer/EmployerBreadcrumb';
 import authService from '../../../services/authService';
 import DynamicReportTable from './DynamicReportTable';
+import CustomDatePicker from '../../../components/common/CustomDatePicker';
 import './JobPostingReport.css';
 
 // -------------------------------------------------------------
@@ -334,6 +335,7 @@ export default function JobPostingReport() {
   // -------------------------------------------------------------
   return (
     <EmployerLayout
+      containerWidth={1240}
       company={company}
       activeTab="report"
       onNavigate={(tabId) => {
@@ -414,11 +416,11 @@ export default function JobPostingReport() {
                       {[['From', fromDate, setFromDate], ['To', toDate, setToDate]].map(([lbl, val, setter]) => (
                         <div key={lbl} className="jpr-date-item">
                           <span className="jpr-date-sublabel">{lbl}:</span>
-                          <div className="jpr-date-input-wrap">
-                            <FiCalendar className="jpr-date-icon" size={15} />
-                            <input type="date" className="jpr-date-input"
-                              value={val} max={yesterdayStr} onChange={e => setter(e.target.value)} />
-                          </div>
+                          <CustomDatePicker
+                            value={val}
+                            max={yesterdayStr}
+                            onChange={setter}
+                          />
                         </div>
                       ))}
                     </div>
@@ -474,11 +476,11 @@ export default function JobPostingReport() {
                             {[['From', applyFromDate, setApplyFromDate], ['To', applyToDate, setApplyToDate]].map(([lbl, val, setter]) => (
                               <div key={lbl} className="jpr-date-item">
                                 <span className="jpr-date-sublabel">{lbl}:</span>
-                                <div className="jpr-date-input-wrap">
-                                  <FiCalendar className="jpr-date-icon" size={15} />
-                                  <input type="date" className="jpr-date-input"
-                                    value={val} max={yesterdayStr} onChange={e => setter(e.target.value)} />
-                                </div>
+                                <CustomDatePicker
+                                  value={val}
+                                  max={yesterdayStr}
+                                  onChange={setter}
+                                />
                               </div>
                             ))}
                           </div>
@@ -553,37 +555,66 @@ export default function JobPostingReport() {
               <div className="jpr-form-row">
                 <div className="jpr-row-label">Select Email to get Reports:</div>
                 <div className="jpr-row-content">
-                  <div className="jpr-email-container">
+                  <div
+                    className="jpr-email-container"
+                    onClick={() => {
+                      if (!isAddingEmail) setIsAddingEmail(true);
+                    }}
+                  >
                     {emailList.map(email => (
                       <div key={email} className="jpr-email-chip">
-                        <span>{email}</span>
-                        <button type="button" className="jpr-email-chip-remove"
-                          onClick={() => handleRemoveEmail(email)} aria-label={`Remove ${email}`}>
+                        <span className="jpr-email-chip-text">{email}</span>
+                        <button
+                          type="button"
+                          className="jpr-email-chip-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveEmail(email);
+                          }}
+                          aria-label={`Remove ${email}`}
+                        >
                           <FiX size={13} />
                         </button>
                       </div>
                     ))}
                     {isAddingEmail ? (
-                      <input type="email" className="jpr-email-input" placeholder="Type email and press Enter─────────────────────────────────────────────────────────────"
-                        value={emailInput} autoFocus onChange={e => setEmailInput(e.target.value)}
+                      <input
+                        type="email"
+                        className="jpr-email-input"
+                        placeholder="Type email and press Enter..."
+                        value={emailInput}
+                        autoFocus
+                        onChange={e => setEmailInput(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); handleAddEmail(); }
-                          else if (e.key === 'Escape') { setIsAddingEmail(false); setEmailInput(''); }
+                          if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault();
+                            handleAddEmail();
+                          } else if (e.key === 'Escape') {
+                            setIsAddingEmail(false);
+                            setEmailInput('');
+                          }
                         }}
-                        onBlur={handleAddEmail} />
+                        onBlur={handleAddEmail}
+                      />
                     ) : (
-                      <button type="button" onClick={() => setIsAddingEmail(true)}
-                        style={{ border:'none', background:'transparent', color:'#64748b', fontSize:13, cursor:'pointer', padding:'4px 6px', display:'inline-flex', alignItems:'center', gap:4 }}>
-                        <FiPlus size={13} /> Add another...
+                      <button
+                        type="button"
+                        className="jpr-email-add-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsAddingEmail(true);
+                        }}
+                      >
+                        <FiPlus size={13} /> Add Email
                       </button>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="jpr-form-row" style={{ marginBottom: 0 }}>
+              <div className="jpr-form-row jpr-auto-email-actions-row" style={{ marginBottom: 0 }}>
                 <div className="jpr-row-label" />
-                <div className="jpr-row-content" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div className="jpr-row-content jpr-auto-email-actions">
                   <button
                     type="button"
                     className="jpr-btn-primary"
@@ -598,7 +629,6 @@ export default function JobPostingReport() {
                     className="jpr-btn-outline"
                     onClick={handleSendNow}
                     disabled={isSendingEmail || !emailList.length}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     title="Generate and email the report immediately to the selected email(s)"
                   >
                     <FiMail size={15} />

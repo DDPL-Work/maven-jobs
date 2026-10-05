@@ -20,7 +20,7 @@ import {
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import { useAuth } from "../../../../AuthContext";
 import AvatarDropdown from "../../../../components/common/AvatarDropdown";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 
 function useFadeIn(threshold = 0.12) {
   const ref = useRef(null);

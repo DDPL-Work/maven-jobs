@@ -1,0 +1,1085 @@
+/* ========================================================
+   EMPLOYER HELP CENTER (/employer-help) STYLES
+   Scoped strictly to .eh-page-root
+   ======================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+.eh-page-root {
+  --navy: #002366;
+  --navy-dark: #001540;
+  --green: #10b981;
+  --green-dark: #0da371;
+  --slate-900: #0f172a;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-500: #64748b;
+  --slate-400: #94a3b8;
+  --slate-200: #e2e8f0;
+  --slate-100: #f1f5f9;
+  --slate-50: #f8fafc;
+  --fd: 'Bricolage Grotesque', sans-serif;
+  
+  background: var(--slate-50);
+  min-height: 100vh;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--slate-900);
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.eh-page-root *,
+.eh-page-root *::before,
+.eh-page-root *::after {
+  box-sizing: border-box;
+}
+
+.eh-page-root h1,
+.eh-page-root h2,
+.eh-page-root h3,
+.eh-page-root h4,
+.eh-page-root p {
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Keyframe Animations ── */
+@keyframes ehFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ehPing {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* ── Hero Section ── */
+.eh-hero-sec {
+  background: linear-gradient(135deg, #030a1c 0%, #002366 55%, #0a1b44 100%);
+  padding: 110px 44px 110px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.eh-hero-bg-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background-image: radial-gradient(#fff 1px, transparent 1px);
+  background-size: 26px 26px;
+  pointer-events: none;
+}
+
+.eh-hero-glow-1 {
+  position: absolute;
+  top: -15%;
+  right: -5%;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.eh-hero-glow-2 {
+  position: absolute;
+  bottom: -20%;
+  left: -5%;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.eh-hero-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  animation: ehFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.eh-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 7px 18px;
+  border-radius: 100px;
+  margin-bottom: 22px;
+  font-family: var(--fd);
+  backdrop-filter: blur(8px);
+}
+
+.eh-hero-title {
+  font-family: var(--fd);
+  font-size: clamp(34px, 4.8vw, 56px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+
+.eh-hero-title span {
+  color: #10b981;
+}
+
+.eh-hero-sub {
+  font-size: 16.5px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.7;
+  max-width: 560px;
+  margin: 0 auto 36px;
+}
+
+/* ── Search Bar ── */
+.eh-search-box {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto 20px;
+  border-radius: 100px;
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+}
+
+.eh-search-box:focus-within {
+  box-shadow: 0 24px 60px rgba(0, 35, 102, 0.35), 0 0 0 3px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.eh-search-icon {
+  position: absolute;
+  left: 22px;
+  color: var(--slate-400);
+  pointer-events: none;
+}
+
+.eh-search-input {
+  width: 100%;
+  padding: 18px 56px 18px 54px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  color: var(--slate-900);
+  font-family: 'DM Sans', sans-serif;
+  border-radius: 100px;
+}
+
+.eh-search-clear {
+  position: absolute;
+  right: 16px;
+  background: var(--slate-100);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--slate-500);
+  transition: all 0.2s ease;
+}
+
+.eh-search-clear:hover {
+  background: var(--slate-200);
+  color: var(--slate-900);
+}
+
+/* ── Search suggestions pills ── */
+.eh-search-tags {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.eh-search-tag-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 4px 11px;
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.eh-search-tag-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+/* ── Hero Stats Pills ── */
+.eh-hero-stats {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.eh-stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 100px;
+  backdrop-filter: blur(8px);
+}
+
+.eh-stat-pill-val {
+  font-family: var(--fd);
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.eh-stat-pill-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+/* ── Quick Links Strip ── */
+.eh-quick-links-wrap {
+  max-width: 1280px;
+  margin: -36px auto 0;
+  padding: 0 44px;
+  position: relative;
+  z-index: 10;
+}
+
+.eh-quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.eh-quick-card {
+  background: #ffffff;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 18px;
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 24px rgba(0, 35, 102, 0.04);
+}
+
+.eh-quick-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 35, 102, 0.1);
+  border-color: rgba(0, 35, 102, 0.2);
+}
+
+.eh-quick-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eh-quick-card-title {
+  font-family: var(--fd);
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--slate-900);
+  margin-bottom: 2px;
+}
+
+.eh-quick-card-desc {
+  font-size: 12px;
+  color: var(--slate-500);
+  font-weight: 500;
+}
+
+.eh-quick-card-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--slate-400);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.eh-quick-card:hover .eh-quick-card-arrow {
+  transform: translateX(3px);
+  color: var(--navy);
+}
+
+/* ── Helplines Section ── */
+.eh-helpline-sec {
+  max-width: 1280px;
+  margin: 56px auto 88px;
+  padding: 0 44px;
+}
+
+.eh-sec-header-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.eh-sec-title {
+  font-family: var(--fd);
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 800;
+  color: var(--slate-900);
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+
+.eh-sec-sub {
+  font-size: 14px;
+  color: var(--slate-500);
+  font-weight: 500;
+}
+
+/* ── Region Filters ── */
+.eh-region-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.eh-region-btn {
+  padding: 8px 18px;
+  border-radius: 100px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1.5px solid var(--slate-200);
+  background: #ffffff;
+  color: var(--slate-600);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--fd);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eh-region-btn:hover {
+  border-color: rgba(0, 35, 102, 0.3);
+  color: var(--navy);
+  transform: translateY(-1px);
+}
+
+.eh-region-btn.active {
+  background: var(--navy);
+  color: #ffffff;
+  border-color: var(--navy);
+  box-shadow: 0 6px 18px rgba(0, 35, 102, 0.2);
+}
+
+.eh-region-count {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ── Cards Grid ── */
+.eh-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+  gap: 20px;
+}
+
+.eh-card {
+  background: #ffffff;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 20px;
+  padding: 24px 22px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 35, 102, 0.03);
+}
+
+.eh-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 35, 102, 0.09);
+  border-color: rgba(0, 35, 102, 0.2);
+}
+
+.eh-card.selected {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(0, 35, 102, 0.12), 0 16px 40px rgba(0, 35, 102, 0.12);
+}
+
+.eh-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.eh-card-state-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.eh-code-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fd);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.eh-card-state-name {
+  font-family: var(--fd);
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--slate-900);
+  line-height: 1.25;
+  margin-bottom: 3px;
+}
+
+.eh-region-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 19px;
+  padding: 0 8px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.eh-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 100px;
+  background: #ecfdf5;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 10px;
+  font-weight: 800;
+  color: #059669;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.eh-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  position: relative;
+}
+
+.eh-card-divider {
+  height: 1px;
+  background: var(--slate-100);
+  margin-bottom: 16px;
+}
+
+.eh-contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.eh-contact-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.eh-contact-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.eh-contact-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eh-contact-phone-text {
+  font-family: var(--fd);
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: 0.02em;
+}
+
+.eh-contact-email-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eh-contact-link:hover .eh-contact-phone-text {
+  text-decoration: underline;
+}
+
+.eh-contact-link:hover .eh-contact-email-text {
+  color: var(--navy);
+}
+
+.eh-copy-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--slate-400);
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.eh-copy-btn:hover {
+  background: var(--slate-100);
+  color: var(--navy);
+}
+
+.eh-copy-btn.copied {
+  color: var(--green);
+  background: #ecfdf5;
+}
+
+/* ── Card Expanded Drawer ── */
+.eh-card-drawer {
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.eh-drawer-content {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--slate-50);
+  border-radius: 12px;
+  border: 1px solid var(--slate-200);
+  display: flex;
+  gap: 20px;
+}
+
+.eh-drawer-item-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--slate-400);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+
+.eh-drawer-item-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate-700);
+}
+
+/* ── Empty Search State ── */
+.eh-empty-box {
+  text-align: center;
+  padding: 72px 40px;
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1.5px dashed var(--slate-200);
+}
+
+.eh-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--slate-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.eh-empty-title {
+  font-family: var(--fd);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--slate-700);
+  margin-bottom: 8px;
+}
+
+.eh-empty-sub {
+  font-size: 14.5px;
+  color: var(--slate-400);
+  margin-bottom: 22px;
+}
+
+.eh-empty-btn {
+  padding: 11px 24px;
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  font-family: var(--fd);
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 35, 102, 0.2);
+  transition: all 0.2s ease;
+}
+
+.eh-empty-btn:hover {
+  background: var(--navy-dark);
+  transform: translateY(-1px);
+}
+
+/* ── FAQ Section ── */
+.eh-faq-sec {
+  max-width: 880px;
+  margin: 0 auto 96px;
+  padding: 0 44px;
+}
+
+.eh-faq-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.eh-faq-card-wrap {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1.5px solid var(--slate-200);
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 35, 102, 0.04);
+}
+
+.eh-faq-btn {
+  width: 100%;
+  padding: 22px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.eh-faq-btn:hover {
+  background: var(--slate-50);
+}
+
+.eh-faq-num-box {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.eh-faq-chevron-box {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.eh-faq-answer {
+  padding: 0 28px 24px 72px;
+  font-size: 14.5px;
+  color: var(--slate-600);
+  line-height: 1.8;
+}
+
+/* ── Contact CTA Banner ── */
+.eh-cta-sec {
+  max-width: 1280px;
+  margin: 0 auto 96px;
+  padding: 0 44px;
+}
+
+.eh-cta-box {
+  background: linear-gradient(135deg, #030a1c 0%, #002366 100%);
+  border-radius: 28px;
+  padding: 68px 56px;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  align-items: center;
+  box-shadow: 0 20px 60px rgba(0, 35, 102, 0.2);
+}
+
+.eh-cta-left {
+  position: relative;
+  z-index: 1;
+}
+
+.eh-cta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6ee7b7;
+  margin-bottom: 14px;
+  font-family: var(--fd);
+}
+
+.eh-cta-title {
+  font-family: var(--fd);
+  font-size: clamp(26px, 3.2vw, 40px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  margin-bottom: 14px;
+  line-height: 1.15;
+}
+
+.eh-cta-sub {
+  font-size: 15.5px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 32px;
+  line-height: 1.7;
+  max-width: 480px;
+}
+
+.eh-cta-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.eh-btn-green {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: var(--green);
+  color: #ffffff;
+  border: none;
+  border-radius: 100px;
+  font-family: var(--fd);
+  font-size: 14.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+  transition: all 0.25s ease;
+}
+
+.eh-btn-green:hover {
+  background: var(--green-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.45);
+}
+
+.eh-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 24px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 100px;
+  font-family: var(--fd);
+  font-size: 14.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.eh-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+}
+
+.eh-cta-card {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  padding: 32px;
+  backdrop-filter: blur(16px);
+}
+
+.eh-cta-card-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 20px;
+  font-family: var(--fd);
+}
+
+.eh-direct-line {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  padding: 10px 12px;
+  border-radius: 14px;
+  transition: background 0.2s ease;
+}
+
+.eh-direct-line:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.eh-direct-line-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.eh-direct-line-sub {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+}
+
+.eh-direct-line-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  font-family: var(--fd);
+}
+
+.eh-sla-pill {
+  margin-top: 20px;
+  padding: 11px 16px;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.eh-sla-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.eh-sla-text {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Tablet (max-width: 1024px) ── */
+@media (max-width: 1024px) {
+  .eh-hero-sec {
+    padding: 96px 32px 96px;
+  }
+  .eh-quick-links-wrap {
+    padding: 0 32px;
+  }
+  .eh-quick-links-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .eh-helpline-sec,
+  .eh-faq-sec,
+  .eh-cta-sec {
+    padding: 0 32px;
+  }
+  .eh-cta-box {
+    grid-template-columns: 1fr;
+    padding: 48px 36px;
+    gap: 36px;
+  }
+}
+
+/* ── Mobile Landscape & Tablets (max-width: 768px) ── */
+@media (max-width: 768px) {
+  .eh-hero-sec {
+    padding: 80px 20px 84px;
+  }
+  .eh-hero-title {
+    font-size: 32px;
+  }
+  .eh-hero-sub {
+    font-size: 15px;
+    margin-bottom: 28px;
+  }
+  .eh-quick-links-wrap {
+    padding: 0 20px;
+    margin-top: -24px;
+  }
+  .eh-quick-links-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .eh-helpline-sec,
+  .eh-faq-sec,
+  .eh-cta-sec {
+    padding: 0 20px;
+    margin-bottom: 64px;
+  }
+  .eh-sec-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .eh-region-tabs {
+    overflow-x: auto;
+    padding-bottom: 6px;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .eh-region-btn {
+    flex-shrink: 0;
+  }
+  .eh-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .eh-faq-btn {
+    padding: 18px 20px;
+  }
+  .eh-faq-answer {
+    padding: 0 20px 20px 58px;
+    font-size: 14px;
+  }
+  .eh-cta-box {
+    padding: 36px 24px;
+  }
+  .eh-cta-actions {
+    flex-direction: column;
+  }
+  .eh-btn-green,
+  .eh-btn-outline {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Small Mobile (max-width: 480px) ── */
+@media (max-width: 480px) {
+  .eh-hero-sec {
+    padding: 72px 16px 72px;
+  }
+  .eh-hero-badge {
+    font-size: 10px;
+    padding: 5px 14px;
+  }
+  .eh-hero-title {
+    font-size: 28px;
+  }
+  .eh-search-input {
+    padding: 16px 48px 16px 46px;
+    font-size: 14px;
+  }
+  .eh-search-icon {
+    left: 16px;
+  }
+  .eh-hero-stats {
+    gap: 8px;
+  }
+  .eh-stat-pill {
+    padding: 6px 14px;
+  }
+  .eh-stat-pill-val {
+    font-size: 13.5px;
+  }
+  .eh-stat-pill-label {
+    font-size: 11px;
+  }
+  .eh-quick-links-wrap,
+  .eh-helpline-sec,
+  .eh-faq-sec,
+  .eh-cta-sec {
+    padding: 0 16px;
+  }
+  .eh-card {
+    padding: 20px 16px;
+  }
+  .eh-faq-answer {
+    padding: 0 16px 16px 16px;
+  }
+  .eh-cta-card {
+    padding: 24px 18px;
+  }
+}

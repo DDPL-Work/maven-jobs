@@ -553,6 +553,18 @@ const EmployerLandingPage = () => {
               height="100%"
               title="Spline Background"
             />
+            {/* Overlay to hide the Spline watermark */}
+            <div 
+              style={{ 
+                position: "absolute", 
+                bottom: 0, 
+                right: 0, 
+                width: "180px", 
+                height: "60px", 
+                backgroundColor: "#020617", 
+                zIndex: 1 
+              }} 
+            />
             <div className="elp-hero-overlay" />
           </div>
 

@@ -73,9 +73,9 @@ const CLIENTS = [
 /* ─────────────────────────── STICKY PLATFORMS ─────────────────────── */
 function StickyPlatformsSection() {
     return (
-        <section style={{ background: 'transparent', padding: '96px 0', position: 'relative', overflow: 'visible' }}>
+        <section className="sticky-section-pad" style={{ background: 'transparent', padding: '96px 0', position: 'relative', overflow: 'visible' }}>
             <div style={{ position: 'absolute', top: 0, left: '10%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle,rgba(0,35,102,.12) 0%,transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px', position: 'relative', zIndex: 5 }}>
+            <div className="inner-pad" style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px', position: 'relative', zIndex: 5 }}>
                 {/* Section header */}
                 <div style={{ textAlign: 'center', marginBottom: 64 }}>
                     <div style={{
@@ -97,7 +97,7 @@ function StickyPlatformsSection() {
                     </p>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 60, alignItems: 'flex-start' }}>
+                <div className="sticky-grid" style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 60, alignItems: 'flex-start' }}>
                     {/* LEFT — sticky panel column */}
                     <div style={{ position: 'relative' }}>
                         <div
@@ -197,7 +197,7 @@ function StickyPlatformsSection() {
                     </div>
 
                     {/* RIGHT — platform cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div className="plat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         {PLATFORMS.map((p, i) => (
                             <div
                                 key={i}
@@ -269,7 +269,7 @@ export default function Branding() {
 
     return (
         <div style={{ background: '#0a0a0f', fontFamily: "'DM Sans',system-ui,sans-serif", color: '#1e293b', overflowX: 'hidden' }}>
-            <style>{`
+        <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700;800&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         :root{
@@ -424,58 +424,84 @@ export default function Branding() {
         }
 
         @media(max-width:1024px){
-          .hero-cols{flex-direction:column!important}
-          .hero-spline{width:100%!important;height:400px!important}
-          .hero-left{width:100%!important}
-          .ai-grid{grid-template-columns:1fr!important}
+          .hero-pad{min-height:auto!important;display:block!important;}
+          .hero-cols{flex-direction:column!important;gap:0!important;}
+          .hero-left{width:100%!important; padding-bottom:0!important;}
+          /* Hide the desktop spline (inside the hero section) on mobile */
+          .hero-spline-desktop{display:none!important;}
+          .ai-grid{grid-template-columns:1fr!important; gap:48px!important;}
           .demo-grid{grid-template-columns:1fr!important}
-          .sticky-grid{grid-template-columns:1fr!important}
+          .sticky-grid{grid-template-columns:1fr!important; gap:40px!important;}
           .plat-grid{grid-template-columns:1fr 1fr!important}
+          .demo-left,.demo-right{padding:40px 28px!important;}
+          .demo-right{border-left:none!important;border-top:1.5px solid rgba(255,255,255,.08)!important;}
         }
-        @media(max-width:640px){
+        /* Full-bleed mobile Spline block — hidden on desktop */
+        .hero-spline-mobile{
+          display:none;
+        }
+        @media(max-width:1024px){
+          .hero-spline-mobile{
+            display:block;
+            width:100%;
+            height:420px;
+            position:relative;
+            background:#0a0a0f;
+            overflow:hidden;
+            margin:16px auto 0!important;
+          }
+          .hero-spline-mobile iframe{
+            position:absolute;
+            top:0; left:0;
+            width:100%;
+            height:calc(100% + 64px);
+            border:none;
+          }
+        }
+        @media(max-width:768px){
           .plat-grid{grid-template-columns:1fr!important}
           .sol-grid{grid-template-columns:1fr!important}
+          .demo-form-cols{grid-template-columns:1fr!important}
+          .inner-pad,.trusted-pad,.demo-pad,.ai-section-pad,.video-pad,.sticky-section-pad{padding-left:20px!important;padding-right:20px!important;}
+          .hero-pad{padding-left:20px!important;padding-right:20px!important;}
+          .ai-section-pad,.trusted-pad,.demo-pad,.sticky-section-pad{padding-top:60px!important;padding-bottom:60px!important;}
+          .hero-inner-pad{padding-top:84px!important;padding-bottom:24px!important;}
+          .hero-badge{margin-bottom:16px!important;}
+          .hero-h1{font-size:clamp(32px,8.5vw,42px)!important;line-height:1.12!important;margin-bottom:16px!important;}
+          .hero-p{font-size:15px!important;line-height:1.65!important;margin-bottom:24px!important;max-width:100%!important;}
+          .hero-btns{margin-bottom:28px!important;gap:12px!important;justify-content:flex-start;}
+          .hero-strip{padding-top:20px!important;}
+          .hero-spline-mobile{height:380px!important;margin:12px auto 0!important;}
+          .video-pad{padding-top:36px!important;}
+          .hero-left{text-align:left;}
+          .tab-btn{font-size:12px!important;padding:8px 14px!important;}
+        }
+        @media(max-width:480px){
+          .hero-inner-pad{padding-top:76px!important;padding-bottom:20px!important;}
+          .hero-badge{margin-bottom:14px!important;}
+          .hero-h1{font-size:clamp(28px,7.5vw,34px)!important;line-height:1.14!important;margin-bottom:14px!important;}
+          .hero-p{font-size:14px!important;line-height:1.6!important;margin-bottom:22px!important;}
+          .hero-btns{flex-direction:column!important;width:100%!important;gap:10px!important;margin-bottom:24px!important;}
+          .cta-btn,.cta-btn-ghost{width:100%!important;justify-content:center!important;padding:13px 20px!important;font-size:13.5px!important;}
+          .hero-strip{padding-top:18px!important;}
+          .hero-spline-mobile{height:340px!important;margin:8px auto 0!important;}
+          .hero-stat-badge-mobile{bottom:16px!important;left:14px!important;padding:10px 14px!important;border-radius:12px!important;}
+          .demo-left,.demo-right{padding:32px 16px!important;}
         }
       `}</style>
-
-            {/* ══════════════════════════ NAV ══════════════════════════ */}
-            {/* <header style={{
-                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 2000,
-                height: 70, display: 'flex', alignItems: 'center', padding: '0 48px',
-                background: scrolled ? 'rgba(8,8,14,0.97)' : 'transparent',
-                borderBottom: scrolled ? '1px solid rgba(255,255,255,0.07)' : 'none',
-                backdropFilter: scrolled ? 'blur(22px)' : 'none',
-                transition: 'all .35s ease',
-            }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <img src={mavenLogo} alt="MavenJobs" style={{ height: 26, filter: 'invert(1) brightness(2)', display: 'block' }} />
-                        <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,.14)' }} />
-                        <span style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 13.5, fontWeight: 800, color: 'rgba(255,255,255,.75)', letterSpacing: '.04em' }}>talent cloud</span>
-                    </Link>
-
-                    <nav style={{ display: 'flex', alignItems: 'center', gap: 34 }}>
-                        {['Hiring Needs', 'Solutions', 'Platforms', 'Insights'].map(l => (
-                            <a key={l} href="#" style={{ fontSize: 13.5, fontWeight: 700, color: 'rgba(255,255,255,.55)', textDecoration: 'none', fontFamily: "'Bricolage Grotesque',sans-serif", transition: 'color .2s', letterSpacing: '.01em' }}
-                                onMouseEnter={e => e.target.style.color = '#fff'}
-                                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,.55)'}>{l}</a>
-                        ))}
-                    </nav>
-
-                    <a href="#demo" className="cta-btn" style={{ padding: '10px 22px', fontSize: 13, boxShadow: 'none' }}>Request Demo</a>
-                </div>
-            </header> */}
 
             <LandingEmployeeHeader />
 
             {/* ══════════════════════════ HERO ══════════════════════════ */}
             <section
                 ref={heroRef}
+                className="hero-pad"
                 style={{
                     background: '#0a0a0f',
                     minHeight: '100vh',
                     display: 'flex', alignItems: 'center',
-                    position: 'relative', overflow: 'hidden',
+                    position: 'relative',
+                    overflow: 'hidden',
                     padding: '0 48px',
                 }}
             >
@@ -490,7 +516,7 @@ export default function Branding() {
                 <div style={{ position: 'absolute', top: '20%', left: '-5%', width: '30vw', height: '30vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,35,102,.15) 0%, transparent 70%)', filter: 'blur(100px)', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', inset: 0, opacity: .035, backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 1px,transparent 1px)', backgroundSize: '28px 28px' }} />
 
-                <div style={{ maxWidth: 1280, margin: '0 auto', width: '100%', position: 'relative', zIndex: 2, paddingTop: 100, paddingBottom: 80 }}>
+                <div className="hero-inner-pad" style={{ maxWidth: 1280, margin: '0 auto', width: '100%', position: 'relative', zIndex: 2, paddingTop: 100, paddingBottom: 80 }}>
                     <div className="hero-cols" style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
 
                         {/* ── LEFT: Content ── */}
@@ -542,7 +568,7 @@ export default function Branding() {
                                 <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,.18)', marginBottom: 16, fontFamily: "'Bricolage Grotesque',sans-serif" }}>
                                     9 platforms · one login
                                 </div>
-                                <div style={{ display: 'flex', gap: 0, overflow: 'hidden', maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+                                <div style={{ display: 'flex', gap: 0, overflow: 'hidden', WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)', maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
                                     {[0, 1].map(k => (
                                         <div key={k} style={{ display: 'flex', gap: 36, alignItems: 'center', animation: 'marquee 26s linear infinite', flexShrink: 0, paddingRight: 36 }}>
                                             {['Naukri', 'iimjobs', 'hirist.tech', 'Zwayam', 'DoSelect', 'AmbitionBox', 'Expert Assist', 'Naukri Campus'].map((b, i) => (
@@ -554,31 +580,26 @@ export default function Branding() {
                             </div>
                         </div>
 
-                        {/* ── RIGHT: Spline 3D — integrated seamlessly ── */}
-                        <div className="hero-spline" style={{ width: '50%', height: 600, flexShrink: 0, position: 'relative' }}>
+                        {/* ── RIGHT: Spline 3D — desktop only (hidden on mobile via CSS) ── */}
+                        <div className="hero-spline-desktop" style={{ width: '50%', height: 600, flexShrink: 0, position: 'relative' }}>
                             {/* Main container — borderless for integration */}
-                            <div style={{
+                            <div className="hero-spline-inner" style={{
                                 position: 'absolute', inset: 0,
                                 background: 'transparent',
                                 zIndex: 1,
                                 overflow: 'hidden',
                             }}>
-                                {/*
-          BADGE KILL STRATEGY:
-          1. iframe shifted UP by 52px, height += 52px → badge scrolls off bottom
-          2. A solid cover div sits at z-index:10 over exact badge position
-          3. iframe has allowtransparency + bg:transparent for see-through canvas
-        */}
+                                {/* Hide Spline watermark by letting it overflow past the bottom of the container */}
                                 <iframe
                                     src="https://my.spline.design/rememberallrobot-XIrNzIJQZCDc2rFRbGfjOStk/"
                                     frameBorder="0"
                                     allowTransparency={true}
                                     style={{
                                         position: 'absolute',
-                                        top: '-52px',
+                                        top: 0,
                                         left: 0,
                                         width: '100%',
-                                        height: 'calc(100% + 52px)',
+                                        height: 'calc(100% + 64px)',
                                         border: 'none',
                                         pointerEvents: 'auto',
                                         background: 'transparent',
@@ -592,18 +613,6 @@ export default function Branding() {
                                 <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 32, background: 'linear-gradient(to right,rgba(10,10,15,.3),transparent)', zIndex: 3, pointerEvents: 'none' }} />
                                 <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 32, background: 'linear-gradient(to left,rgba(10,10,15,.3),transparent)', zIndex: 3, pointerEvents: 'none' }} />
                             </div>
-
-                            {/* ── BADGE KILLER ── covers the Spline watermark */}
-                            <div style={{
-                                position: 'absolute',
-                                bottom: 0,
-                                right: 0,
-                                width: 180,
-                                height: 48,
-                                background: '#0a0a0f',
-                                zIndex: 20,
-                                pointerEvents: 'none',
-                            }} />
 
                             {/* Floating info badge — top-left */}
                             <div style={{
@@ -641,8 +650,43 @@ export default function Branding() {
                 </div>
             </section>
 
+            {/* ══════════ MOBILE-ONLY: Full-bleed Spline 3D ══════════ */}
+            {/* This block is shown ONLY on mobile (≤1024px) via CSS display:block.
+                It lives OUTSIDE the overflow:hidden hero section so it's never clipped. */}
+            <div className="hero-spline-mobile">
+                <iframe
+                    src="https://my.spline.design/rememberallrobot-XIrNzIJQZCDc2rFRbGfjOStk/"
+                    frameBorder="0"
+                    allowTransparency={true}
+                    title="MavenJobs 3D Mobile"
+                />
+                {/* Bottom fade into next section */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top,#0a0a0f,transparent)', pointerEvents: 'none', zIndex: 3 }} />
+                {/* Top fade */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom,#0a0a0f,transparent)', pointerEvents: 'none', zIndex: 3 }} />
+                {/* Floating stat badge */}
+                <div className="hero-stat-badge-mobile" style={{
+                    position: 'absolute', bottom: 28, left: 20, zIndex: 10,
+                    background: 'rgba(10,10,15,0.85)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    backdropFilter: 'blur(16px)',
+                    borderRadius: 16, padding: '12px 18px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    animation: 'float 3.5s ease-in-out 0.5s infinite',
+                    pointerEvents: 'none'
+                }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <FiUsers size={16} color="#002366" />
+                    </div>
+                    <div>
+                        <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 17, fontWeight: 800, color: '#fff', lineHeight: 1 }}>10Cr+</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.45)', fontWeight: 600, marginTop: 2 }}>Verified profiles</div>
+                    </div>
+                </div>
+            </div>
+
             {/* ══════════════════════════ VIDEO ══════════════════════════ */}
-            <section id="video" style={{ background: '#0a0a0f', padding: '0 48px 80px' }}>
+            <section id="video" className="video-pad" style={{ background: '#0a0a0f', padding: '0 48px 80px' }}>
                 <div style={{ maxWidth: 1280, margin: '0 auto' }}>
                     <div style={{
                         borderRadius: 24, overflow: 'hidden',
@@ -707,9 +751,9 @@ export default function Branding() {
             <div style={{ background: '#0a0a0f' }}>
 
                 {/* ── SOLUTIONS TABS ── */}
-                <section style={{ background: 'transparent', padding: '96px 0 80px', position: 'relative' }}>
+                <section className="sticky-section-pad" style={{ background: 'transparent', padding: '96px 0 80px', position: 'relative' }}>
                     <div style={{ position: 'absolute', inset: 0, opacity: .03, backgroundImage: 'radial-gradient(rgba(255,255,255,.9) 1px,transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
-                    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px', position: 'relative', zIndex: 2 }}>
+                    <div className="inner-pad" style={{ maxWidth: 1280, margin: '0 auto', padding: '0 48px', position: 'relative', zIndex: 2 }}>
                         <div style={{ textAlign: 'center', marginBottom: 52 }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 800, letterSpacing: '.22em', textTransform: 'uppercase', color: '#10b981', marginBottom: 14, fontFamily: "'Bricolage Grotesque',sans-serif" }}>
                                 <FiStar size={10} fill="currentColor" /> For Your Hiring Needs
@@ -797,7 +841,7 @@ export default function Branding() {
                 </section>
 
                 {/* ── AI SECTION ── */}
-                <section style={{
+                <section className="ai-section-pad" style={{
                     background: 'linear-gradient(135deg,#040d1e 0%,#001a52 60%,#040d1e 100%)',
                     padding: '96px 48px', position: 'relative', overflow: 'hidden'
                 }}>
@@ -878,7 +922,7 @@ export default function Branding() {
                 <StickyPlatformsSection />
 
                 {/* ── TRUSTED BY ── */}
-                <section style={{ background: 'rgba(255,255,255,.02)', padding: '80px 48px', borderTop: '1px solid rgba(255,255,255,.05)', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                <section className="trusted-pad" style={{ background: 'rgba(255,255,255,.02)', padding: '80px 48px', borderTop: '1px solid rgba(255,255,255,.05)', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
                     <div style={{ maxWidth: 1280, margin: '0 auto' }}>
                         <div style={{ textAlign: 'center', marginBottom: 48 }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 800, letterSpacing: '.22em', textTransform: 'uppercase', color: '#10b981', marginBottom: 14, fontFamily: "'Bricolage Grotesque',sans-serif" }}>
@@ -910,19 +954,19 @@ export default function Branding() {
                 </section>
 
                 {/* ── DEMO CTA ── */}
-                <section id="demo" style={{ background: 'transparent', padding: '96px 48px', position: 'relative' }}>
+                <section id="demo" className="demo-pad" style={{ background: 'transparent', padding: '96px 48px', position: 'relative' }}>
                     <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(16,185,129,.08) 0%,transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
                     <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 2 }}>
-                        <div style={{
+                        <div className="demo-grid" style={{
                             background: 'rgba(255,255,255,.02)',
                             border: '1.5px solid rgba(255,255,255,.08)', borderRadius: 32,
                             overflow: 'hidden', display: 'grid',
                             gridTemplateColumns: '1fr 1fr',
                             boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
                             backdropFilter: 'blur(20px)'
-                        }} className="demo-grid">
+                        }}>
                             {/* Left info */}
-                            <div style={{ padding: '60px 52px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <div className="demo-left" style={{ padding: '60px 52px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 800, letterSpacing: '.22em', textTransform: 'uppercase', color: '#10b981', marginBottom: 16, fontFamily: "'Bricolage Grotesque',sans-serif" }}>
                                     <FiStar size={10} fill="currentColor" /> Get Started
                                 </div>
@@ -963,7 +1007,7 @@ export default function Branding() {
                             </div>
 
                             {/* Right form */}
-                            <div style={{ background: 'rgba(255,255,255,.01)', padding: '52px 48px', borderLeft: '1.5px solid rgba(255,255,255,.08)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <div className="demo-right" style={{ background: 'rgba(255,255,255,.01)', padding: '52px 48px', borderLeft: '1.5px solid rgba(255,255,255,.08)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                 <div style={{ height: 3, background: 'linear-gradient(90deg,#818cf8,#10b981)', borderRadius: 3, marginBottom: 28 }} />
                                 <h3 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 21, fontWeight: 800, color: '#fff', marginBottom: 24 }}>
                                     Book your personalized demo!
@@ -972,7 +1016,7 @@ export default function Branding() {
                                     <input className="sf-field" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)', color: '#fff' }} type="text" placeholder="Full name" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
                                     <input className="sf-field" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)', color: '#fff' }} type="tel" placeholder="10 digit mobile number" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
                                     <input className="sf-field" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)', color: '#fff' }} type="email" placeholder="Work email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div className="demo-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                         <input className="sf-field" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)', color: '#fff' }} type="text" placeholder="Your company" value={formData.company} onChange={e => setFormData(p => ({ ...p, company: e.target.value }))} />
                                         <input className="sf-field" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)', color: '#fff' }} type="text" placeholder="Your consultancy" value={formData.consultancy} onChange={e => setFormData(p => ({ ...p, consultancy: e.target.value }))} />
                                     </div>

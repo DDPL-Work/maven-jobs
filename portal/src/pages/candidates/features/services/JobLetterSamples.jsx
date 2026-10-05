@@ -5,7 +5,7 @@ import {
   FiEdit3, FiEye, FiFile, FiMail, FiSend, FiThumbsUp, FiZap,
 } from "react-icons/fi";
 import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./JobLetterSamples.css";
 
 const FAQItem = ({ q, a }) => (

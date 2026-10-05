@@ -11,6 +11,7 @@ export default function ShareFolderModal({ isOpen, onClose, onShare, selectedFol
 
   const [teamUsers, setTeamUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [shareError, setShareError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -65,9 +66,10 @@ export default function ShareFolderModal({ isOpen, onClose, onShare, selectedFol
   const handleSubmit = (e) => {
     e.preventDefault();
     if (selectedUserEmails.length === 0) {
-      alert('Please select at least one user to share with.');
+      setShareError('Please select at least one user to share with.');
       return;
     }
+    setShareError('');
     onShare({
       userEmails: selectedUserEmails,
       permission,
@@ -375,6 +377,9 @@ export default function ShareFolderModal({ isOpen, onClose, onShare, selectedFol
               Share ({selectedUserEmails.length})
             </button>
           </div>
+          {shareError && (
+            <p style={{ color: '#ef4444', fontSize: 13, margin: '8px 0 0', fontWeight: 500 }}>{shareError}</p>
+          )}
         </form>
       </div>
     </div>

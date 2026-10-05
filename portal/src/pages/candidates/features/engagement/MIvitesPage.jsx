@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiChevronRight, FiHome, FiMail, FiClock, FiUser, FiArrowLeft, FiChevronLeft, FiChevronRight as FiChevronRightIcon, FiMessageSquare, FiTrash2, FiMapPin, FiBriefcase, FiDollarSign, FiHelpCircle } from 'react-icons/fi';
 import authService from '../../../../services/authService';
 import CandidateHeader from '../../../../components/common/CandidateHeader';
-import LandingFooter from '../../../../components/LandingFooter';
+import LandingFooter from '../../../../layout/candidate/LandingFooter';
 import './MIvitesPage.css';
 
 const PAGE_SIZE = 5;
@@ -51,8 +51,8 @@ export default function MIvitesPage() {
   const startIdx = (page - 1) * PAGE_SIZE;
   const pageItems = visibleNvites.slice(startIdx, startIdx + PAGE_SIZE);
   // Ensure selected nvite is not deleted, otherwise fallback
-  const selectedNvite = (selected && actionStates[selected.id] !== 'deleted') 
-    ? selected 
+  const selectedNvite = (selected && actionStates[selected.id] !== 'deleted')
+    ? selected
     : (visibleNvites[0] || null);
 
   const handleAction = (id, action) => {
@@ -65,7 +65,7 @@ export default function MIvitesPage() {
   return (
     <div className="mv-page">
       <CandidateHeader />
-      
+
       <div className="mv-container">
         <div className="mv-header-section">
           <div className="mv-header-left">
@@ -77,7 +77,7 @@ export default function MIvitesPage() {
               <p className="mv-subtitle">Recruiters have chosen you from a large pool of candidates to apply to these jobs</p>
             </div>
           </div>
-          
+
           <div className="mv-help-wrapper">
             <button className="mv-help-trigger" onClick={() => setShowHelp(!showHelp)}>
               How do MIvites work? <FiHelpCircle size={15} />
@@ -196,13 +196,13 @@ export default function MIvitesPage() {
                     <FiArrowLeft size={16} /> Back to Invitations
                   </button>
                   <div className="mv-detail-header">
-                  {selectedNvite.logoUrl ? (
-                    <img src={selectedNvite.logoUrl} alt="" className="mv-detail-avatar-img" />
-                  ) : (
-                    <div className="mv-detail-avatar" style={{ background: getGradient(selectedNvite.company), color: '#fff' }}>
-                      {getInitials(selectedNvite.company)}
-                    </div>
-                  )}
+                    {selectedNvite.logoUrl ? (
+                      <img src={selectedNvite.logoUrl} alt="" className="mv-detail-avatar-img" />
+                    ) : (
+                      <div className="mv-detail-avatar" style={{ background: getGradient(selectedNvite.company), color: '#fff' }}>
+                        {getInitials(selectedNvite.company)}
+                      </div>
+                    )}
                     <div>
                       <h2>{selectedNvite.title}</h2>
                       <div className="mv-detail-meta">
@@ -220,21 +220,21 @@ export default function MIvitesPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mv-detail-actions">
                     <div className="mv-action-group">
                       {actionStates[selectedNvite.id] === 'applied' ? (
                         <button className="mv-btn mv-btn-applied" disabled>Applied</button>
                       ) : (
                         <>
-                          <button 
-                            className="mv-btn mv-btn-outline" 
+                          <button
+                            className="mv-btn mv-btn-outline"
                             onClick={() => handleAction(selectedNvite.id, 'not_interested')}
                           >
                             Not interested
                           </button>
-                          <button 
-                            className="mv-btn mv-btn-primary" 
+                          <button
+                            className="mv-btn mv-btn-primary"
                             onClick={() => handleAction(selectedNvite.id, 'applied')}
                           >
                             Apply
@@ -242,9 +242,9 @@ export default function MIvitesPage() {
                         </>
                       )}
                     </div>
-                    <button 
-                      className="mv-btn-icon-delete" 
-                      onClick={() => handleAction(selectedNvite.id, 'deleted')} 
+                    <button
+                      className="mv-btn-icon-delete"
+                      onClick={() => handleAction(selectedNvite.id, 'deleted')}
                       title="Delete NVite"
                     >
                       <FiTrash2 size={18} />

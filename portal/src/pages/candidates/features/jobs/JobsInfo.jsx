@@ -6,7 +6,7 @@ import {
   FiFilter, FiBookmark, FiBriefcase, FiCheckCircle, FiStar, FiInfo
 } from "react-icons/fi";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 
 const SECTIONS = [
   {
@@ -114,7 +114,7 @@ export default function JobsInfo() {
 
         {/* Footer */}
       </section>
-       <LandingFooter />
+      <LandingFooter />
     </main>
   );
 }

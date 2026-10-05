@@ -1,0 +1,973 @@
+/* ==========================================================================
+   Leave.css — Candidate Leave & Career Document Hub
+   Features:
+     - Live Template Customizer & Generator
+     - Leave Encashment & Long Weekend Calculator
+     - Category filter pills & Live Search
+     - Full responsive layout (320px - 1440px)
+   ========================================================================== */
+
+.leave-root {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* ---------------- Navigation ---------------- */
+.leave-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 72px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 12px rgba(0, 35, 102, 0.05);
+}
+
+.leave-nav-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leave-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.leave-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+.leave-nav-divider {
+  width: 1px;
+  height: 26px;
+  background: #e2e8f0;
+}
+
+.leave-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #64748b;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.18s ease;
+}
+
+.leave-back-btn:hover {
+  color: #002366;
+  background: #eef2ff;
+}
+
+.leave-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 9999px;
+}
+
+.leave-nav-tab {
+  padding: 7px 16px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leave-nav-tab.active {
+  background: #ffffff;
+  color: #002366;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------------- Hero Section ---------------- */
+.leave-hero {
+  position: relative;
+  padding: 60px 32px 70px;
+  background: linear-gradient(140deg, #001233 0%, #002366 50%, #06409b 100%);
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.leave-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.leave-hero-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.leave-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+  border-radius: 9999px;
+  padding: 5px 14px;
+  margin-bottom: 16px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.leave-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
+.leave-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 900;
+  margin: 0 0 14px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.leave-title span {
+  background: linear-gradient(90deg, #38bdf8 0%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.leave-subtitle {
+  color: #cbd5e1;
+  font-size: clamp(14px, 1.6vw, 16px);
+  line-height: 1.6;
+  margin: 0 0 28px;
+  max-width: 540px;
+}
+
+/* Hero Stats Strip */
+.leave-hero-stats {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.leave-hero-stat-val {
+  font-size: 22px;
+  font-weight: 900;
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+
+.leave-hero-stat-lbl {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Hero Quick Interactive Card */
+.leave-hero-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 24px;
+  color: #ffffff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.leave-hero-card-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.leave-hero-card-title {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+
+.leave-hero-card-desc {
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.leave-hero-card-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.leave-hero-card-tag {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.leave-hero-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.leave-hero-card-btn {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.leave-hero-card-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+/* ---------------- Search & Filter Bar ---------------- */
+.leave-controls-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 72px;
+  z-index: 90;
+  box-shadow: 0 2px 10px rgba(0, 35, 102, 0.04);
+}
+
+.leave-controls-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 14px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.leave-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 9px 16px;
+  flex: 1;
+  min-width: 240px;
+  max-width: 440px;
+  transition: border-color 0.2s;
+}
+
+.leave-search-box:focus-within {
+  border-color: #002366;
+  background: #ffffff;
+}
+
+.leave-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 13.5px;
+  color: #0f172a;
+  font-family: inherit;
+}
+
+.leave-categories-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.leave-cat-btn {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.leave-cat-btn:hover {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.leave-cat-btn.active {
+  background: #002366;
+  color: #ffffff;
+  border-color: #002366;
+}
+
+.leave-cat-count {
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.leave-cat-btn.active .leave-cat-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* ---------------- Main Content ---------------- */
+.leave-main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 36px 32px 64px;
+  box-sizing: border-box;
+  width: 100%;
+  flex: 1;
+}
+
+/* Grid of Template Cards */
+.leave-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 22px;
+}
+
+.leave-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.leave-card:hover {
+  transform: translateY(-3px);
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 28px rgba(0, 35, 102, 0.08);
+}
+
+.leave-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.leave-card-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.leave-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leave-card-tag-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.leave-fav-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s;
+}
+
+.leave-fav-btn:hover, .leave-fav-btn.active {
+  color: #f59e0b;
+}
+
+.leave-card-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+
+.leave-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 8px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  line-height: 1.3;
+}
+
+.leave-card-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.55;
+  margin: 0 0 16px;
+  flex: 1;
+}
+
+.leave-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.leave-tag-chip {
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.leave-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.leave-btn-preview {
+  flex: 1;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.leave-btn-preview:hover {
+  background: #eef2ff;
+  border-color: #c7d7ff;
+  color: #002366;
+}
+
+.leave-btn-customize {
+  flex: 1.3;
+  background: linear-gradient(135deg, #001a4d 0%, #002366 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(0, 35, 102, 0.2);
+}
+
+.leave-btn-customize:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 35, 102, 0.3);
+}
+
+/* ---------------- Interactive Live Customizer Modal ---------------- */
+.leave-customizer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 15, 50, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.leave-customizer-modal {
+  background: #ffffff;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 1100px;
+  height: 90vh;
+  max-height: 850px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 35, 102, 0.3);
+}
+
+.leave-customizer-header {
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #001a4d 0%, #002366 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.leave-customizer-header-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+
+.leave-customizer-header-sub {
+  font-size: 12px;
+  color: #93c5fd;
+  margin-top: 2px;
+}
+
+.leave-customizer-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.leave-customizer-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.leave-customizer-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  overflow: hidden;
+}
+
+/* Left Form Pane */
+.leave-form-pane {
+  padding: 22px 24px;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.leave-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leave-field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.leave-input {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13.5px;
+  color: #0f172a;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.18s;
+}
+
+.leave-input:focus {
+  border-color: #002366;
+  box-shadow: 0 0 0 3px rgba(0, 35, 102, 0.1);
+}
+
+.leave-tone-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.leave-tone-btn {
+  padding: 7px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: center;
+}
+
+.leave-tone-btn.active {
+  background: #002366;
+  color: #ffffff;
+  border-color: #002366;
+}
+
+/* Right Document Preview Pane */
+.leave-preview-pane {
+  padding: 24px 28px;
+  overflow-y: auto;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.leave-letterhead {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 28px 32px;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  font-family: 'Georgia', serif;
+  font-size: 14.5px;
+  line-height: 1.9;
+  color: #1e293b;
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.leave-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: #64748b;
+  font-family: sans-serif;
+  font-weight: 600;
+}
+
+/* Customizer Action Footer */
+.leave-customizer-footer {
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.leave-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.leave-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.leave-action-copy {
+  background: #eef2ff;
+  border: 1.5px solid #c7d7ff;
+  color: #002366;
+}
+
+.leave-action-copy:hover {
+  background: #e0e7ff;
+}
+
+.leave-action-email {
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  color: #065f46;
+}
+
+.leave-action-email:hover {
+  background: #d1fae5;
+}
+
+.leave-action-download {
+  background: #002366;
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 35, 102, 0.25);
+}
+
+.leave-action-download:hover {
+  background: #00153d;
+  transform: translateY(-1px);
+}
+
+/* ---------------- Leave Balance & Encashment Calculator Tool ---------------- */
+.leave-calc-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-top: 20px;
+}
+
+.leave-calc-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 4px 16px rgba(0, 35, 102, 0.04);
+}
+
+.leave-calc-box-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #002366;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.leave-calc-box-desc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.leave-calc-result-card {
+  background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+  border: 1.5px solid #bbf7d0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.leave-calc-payout {
+  font-size: 28px;
+  font-weight: 900;
+  color: #047857;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  margin: 6px 0;
+}
+
+/* Long Weekend Cards */
+.leave-weekend-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leave-weekend-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leave-weekend-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.leave-weekend-dates {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.leave-weekend-badge {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+/* ---------------- Responsive Styles ---------------- */
+@media (max-width: 992px) {
+  .leave-hero-container {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .leave-customizer-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .leave-form-pane {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .leave-calc-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .leave-nav-inner {
+    padding: 0 16px;
+  }
+
+  .leave-hero {
+    padding: 40px 16px 48px;
+  }
+
+  .leave-controls-inner {
+    padding: 12px 16px;
+  }
+
+  .leave-main {
+    padding: 24px 16px 48px;
+  }
+
+  .leave-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .leave-customizer-modal {
+    height: 95vh;
+    padding: 0;
+  }
+
+  .leave-letterhead {
+    padding: 18px 20px;
+    font-size: 13.5px;
+  }
+
+  .leave-footer-actions {
+    width: 100%;
+  }
+
+  .leave-action-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .leave-title {
+    font-size: 26px;
+  }
+
+  .leave-hero-stats {
+    gap: 16px;
+  }
+
+  .leave-nav-tabs {
+    display: none; /* Auto hides on very small screens, access via buttons */
+  }
+}

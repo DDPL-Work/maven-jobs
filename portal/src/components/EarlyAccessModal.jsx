@@ -145,7 +145,7 @@ export default function EarlyAccessModal({ isOpen, onClose, jobs = [] }) {
 
   return (
     <div className="ea-overlay" onClick={onClose}>
-      <div className="ea-container" onClick={e => e.stopPropagation()}>
+      <div className="eam-container" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="ea-header">

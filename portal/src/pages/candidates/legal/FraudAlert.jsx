@@ -10,7 +10,7 @@ import {
   FiChevronRight,
 } from "react-icons/fi";
 import CandidateHeader from "../../../components/common/CandidateHeader";
-import LandingFooter from "../../../components/LandingFooter";
+import LandingFooter from "../../../layout/candidate/LandingFooter";
 import "./FraudAlert.css";
 
 const NEVER_ITEMS = [

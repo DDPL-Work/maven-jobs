@@ -520,6 +520,25 @@ async function getResdexAggregatedData({
     };
   }
 
+  if (tab === "cv-downloads-report") {
+    const match = { 
+      ...baseMatch, 
+      actionType: { $in: ["CV_DOWNLOAD_EXCEL", "CV_DOWNLOAD_WORD", "RESUME_DOWNLOAD", "CV_DOWNLOAD"] } 
+    };
+    const logs = await ResdexReportLog.find(match).sort({ actionDate: -1 }).limit(300);
+
+    return {
+      headers: ["Candidate Name", "Target Role", "Recruiter", "Date"],
+      rows: logs.map((l) => [
+        l.candidateName || "Candidate",
+        l.candidateRole || "Profile",
+        `${l.subuserName} | ${l.subuserEmail}`,
+        new Date(l.actionDate).toLocaleDateString(),
+      ]),
+      rawRows: logs,
+    };
+  }
+
   return { headers: [], rows: [], rawRows: [] };
 }
 

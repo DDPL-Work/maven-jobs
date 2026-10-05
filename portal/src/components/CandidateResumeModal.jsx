@@ -8,6 +8,7 @@ export default function CandidateResumeModal({ isOpen, onClose, candidate }) {
   const resumeRef = useRef(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [templateIndex, setTemplateIndex] = useState(0);
+  const [pdfError, setPdfError] = useState('');
 
   useEffect(() => {
     if (candidate) {
@@ -40,7 +41,7 @@ export default function CandidateResumeModal({ isOpen, onClose, candidate }) {
       pdf.save(`${candidate.name.replace(/\s+/g, '_')}_Resume.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      setPdfError('Failed to generate PDF. Please try again.');
     }
     setIsDownloading(false);
   };
@@ -122,6 +123,11 @@ export default function CandidateResumeModal({ isOpen, onClose, candidate }) {
             </button>
           </div>
         </div>
+        {pdfError && (
+          <div style={{ padding: '8px 30px', background: '#fef2f2', borderBottom: '1px solid #fecaca' }}>
+            <p style={{ color: '#ef4444', fontSize: 13, margin: 0, fontWeight: 500 }}>{pdfError}</p>
+          </div>
+        )}
 
         {/* Content Area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '30px', display: 'flex', justifyContent: 'center', background: '#f8fafc' }}>

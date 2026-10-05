@@ -12,9 +12,82 @@
   --font-syne: "Syne", sans-serif;
 }
 
-/* Professional Gradient Cursor (Unified MavenJobs Theme) */
-*, body, a, button, [role="button"], .interactive {
-  cursor: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23002366' /%3E%3Cstop offset='100%25' stop-color='%2310b981' /%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M4 1L18 15L11 15.5L15 23L12 24L8 16.5L4 20.5V1Z' fill='url(%23g)' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E") 0 0, auto !important;
+/* Unified MavenJobs Custom Gradient Cursors (Matching Theme & Colors) */
+:root {
+  --cursor-default: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23002366' /%3E%3Cstop offset='100%25' stop-color='%2310b981' /%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M4 1L18 15L11 15.5L15 23L12 24L8 16.5L4 20.5V1Z' fill='url(%23g)' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E") 0 0, auto;
+  --cursor-pointer: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 256 256' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='gp' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23002366'/%3E%3Cstop offset='100%25' stop-color='%2310b981'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M224,104v50.93c0,46.2-36.85,84.55-83,85.06A83.71,83.71,0,0,1,80.6,215.4C58.79,192.33,34.15,136,34.15,136a16,16,0,0,1,6.53-22.23c7.66-4,17.1-.84,21.4,6.62l21,36.44a6.09,6.09,0,0,0,6,3.09l.12,0A8.19,8.19,0,0,0,96,151.74V32a16,16,0,0,1,16.77-16c8.61.4,15.23,7.82,15.23,16.43V104a8,8,0,0,0,8.53,8,8.17,8.17,0,0,0,7.47-8.25V88a16,16,0,0,1,16.77-16c8.61.4,15.23,7.82,15.23,16.43V112a8,8,0,0,0,8.53,8,8.17,8.17,0,0,0,7.47-8.25v-7.28c0-8.61,6.62-16,15.23-16.43A16,16,0,0,1,224,104Z' fill='url(%23gp)' stroke='white' stroke-width='14' stroke-linejoin='round'/%3E%3C/svg%3E") 10 2, pointer;
+}
+
+*, body {
+  cursor: var(--cursor-default);
+}
+
+/* Ensure all clickable, interactive, and actionable elements show matching gradient pointer cursor */
+button,
+a,
+[role="button"],
+[role="tab"],
+[role="link"],
+[role="menuitem"],
+[role="option"],
+[role="switch"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+summary,
+label,
+.interactive,
+.clickable,
+.cursor-pointer,
+.pointer,
+[onclick],
+.btn,
+[class*="btn"],
+[class*="-btn"],
+[class*="button"],
+[class*="-button"],
+[class*="-link"],
+[class*="tab-"],
+[class*="-tab"],
+.si-table-row,
+.faq-item,
+.db-nav-item,
+.cfp-phone-revealed-text,
+.fcvm-autocomplete-chevron,
+.sr-ai-assistant-card,
+.sr-recent-item,
+.sr-suggestion,
+.ps-card,
+.ps-add-card,
+.ps-asset-card,
+.ps-add-placeholder,
+.gl-nav-card,
+.gl-breadcrumb-link,
+.rxr-multiselect-item,
+.jlp-filter-option,
+.flp-folder-name,
+.jrd-contact-phone-revealed,
+.cp-checkbox-item,
+.cp-filter-modal-clear,
+.custom-select-option,
+.mvn-slash-item,
+.mvn-history-item,
+.mvn-pill {
+  cursor: var(--cursor-pointer) !important;
+}
+
+button:disabled,
+button[disabled],
+input:disabled,
+input[disabled],
+.disabled,
+[aria-disabled="true"],
+.btn:disabled,
+[class*="btn"]:disabled {
+  cursor: not-allowed !important;
 }
 
 /* Professional Interaction System */
@@ -68,6 +141,15 @@ a {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global Form Controls Normalization */
+select, select option, optgroup {
+  font-size: 13px !important;
+  font-family: inherit !important;
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+  line-height: 1.4 !important;
 }
 
 /* ========================================

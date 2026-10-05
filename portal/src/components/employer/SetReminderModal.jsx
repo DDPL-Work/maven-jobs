@@ -25,6 +25,7 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
   const [time, setTime] = useState("");
   const [mailCalendarEvent, setMailCalendarEvent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   // When modal opens, prefill defaults
   useEffect(() => {
@@ -35,6 +36,7 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
       setDate(toLocalISODate(new Date(Date.now() + 86400000))); // Default to tomorrow
       setTime("09:00");
       setMailCalendarEvent(true);
+      setErrorMsg("");
     }
   }, [isOpen, initialType]);
 
@@ -51,9 +53,10 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
 
   const handleSubmit = async () => {
     if (!description.trim() || !date || !time) {
-      alert("Please fill all required fields");
+      setErrorMsg("Please fill all required fields");
       return;
     }
+    setErrorMsg("");
 
     setLoading(true);
     try {
@@ -67,7 +70,7 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Error setting reminder");
+      setErrorMsg("Error setting reminder. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -144,6 +147,9 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
               Cancel
             </button>
           </div>
+          {errorMsg && (
+            <p style={{ color: '#ef4444', fontSize: 13, margin: '8px 0 0', fontWeight: 500 }}>{errorMsg}</p>
+          )}
           <label className="srm-checkbox-label">
             <input 
               type="checkbox" 

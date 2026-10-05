@@ -37,9 +37,9 @@ const {
 } = require("../services/auth.service");
 const QuizService = require("../services/quiz.service");
 const { fetchHomeLandingData } = require("./landing.controller");
+const aiService = require("../services/ai/AIService");
 
 const OpenAIService = require("../services/openai/OpenAIService");
-const AIService = require("../services/ai/AIService");
 const { scoreJob } = require("../recommendations/engine/scoringEngine");
 
 const createHttpError = (statusCode, message) => {
@@ -326,9 +326,9 @@ const formatProfile = (profile = {}, user = null) => {
     profilePic:
       profilePicUrl || userAvatar
         ? {
-            url: profilePicUrl || userAvatar,
-            publicId: rawProfilePic?.publicId || "",
-          }
+          url: profilePicUrl || userAvatar,
+          publicId: rawProfilePic?.publicId || "",
+        }
         : { url: "", publicId: "" },
     coverPic: coverPicUrl
       ? { url: coverPicUrl, publicId: rawCoverPic?.publicId || "" }
@@ -496,9 +496,9 @@ const computeMatchScore = (job, profile) => {
 
   const overall = Math.round(
     skillMatch * 0.4 +
-      locationMatch * 0.25 +
-      experienceMatch * 0.25 +
-      roleMatch * 0.1,
+    locationMatch * 0.25 +
+    experienceMatch * 0.25 +
+    roleMatch * 0.1,
   );
 
   return {
@@ -663,7 +663,7 @@ const getCompanyRatingsMap = async (companyIds) => {
 
 const parseDescriptionFallback = (desc) => {
   if (!desc) return { description: "", responsibilities: "", qualifications: "" };
-  
+
   const parts = desc.split(/\n\s*\n(?=[•\-])/);
   if (parts.length >= 3) {
     return {
@@ -734,14 +734,14 @@ const formatJob = (
     missingSkills: matchData?.missingSkills || [],
     screeningQuestions: Array.isArray(job.screeningQuestions)
       ? job.screeningQuestions.map((sq) => ({
-          _id: String(sq._id),
-          question: sq.question,
-          type: sq.type,
-          required: sq.required,
-          options: sq.options || [],
-          maxLength: sq.maxLength,
-          order: sq.order,
-        }))
+        _id: String(sq._id),
+        question: sq.question,
+        type: sq.type,
+        required: sq.required,
+        options: sq.options || [],
+        maxLength: sq.maxLength,
+        order: sq.order,
+      }))
       : [],
   };
 };
@@ -794,10 +794,10 @@ const formatApplication = (application, matchData = null) => ({
     : [],
   answers: Array.isArray(application.answers)
     ? application.answers.map((a) => ({
-        questionId: String(a.questionId || ""),
-        question: a.question || "",
-        answer: a.answer,
-      }))
+      questionId: String(a.questionId || ""),
+      question: a.question || "",
+      answer: a.answer,
+    }))
     : [],
   appliedFrom: application.appliedFrom || "JOB_DETAILS",
 });
@@ -879,16 +879,16 @@ const resolveQrContext = async (
   const jobs = await Job.find(
     mappedJobId && !expandToCompanyJobs
       ? {
-          _id: qrCode.jobId,
-          companyId: qrCode.companyId._id,
-          isActive: true,
-          approvalStatus: "APPROVED",
-        }
+        _id: qrCode.jobId,
+        companyId: qrCode.companyId._id,
+        isActive: true,
+        approvalStatus: "APPROVED",
+      }
       : {
-          companyId: qrCode.companyId._id,
-          isActive: true,
-          approvalStatus: "APPROVED",
-        },
+        companyId: qrCode.companyId._id,
+        isActive: true,
+        approvalStatus: "APPROVED",
+      },
   )
     .sort({ updatedAt: -1 })
     .limit(limit)
@@ -1032,12 +1032,12 @@ const getRecommendedJobs = async (profile, candidateId) => {
   return {
     mappedCompany: mappedCompany
       ? {
-          id: String(mappedCompany._id),
-          name: mappedCompany.name,
-          industry: mappedCompany.industry || "General",
-          city: mappedCompany.location?.city || "",
-          region: mappedCompany.location?.region || "",
-        }
+        id: String(mappedCompany._id),
+        name: mappedCompany.name,
+        industry: mappedCompany.industry || "General",
+        city: mappedCompany.location?.city || "",
+        region: mappedCompany.location?.region || "",
+      }
       : null,
     jobs: categorizedJobs,
   };
@@ -1062,9 +1062,9 @@ const buildSimilarJobs = async (job, candidateId) => {
 
   const applicationMap = candidateId
     ? await buildApplicationMap(
-        candidateId,
-        similarJobs.map((item) => item._id),
-      )
+      candidateId,
+      similarJobs.map((item) => item._id),
+    )
     : new Map();
 
   return similarJobs.map((item) => {
@@ -1444,8 +1444,8 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       : Promise.resolve([]),
     followedIds.length > 0
       ? Company.find({ _id: { $in: followedIds } })
-          .select("name logoUrl industry location.city updatedAt")
-          .lean()
+        .select("name logoUrl industry location.city updatedAt")
+        .lean()
       : Promise.resolve([]),
     Nvite.find({ "recipients.userId": req.user._id })
       .sort({ createdAt: -1 })
@@ -1606,10 +1606,10 @@ exports.getDashboard = asyncHandler(async (req, res) => {
         recruiterActions: effectiveRecruiterActions,
         jobMatches: recommended.jobs
           ? new Set(
-              Object.values(recommended.jobs).flatMap((arr) =>
-                Array.isArray(arr) ? arr.map((j) => String(j._id || j.id)) : [],
-              ),
-            ).size
+            Object.values(recommended.jobs).flatMap((arr) =>
+              Array.isArray(arr) ? arr.map((j) => String(j._id || j.id)) : [],
+            ),
+          ).size
           : 0,
       },
       quiz: {
@@ -1769,9 +1769,9 @@ exports.getJobs = asyncHandler(async (req, res) => {
 
   const applicationMap = req.user
     ? await buildApplicationMap(
-        req.user._id,
-        jobs.map((job) => job._id),
-      )
+      req.user._id,
+      jobs.map((job) => job._id),
+    )
     : new Map();
   const savedJobIds = new Set(
     (profile?.savedJobIds || []).map((id) => String(id)),
@@ -1782,12 +1782,12 @@ exports.getJobs = asyncHandler(async (req, res) => {
     data: {
       company: company
         ? {
-            id: String(company._id),
-            name: company.name,
-            industry: company.industry || "",
-            city: company.location?.city || "",
-            region: company.location?.region || "",
-          }
+          id: String(company._id),
+          name: company.name,
+          industry: company.industry || "",
+          city: company.location?.city || "",
+          region: company.location?.region || "",
+        }
         : null,
       jobs: jobs.map((job) => {
         const formatted = formatJob(
@@ -1968,10 +1968,10 @@ exports.createApplication = asyncHandler(async (req, res) => {
 
   const sanitizedAnswers = Array.isArray(answers)
     ? answers.map((a) => ({
-        questionId: a.questionId || null,
-        question: String(a.question || "").trim(),
-        answer: a.answer !== undefined && a.answer !== null ? a.answer : "",
-      }))
+      questionId: a.questionId || null,
+      question: String(a.question || "").trim(),
+      answer: a.answer !== undefined && a.answer !== null ? a.answer : "",
+    }))
     : [];
 
   const application = await Application.create({
@@ -1999,9 +1999,8 @@ exports.createApplication = asyncHandler(async (req, res) => {
     jobId: job._id,
     applicationId: application._id,
     title: "Application submitted",
-    message: `Your application for ${job.title} at ${
-      job.companyId?.name || "the company"
-    } has been submitted successfully.`,
+    message: `Your application for ${job.title} at ${job.companyId?.name || "the company"
+      } has been submitted successfully.`,
     category: "APPLICATION",
     actionUrl: "/candidate/applications",
   });
@@ -2046,7 +2045,7 @@ exports.createApplication = asyncHandler(async (req, res) => {
               jobTitle: job.title,
             },
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     }
   }
@@ -2193,7 +2192,7 @@ exports.toggleCompanyFollow = asyncHandler(async (req, res) => {
           category: "SYSTEM",
           actionUrl: "/employer-dashboard",
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   } else {
     followedIds.delete(String(company._id));
@@ -2352,10 +2351,10 @@ exports.updateProfile = asyncHandler(async (req, res) => {
     const isEqual =
       Array.isArray(previousValue) || Array.isArray(nextValue)
         ? JSON.stringify(previousValue || []) ===
-          JSON.stringify(nextValue || [])
+        JSON.stringify(nextValue || [])
         : isObj(previousValue) || isObj(nextValue)
           ? JSON.stringify(previousValue || {}) ===
-            JSON.stringify(nextValue || {})
+          JSON.stringify(nextValue || {})
           : String(previousValue ?? "") === String(nextValue ?? "");
 
     if (!isEqual) {
@@ -3207,23 +3206,23 @@ exports.getCompanies = asyncHandler(async (req, res) => {
 
   const reviewAggs = companyIds.length
     ? await CompanyReview.aggregate([
-        { $match: { companyId: { $in: companyIds } } },
-        {
-          $group: {
-            _id: "$companyId",
-            avgRating: { $avg: "$rating" },
-            reviewCount: { $sum: 1 },
-          },
+      { $match: { companyId: { $in: companyIds } } },
+      {
+        $group: {
+          _id: "$companyId",
+          avgRating: { $avg: "$rating" },
+          reviewCount: { $sum: 1 },
         },
-      ]).exec()
+      },
+    ]).exec()
     : [];
 
   const followersAggs = companyIds.length
     ? await CandidateProfile.aggregate([
-        { $unwind: "$followedCompanyIds" },
-        { $match: { followedCompanyIds: { $in: companyIds } } },
-        { $group: { _id: "$followedCompanyIds", count: { $sum: 1 } } },
-      ]).exec()
+      { $unwind: "$followedCompanyIds" },
+      { $match: { followedCompanyIds: { $in: companyIds } } },
+      { $group: { _id: "$followedCompanyIds", count: { $sum: 1 } } },
+    ]).exec()
     : [];
 
   let followedSet = new Set();
@@ -3314,9 +3313,9 @@ exports.getCompanyDetail = asyncHandler(async (req, res) => {
 
   const applicationMap = req.user?._id
     ? await buildApplicationMap(
-        req.user._id,
-        jobs.map((j) => j._id),
-      )
+      req.user._id,
+      jobs.map((j) => j._id),
+    )
     : new Map();
 
   let followedCompanyIds = new Set();
@@ -4017,7 +4016,9 @@ exports.getPublicCandidateById = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Invalid candidate ID");
   }
 
-  const profile = await CandidateProfile.findOne({ userId: id }).populate(
+  const profile = await CandidateProfile.findOne({ 
+    $or: [{ userId: id }, { _id: id }] 
+  }).populate(
     "userId",
     "name email avatar role",
   );
@@ -4048,7 +4049,9 @@ exports.getPublicCandidateResume = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Invalid candidate ID");
   }
 
-  const profile = await CandidateProfile.findOne({ userId: id }).select(
+  const profile = await CandidateProfile.findOne({
+    $or: [{ userId: id }, { _id: id }]
+  }).select(
     "resume userId",
   );
   if (!profile) {
@@ -4076,7 +4079,9 @@ exports.downloadPublicCandidateResume = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Invalid candidate ID");
   }
 
-  const profile = await CandidateProfile.findOne({ userId: id }).select(
+  const profile = await CandidateProfile.findOne({
+    $or: [{ userId: id }, { _id: id }]
+  }).select(
     "resume userId",
   );
   if (!profile) {
@@ -4124,15 +4129,29 @@ exports.downloadPublicCandidateResume = asyncHandler(async (req, res) => {
  * AI-matched similar candidate profiles
  * Looks up similar candidates based on current candidate's skills, title, experience, and department
  */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 exports.getSimilarCandidates = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { searchText } = req.query;
-  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-    throw createHttpError(400, "Invalid candidate ID");
+  if (!id) {
+    throw createHttpError(400, "Candidate ID is required");
   }
 
-  // 1. Get current candidate profile
-  const baseProfile = await CandidateProfile.findOne({ userId: id });
+  // 1. Get current candidate profile by _id, userId, or publicShareId
+  const candidateLookupConditions = [];
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    candidateLookupConditions.push({ userId: id });
+    candidateLookupConditions.push({ _id: id });
+  }
+  candidateLookupConditions.push({ publicShareId: id });
+
+  const baseProfile = await CandidateProfile.findOne({
+    $or: candidateLookupConditions,
+  }).populate("userId", "name email avatar phone").lean();
+
   if (!baseProfile) {
     throw createHttpError(404, "Candidate not found");
   }
@@ -4143,14 +4162,15 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
   const baseTitle = (
     baseProfile.currentTitle ||
     baseProfile.headline ||
+    baseProfile.designation ||
     ""
   ).trim();
   const baseCity = (baseProfile.currentCity || "").trim();
 
-  // 2. Build scoring query to find other candidates
-  // Exclude current candidate
+  // 2. Build similarity match criteria
   const matchCriteria = {
-    userId: { $ne: new mongoose.Types.ObjectId(id) },
+    _id: { $ne: baseProfile._id },
+    ...(baseProfile.userId ? { userId: { $ne: baseProfile.userId } } : {}),
   };
 
   const orConditions = [];
@@ -4158,140 +4178,192 @@ exports.getSimilarCandidates = asyncHandler(async (req, res) => {
     orConditions.push({ skills: { $in: baseSkills } });
   }
   if (baseTitle) {
-    orConditions.push({
-      currentTitle: { $regex: baseTitle.split(" ")[0], $options: "i" },
-    });
-    orConditions.push({
-      headline: { $regex: baseTitle.split(" ")[0], $options: "i" },
-    });
-  }
-  if (baseCity) {
-    orConditions.push({ currentCity: { $regex: baseCity, $options: "i" } });
+    const meaningfulWords = baseTitle
+      .split(/\s+/)
+      .map((w) => w.replace(/[^a-zA-Z0-9]/g, "").trim())
+      .filter((w) => w.length > 2);
+    if (meaningfulWords.length > 0) {
+      const titlePattern = `\\b(${meaningfulWords.map(escapeRegExp).join("|")})\\b`;
+      orConditions.push({ currentTitle: { $regex: titlePattern, $options: "i" } });
+      orConditions.push({ headline: { $regex: titlePattern, $options: "i" } });
+      orConditions.push({ preferredRoles: { $regex: titlePattern, $options: "i" } });
+    }
   }
 
   if (orConditions.length > 0) {
     matchCriteria.$or = orConditions;
+  } else {
+    // If base profile has no skills and no title, return 0 matches
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || req.query.resPerPage, 10) || 10));
+    return res.status(200).json({
+      success: true,
+      total: 0,
+      count: 0,
+      candidates: [],
+      data: [],
+      pagination: {
+        page,
+        limit,
+        total: 0,
+        totalPages: 0,
+      },
+      baseCandidate: {
+        id: String(baseProfile._id),
+        name: baseProfile.userId?.name || baseProfile.name || "Candidate",
+        title: baseTitle,
+      },
+    });
   }
 
-  let candidates = await CandidateProfile.find(matchCriteria)
-    .populate("userId", "name email avatar")
-    .limit(30)
+  // Fetch candidate profiles for scoring and sorting
+  const candidates = await CandidateProfile.find(matchCriteria)
+    .populate("userId", "name email avatar phone")
     .lean();
 
-  // Fallback: If not enough matching, fetch any other candidate profiles
-  if (candidates.length < 5) {
-    const more = await CandidateProfile.find({
-      userId: { $ne: new mongoose.Types.ObjectId(id) },
-    })
-      .populate("userId", "name email avatar")
-      .limit(10)
-      .lean();
-    const existingIds = new Set(candidates.map((c) => String(c._id)));
-    for (const m of more) {
-      if (!existingIds.has(String(m._id))) {
-        candidates.push(m);
-      }
-    }
+  // 3. AI-Powered Similarity Evaluation
+  let aiRankedMatches = [];
+  try {
+    aiRankedMatches = await aiService.findExactSimilarCandidatesWithAI(
+      baseProfile,
+      candidates,
+      { searchText }
+    );
+  } catch (err) {
+    console.warn("[candidate.controller] AI similarity ranking error:", err.message);
   }
 
-  // 3. AI / Heuristic Similarity Ranking
+  // Create lookup map from AI results
+  const aiMatchMap = new Map();
+  if (Array.isArray(aiRankedMatches)) {
+    aiRankedMatches.forEach((m) => {
+      if (m && m.id) aiMatchMap.set(String(m.id), m);
+    });
+  }
+
+  // Merge AI scores with candidate documents
   const scoredCandidates = candidates.map((cand) => {
-    let score = 0;
+    const cid = String(cand._id);
+    const aiMatch = aiMatchMap.get(cid);
+
+    let score = aiMatch ? aiMatch.similarityScore : 50;
     const candSkills = (cand.skills || []).map((s) => s.toLowerCase());
+    const matchingSkills = aiMatch?.matchingSkills?.length
+      ? aiMatch.matchingSkills
+      : baseSkills.filter((s) => candSkills.includes(s.toLowerCase()));
 
-    // Overlap in skills
-    const matchingSkills = [];
-    for (const s of baseSkills) {
-      if (candSkills.includes(s.toLowerCase())) {
-        score += 3;
-        matchingSkills.push(s);
-      }
+    // Keyword filter / boost if searchText passed
+    if (searchText && searchText.trim()) {
+      const kw = searchText.trim().toLowerCase();
+      const haystack = `${cand.name || ""} ${cand.currentTitle || ""} ${cand.skills?.join(" ") || ""} ${cand.currentCity || ""}`.toLowerCase();
+      if (haystack.includes(kw)) score = Math.min(99, score + 15);
     }
 
-    // Boost score based on searchText
-    if (searchText) {
-      const searchKeywords = searchText
-        .toLowerCase()
-        .split(/\s+/)
-        .filter(Boolean);
-      for (const kw of searchKeywords) {
-        if (candSkills.some((s) => s.includes(kw))) {
-          score += 6;
-          matchingSkills.push(kw); // Highlight the searched keyword
-        }
-        if (cand.currentTitle && cand.currentTitle.toLowerCase().includes(kw)) {
-          score += 10;
-        }
-        if (cand.headline && cand.headline.toLowerCase().includes(kw)) {
-          score += 8;
-        }
-      }
-    }
+    cand._similarityScore = score;
+    cand._matchingSkills = matchingSkills;
+    cand._matchingReason = aiMatch?.matchingReason || "Similar role and skillset profile";
+    return cand;
+  });
 
-    // Role / Title similarity
-    if (
-      cand.currentTitle &&
-      baseTitle &&
-      cand.currentTitle.toLowerCase().includes(baseTitle.toLowerCase())
-    ) {
-      score += 5;
-    }
+  // Filter candidates if AI identified genuine matches (score >= 50)
+  const filteredCandidates = scoredCandidates.filter((c) => c._similarityScore >= 50);
+  const finalPool = filteredCandidates.length > 0 ? filteredCandidates : scoredCandidates;
 
-    // Location similarity
-    if (
-      cand.currentCity &&
-      baseCity &&
-      cand.currentCity.toLowerCase() === baseCity.toLowerCase()
-    ) {
-      score += 2;
-    }
+  // Sort descending by similarity score
+  finalPool.sort((a, b) => b._similarityScore - a._similarityScore);
 
-    // Experience closeness
-    if (cand.totalExperience && baseProfile.totalExperience) {
-      const expDiff = Math.abs(
-        parseFloat(cand.totalExperience) -
-          parseFloat(baseProfile.totalExperience),
-      );
-      if (!isNaN(expDiff) && expDiff <= 2) score += 2;
-    }
+  const totalCount = finalPool.length;
 
-    const name = cand.userId?.name || cand.name || "Candidate";
-    const title = cand.currentTitle || cand.headline || "Software Engineer";
-    const company = cand.currentCompany || "";
-    const experience = cand.totalExperience ? `${cand.totalExperience}y` : "2y";
-    const salary = cand.expectedSalary
-      ? `₹ ${cand.expectedSalary}`
-      : "₹ 4.50 Lacs";
-    const location = cand.currentCity || "Delhi / NCR";
-    const preferredLocations = cand.preferredLocations?.length
-      ? `prefers ${cand.preferredLocations.slice(0, 3).join(", ")}`
-      : "";
+  // Pagination
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || req.query.resPerPage, 10) || 10));
+  const startIndex = (page - 1) * limit;
+  const paginatedDocs = finalPool.slice(startIndex, startIndex + limit);
+
+  // 4. Format each candidate profile matching the full candidate card schema
+  const formattedCandidates = paginatedDocs.map((cand) => {
+    const user = cand.userId || {};
+    const name = user.name || cand.name || "Candidate";
+    const title = cand.currentTitle || cand.headline || cand.designation || "";
+    const comp = cand.currentCompany || "";
+    const city = cand.currentCity || "";
+    const exp = cand.totalExperience || (cand.experience != null ? `${cand.experience} years` : "0");
+    const skillsList = Array.isArray(cand.skills) ? cand.skills : [];
+    const cid = String(cand._id);
+    const uid = String(user._id || cand.userId || cand._id);
+
+    let resumeObj = cand.resume || "";
+    let resumeUrl = "";
+    if (typeof cand.resume === "string") resumeUrl = cand.resume;
+    else if (cand.resume?.url) resumeUrl = cand.resume.url;
+    else if (cand.resumeUrl) resumeUrl = cand.resumeUrl;
+    else if (cand.resumeFile) resumeUrl = cand.resumeFile;
 
     return {
-      id: String(cand.userId?._id || cand.userId || cand._id),
+      id: cid,
+      _id: cid,
+      userId: uid,
       name,
-      title: company ? `${title} at ${company}` : title,
-      currentCompany: company,
-      experience,
-      salary,
-      location,
-      preferredLocations,
-      skills: cand.skills || [],
-      matchingSkills,
-      avatar: cand.profilePic?.url || cand.userId?.avatar || "",
-      activeStatus: "Active today",
-      hasCv: Boolean(cand.resume?.url),
-      score,
+      fullName: name,
+      email: user.email || cand.email || "",
+      phone: cand.phone || user.phone || "",
+      avatar: cand.profilePic?.url || (typeof cand.profilePic === "string" ? cand.profilePic : "") || user.avatar || "",
+      profilePic: cand.profilePic?.url || (typeof cand.profilePic === "string" ? cand.profilePic : "") || user.avatar || "",
+      headline: cand.headline || title || "",
+      summary: cand.summary || "",
+      currentTitle: title,
+      designation: title,
+      currentCompany: comp,
+      recentCompany: comp,
+      previousRole: cand.previousRole || "",
+      previousCompany: cand.previousCompany || "",
+      totalExperience: exp,
+      experience: cand.experience || exp,
+      currentCity: city,
+      location: city,
+      preferredLocations: cand.preferredLocations || [],
+      preferredRoles: cand.preferredRoles || "",
+      skills: skillsList,
+      matchingSkills: cand._matchingSkills || [],
+      matchingReason: cand._matchingReason || "Semantically matched role and skillset profile",
+      noticePeriod: cand.noticePeriod || "",
+      expectedSalary: cand.expectedSalary || cand.currentSalary || 0,
+      currentSalary: cand.currentSalary || 0,
+      education: cand.education || "",
+      ug: cand.ug || "",
+      pg: cand.pg || "",
+      institute: cand.institute || "",
+      resume: resumeObj,
+      resumeUrl,
+      hasResume: Boolean(resumeUrl || cand.hasResume),
+      publicShareId: cand.publicShareId || "",
+      profileViews: cand.profileViews || 0,
+      recruiterActions: cand.recruiterActions || 0,
+      cvDownloads: cand.cvDownloads ?? cand.recruiterActions ?? 0,
+      score: cand._similarityScore || 0,
+      matchScore: cand._similarityScore || 85,
+      createdAt: cand.createdAt,
+      updatedAt: cand.updatedAt,
     };
   });
 
-  // Sort by similarity score descending
-  scoredCandidates.sort((a, b) => b.score - a.score);
-
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
-    total: scoredCandidates.length,
-    data: scoredCandidates.slice(0, 15),
+    total: totalCount,
+    count: totalCount,
+    candidates: formattedCandidates,
+    data: formattedCandidates,
+    pagination: {
+      page,
+      limit,
+      total: totalCount,
+      totalPages: Math.max(1, Math.ceil(totalCount / limit)),
+    },
+    baseCandidate: {
+      id: String(baseProfile._id),
+      name: baseProfile.userId?.name || baseProfile.name || "Candidate",
+      title: baseTitle,
+    },
   });
 });
 

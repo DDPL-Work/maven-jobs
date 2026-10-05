@@ -651,15 +651,8 @@
 /* ---------- Small screens: bottom sheet ---------- */
 
 @media (max-width: 560px) {
-  .svcm-overlay {
-    align-items: flex-end;
-    padding: 0;
-  }
-
   .svcm-dialog {
-    max-width: none;
     max-height: 94vh;
-    border-radius: 18px 18px 0 0;
   }
 
   .svcm-header,

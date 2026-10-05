@@ -974,7 +974,7 @@ export default function NaukriLandingPage() {
               <Link to="/maven-jobs/press">Press</Link>
               <Link to="/maven-jobs/careers">Careers at Maven</Link>
               <Link to="/maven-jobs/contact">Contact</Link>
-              <Link to="/sitemap">Site Map</Link>
+              <Link to="/candidate/sitemap">Site Map</Link>
             </div>
             <div className="lp-footer__app">
               <h4>Get the App</h4>

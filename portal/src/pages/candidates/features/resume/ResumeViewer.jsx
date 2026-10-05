@@ -20,7 +20,7 @@ import "../dashboard/ProfileDashboard.css";
 import authService from "../../../../services/authService";
 import api from "../../../../services/api";
 import CandidateHeader from "../../../../components/common/CandidateHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 
 const formatBytes = (bytes) => {
   if (!bytes || bytes === 0) return "";

@@ -268,6 +268,7 @@ export default function Buyonline() {
     const ver = selectedItemForPurchase.activeVersion || selectedItemForPurchase;
     const finalAmount = isPlan ? ver.finalPrice : selectedItemForPurchase.price * 1.18;
 
+
     try {
       // Step 1: Open Razorpay checkout or perform simulated payment
       await paymentService.openCheckout({

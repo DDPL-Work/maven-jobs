@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../../AuthContext';
 import { FaApple, FaFacebookF, FaGooglePlay, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
-import mavenLogo from '../../assets/maven-logo-BdiSsfJk.svg';
-import qrImage from '../../assets/QR.png';
-import '../pages/candidates/features/landing/NaukriLandingPage.css';
+import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
+import qrImage from '../../../assets/QR.png';
+import '../../pages/candidates/features/landing/NaukriLandingPage.css';
 
 const socialLinks = [
   { label: 'X', icon: FaXTwitter, url: 'https://x.com/Maven_Jobs' },
@@ -50,7 +50,7 @@ export default function LandingFooter() {
           <Link to="/maven-jobs/press">Press</Link>
           <Link to="/maven-jobs/careers">Careers at Maven</Link>
           <Link to="/maven-jobs/contact">Contact</Link>
-          <Link to="/sitemap">Site Map</Link>
+          <Link to="/candidate/sitemap">Site Map</Link>
         </div>
         <div className="lp-footer__app">
           <h4>Get the App</h4>

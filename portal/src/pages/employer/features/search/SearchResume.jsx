@@ -19,7 +19,30 @@ import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcru
 import CandidateCard from '../../../../components/employer/CandidateCard';
 import SendMivite from './SendMivite';
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
+import SetReminderModal from '../../../../components/employer/SetReminderModal';
 import './SearchResume.css';
+import { useToast } from '../../../../context/ToastContext';
+
+const ACTIVE_IN_OPTIONS = [
+  { label: "3 days", value: "3d" },
+  { label: "7 days", value: "7d" },
+  { label: "15 days", value: "15d" },
+  { label: "30 days", value: "30d" },
+  { label: "2 months", value: "2m" },
+  { label: "3 months", value: "3m" },
+  { label: "6 months", value: "6m" },
+];
+
+const SORT_OPTIONS = [
+  { label: "Relevance", value: "relevance" },
+  { label: "Experience - High to Low", value: "experience_high" },
+  { label: "Experience - Low to High", value: "experience_low" },
+  { label: "Recent Activity", value: "newest" },
+  { label: "Salary - Low to High", value: "salary_low" },
+  { label: "Salary - High to Low", value: "salary_high" },
+];
+
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50, 100];
 
 const C = {
   navy: "#002366", navyD: "#001540", navyM: "#1a3a6e",
@@ -102,6 +125,7 @@ export default function SearchResume() {
   const [aiProcessing, setAiProcessing] = useState(false);
   const [saveSearchModal, setSaveSearchModal] = useState(false);
   const [searchName, setSearchName] = useState("");
+  const { showToast } = useToast();
 
   const [filterOptions, setFilterOptions] = useState({
     skills: [], groupedSkills: {}, cities: [], companies: [],
@@ -140,6 +164,9 @@ export default function SearchResume() {
         hasUrlFilters = true;
       }
     }
+    if (searchParams.get("uniqueId") || searchParams.get("uresid") || searchParams.get("simCvSource") || searchParams.get("candidateId")) {
+      hasUrlFilters = true;
+    }
     // We can store a flag on window if we need to auto-search on mount
     if (hasUrlFilters) window.__AUTO_SEARCH_RESDEX__ = true;
     return initialFilters;
@@ -151,16 +178,53 @@ export default function SearchResume() {
   const [stats, setStats] = useState({ totalCandidates: 0, searchesThisMonth: 0 });
 
   const [searchResults, setSearchResults] = useState([]);
-  const [searchPagination, setSearchPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
+  const [searchPagination, setSearchPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCandidates, setSelectedCandidates] = useState(new Map());
   const [cachedResults, setCachedResults] = useState([]);
   const [folderCandidateId, setFolderCandidateId] = useState(null);
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const [folderInitialTab, setFolderInitialTab] = useState('REQUIREMENT');
+  const [folderCandidateIds, setFolderCandidateIds] = useState([]);
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [quotaErrorMsg, setQuotaErrorMsg] = useState(null); // null = credit error, string = quota error
 
+  // Toolbar & Header Controls State
+  const [activeIn, setActiveIn] = useState("6m");
+  const [sortBy, setSortBy] = useState("relevance");
+  const [pageSize, setPageSize] = useState(20);
+  const [activeInOpen, setActiveInOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [pageSizeOpen, setPageSizeOpen] = useState(false);
+  const [addToOpen, setAddToOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderType, setReminderType] = useState("For other task");
+  const [pageInputValue, setPageInputValue] = useState(1);
+
+  const activeInRef = useRef(null);
+  const sortRef = useRef(null);
+  const pageSizeRef = useRef(null);
+  const addToRef = useRef(null);
+  const reminderRef = useRef(null);
   const skillSearchRef = useRef(null);
+
+  useEffect(() => {
+    setPageInputValue(searchPagination.page);
+  }, [searchPagination.page]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (activeInRef.current && !activeInRef.current.contains(e.target)) setActiveInOpen(false);
+      if (sortRef.current && !sortRef.current.contains(e.target)) setSortOpen(false);
+      if (pageSizeRef.current && !pageSizeRef.current.contains(e.target)) setPageSizeOpen(false);
+      if (addToRef.current && !addToRef.current.contains(e.target)) setAddToOpen(false);
+      if (reminderRef.current && !reminderRef.current.contains(e.target)) setReminderOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const userStored = localStorage.getItem("employerUser");
@@ -272,9 +336,30 @@ export default function SearchResume() {
     }));
   };
 
+  const hasAppliedFilters = useCallback((filterState = filters) => {
+    if (!filterState) return false;
+    return Object.entries(filterState).some(([key, value]) => {
+      if (key === "currency") return false;
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "boolean") return value === true;
+      if (typeof value === "string") return value.trim().length > 0;
+      if (typeof value === "number") return value > 0;
+      return false;
+    });
+  }, [filters]);
+
+  const showFilterWarning = useCallback((
+    msg = "Please apply at least one filter (such as keyword, skills, experience, or location) before searching.",
+    title = "Please Apply a Filter",
+    type = "warning"
+  ) => {
+    showToast(`${title}: ${msg}`, type);
+  }, [showToast]);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     Object.entries(filters).forEach(([key, value]) => {
+      if (key === "currency") return;
       if (Array.isArray(value) && value.length > 0) count++;
       else if (typeof value === "boolean" && value) count++;
       else if (typeof value === "string" && value.trim()) count++;
@@ -301,18 +386,66 @@ export default function SearchResume() {
     return finalSlug || 'all-candidates';
   };
 
-  const fetchCandidates = useCallback(async (page = 1, overrideFilters = null) => {
+  const fetchCandidates = useCallback(async (
+    page = 1,
+    overrideFilters = null,
+    overrideSort = null,
+    overrideActiveIn = null,
+    overrideLimit = null
+  ) => {
+    const activeFilters = overrideFilters || filters;
+    const currentSort = overrideSort !== null && overrideSort !== undefined ? overrideSort : sortBy;
+    const currentActiveIn = overrideActiveIn !== null && overrideActiveIn !== undefined ? overrideActiveIn : activeIn;
+    const currentLimit = overrideLimit || pageSize;
+
+    const urlParams = new URLSearchParams(window.location.search || location.search);
+    const simTargetId = urlParams.get("uniqueId") || urlParams.get("uresid") || urlParams.get("candidateId");
+    const isSimSearch = Boolean(simTargetId && (urlParams.get("simCvSource") || urlParams.get("uniqueId") || urlParams.get("uresid")));
+
+    if (!isSimSearch && !hasAppliedFilters(activeFilters)) {
+      showFilterWarning("Please apply at least one filter before searching for candidates.");
+      return;
+    }
     setSearchLoading(true);
     setHasSearched(true);
 
     try {
+      if (isSimSearch && simTargetId) {
+        const simRes = await authService.getSimilarCandidates(simTargetId, {
+          page: String(page),
+          limit: String(currentLimit),
+          searchText: activeFilters.keyword || "",
+        });
+        if (simRes?.success) {
+          const candidates = simRes.candidates || simRes.data || [];
+          const total = typeof simRes.total === "number" ? simRes.total : (simRes.pagination?.total ?? candidates.length);
+          setSearchResults(candidates);
+          setCachedResults(candidates);
+          setSearchPagination({
+            page,
+            limit: currentLimit,
+            total,
+            totalPages: simRes.pagination?.totalPages || Math.max(1, Math.ceil(total / currentLimit)),
+          });
+        } else {
+          setSearchResults([]);
+          setSearchPagination({ page: 1, limit: currentLimit, total: 0, totalPages: 0 });
+        }
+        setSearchLoading(false);
+        return;
+      }
+
       const params = {};
-      const activeFilters = overrideFilters || filters;
       Object.entries(activeFilters).forEach(([key, value]) => {
         if (Array.isArray(value) && value.length > 0) params[key] = value.join(",");
         else if (typeof value === "boolean" && value) params[key] = "true";
         else if (typeof value === "string" && value.trim()) params[key] = value.trim();
       });
+
+      params.page = String(page);
+      params.limit = String(currentLimit);
+      if (currentSort) params.sort = currentSort;
+      if (currentActiveIn) params.activeIn = currentActiveIn;
 
       // Update URL with SEO slug and actual query filters
       const slug = generateSlug(activeFilters);
@@ -322,25 +455,109 @@ export default function SearchResume() {
       }
       window.history.replaceState(null, '', `/resume-search/${slug}?${urlSearchParams.toString()}`);
 
-      params.page = String(page);
-      params.limit = "10";
       const res = await authService.searchResdexCandidates(params);
       if (res?.success) {
         const candidates = res.data.candidates || [];
         setSearchResults(candidates);
         setCachedResults(candidates);
-        setSearchPagination(res.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
+        setSearchPagination(res.data.pagination || { page: 1, limit: currentLimit, total: 0, totalPages: 0 });
       } else {
         setSearchResults([]);
-        setSearchPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
+        setSearchPagination({ page: 1, limit: currentLimit, total: 0, totalPages: 0 });
       }
       refreshRecentSearches();
     } catch {
       setSearchResults([]);
-      setSearchPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
+      setSearchPagination({ page: 1, limit: currentLimit, total: 0, totalPages: 0 });
     }
     setSearchLoading(false);
-  }, [filters]);
+  }, [filters, location.search, sortBy, activeIn, pageSize, activeTab]);
+
+  // Toolbar Actions & Logics
+  const allCurrentSelected = useMemo(() => {
+    if (!searchResults.length) return false;
+    return searchResults.every(c => {
+      const id = c.id || c._id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || String(c);
+      return selectedCandidates.has(id);
+    });
+  }, [searchResults, selectedCandidates]);
+
+  const handleSelectAllToggle = useCallback(() => {
+    setSelectedCandidates(prev => {
+      const next = new Map(prev);
+      if (allCurrentSelected) {
+        searchResults.forEach(c => {
+          const id = c.id || c._id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || String(c);
+          next.delete(id);
+        });
+      } else {
+        searchResults.forEach(c => {
+          const id = c.id || c._id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || String(c);
+          next.set(id, c);
+        });
+      }
+      return next;
+    });
+  }, [allCurrentSelected, searchResults]);
+
+  const handleAddToRequirement = useCallback(() => {
+    const ids = Array.from(selectedCandidates.keys());
+    if (ids.length === 0) {
+      showFilterWarning("Please select at least one candidate first.", "Select Candidate", "info");
+      return;
+    }
+    setFolderInitialTab('REQUIREMENT');
+    setFolderCandidateIds(ids);
+    setFolderCandidateId(ids[0]);
+    setFolderModalOpen(true);
+  }, [selectedCandidates, showFilterWarning]);
+
+  const handleAddToFolder = useCallback(() => {
+    const ids = Array.from(selectedCandidates.keys());
+    if (ids.length === 0) {
+      showFilterWarning("Please select at least one candidate first.", "Select Candidate", "info");
+      return;
+    }
+    setFolderInitialTab('FOLDER');
+    setFolderCandidateIds(ids);
+    setFolderCandidateId(ids[0]);
+    setFolderModalOpen(true);
+  }, [selectedCandidates, showFilterWarning]);
+
+  const handleSetReminder = useCallback(async (data) => {
+    const ids = Array.from(selectedCandidates.keys());
+    if (ids.length === 0) return;
+    try {
+      for (const id of ids) {
+        await authService.setCandidateReminder({
+          candidateId: id,
+          type: data.type,
+          description: data.description,
+          date: data.date,
+          mailCalendarEvent: data.mailCalendarEvent,
+        });
+      }
+      showFilterWarning(`Reminder set successfully for ${ids.length} candidate${ids.length > 1 ? 's' : ''}`, "Success", "success");
+    } catch (err) {
+      showFilterWarning("Failed to set reminder: " + (err.message || "Unknown error"), "Reminder Error", "error");
+    }
+  }, [selectedCandidates, showFilterWarning]);
+
+  const handleSwitchToNVite = useCallback(() => {
+    setActiveTab("mivites");
+    navigate("/resume-search?tab=mivites", { replace: true });
+  }, [navigate]);
+
+  const handlePageJump = useCallback((e) => {
+    if (e.key === 'Enter') {
+      const pageNum = parseInt(pageInputValue, 10);
+      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= (searchPagination.totalPages || 1)) {
+        fetchCandidates(pageNum);
+      } else {
+        setPageInputValue(searchPagination.page);
+      }
+    }
+  }, [pageInputValue, searchPagination.totalPages, searchPagination.page, fetchCandidates]);
 
   if (sessionExpired) {
     return (
@@ -366,6 +583,11 @@ export default function SearchResume() {
   }, []);
 
   const handleSearch = () => {
+    if (!hasAppliedFilters(filters)) {
+      showFilterWarning("Please apply at least one filter before searching for candidates.");
+      return;
+    }
+    // setFilterWarning("");
     fetchCandidates(1);
   };
 
@@ -473,19 +695,24 @@ export default function SearchResume() {
           </button>
         </div>
 
+
         {activeTab === "search" ? (
           <>
             <div className="sr-header">
               <div>
                 <h1 className="sr-title">Search Resume</h1>
                 <p className="sr-subtitle">Find the best candidates using advanced AI-powered search filters.</p>
-                {(location.state?.requirementId || location.state?.searchName) && (
+                {(location.state?.requirementId || location.state?.searchName || searchParams.get("simCvSource") || searchParams.get("uniqueId") || searchParams.get("uresid")) && (
                   <div style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 12px',
                     borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe',
                     color: '#1d4ed8', fontSize: '0.82rem', fontWeight: 600, marginTop: 8
                   }}>
-                    <span>Requirement: <strong>{searchName || location.state?.searchName}</strong></span>
+                    <span>
+                      {searchParams.get("simCvSource") || searchParams.get("uniqueId") || searchParams.get("uresid")
+                        ? `Similar Profiles Search (${searchPagination.total} matches)`
+                        : `Requirement: ${searchName || location.state?.searchName}`}
+                    </span>
                     {location.state?.requirementId && (
                       <button type="button" onClick={() => navigate(`/employer-dashboard/folders/${location.state.requirementId}`)}
                         style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: '0.82rem', fontWeight: 700 }}>
@@ -507,6 +734,52 @@ export default function SearchResume() {
                 </button>
               </div>
             </div>
+
+            {/* <AnimatePresence>
+              {filterWarning && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '12px 18px',
+                    borderRadius: 12,
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <FiAlertCircle size={18} color="#dc2626" style={{ flexShrink: 0 }} />
+                      <span>{filterWarning}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFilterWarning("")}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#dc2626',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: 2,
+                      }}
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence> */}
 
             <button className="sr-mobile-filter-btn" onClick={() => setMobileFiltersOpen(true)}>
               <FiFilter size={16} /> Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
@@ -717,19 +990,613 @@ export default function SearchResume() {
                     </div>
                   ) : (
                     <>
-                      <div className="sr-results-summary" style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '8px 0', fontSize: '0.82rem', color: C.s500,
+                      {/* Row 1: Filters & Pagination Toolbar */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                        marginBottom: '10px',
+                        fontSize: '0.85rem',
+                        color: '#334155',
                       }}>
-                        <span>Showing {searchResults.length} of {searchPagination.total.toLocaleString()} results{selectedCandidates.size > 0 ? ` | ${selectedCandidates.size} selected` : ''}</span>
+                        {/* Left: Active in */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: '#475569', fontWeight: 500 }}>Active in</span>
+                          <div style={{ position: 'relative' }} ref={activeInRef}>
+                            <button
+                              type="button"
+                              onClick={() => { setActiveInOpen(p => !p); setSortOpen(false); setPageSizeOpen(false); }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                background: '#fff',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 6,
+                                padding: '5px 12px',
+                                fontSize: '0.84rem',
+                                color: '#1e293b',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span>{ACTIVE_IN_OPTIONS.find(o => o.value === activeIn)?.label || activeIn}</span>
+                              <FiChevronDown size={14} color="#64748b" style={{ transform: activeInOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                            </button>
+
+                            {activeInOpen && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                marginTop: 4,
+                                background: '#fff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 8,
+                                boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+                                zIndex: 100,
+                                minWidth: 150,
+                                padding: '4px 0',
+                              }}>
+                                {ACTIVE_IN_OPTIONS.map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveIn(opt.value);
+                                      setActiveInOpen(false);
+                                      fetchCandidates(1, null, null, opt.value);
+                                    }}
+                                    style={{
+                                      display: 'block',
+                                      width: '100%',
+                                      textAlign: 'left',
+                                      padding: '8px 14px',
+                                      background: activeIn === opt.value ? '#e0f2fe' : 'transparent',
+                                      color: activeIn === opt.value ? '#0284c7' : '#334155',
+                                      fontWeight: activeIn === opt.value ? 700 : 500,
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontSize: '0.84rem',
+                                    }}
+                                    onMouseEnter={(e) => { if (activeIn !== opt.value) e.currentTarget.style.background = '#f8fafc'; }}
+                                    onMouseLeave={(e) => { if (activeIn !== opt.value) e.currentTarget.style.background = 'transparent'; }}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: Sort by, Show, Pagination */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                          {/* Sort by */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: '#475569', fontWeight: 500 }}>Sort by:</span>
+                            <div style={{ position: 'relative' }} ref={sortRef}>
+                              <button
+                                type="button"
+                                onClick={() => { setSortOpen(p => !p); setActiveInOpen(false); setPageSizeOpen(false); }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  background: '#fff',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: 6,
+                                  padding: '5px 12px',
+                                  fontSize: '0.84rem',
+                                  color: '#1e293b',
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <span>{SORT_OPTIONS.find(o => o.value === sortBy)?.label || 'Relevance'}</span>
+                                <FiChevronDown size={14} color="#64748b" style={{ transform: sortOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                              </button>
+
+                              {sortOpen && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  right: 0,
+                                  marginTop: 4,
+                                  background: '#fff',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 8,
+                                  boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+                                  zIndex: 100,
+                                  minWidth: 190,
+                                  padding: '4px 0',
+                                }}>
+                                  {SORT_OPTIONS.map(opt => (
+                                    <button
+                                      key={opt.value}
+                                      type="button"
+                                      onClick={() => {
+                                        setSortBy(opt.value);
+                                        setSortOpen(false);
+                                        fetchCandidates(1, null, opt.value);
+                                      }}
+                                      style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        padding: '8px 14px',
+                                        background: sortBy === opt.value ? '#e0f2fe' : 'transparent',
+                                        color: sortBy === opt.value ? '#0284c7' : '#334155',
+                                        fontWeight: sortBy === opt.value ? 700 : 500,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        fontSize: '0.84rem',
+                                      }}
+                                      onMouseEnter={(e) => { if (sortBy !== opt.value) e.currentTarget.style.background = '#f8fafc'; }}
+                                      onMouseLeave={(e) => { if (sortBy !== opt.value) e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Show (Page size) */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: '#475569', fontWeight: 500 }}>Show</span>
+                            <div style={{ position: 'relative' }} ref={pageSizeRef}>
+                              <button
+                                type="button"
+                                onClick={() => { setPageSizeOpen(p => !p); setActiveInOpen(false); setSortOpen(false); }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  background: '#fff',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: 6,
+                                  padding: '5px 10px',
+                                  fontSize: '0.84rem',
+                                  color: '#1e293b',
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <span>{pageSize}</span>
+                                <FiChevronDown size={14} color="#64748b" style={{ transform: pageSizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                              </button>
+
+                              {pageSizeOpen && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  right: 0,
+                                  marginTop: 4,
+                                  background: '#fff',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 8,
+                                  boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
+                                  zIndex: 100,
+                                  minWidth: 70,
+                                  padding: '4px 0',
+                                }}>
+                                  {PAGE_SIZE_OPTIONS.map(size => (
+                                    <button
+                                      key={size}
+                                      type="button"
+                                      onClick={() => {
+                                        setPageSize(size);
+                                        setPageSizeOpen(false);
+                                        fetchCandidates(1, null, null, null, size);
+                                      }}
+                                      style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        textAlign: 'center',
+                                        padding: '6px 10px',
+                                        background: pageSize === size ? '#e0f2fe' : 'transparent',
+                                        color: pageSize === size ? '#0284c7' : '#334155',
+                                        fontWeight: pageSize === size ? 700 : 500,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        fontSize: '0.84rem',
+                                      }}
+                                      onMouseEnter={(e) => { if (pageSize !== size) e.currentTarget.style.background = '#f8fafc'; }}
+                                      onMouseLeave={(e) => { if (pageSize !== size) e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                      {size}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Top Pagination Jump */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button
+                              type="button"
+                              title="First page"
+                              disabled={searchPagination.page <= 1}
+                              onClick={() => fetchCandidates(1)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: searchPagination.page <= 1 ? 'not-allowed' : 'pointer',
+                                color: searchPagination.page <= 1 ? '#cbd5e1' : '#64748b',
+                                fontSize: '1rem',
+                                padding: '2px 4px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              «
+                            </button>
+                            <button
+                              type="button"
+                              title="Previous page"
+                              disabled={searchPagination.page <= 1}
+                              onClick={() => fetchCandidates(searchPagination.page - 1)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: searchPagination.page <= 1 ? 'not-allowed' : 'pointer',
+                                color: searchPagination.page <= 1 ? '#cbd5e1' : '#64748b',
+                                fontSize: '1rem',
+                                padding: '2px 4px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              ‹
+                            </button>
+
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              background: '#fff',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              padding: '3px 8px',
+                              fontSize: '0.82rem',
+                              color: '#334155',
+                            }}>
+                              <span>Page </span>
+                              <input
+                                type="number"
+                                min="1"
+                                max={searchPagination.totalPages || 1}
+                                value={pageInputValue}
+                                onChange={(e) => setPageInputValue(e.target.value)}
+                                onKeyDown={handlePageJump}
+                                onBlur={() => {
+                                  const num = parseInt(pageInputValue, 10);
+                                  if (num && num >= 1 && num <= (searchPagination.totalPages || 1) && num !== searchPagination.page) {
+                                    fetchCandidates(num);
+                                  } else {
+                                    setPageInputValue(searchPagination.page);
+                                  }
+                                }}
+                                style={{
+                                  width: 38,
+                                  textAlign: 'center',
+                                  border: 'none',
+                                  outline: 'none',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 600,
+                                  color: '#0f172a',
+                                  padding: 0,
+                                  margin: '0 2px',
+                                }}
+                              />
+                              <span> of {(searchPagination.totalPages || 1).toLocaleString()}</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              title="Next page"
+                              disabled={searchPagination.page >= (searchPagination.totalPages || 1)}
+                              onClick={() => fetchCandidates(searchPagination.page + 1)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: searchPagination.page >= (searchPagination.totalPages || 1) ? 'not-allowed' : 'pointer',
+                                color: searchPagination.page >= (searchPagination.totalPages || 1) ? '#cbd5e1' : '#64748b',
+                                fontSize: '1rem',
+                                padding: '2px 4px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              ›
+                            </button>
+                            <button
+                              type="button"
+                              title="Last page"
+                              disabled={searchPagination.page >= (searchPagination.totalPages || 1)}
+                              onClick={() => fetchCandidates(searchPagination.totalPages || 1)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: searchPagination.page >= (searchPagination.totalPages || 1) ? 'not-allowed' : 'pointer',
+                                color: searchPagination.page >= (searchPagination.totalPages || 1) ? '#cbd5e1' : '#64748b',
+                                fontSize: '1rem',
+                                padding: '2px 4px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              »
+                            </button>
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Row 2: Secondary Action Toolbar Card */}
+                      <div style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        padding: '10px 18px',
+                        marginBottom: 16,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 16,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                      }}>
+                        {/* Left actions */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+                          {/* Select all */}
+                          <label
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              cursor: 'pointer',
+                              fontSize: '0.88rem',
+                              fontWeight: 500,
+                              color: '#1e293b',
+                              userSelect: 'none',
+                            }}
+                            onClick={(e) => { e.preventDefault(); handleSelectAllToggle(); }}
+                          >
+                            <div
+                              style={{
+                                width: 17,
+                                height: 17,
+                                borderRadius: 3,
+                                border: allCurrentSelected ? '1.5px solid #1e3a8a' : '1.5px solid #94a3b8',
+                                background: allCurrentSelected ? '#1e3a8a' : '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {allCurrentSelected && <FiCheck size={12} strokeWidth={3} />}
+                            </div>
+                            <span>Select all</span>
+                          </label>
+
+                          {/* Add to dropdown */}
+                          <div style={{ position: 'relative' }} ref={addToRef}>
+                            <button
+                              type="button"
+                              onClick={() => { setAddToOpen(p => !p); setReminderOpen(false); }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.88rem',
+                                fontWeight: 500,
+                                color: '#334155',
+                                padding: '4px 0',
+                              }}
+                            >
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 18,
+                                height: 18,
+                                borderRadius: 3,
+                                background: '#475569',
+                                color: '#fff',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                              }}>+</span>
+                              <span>Add to</span>
+                              <FiChevronDown size={14} color="#64748b" style={{ transform: addToOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                            </button>
+
+                            {addToOpen && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                marginTop: 6,
+                                background: '#fff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 8,
+                                boxShadow: '0 10px 28px rgba(15,23,42,0.14)',
+                                zIndex: 100,
+                                minWidth: 190,
+                                padding: '6px 0',
+                              }}>
+                                <div style={{
+                                  padding: '6px 14px 4px',
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  letterSpacing: '0.6px',
+                                  color: '#94a3b8',
+                                  textTransform: 'uppercase',
+                                }}>
+                                  RESDEX
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => { setAddToOpen(false); handleAddToRequirement(); }}
+                                  style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    padding: '9px 14px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.88rem',
+                                    color: '#1e293b',
+                                    fontWeight: 500,
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                  Resdex requirement
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setAddToOpen(false); handleAddToFolder(); }}
+                                  style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    padding: '9px 14px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.88rem',
+                                    color: '#1e293b',
+                                    fontWeight: 500,
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                  Resdex folder
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Set reminder dropdown */}
+                          <div style={{ position: 'relative' }} ref={reminderRef}>
+                            <button
+                              type="button"
+                              onClick={() => { setReminderOpen(p => !p); setAddToOpen(false); }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.88rem',
+                                fontWeight: 500,
+                                color: '#334155',
+                                padding: '4px 0',
+                              }}
+                            >
+                              <FiClock size={16} color="#475569" />
+                              <span>Set reminder</span>
+                              <FiChevronDown size={14} color="#64748b" style={{ transform: reminderOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                            </button>
+
+                            {reminderOpen && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                marginTop: 6,
+                                background: '#fff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 8,
+                                boxShadow: '0 10px 28px rgba(15,23,42,0.14)',
+                                zIndex: 100,
+                                minWidth: 200,
+                                padding: '6px 0',
+                              }}>
+                                {[
+                                  "For call later",
+                                  "For interview follow up",
+                                  "For sending JD",
+                                  "For other task",
+                                ].map(type => (
+                                  <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => {
+                                      setReminderOpen(false);
+                                      const ids = Array.from(selectedCandidates.keys());
+                                      if (ids.length === 0) {
+                                        showFilterWarning("Please select at least one candidate first to set a reminder.", "Select Candidate", "info");
+                                        return;
+                                      }
+                                      setReminderType(type);
+                                      setIsReminderModalOpen(true);
+                                    }}
+                                    style={{
+                                      display: 'block',
+                                      width: '100%',
+                                      textAlign: 'left',
+                                      padding: '9px 14px',
+                                      background: 'transparent',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontSize: '0.86rem',
+                                      color: '#1e293b',
+                                      fontWeight: 500,
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                  >
+                                    {type}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: Switch to NVite */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                          <span style={{ fontSize: '0.86rem', color: '#1e293b', fontWeight: 500 }}>
+                            Want to reach candidates using bulk mails?
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleSwitchToNVite}
+                            style={{
+                              background: '#1565c0',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '7px 18px',
+                              fontSize: '0.85rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(21, 101, 192, 0.25)',
+                              transition: 'background 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#0d47a1'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#1565c0'; }}
+                          >
+                            Switch to NVite
+                          </button>
+                        </div>
+                      </div>
+
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                         {searchResults.map((candidate, index) => {
                           const cid = candidate.id || candidate.userId;
                           return (
                             <CandidateCard key={cid || index} candidate={candidate}
                               isSelected={selectedCandidates.has(cid)}
-                              searchKeyword={filters.keyword}
+                              searchKeyword={filters.keyword || searchParams.get("keyword") || searchParams.get("skills") || ""}
                               onToggleSelect={(c) => {
                                 const id = c.id || c._id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || String(c);
                                 setSelectedCandidates(prev => {
@@ -738,7 +1605,13 @@ export default function SearchResume() {
                                   return next;
                                 });
                               }}
-                              onAddToFolder={(c) => setFolderCandidateId(c.userId || c.id)}
+                              onAddToFolder={(c) => {
+                                const targetId = c.userId || c.id;
+                                setFolderCandidateId(targetId);
+                                setFolderCandidateIds([targetId]);
+                                setFolderInitialTab('FOLDER');
+                                setFolderModalOpen(true);
+                              }}
                             />
                           );
                         })}
@@ -881,10 +1754,25 @@ export default function SearchResume() {
         )}
       </AnimatePresence>
 
-      {folderCandidateId && (
+      {/* Set Reminder Modal */}
+      <SetReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        initialType={reminderType}
+        candidate={selectedCandidates.size === 1 ? Array.from(selectedCandidates.values())[0] : null}
+        onSubmit={handleSetReminder}
+      />
+
+      {/* Folder / Requirement Modal */}
+      {(folderCandidateId || folderModalOpen) && (
         <FolderSelectorModal
           candidateId={folderCandidateId}
-          onClose={() => setFolderCandidateId(null)}
+          candidateIds={folderCandidateIds.length > 0 ? folderCandidateIds : (folderCandidateId ? [folderCandidateId] : [])}
+          initialTab={folderInitialTab}
+          onClose={() => { setFolderCandidateId(null); setFolderModalOpen(false); setFolderCandidateIds([]); }}
+          onAdded={() => {
+            showFilterWarning("Saved to folder/requirement successfully!");
+          }}
         />
       )}
     </EmployerLayout>

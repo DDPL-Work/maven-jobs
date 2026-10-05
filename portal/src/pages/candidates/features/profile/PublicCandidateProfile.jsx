@@ -31,7 +31,10 @@ import EmployerHeader from "../../../../components/employer/EmployerHeader";
 import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
 import ForwardCVModal from "../../../../components/employer/ForwardCVModal";
 import SetReminderModal from "../../../../components/employer/SetReminderModal";
+import FolderSelectorModal from "../../../../components/employer/FolderSelectorModal";
 import "./PublicCandidateProfile.css";
+import { useToast } from "../../../../context/ToastContext";
+import { LuSparkles } from "react-icons/lu";
 
 const parseJSON = (str) => {
   if (!str) return [];
@@ -81,6 +84,69 @@ const parseSalary = (str) => {
   }
 };
 
+const AILoadingState = () => {
+  const [msgIndex, setMsgIndex] = useState(0);
+  const messages = [
+    "Analyzing candidate skills...",
+    "Scanning candidate pool...",
+    "Evaluating experience & roles...",
+    "Applying AI matching algorithms...",
+    "Finding the perfect matches..."
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMsgIndex((prev) => (prev + 1) % messages.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ textAlign: "center", padding: "32px 16px", color: "#64748b", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ 
+        width: 48, height: 48, borderRadius: "50%", background: "#f3e8ff", 
+        display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16,
+        boxShadow: "0 0 15px rgba(139, 92, 246, 0.3)"
+      }}>
+        <LuSparkles size={24} style={{ color: "#8b5cf6", animation: "spin 2s linear infinite" }} />
+      </div>
+      
+      <div style={{ position: "relative", height: "24px", width: "100%", overflow: "hidden", marginBottom: 24 }}>
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              width: "100%",
+              opacity: i === msgIndex ? 1 : 0,
+              transform: i === msgIndex ? "translateY(0)" : (i < msgIndex ? "translateY(-10px)" : "translateY(10px)"),
+              transition: "all 0.5s ease",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#475569"
+            }}
+          >
+            {msg}
+          </div>
+        ))}
+      </div>
+      
+      {/* Skeletons for visual feedback */}
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px", textAlign: "left" }}>
+        {[1, 2, 3].map((n) => (
+          <div key={n} style={{ display: "flex", gap: "12px", padding: "12px", background: "#f8fafc", borderRadius: "8px", opacity: Math.max(0.2, 1 - (n * 0.25)) }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#e2e8f0", animation: "pulse 1.5s infinite" }} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px", justifyContent: "center" }}>
+              <div style={{ width: "70%", height: "12px", background: "#e2e8f0", borderRadius: "4px", animation: "pulse 1.5s infinite" }} />
+              <div style={{ width: "40%", height: "10px", background: "#e2e8f0", borderRadius: "4px", animation: "pulse 1.5s infinite" }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function PublicCandidateProfile() {
   const { candidateId } = useParams();
   const navigate = useNavigate();
@@ -108,6 +174,7 @@ export default function PublicCandidateProfile() {
   const [alsoViewedLoading, setAlsoViewedLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const { showToast } = useToast();
 
   const [reminderMenuOpen, setReminderMenuOpen] = useState(false);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
@@ -129,6 +196,7 @@ export default function PublicCandidateProfile() {
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [isVideoCallModalOpen, setIsVideoCallModalOpen] = useState(false);
   const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
   // List Context State
   const [listIds, setListIds] = useState([]);
@@ -178,35 +246,30 @@ export default function PublicCandidateProfile() {
           setTotalSearchCount(parseInt(storedTotal, 10));
         }
 
-        // Fetch AI matched similar profiles
-        setSimilarLoading(true);
-        try {
-          const simRes = await authService.getSimilarCandidates(candidateId, activeSearch);
-          if (active && simRes?.data) {
-            setSimilarCandidates(simRes.data);
-          }
-        } catch (simErr) {
-          console.error("Failed to load similar candidates:", simErr);
-        } finally {
-          if (active) setSimilarLoading(false);
-        }
+        // We have the main profile, turn off main loading so the user can see it instantly
+        if (active) setLoading(false);
 
-        // Fetch Also Viewed profiles
-        setAlsoViewedLoading(true);
-        try {
-          const viewedRes = await authService.getAlsoViewedCandidates(candidateId);
-          if (active && viewedRes?.data) {
-            setAlsoViewedCandidates(viewedRes.data);
+        // Fetch AI matched similar profiles and Also Viewed profiles in parallel
+        if (active) setSimilarLoading(true);
+        if (active) setAlsoViewedLoading(true);
+
+        Promise.allSettled([
+          authService.getSimilarCandidates(candidateId, activeSearch).then(simRes => {
+            if (active && simRes?.data) setSimilarCandidates(simRes.data);
+          }),
+          authService.getAlsoViewedCandidates(candidateId).then(viewedRes => {
+            if (active && viewedRes?.data) setAlsoViewedCandidates(viewedRes.data);
+          })
+        ]).finally(() => {
+          if (active) {
+            setSimilarLoading(false);
+            setAlsoViewedLoading(false);
           }
-        } catch (viewErr) {
-          console.error("Failed to load also viewed candidates:", viewErr);
-        } finally {
-          if (active) setAlsoViewedLoading(false);
-        }
+        });
+
       } catch (e) {
         if (!active) return;
         setError("Failed to load profile. Please try again.");
-      } finally {
         if (active) setLoading(false);
       }
     })();
@@ -225,11 +288,11 @@ export default function PublicCandidateProfile() {
         window.dispatchEvent(new CustomEvent("employer-credits-changed"));
         window.open(profile.resume.url, "_blank", "noopener,noreferrer");
       } else {
-        alert(cr?.message || 'Insufficient credits to download resume');
+        showToast(cr?.message || 'Insufficient credits to download resume', 'warning');
       }
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || 'Failed to download resume';
-      alert(msg);
+      showToast(msg, 'error');
     }
     setResumeLoading(false);
   }, [candidateId, profile]);
@@ -270,10 +333,10 @@ export default function PublicCandidateProfile() {
         candidateId,
         ...data
       });
-      alert("Reminder set successfully!");
+      showToast('Reminder set successfully!', 'success');
     } catch (error) {
       console.error(error);
-      alert("Failed to set reminder.");
+      showToast('Failed to set reminder. Please try again.', 'error');
     }
   };
 
@@ -330,7 +393,7 @@ export default function PublicCandidateProfile() {
           <button
             type="button"
             className="pcp-topbar-action-btn"
-            onClick={() => alert("Profile reported for review.")}
+          onClick={() => showToast('Profile reported for review. Thank you for helping us keep the platform safe.', 'success')}
           >
             <FiFlag size={14} /> Report profile
           </button>
@@ -374,7 +437,7 @@ export default function PublicCandidateProfile() {
         <button
           type="button"
           className="pcp-act-btn"
-          onClick={() => alert("Added to candidate folder.")}
+          onClick={() => setIsFolderModalOpen(true)}
         >
           <FiPlus size={14} /> Add to
         </button>
@@ -468,6 +531,7 @@ export default function PublicCandidateProfile() {
                 <div className="pcp-avatar-placeholder">
                   {candidateName.charAt(0).toUpperCase()}
                 </div>
+                
               )}
             </div>
 
@@ -480,6 +544,14 @@ export default function PublicCandidateProfile() {
                       {profile.headline}
                     </div>
                   )}
+                  {/* Email & Verified status */}
+              <div className="pcp-email-row">
+                {/* <FiMail size={14} color="#64748b" /> */}
+                <span className="text-blue-400">{profile.user?.email || "N/A"}</span>
+                {/* <span className="pcp-verified-badge">
+                  <FiCheckCircle size={13} /> Verified
+                </span> */}
+              </div>
                 </div>
                 <button
                   type="button"
@@ -614,17 +686,10 @@ export default function PublicCandidateProfile() {
                 )}
               </div>
 
-              {/* Email & Verified status */}
-              <div className="pcp-email-row">
-                <FiMail size={14} color="#64748b" />
-                <span>{profile.user?.email || "N/A"}</span>
-                <span className="pcp-verified-badge">
-                  <FiCheckCircle size={13} /> Verified
-                </span>
-              </div>
+              
 
               {/* Timeline bar */}
-              <div className="pcp-exp-bar-wrap">
+              {/* <div className="pcp-exp-bar-wrap">
                 <div className="pcp-exp-bar-track">
                   <div className="pcp-exp-bar-fill" style={{ width: "85%" }} />
                 </div>
@@ -633,7 +698,7 @@ export default function PublicCandidateProfile() {
                   <span></span>
                   <span>Present</span>
                 </div>
-              </div>
+              </div> */}
 
               {/* Footer Meta Row (Views, Downloads, Activity) */}
               <div className="pcp-hero-foot-row">
@@ -644,7 +709,6 @@ export default function PublicCandidateProfile() {
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                     <FiDownload size={13} /> {profile.recruiterActions || 0}
                   </span>
-                </div>
 
                 <div className="pcp-hero-foot-right">
                   {profile.resume?.url && (
@@ -653,8 +717,9 @@ export default function PublicCandidateProfile() {
                     </span>
                   )}
                   {profile.lastUpdated && <span>Modified {profile.lastUpdated}</span>}
-                  <span style={{ color: "#10b981", fontWeight: 600 }}>Active status: {profile.activeStatus || "Unknown"}</span>
+                  {/* <span style={{ color: "#10b981", fontWeight: 600 }}>Active status: {profile.activeStatus || "Unknown"}</span> */}
                 </div>
+                  </div>
               </div>
             </div>
           </div>
@@ -1178,10 +1243,7 @@ export default function PublicCandidateProfile() {
             {/* List of Similar Candidate Profiles */}
             <div className="pcp-similar-list-container">
               {similarTab === "profile_details" && similarLoading ? (
-                <div style={{ textAlign: "center", padding: "24px 0", color: "#64748b", fontSize: 13 }}>
-                  <FiSparkles size={18} style={{ animation: "spin 1s linear infinite" }} />
-                  <div style={{ marginTop: 8 }}>AI matching similar profiles...</div>
-                </div>
+                <AILoadingState />
               ) : similarTab === "recruiters_viewed" && alsoViewedLoading ? (
                 <div style={{ textAlign: "center", padding: "24px 0", color: "#64748b", fontSize: 13 }}>
                   <div style={{ marginTop: 8 }}>Loading team views...</div>
@@ -1192,8 +1254,8 @@ export default function PublicCandidateProfile() {
                 </div>
               ) : (similarTab === "recruiters_viewed" ? alsoViewedCandidates : displayedSimilar).map((c) => (
                 <Link
-                  key={c.id}
-                  to={`/candidates/${c.id}`}
+                  key={c.id || c.userId || Math.random()}
+                  to={`/candidates/${c.userId || c.id}`}
                   className="pcp-similar-item"
                 >
                     <div className="pcp-sim-head">
@@ -1222,8 +1284,8 @@ export default function PublicCandidateProfile() {
                     </div>
 
                     <div className="pcp-sim-meta">
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-                        <FiBriefcase size={12} /> 
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                        <FiBriefcase size={14} /> 
                         {(() => {
                           const expStr = c.experience || c.totalExperience;
                           if (!expStr) return "Exp N/A";
@@ -1234,14 +1296,17 @@ export default function PublicCandidateProfile() {
                           return cleanExp;
                         })()}
                       </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        <FiDollarSign size={12} /> 
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <FiDollarSign size={14} /> 
                         {parseSalary(c.salary || c.currentSalary || c.expectedSalary) || "Salary N/A"}
                       </span>
                     </div>
 
                     <div className="pcp-sim-loc">
-                      <FiMapPin size={12} /> {c.location || c.currentCity || "Location N/A"} {c.preferredLocations?.length > 0 ? `(${Array.isArray(c.preferredLocations) ? c.preferredLocations.slice(0, 2).join(", ") : c.preferredLocations})` : ""}
+                      <FiMapPin size={14} style={{ flexShrink: 0, marginTop: "2px" }} /> 
+                      <span style={{ lineHeight: "1.4" }}>
+                        {c.location || c.currentCity || "Location N/A"} {c.preferredLocations?.length > 0 ? `(${Array.isArray(c.preferredLocations) ? c.preferredLocations.slice(0, 2).join(", ") : c.preferredLocations})` : ""}
+                      </span>
                     </div>
 
                     {/* Skills tags */}
@@ -1263,8 +1328,8 @@ export default function PublicCandidateProfile() {
                     )}
 
                     <div className="pcp-sim-footer">
-                      <span>
-                        <FiPaperclip size={11} /> {c.hasCv ? "CV" : "Profile"}
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <FiPaperclip size={13} /> {c.hasCv ? "CV" : "Profile"}
                       </span>
                       <span>{c.activeStatus || "Active recently"}</span>
                     </div>
@@ -1292,6 +1357,15 @@ export default function PublicCandidateProfile() {
         initialType={reminderType}
         onSubmit={handleSetReminder}
       />
+      {isFolderModalOpen && (
+        <FolderSelectorModal
+          candidateId={candidateId}
+          candidateIds={[candidateId]}
+          initialTab="FOLDER"
+          onClose={() => setIsFolderModalOpen(false)}
+          onAdded={() => showToast("Saved to folder/requirement successfully!", "success")}
+        />
+      )}
     </div>
     </>
   );
