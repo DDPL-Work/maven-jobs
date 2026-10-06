@@ -744,6 +744,7 @@ Apply here: ${job.externalLink || (`${window.location.origin}/jobs/${job.id || j
                     <div style={{ border: '1px solid #e2e8f0', borderRadius: 16, padding: '20px', background: '#f8fafc' }}>
                       <PostJob 
                         isEmbedded={true} 
+                        initialJobType="management"
                         onJobCreated={(job) => {
                           setSelectedJobs([job]);
                           setStep(2);

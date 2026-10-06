@@ -88,8 +88,8 @@ export default function Pricing() {
                 features: [
                   `${pkg.jobPostingLimit} active job postings`,
                   pkg.smbJobPostingLimit > 0 ? `${pkg.smbJobPostingLimit} SMB job postings` : "No SMB postings",
-                  `${pkg.cvAccessLimit} CV Access limit`,
-                  `${pkg.nviteLimit} MIvites included`,
+                  `${pkg.cvAccessLimit} Max CV Access limit`,
+                  `${pkg.nviteLimit} Max NVite Credits included`,
                   "Dedicated support"
                 ]
               };

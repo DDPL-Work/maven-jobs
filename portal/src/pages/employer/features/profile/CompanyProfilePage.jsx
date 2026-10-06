@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FiEdit2, FiCheckCircle, FiShield, FiBriefcase, FiUser,
-  FiMapPin, FiGlobe, FiPhone, FiMail, FiX, FiCheck, FiAlertCircle
+  FiMapPin, FiGlobe, FiPhone, FiMail, FiX, FiCheck, FiAlertCircle,
+  FiCamera, FiUploadCloud, FiLock, FiZap, FiLayers, FiArrowRight
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
@@ -13,6 +14,10 @@ export default function CompanyProfilePage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Logo upload state & ref
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef(null);
 
   // Edit Modals & State
   const [editAccountModal, setEditAccountModal] = useState(false);
@@ -104,6 +109,24 @@ export default function CompanyProfilePage() {
   const showToast = (msg) => {
     setSaveSuccess(msg);
     setTimeout(() => setSaveSuccess(''), 3500);
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingLogo(true);
+      const res = await authService.uploadEmployerMedia('logo', file);
+      if (res?.data?.company?.logoUrl) {
+        setProfile((prev) => ({ ...prev, logoUrl: res.data.company.logoUrl }));
+      }
+      showToast('Company logo uploaded successfully');
+    } catch (err) {
+      alert(err?.message || 'Failed to upload company logo');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
   };
 
   const handleOpenAccountModal = () => {
@@ -309,6 +332,13 @@ export default function CompanyProfilePage() {
 
   const isKycApproved = profile.kycStatus === 'APPROVED' || profile.status === 'ACTIVE';
 
+  const planCode = String(profile?.planSnapshot?.planCode || profile?.plan || '').toUpperCase();
+  const isPaidPlan = Boolean(planCode && !planCode.includes('FREE'));
+  const hasHotVacancy = (profile?.services || []).some(
+    (s) => String(s.productCode).toUpperCase() === 'HOT_VACANCY' || String(s.productCode).toUpperCase().includes('HOT')
+  );
+  const hasLogoDisplayFeature = hasHotVacancy || isPaidPlan;
+
   return (
     <EmployerLayout activeTab="company-profile">
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
@@ -408,33 +438,106 @@ export default function CompanyProfilePage() {
             </div>
           </div>
 
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 70,
-            height: 70,
-            borderRadius: 16,
-            background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)',
-            border: '1.5px solid #c7d2fe',
-            boxShadow: '0 4px 12px rgba(99,102,241,0.08)',
-          }}>
-            {profile.logoUrl ? (
-              <img
-                src={profile.logoUrl}
-                alt={profile.companyName || 'Company'}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 14 }}
-              />
-            ) : (
-              <span style={{
-                fontSize: 24,
-                fontWeight: 800,
-                color: '#002366',
-                fontFamily: "'Bricolage Grotesque', sans-serif",
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 76,
+                height: 76,
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)',
+                border: '1.5px solid #c7d2fe',
+                boxShadow: '0 4px 12px rgba(99,102,241,0.08)',
+                overflow: 'hidden',
               }}>
-                {(profile.companyName || 'CO').slice(0, 2).toUpperCase()}
-              </span>
-            )}
+                {profile.logoUrl ? (
+                  <img
+                    src={profile.logoUrl}
+                    alt={profile.companyName || 'Company'}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <span style={{
+                    fontSize: 24,
+                    fontWeight: 800,
+                    color: '#002366',
+                    fontFamily: "'Bricolage Grotesque', sans-serif",
+                  }}>
+                    {(profile.companyName || 'CO').slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={logoInputRef}
+                onChange={handleLogoUpload}
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                disabled={uploadingLogo}
+                onClick={() => logoInputRef.current?.click()}
+                title="Upload or Change Logo"
+                style={{
+                  position: 'absolute',
+                  bottom: -4,
+                  right: -4,
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: '#002366',
+                  color: '#ffffff',
+                  border: '2px solid #ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: uploadingLogo ? 'wait' : 'pointer',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                }}
+              >
+                <FiCamera size={13} />
+              </button>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                Company Logo
+              </div>
+              <button
+                type="button"
+                disabled={uploadingLogo}
+                onClick={() => logoInputRef.current?.click()}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#2563eb',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  marginTop: 2,
+                }}
+              >
+                <FiUploadCloud size={13} />
+                {uploadingLogo ? 'Uploading...' : profile.logoUrl ? 'Change Logo' : 'Upload Logo'}
+              </button>
+              <div style={{
+                marginTop: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: hasLogoDisplayFeature ? '#059669' : '#d97706',
+              }}>
+                {hasLogoDisplayFeature
+                  ? '✓ Active branding on Hot Vacancies'
+                  : 'ⓘ Saved (Shown on Hot Vacancy)'}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -653,6 +756,232 @@ export default function CompanyProfilePage() {
             <ProfileRow label="State" value={profile.state} />
             <ProfileRow label="Pincode" value={profile.pincode} />
             <ProfileRow label="GSTIN" value={profile.gstin} />
+          </div>
+        </div>
+
+        {/* 4. Plan Entitlements & Services Card */}
+        <div style={{
+          background: '#ffffff',
+          borderRadius: 16,
+          border: '1px solid #e2e8f0',
+          padding: '28px 32px',
+          boxShadow: '0 2px 10px rgba(15,23,42,0.03)',
+          marginBottom: 32,
+        }}>
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 20,
+            paddingBottom: 14,
+            borderBottom: '1px solid #f1f5f9',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <FiLayers size={20} color="#002366" />
+              <div>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: '#0f172a',
+                  letterSpacing: '-0.01em',
+                }}>
+                  Current Plan & Service Entitlements
+                </h2>
+                <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b' }}>
+                  Features, quotas, and service capabilities linked to your company profile
+                </p>
+              </div>
+            </div>
+            <a
+              href="/employer-dashboard/pricing"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                borderRadius: 10,
+                background: '#002366',
+                color: '#ffffff',
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: 'none',
+                boxShadow: '0 2px 8px rgba(0,35,102,0.15)',
+              }}
+            >
+              <span>Upgrade Plan & Add Services</span>
+              <FiArrowRight size={14} />
+            </a>
+          </div>
+
+          {/* Plan Meta Header */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 16,
+            background: isPaidPlan ? 'linear-gradient(135deg, #f0fdf4, #e0f2fe)' : '#f8fafc',
+            border: isPaidPlan ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: '16px 20px',
+            marginBottom: 20,
+          }}>
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                Active Plan
+              </span>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#002366', marginTop: 2 }}>
+                {profile.planSnapshot?.planName || profile.plan || 'Free Starter Plan'}
+              </div>
+              <span style={{
+                display: 'inline-block',
+                marginTop: 4,
+                padding: '2px 8px',
+                borderRadius: 6,
+                fontSize: 10.5,
+                fontWeight: 800,
+                background: isPaidPlan ? '#dcfce7' : '#e2e8f0',
+                color: isPaidPlan ? '#15803d' : '#475569',
+              }}>
+                {isPaidPlan ? 'PAID COMMERCIAL PLAN' : 'FREE TIER'}
+              </span>
+            </div>
+
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                Plan Expiry
+              </span>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginTop: 4 }}>
+                {profile.planSnapshot?.endDate
+                  ? new Date(profile.planSnapshot.endDate).toLocaleDateString('en-IN', {
+                      day: 'numeric', month: 'short', year: 'numeric'
+                    })
+                  : '30 Days Validity'}
+              </div>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                90-day read-only grace upon expiration
+              </span>
+            </div>
+
+            <div>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                Branding & Logo Status
+              </span>
+              <div style={{ fontSize: 13, fontWeight: 700, color: hasLogoDisplayFeature ? '#059669' : '#d97706', marginTop: 4 }}>
+                {hasLogoDisplayFeature ? '✓ Logo Shown on Hot Vacancies' : 'Company Initials on Search'}
+              </div>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                {hasLogoDisplayFeature ? 'Search & Job card branding active' : 'Upload logo ready for Hot Vacancies'}
+              </span>
+            </div>
+          </div>
+
+          {/* Services & Feature Breakdown Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            {/* Job Posting Service */}
+            <div style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: 12,
+              padding: '16px 18px',
+              background: '#ffffff',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Job Postings</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 6 }}>
+                  {profile.jobLimit || 1} Total Slots
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
+                  <FiCheck size={13} />
+                  <span>Standard Job Posting (1 City Limit)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: hasHotVacancy ? '#059669' : '#94a3b8', fontWeight: 600 }}>
+                  {hasHotVacancy ? <FiCheck size={13} /> : <FiLock size={13} />}
+                  <span>Hot Vacancy (Logo Branding & 3 Cities)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Credits Service */}
+            <div style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: 12,
+              padding: '16px 18px',
+              background: '#ffffff',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>AI Operations</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: '#faf5ff', color: '#7e22ce', padding: '2px 8px', borderRadius: 6 }}>
+                  {isPaidPlan ? '50+ uses / month' : '10 uses / month'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
+                  <FiCheck size={13} />
+                  <span>Improve JD, Requirements & Responsibilities (Free)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isPaidPlan ? '#059669' : '#94a3b8', fontWeight: 600 }}>
+                  {isPaidPlan ? <FiCheck size={13} /> : <FiLock size={13} />}
+                  <span>Write Full JD from Job Title (Paid Only)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isPaidPlan ? '#059669' : '#94a3b8', fontWeight: 600 }}>
+                  {isPaidPlan ? <FiCheck size={13} /> : <FiLock size={13} />}
+                  <span>Generate Screening Questions with AI (Paid Only)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Max CV Access Service */}
+            <div style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: 12,
+              padding: '16px 18px',
+              background: '#ffffff',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Max CV Access</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: '#f0fdf4', color: '#15803d', padding: '2px 8px', borderRadius: 6 }}>
+                  Resume Database
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
+                  <FiCheck size={13} />
+                  <span>Search verified candidate profiles</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isPaidPlan ? '#059669' : '#94a3b8', fontWeight: 600 }}>
+                  {isPaidPlan ? <FiCheck size={13} /> : <FiLock size={13} />}
+                  <span>Direct contact unlock & resume downloads</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Candidate Outreach Service */}
+            <div style={{
+              border: '1px solid #e2e8f0',
+              borderRadius: 12,
+              padding: '16px 18px',
+              background: '#ffffff',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Max NVite Credits</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 6 }}>
+                  Candidate Invites
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isPaidPlan ? '#059669' : '#94a3b8', fontWeight: 600 }}>
+                  {isPaidPlan ? <FiCheck size={13} /> : <FiLock size={13} />}
+                  <span>Direct job application invites to qualified candidates</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isPaidPlan ? '#059669' : '#94a3b8', fontWeight: 600 }}>
+                  {isPaidPlan ? <FiCheck size={13} /> : <FiLock size={13} />}
+                  <span>Automated candidate invite engagement</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

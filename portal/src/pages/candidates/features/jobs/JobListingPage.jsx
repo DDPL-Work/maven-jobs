@@ -362,7 +362,7 @@ export default function JobListingPage() {
             ? [...stackTags, ...skills]
             : ["Full-Time", j.department || "Engineering"],
         logo: j.companyLogo || company[0],
-        logoUrl: profile.logoUrl || companyLogoUrl,
+        logoUrl: (Boolean(j.isHotVacancy || j.jobCategory === "hot")) ? (companyLogoUrl || profile.logoUrl || "") : "",
         coverUrl: j.companyCoverUrl || companyObj.coverImageUrl || "",
         logoColor: profile.color || "#002366",
         featured: i < 3,

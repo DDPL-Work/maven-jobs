@@ -195,10 +195,18 @@ class PlanService {
         const subtotal = totalQty * unitPrice;
         calculatedCatalogSum += subtotal;
 
+        let pName = item.productName || prod?.name || "Product";
+        const cCode = String(item.productCode || prod?.code || code || "").toUpperCase();
+        if (cCode === "RESDEX" || pName === "ResDex Resume Search" || String(pName).toLowerCase() === "resdex resume search") {
+          pName = "Max CV Access";
+        } else if (cCode === "MIVITE" || pName === "MIvites Candidate Outreach" || String(pName).toLowerCase() === "mivites candidate outreach") {
+          pName = "Max NVite Credits";
+        }
+
         return {
           productId: item.productId,
           productCode: item.productCode || prod?.code || code,
-          productName: item.productName || prod?.name || "Product",
+          productName: pName,
           quantity: totalQty,
           baseQuantity: totalQty,
           unit: item.unit || prod?.unit || "Unit",

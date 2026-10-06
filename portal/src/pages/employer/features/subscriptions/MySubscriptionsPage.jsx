@@ -265,7 +265,9 @@ export default function MySubscriptionsPage() {
                                   <span className="msp-product-dot" />
                                   <div>
                                     <div className="msp-product-name">
-                                      {prod.name}
+                                      {String(prod.name || '')
+                                        .replace(/ResDex Resume Search/gi, 'Max CV Access')
+                                        .replace(/MIvites Candidate Outreach/gi, 'Max NVite Credits')}
                                     </div>
                                     <div className="msp-product-validity">
                                       {prod.validity}

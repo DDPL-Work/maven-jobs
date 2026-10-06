@@ -98,6 +98,8 @@ router.post("/delete-account", controller.deleteAccount);
 
 // AI
 router.post("/ai/enhance-description", controller.enhanceDescription);
+router.post("/ai/screening-questions", controller.generateScreeningQuestions);
+router.post("/ai/generate-screening-questions", controller.generateScreeningQuestions);
 router.post("/ai/suggest-skills", controller.suggestSkills);
 
 // Notifications

@@ -163,7 +163,7 @@ export default function JobDetailsPage() {
             id: j._id || j.id,
             companyId,
             companyName: j.companyName || company,
-            companyLogoUrl: j.companyLogoUrl || "",
+            companyLogoUrl: (Boolean(j.isHotVacancy || j.jobCategory === "hot")) ? (j.companyLogoUrl || "") : "",
             title,
             company,
             rating: j.companyRating || (4.0 + Math.random() * 0.8).toFixed(1),
@@ -245,7 +245,7 @@ export default function JobDetailsPage() {
                 company:
                   sj.companyId?.name || sj.companyName || sj.company || company,
                 companyLogoUrl:
-                  sj.companyLogoUrl || sj.companyId?.logoUrl || "",
+                  (Boolean(sj.isHotVacancy || sj.jobCategory === "hot")) ? (sj.companyLogoUrl || sj.companyId?.logoUrl || "") : "",
                 companyCoverUrl:
                   sj.companyCoverUrl || sj.companyId?.coverImageUrl || "",
                 rating:

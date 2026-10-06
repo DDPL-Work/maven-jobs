@@ -10,6 +10,37 @@ const Company = require("../../models/Company");
 const CreditLedgerService = require("./credit-ledger.service");
 const AuditLogService = require("./audit-log.service");
 
+const DEFAULT_PRODUCT_FEATURES = {
+  HOT_VACANCY: [
+    { key: "companyLogo", name: "Company Logo Shown", enabled: true },
+    { key: "topSearchPlacement", name: "Top Search Placement", enabled: true },
+    { key: "candidateAlerts", name: "Candidate Job Alerts", enabled: true },
+    { key: "multipleCities", name: "Multiple Cities Allowed", enabled: true, value: 3 },
+  ],
+  SMB_JOB: [
+    { key: "basicPosting", name: "Basic Job Posting", enabled: true },
+    { key: "cityAllowed", name: "City Allowed", enabled: true },
+    { key: "companyLogo", name: "Company Logo Shown", enabled: false },
+    { key: "candidateAlerts", name: "Candidate Alerts", enabled: false },
+    { key: "topSearchPlacement", name: "Top Search Placement", enabled: false },
+  ],
+  INTERNSHIP_JOB: [],
+  AI_CREDIT: [
+    { key: "improveJd", name: "Improve Job Description (Free Tier)", enabled: true },
+    { key: "generateJd", name: "Write Full JD from Title (Paid Only)", enabled: true },
+    { key: "screeningQuestions", name: "Generate Screening Questions (Paid Only)", enabled: true },
+  ],
+  RESDEX: [
+    { key: "advanceFilters", name: "Advanced Filters", enabled: true },
+    { key: "downloadCv", name: "Download PDF CV", enabled: true },
+    { key: "contactDetails", name: "View Direct Contact Info", enabled: true },
+  ],
+  MIVITE: [
+    { key: "candidateOutreach", name: "Candidate Outreach Messaging", enabled: true },
+    { key: "directInvite", name: "Direct Job Application NVites", enabled: true },
+  ],
+};
+
 class PurchaseService {
   /**
    * Helper to generate unique human-readable order number
@@ -219,6 +250,9 @@ class PurchaseService {
 
     // 4. Build Immutable Entitlement Snapshot (Stacking new credits on top of old remaining credits)
     const handledProductCodes = new Set();
+    const productIds = (planVersion.items || []).map((i) => i.productId).filter(Boolean);
+    const catalogProds = await Product.find({ _id: { $in: productIds } }).lean();
+    const catalogProductMap = new Map(catalogProds.map((p) => [String(p._id), p]));
 
     const entitlementSnapshot = (planVersion.items || []).map((item) => {
       const code = String(item.productCode || "").toUpperCase();
@@ -242,16 +276,31 @@ class PurchaseService {
       const rolloverQty = !isAiCredit ? (rolloverCreditsMap[code] || 0) : 0;
       const totalQuantity = (item.quantity || 0) + rolloverQty;
 
+      let pName = item.productName;
+      if (code === "RESDEX" || pName === "ResDex Resume Search" || String(pName).toLowerCase() === "resdex resume search") {
+        pName = "Max CV Access";
+      } else if (code === "MIVITE" || pName === "MIvites Candidate Outreach" || String(pName).toLowerCase() === "mivites candidate outreach") {
+        pName = "Max NVite Credits";
+      }
+
+      const catalogProd = catalogProductMap.get(String(item.productId));
+      const resolvedFeatures =
+        item.features && item.features.length > 0
+          ? item.features
+          : (catalogProd?.features && catalogProd.features.length > 0
+              ? catalogProd.features
+              : (DEFAULT_PRODUCT_FEATURES[code] || []));
+
       return {
         productId: item.productId,
         productCode: item.productCode,
-        productName: item.productName,
+        productName: pName,
         quantity: totalQuantity,
         basePlanQuantity: item.quantity,
         rolledOverQuantity: rolloverQty,
         unit: item.unit,
         validityDays: itemValidityDays,
-        features: item.features || [],
+        features: resolvedFeatures,
         expiryDate: itemExpiry,
       };
     });
@@ -261,10 +310,16 @@ class PurchaseService {
       if (!handledProductCodes.has(code) && leftoverQty > 0) {
         const prod = await Product.findOne({ code });
         if (prod) {
+          let pName = prod.name;
+          if (prod.code === "RESDEX" || pName === "ResDex Resume Search" || String(pName).toLowerCase() === "resdex resume search") {
+            pName = "Max CV Access";
+          } else if (prod.code === "MIVITE" || pName === "MIvites Candidate Outreach" || String(pName).toLowerCase() === "mivites candidate outreach") {
+            pName = "Max NVite Credits";
+          }
           entitlementSnapshot.push({
             productId: prod._id,
             productCode: prod.code,
-            productName: prod.name,
+            productName: pName,
             quantity: leftoverQty,
             basePlanQuantity: 0,
             rolledOverQuantity: leftoverQty,
@@ -385,6 +440,17 @@ class PurchaseService {
       };
     });
 
+    const totalJobLimit = servicesSnapshot.reduce((sum, s) => {
+      const sCode = String(s.productCode || "").toUpperCase();
+      if (sCode.includes("JOB") || sCode.includes("VACANCY")) {
+        return sum + (s.quantity || 0);
+      }
+      return sum;
+    }, 0);
+
+    const miviteService = servicesSnapshot.find(s => String(s.productCode).toUpperCase() === "MIVITE");
+    const hasHotVacancy = servicesSnapshot.some(s => String(s.productCode).toUpperCase() === "HOT_VACANCY");
+
     const companyUpdate = {
       planSnapshot: {
         planId: plan._id,
@@ -403,13 +469,14 @@ class PurchaseService {
       },
       packageExpiresAt: endDate,
       packageType: plan.name,
+      profileHotVacancies: hasHotVacancy ? "Premium Hot Vacancy" : "Standard",
     };
 
-    const jobItem = servicesSnapshot.find(
-      (s) => s.productCode === "SMB_JOB" || s.productCode === "JOB_POSTING"
-    );
-    if (jobItem && jobItem.quantity) {
-      companyUpdate.jobLimit = jobItem.quantity;
+    if (totalJobLimit > 0) {
+      companyUpdate.jobLimit = totalJobLimit;
+    }
+    if (miviteService && miviteService.quantity) {
+      companyUpdate.nviteLimit = miviteService.quantity;
     }
 
     await Company.findByIdAndUpdate(companyId, { $set: companyUpdate });

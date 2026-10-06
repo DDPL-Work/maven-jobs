@@ -219,11 +219,13 @@ const jobMatchesFilter = (job, filter = "") => {
 const formatPublicJob = (job, reviewMap = new Map()) => {
   const companyId = String(job.companyId?._id || job.companyId || "");
   const r = reviewMap.get(companyId) || {};
+  const isHot = Boolean(job.isHotVacancy || job.jobCategory === "hot");
+  const visibleLogoUrl = isHot ? (job.companyId?.logoUrl || "") : "";
   return {
     id: String(job._id),
     companyId,
     companyName: job.companyId?.name || "Unknown company",
-    companyLogoUrl: job.companyId?.logoUrl || "",
+    companyLogoUrl: visibleLogoUrl,
     companyCoverUrl: job.companyId?.coverImageUrl || "",
     company: job.companyId
       ? {
@@ -232,7 +234,7 @@ const formatPublicJob = (job, reviewMap = new Map()) => {
         industry: job.companyId.industry || "",
         type: job.companyId.packageType || "",
         location: job.companyId.location || {},
-        logoUrl: job.companyId.logoUrl || "",
+        logoUrl: visibleLogoUrl,
         coverImageUrl: job.companyId.coverImageUrl || "",
       }
       : null,

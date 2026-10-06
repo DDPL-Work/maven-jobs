@@ -652,11 +652,15 @@ const InfoBox = ({ children }) => (
 );
 
 /* ─────────────────────── STEP 1: JOB DETAILS ─────────────────────── */
-function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUploadJd, isInternship: isInternshipProp }) {
-  const typeParam = new URLSearchParams(window.location.search).get("type");
+function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUploadJd, isInternship: isInternshipProp, jobType: jobTypeProp, isPaidPlan, aiPermissions, hotMaxCities = 1, companyCity = "", setAiError }) {
+  const typeParam = jobTypeProp ?? new URLSearchParams(window.location.search).get("type");
   const [selectedTypes, setSelectedTypes] = useState(data.jobTypes || (typeParam === "internship" ? ["Internship"] : []));
   const isInternship = isInternshipProp ?? (typeParam === "internship" || selectedTypes.includes("Internship") || (data.jobTypes || []).includes("Internship"));
-  const entityName = isInternship ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
+  const isHot = typeParam === "hot";
+  const entityName = isInternship ? "Internship" : isHot ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
+
+  const enablesMultiCities = isHot && hotMaxCities > 1;
+  const maxAllowedCities = isHot ? hotMaxCities : 1;
   
   const [selectedPerks, setSelectedPerks] = useState(data.perks || []);
 
@@ -720,27 +724,131 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
             />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#1E293B",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              Primary Location
-              <span style={{ color: "#EF4444", fontSize: 14 }}>*</span>
-            </label>
-            <LocationAutocomplete
-              value={data.location || ""}
-              onChange={(val) => setData((p) => ({ ...p, location: val }))}
-              placeholder="Select location"
-              id="post-job-location"
-              aria-label="Primary Location"
-              className="pj-location-input"
-            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#1E293B",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                {enablesMultiCities ? "Locations" : "Primary Location"}
+                <span style={{ color: "#EF4444", fontSize: 14 }}>*</span>
+              </label>
+              {enablesMultiCities ? (
+                <span style={{ fontSize: 11.5, color: "#2563EB", fontWeight: 600 }}>
+                  Up to {hotMaxCities} {hotMaxCities === 1 ? "city" : "cities"} allowed
+                </span>
+              ) : isHot ? (
+                <span style={{ fontSize: 11.5, color: "#64748B", fontWeight: 500 }}>
+                  1 city allowed
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    color: companyCity ? "#166534" : "#64748B",
+                    background: companyCity ? "#DCFCE7" : "transparent",
+                    padding: companyCity ? "2px 8px" : 0,
+                    borderRadius: 6,
+                    fontWeight: companyCity ? 700 : 500,
+                  }}
+                >
+                  {companyCity
+                    ? `Allowed City: ${companyCity} (from Company Profile)`
+                    : "1 city allowed (from Company Profile)"}
+                </span>
+              )}
+            </div>
+            {enablesMultiCities ? (
+              <div>
+                <LocationAutocomplete
+                  value={""}
+                  onChange={(val) => {
+                    if (!val) return;
+                    const existing = Array.isArray(data.cities)
+                      ? [...data.cities]
+                      : (data.location ? data.location.split(",").map((c) => c.trim()).filter(Boolean) : []);
+                    if (existing.length >= hotMaxCities) return;
+                    if (!existing.includes(val)) {
+                      const next = [...existing, val];
+                      setData((p) => ({ ...p, cities: next, location: next.join(", ") }));
+                    }
+                  }}
+                  placeholder={
+                    (data.cities || []).length >= hotMaxCities
+                      ? `Maximum ${hotMaxCities} ${hotMaxCities === 1 ? "city" : "cities"} reached`
+                      : `Type & select city (up to ${hotMaxCities})`
+                  }
+                  id="post-job-location"
+                  aria-label="Job Locations"
+                  className="pj-location-input"
+                  disabled={(data.cities || []).length >= hotMaxCities}
+                />
+                {Array.isArray(data.cities) && data.cities.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    {data.cities.map((city, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          background: "#EEF2FF",
+                          border: "1px solid #C7D7FF",
+                          color: "#1E40AF",
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <FiMapPin size={12} /> {city}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = data.cities.filter((_, i) => i !== idx);
+                            setData((p) => ({ ...p, cities: next, location: next.join(", ") }));
+                          }}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "#1E40AF",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: 0,
+                          }}
+                        >
+                          <FiX size={13} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <LocationAutocomplete
+                  value={data.location || companyCity || ""}
+                  onChange={(val) =>
+                    setData((p) => ({ ...p, location: val, cities: val ? [val] : [] }))
+                  }
+                  placeholder={companyCity && !isHot ? `Allowed city: ${companyCity}` : "Select location"}
+                  id="post-job-location"
+                  aria-label="Primary Location"
+                  className="pj-location-input"
+                />
+                {!isHot && companyCity && (
+                  <span style={{ fontSize: 11.5, color: "#64748B", marginTop: 4, display: "block" }}>
+                    Registered company city: <strong>{companyCity}</strong>. Standard & SMB job postings are tied to your company profile location.
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1072,34 +1180,41 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
                 <span style={{ color: "#EF4444", fontSize: 14 }}>*</span>
               </label>
               <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => onAiEnhance("roleDescription", "description")}
-                  disabled={aiLoading?.roleDescription}
-                  title="Generate or enhance Role Description using AI (1 credit)"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "5px 12px",
-                    borderRadius: 8,
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    fontFamily: "inherit",
-                    cursor: aiLoading?.roleDescription ? "wait" : "pointer",
-                    border: "1.5px solid #C7D7FF",
-                    background: "#EEF2FF",
-                    color: "#002366",
-                    transition: "all .14s",
-                  }}
-                >
-                  <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
-                  {aiLoading?.roleDescription
-                    ? "Enhancing…"
-                    : (!data.roleDescription?.trim()
-                      ? "Generate with AI (1 credit)"
-                      : "Enhance with AI (1 credit)")}
-                </button>
+                {(() => {
+                  const hasText = Boolean(data.roleDescription?.trim());
+                  const canGenerate = Boolean(aiPermissions?.canGenerateJd);
+                  const canImprove = Boolean(aiPermissions?.canImproveJd);
+                  const isAllowed = hasText ? canImprove : canGenerate;
+                  if (!isAllowed) return null;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => onAiEnhance("roleDescription", "description")}
+                      disabled={aiLoading?.roleDescription}
+                      title="Generate or enhance Role Description using AI (1 credit)"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        fontFamily: "inherit",
+                        cursor: aiLoading?.roleDescription ? "wait" : "pointer",
+                        border: "1.5px solid #C7D7FF",
+                        background: "#EEF2FF",
+                        color: "#002366",
+                        transition: "all .14s",
+                      }}
+                    >
+                      <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
+                      {aiLoading?.roleDescription
+                        ? "Enhancing…"
+                        : (!hasText ? "Generate with AI (1 credit)" : "Enhance with AI (1 credit)")}
+                    </button>
+                  );
+                })()}
                 <label
                   style={{
                     display: "inline-flex",
@@ -1180,36 +1295,41 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
                 Key Responsibilities{" "}
                 <span style={{ color: "#EF4444", fontSize: 14 }}>*</span>
               </label>
-              <button
-                type="button"
-                onClick={() =>
-                  onAiEnhance("responsibilities", "responsibilities")
-                }
-                disabled={aiLoading?.responsibilities}
-                title="Generate or enhance Key Responsibilities using AI (1 credit)"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "5px 12px",
-                  borderRadius: 8,
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  fontFamily: "inherit",
-                  cursor: aiLoading?.responsibilities ? "wait" : "pointer",
-                  border: "1.5px solid #C7D7FF",
-                  background: "#EEF2FF",
-                  color: "#002366",
-                  transition: "all .14s",
-                }}
-              >
-                <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
-                {aiLoading?.responsibilities
-                  ? "Enhancing…"
-                  : (!data.responsibilities?.trim()
-                    ? "Generate with AI (1 credit)"
-                    : "Enhance with AI (1 credit)")}
-              </button>
+              {(() => {
+                const hasText = Boolean(data.responsibilities?.trim());
+                const canGenerate = Boolean(aiPermissions?.canGenerateJd);
+                const canImprove = Boolean(aiPermissions?.canImproveJd);
+                const isAllowed = hasText ? canImprove : canGenerate;
+                if (!isAllowed) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onAiEnhance("responsibilities", "responsibilities")}
+                    disabled={aiLoading?.responsibilities}
+                    title="Generate or enhance Key Responsibilities using AI (1 credit)"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 12px",
+                      borderRadius: 8,
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      fontFamily: "inherit",
+                      cursor: aiLoading?.responsibilities ? "wait" : "pointer",
+                      border: "1.5px solid #C7D7FF",
+                      background: "#EEF2FF",
+                      color: "#002366",
+                      transition: "all .14s",
+                    }}
+                  >
+                    <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
+                    {aiLoading?.responsibilities
+                      ? "Enhancing…"
+                      : (!hasText ? "Generate with AI (1 credit)" : "Enhance with AI (1 credit)")}
+                  </button>
+                );
+              })()}
             </div>
             <textarea
               value={data.responsibilities || ""}
@@ -1272,34 +1392,41 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
                 Required Skills & Qualifications{" "}
                 <span style={{ color: "#EF4444", fontSize: 14 }}>*</span>
               </label>
-              <button
-                type="button"
-                onClick={() => onAiEnhance("skills", "qualifications")}
-                disabled={aiLoading?.skills}
-                title="Generate or enhance Required Skills & Qualifications using AI (1 credit)"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "5px 12px",
-                  borderRadius: 8,
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  fontFamily: "inherit",
-                  cursor: aiLoading?.skills ? "wait" : "pointer",
-                  border: "1.5px solid #C7D7FF",
-                  background: "#EEF2FF",
-                  color: "#002366",
-                  transition: "all .14s",
-                }}
-              >
-                <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
-                {aiLoading?.skills
-                  ? "Enhancing…"
-                  : (!data.skills?.trim()
-                    ? "Generate with AI (1 credit)"
-                    : "Enhance with AI (1 credit)")}
-              </button>
+              {(() => {
+                const hasText = Boolean(data.skills?.trim());
+                const canGenerate = Boolean(aiPermissions?.canGenerateJd);
+                const canImprove = Boolean(aiPermissions?.canImproveJd);
+                const isAllowed = hasText ? canImprove : canGenerate;
+                if (!isAllowed) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onAiEnhance("skills", "qualifications")}
+                    disabled={aiLoading?.skills}
+                    title="Generate or enhance Required Skills & Qualifications using AI (1 credit)"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 12px",
+                      borderRadius: 8,
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      fontFamily: "inherit",
+                      cursor: aiLoading?.skills ? "wait" : "pointer",
+                      border: "1.5px solid #C7D7FF",
+                      background: "#EEF2FF",
+                      color: "#002366",
+                      transition: "all .14s",
+                    }}
+                  >
+                    <FiZap size={14} style={{ color: "#4F46E5" }} />{" "}
+                    {aiLoading?.skills
+                      ? "Enhancing…"
+                      : (!hasText ? "Generate with AI (1 credit)" : "Enhance with AI (1 credit)")}
+                  </button>
+                );
+              })()}
             </div>
             <textarea
               value={data.skills || ""}
@@ -1351,8 +1478,9 @@ function StepCandidatePreferences({
   skillSuggestions,
   skillSuggestLoading,
   isInternship: isInternshipProp,
+  jobType: jobTypeProp,
 }) {
-  const typeParam = new URLSearchParams(window.location.search).get("type");
+  const typeParam = jobTypeProp ?? new URLSearchParams(window.location.search).get("type");
   const isInternship = isInternshipProp ?? (typeParam === "internship" || (data.jobTypes || []).includes("Internship"));
   const [skills, setSkills] = useState(data.requiredSkills || []);
   const [skillInput, setSkillInput] = useState("");
@@ -1808,8 +1936,18 @@ function StepCandidatePreferences({
 }
 
 /* ─────────────────────── STEP 3: SCREENING QUESTIONS ─────────────────────── */
-function StepScreening({ data, setData }) {
-  const [questions, setQuestions] = useState(data.questions || []);
+function StepScreening({
+  data,
+  setData,
+  isInternship,
+  jobType,
+  onGenerateAiQuestions,
+  aiLoading,
+  isPaidPlan,
+  aiPermissions,
+  setAiError,
+}) {
+  const questions = data.questions || [];
 
   const addQuestion = () => {
     const q = {
@@ -1820,19 +1958,16 @@ function StepScreening({ data, setData }) {
       scoring: "Preferred",
     };
     const next = [...questions, q];
-    setQuestions(next);
     setData((p) => ({ ...p, questions: next }));
   };
   const removeQuestion = (id) => {
     const next = questions.filter((q) => q.id !== id);
-    setQuestions(next);
     setData((p) => ({ ...p, questions: next }));
   };
   const updateQuestion = (id, field, val) => {
     const next = questions.map((q) =>
       q.id === id ? { ...q, [field]: val } : q,
     );
-    setQuestions(next);
     setData((p) => ({ ...p, questions: next }));
   };
 
@@ -1851,6 +1986,51 @@ function StepScreening({ data, setData }) {
         subtitle="Optional questions shown to candidates during CV submission."
         accentColor="#002366"
       >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 13, color: "#64748B" }}>
+            Add questions to automatically pre-screen applicants.
+          </div>
+          {onGenerateAiQuestions && Boolean(aiPermissions?.canGenerateScreeningQuestions) && (
+            <button
+              type="button"
+              onClick={() => onGenerateAiQuestions()}
+              disabled={aiLoading?.screeningQuestions}
+              title="Auto-generate 3-5 screening questions with AI (1 credit)"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: "inherit",
+                cursor: aiLoading?.screeningQuestions ? "wait" : "pointer",
+                border: "1.5px solid #C7D7FF",
+                background: "#EEF2FF",
+                color: "#002366",
+                transition: "all .14s",
+              }}
+            >
+              <FiZap
+                size={14}
+                style={{ color: "#4F46E5" }}
+              />
+              {aiLoading?.screeningQuestions
+                ? "Generating Questions…"
+                : "Generate with AI (1 credit)"}
+            </button>
+          )}
+        </div>
         {/* Table header */}
         {questions.length > 0 && (
           <div
@@ -2136,8 +2316,8 @@ function StepScreening({ data, setData }) {
 }
 
 /* ─────────────────────── STEP 4: REVIEW & LAUNCH ─────────────────────── */
-function StepReview({ data, isInternship: isInternshipProp }) {
-  const typeParam = new URLSearchParams(window.location.search).get("type");
+function StepReview({ data, isInternship: isInternshipProp, jobType: jobTypeProp }) {
+  const typeParam = jobTypeProp ?? new URLSearchParams(window.location.search).get("type");
   const isInternship = isInternshipProp ?? (typeParam === "internship" || (data.jobTypes || []).includes("Internship"));
   const entityName = isInternship ? "Internship" : typeParam === "hot" ? "Hot Vacancy" : typeParam === "management" ? "SMB Job" : "Job";
   const ReviewRow = ({ label, value }) => (
@@ -2487,7 +2667,7 @@ function ProgressBar({ currentStep, totalSteps, isInternship: isInternshipProp }
 }
 
 /* ─────────────────────── MAIN PAGE ─────────────────────── */
-export default function PostJob({ isEmbedded = false, onJobCreated = null, onCancel = null }) {
+export default function PostJob({ isEmbedded = false, onJobCreated = null, onCancel = null, initialJobType = null }) {
   const navigate = useNavigate();
   const LayoutWrapper = useCallback(({ children, ...props }) => {
     if (isEmbedded) {
@@ -2501,16 +2681,26 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const [submitError, setSubmitError] = useState("");
   const [createdJob, setCreatedJob] = useState(null);
   const location = useLocation();
-  const typeParam = new URLSearchParams(location.search).get("type");
-  const isSMB = typeParam === "management";
-  const isHot = typeParam === "hot";
+  const urlTypeParam = new URLSearchParams(location.search).get("type");
+  const [activeJobType, setActiveJobType] = useState(() => initialJobType || urlTypeParam || null);
+
+  useEffect(() => {
+    if (initialJobType) {
+      setActiveJobType(initialJobType);
+    } else if (urlTypeParam) {
+      setActiveJobType(urlTypeParam);
+    }
+  }, [initialJobType, urlTypeParam]);
+
+  const isSMB = activeJobType === "management";
+  const isHot = activeJobType === "hot";
 
   const [formData, setFormData] = useState(() => ({
     campaignPlan: "Standard",
     cvEnabled: true,
-    ...(typeParam === "internship" ? { jobTypes: ["Internship"], payCycle: "Per Month" } : {}),
+    ...((initialJobType === "internship" || urlTypeParam === "internship") ? { jobTypes: ["Internship"], payCycle: "Per Month" } : {}),
   }));
-  const isInternship = typeParam === "internship" || (formData.jobTypes || []).includes("Internship");
+  const isInternship = activeJobType === "internship" || (formData.jobTypes || []).includes("Internship");
   const entityName = isInternship ? "Internship" : isHot ? "Hot Vacancy" : isSMB ? "SMB Job" : "Job";
   const jobTypeLabel = isHot ? "Hot Vacancy" : isInternship ? "Internship" : isSMB ? "SMB Job" : "Standard Job";
 
@@ -2529,6 +2719,16 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const [quotaExhausted, setQuotaExhausted] = useState(false);
   const [availablePlans, setAvailablePlans] = useState([]);
   const [aiCredits, setAiCredits] = useState(null);
+  const [hotMaxCities, setHotMaxCities] = useState(1);
+  const [companyCity, setCompanyCity] = useState("");
+  const [aiPermissions, setAiPermissions] = useState({
+    canImproveJd: false,
+    canGenerateJd: false,
+    canGenerateScreeningQuestions: false,
+  });
+  const [isPaidPlan, setIsPaidPlan] = useState(false);
+  const [isPlanExpired, setIsPlanExpired] = useState(false);
+  const currentPlanName = "Free Starter Plan";
 
   useEffect(() => {
     const checkQuota = async () => {
@@ -2541,19 +2741,82 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
           if (usageData.aiCredit && typeof usageData.aiCredit.left === "number") {
             setAiCredits(usageData.aiCredit.left);
           }
+          if (usageData.hotVacancy && typeof usageData.hotVacancy.maxCities === "number") {
+            setHotMaxCities(usageData.hotVacancy.maxCities);
+          }
+          if (usageData.companyCity) {
+            setCompanyCity(usageData.companyCity);
+            setFormData((p) => ({
+              ...p,
+              location: p.location || usageData.companyCity,
+              cities: p.cities && p.cities.length > 0 ? p.cities : [usageData.companyCity],
+            }));
+          }
+
+          // Prefer server-authoritative flag (now returned explicitly from getQuotaUsage)
+          const isPaid = Boolean(
+            usageData.isPaidPlan ||
+            usageData.isPaid ||
+            (usageData.planType && usageData.planType !== "FREE" && usageData.planType !== "FREE_TIER") ||
+            (usageData.planName && !usageData.planName.toLowerCase().includes("free")) ||
+            (Number(usageData.hotVacancy?.total || 0) > 0) ||
+            (Number(usageData.smbJobPosting?.total || 0) > 1)
+          );
+          setIsPaidPlan(isPaid);
+
+          if (usageData.aiCredit?.features) {
+            setAiPermissions({
+              canImproveJd: Boolean(usageData.aiCredit.features.canImproveJd),
+              canGenerateJd: Boolean(usageData.aiCredit.features.canGenerateJd),
+              canGenerateScreeningQuestions: Boolean(usageData.aiCredit.features.canGenerateScreeningQuestions),
+            });
+          } else {
+            setAiPermissions({
+              canImproveJd: false,
+              canGenerateJd: false,
+              canGenerateScreeningQuestions: false,
+            });
+          }
+
+          if (usageData.planName) {
+            setCurrentPlanName(usageData.planName);
+          }
+
+          if (usageData.isExpired) {
+            setIsPlanExpired(true);
+          }
+
+          // If no specific job type was requested (e.g. embedded in SendMivite or plain /post-job without ?type=),
+          // automatically select the first active category with remaining credits!
+          let effectiveType = activeJobType;
+          if (!effectiveType && !urlTypeParam && !initialJobType) {
+            if (Number(usageData.smbJobPosting?.left || 0) > 0) {
+              effectiveType = "management";
+            } else if (Number(usageData.hotVacancy?.left || 0) > 0) {
+              effectiveType = "hot";
+            } else if (Number(usageData.jobPosting?.left || 0) > 0) {
+              effectiveType = "standard";
+            } else if (Number(usageData.internship?.left || 0) > 0) {
+              effectiveType = "internship";
+            }
+            if (effectiveType) {
+              setActiveJobType(effectiveType);
+            }
+          }
+
           let quotaData = usageData.jobPosting;
-          if (isHot) {
+          if (effectiveType === "hot") {
             quotaData = usageData.hotVacancy;
-          } else if (isInternship) {
+          } else if (effectiveType === "internship") {
             quotaData = usageData.internship;
-          } else if (isSMB) {
+          } else if (effectiveType === "management") {
             quotaData = usageData.smbJobPosting;
           }
 
           if (!quotaData || Number(quotaData.left || 0) <= 0) {
             setQuotaExhausted(true);
             const available = [];
-            if (!isHot && Number(usageData.hotVacancy?.left || 0) > 0) {
+            if (effectiveType !== "hot" && Number(usageData.hotVacancy?.left || 0) > 0) {
               available.push({
                 label: "Hot Vacancy",
                 type: "hot",
@@ -2562,7 +2825,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
                 total: Number(usageData.hotVacancy?.total || 0),
               });
             }
-            if (!isSMB && Number(usageData.smbJobPosting?.left || 0) > 0) {
+            if (effectiveType !== "management" && Number(usageData.smbJobPosting?.left || 0) > 0) {
               available.push({
                 label: "SMB Job",
                 type: "management",
@@ -2571,7 +2834,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
                 total: Number(usageData.smbJobPosting?.total || 0),
               });
             }
-            if (!isInternship && Number(usageData.internship?.left || 0) > 0) {
+            if (effectiveType !== "internship" && Number(usageData.internship?.left || 0) > 0) {
               available.push({
                 label: "Internship",
                 type: "internship",
@@ -2580,7 +2843,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
                 total: Number(usageData.internship?.total || 0),
               });
             }
-            if (typeParam && Number(usageData.jobPosting?.left || 0) > 0) {
+            if (effectiveType !== "standard" && Number(usageData.jobPosting?.left || 0) > 0) {
               available.push({
                 label: "Standard Job",
                 type: "standard",
@@ -2601,7 +2864,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       }
     };
     checkQuota();
-  }, [location.search, isSMB, isHot, isInternship, typeParam]);
+  }, [location.search, activeJobType, urlTypeParam, initialJobType]);
 
   // Auto-save draft when closing tab/window
   useEffect(() => {
@@ -2627,18 +2890,47 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
     }
   }, []);
 
-  // Auto-fill company name from session
+  // Auto-fill company name & company location from session / profile
   useEffect(() => {
-    try {
-      const session = JSON.parse(
-        localStorage.getItem("employerUser") || "null",
-      );
-      if (session?.companyName && !formData.companyName) {
-        setFormData((p) => ({ ...p, companyName: session.companyName }));
+    const fetchCompanyData = async () => {
+      try {
+        const session = JSON.parse(
+          localStorage.getItem("employerUser") || "null",
+        );
+        if (session?.companyName && !formData.companyName) {
+          setFormData((p) => ({ ...p, companyName: session.companyName }));
+        }
+        const sCity = session?.location?.city || session?.city;
+        if (sCity) {
+          setCompanyCity(sCity);
+          setFormData((p) => ({
+            ...p,
+            location: p.location || sCity,
+            cities: p.cities && p.cities.length > 0 ? p.cities : [sCity],
+          }));
+        }
+
+        const res = await authService.getEmployerProfile();
+        const comp = res?.data?.company;
+        if (comp) {
+          if (comp.name && !formData.companyName) {
+            setFormData((p) => ({ ...p, companyName: comp.name }));
+          }
+          const cCity = comp.location?.city || comp.city;
+          if (cCity) {
+            setCompanyCity(cCity);
+            setFormData((p) => ({
+              ...p,
+              location: p.location || cCity,
+              cities: p.cities && p.cities.length > 0 ? p.cities : [cCity],
+            }));
+          }
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
-    }
+    };
+    fetchCompanyData();
   }, []);
 
   const [aiLoading, setAiLoading] = useState({});
@@ -2651,6 +2943,20 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
     if (!jobTitle.trim() && !text.trim()) {
       setAiError(
         "Please fill in the Job Title first to enhance or generate this section with AI."
+      );
+      return;
+    }
+
+    const isNewContent = !text.trim();
+    if (isNewContent && !aiPermissions.canGenerateJd) {
+      setAiError(
+        "Writing full content from title is a Paid Plan feature (SMB or Corporate). Please upgrade your plan to unlock."
+      );
+      return;
+    }
+    if (!isNewContent && !aiPermissions.canImproveJd) {
+      setAiError(
+        "Improving job descriptions with AI is not available on your current plan."
       );
       return;
     }
@@ -2693,6 +2999,67 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       setAiError(err?.message || "AI enhancement failed. Try again.");
     } finally {
       setAiLoading((p) => ({ ...p, [field]: false }));
+    }
+  };
+
+  const handleGenerateScreeningQuestions = async () => {
+    const jobTitle = formData.jobTitle || "";
+    if (!jobTitle.trim()) {
+      setAiError(
+        "Please fill in the Job Title first to generate screening questions with AI."
+      );
+      return;
+    }
+    if (!aiPermissions.canGenerateScreeningQuestions) {
+      setAiError(
+        "Generating screening questions with AI is a Paid Plan feature (SMB or Corporate). Please upgrade your plan to unlock."
+      );
+      return;
+    }
+    if (aiCredits !== null && aiCredits <= 0) {
+      setAiError(
+        "You have exhausted your AI credits (0 remaining). Please purchase an AI Credit Booster pack or upgrade your plan to continue."
+      );
+      return;
+    }
+
+    setAiLoading((p) => ({ ...p, screeningQuestions: true }));
+    setAiError("");
+    try {
+      const currentCategory = isHot
+        ? "hot"
+        : isInternship
+        ? "internship"
+        : isSMB
+        ? "management"
+        : "standard";
+
+      const res = await authService.generateScreeningQuestions({
+        jobTitle,
+        skills: formData.requiredSkills || [],
+        experience: formData.experienceMin || "",
+        jobCategory: currentCategory,
+      });
+
+      const generated = res?.data?.questions || [];
+      if (generated.length > 0) {
+        setFormData((p) => ({
+          ...p,
+          questions: [...(p.questions || []), ...generated],
+        }));
+      }
+      if (typeof res?.data?.remainingCredits === "number") {
+        setAiCredits(res.data.remainingCredits);
+      } else if (aiCredits !== null && aiCredits > 0) {
+        setAiCredits((prev) => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      setAiError(
+        err?.message ||
+          "Failed to generate screening questions with AI. Try again."
+      );
+    } finally {
+      setAiLoading((p) => ({ ...p, screeningQuestions: false }));
     }
   };
 
@@ -2949,6 +3316,15 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         }));
 
 
+      const citiesList = Array.isArray(formData.cities) && formData.cities.length > 0
+        ? formData.cities
+        : (formData.location ? formData.location.split(",").map((c) => c.trim()).filter(Boolean) : []);
+
+      const isSMB =
+        activeJobType === "management" ||
+        searchParams.get("type") === "management" ||
+        (!activeJobType && !searchParams.get("type"));
+
       const payload = {
         title: formData.jobTitle,
         summary:         formData.roleDescription   || "",  // short overview shown in cards
@@ -2957,8 +3333,13 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         qualifications:  formData.skills            || "",  // Required Skills & Qualifications → DB: qualifications
         department: formData.industry || "General",
         jobType: formData.jobTypes?.[0] || (isInternship ? "Internship" : "Full-time"),
-        workplaceType,
-        location: formData.location,
+        location:
+          isHot
+            ? (citiesList.slice(0, hotMaxCities).join(", ") || formData.location)
+            : (citiesList[0] || companyCity || formData.location),
+        cities: isHot
+          ? citiesList.slice(0, hotMaxCities)
+          : (citiesList[0] ? [citiesList[0]] : (companyCity ? [companyCity] : [])),
         experience,
         salaryMin,
         salaryMax,
@@ -2970,8 +3351,8 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         screeningQuestions,
         externalLink: formData.externalLink || "",
         // Map URL ?type param → DB enum: hot → "hot", management → "management", internship → "internship"
-        jobCategory: typeParam && ["hot", "management", "internship"].includes(typeParam)
-          ? typeParam
+        jobCategory: activeJobType && ["hot", "management", "internship"].includes(activeJobType)
+          ? activeJobType
           : (isInternship ? "internship" : "standard"),
       };
 
@@ -3229,6 +3610,11 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       <QuotaExhausted
         jobTypeLabel={jobTypeLabel}
         availablePlans={availablePlans}
+        wrapLayout={!isEmbedded}
+        onSelectPlanType={(type) => {
+          setActiveJobType(type);
+          setQuotaExhausted(false);
+        }}
       />
     );
   }
@@ -3302,6 +3688,46 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         className="pj-main"
         style={{ maxWidth: 900, margin: "0 auto", padding: "0px 40px 120px" }}
       >
+        {isPlanExpired && (
+          <div
+            style={{
+              background: "#FEF2F2",
+              border: "1.5px solid #F87171",
+              borderRadius: 12,
+              padding: "14px 18px",
+              marginBottom: 20,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              color: "#991B1B",
+            }}
+          >
+            <FiAlertCircle size={22} style={{ color: "#EF4444", flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>Your Plan Subscription Has Expired</div>
+              <div style={{ fontSize: 12.5, color: "#B91C1C", marginTop: 2 }}>
+                You have 90-day read-only access to view historical jobs and CVs. Posting new jobs requires renewing your subscription.
+              </div>
+            </div>
+            <Link
+              to="/manage-quota"
+              style={{
+                marginLeft: "auto",
+                background: "#DC2626",
+                color: "#fff",
+                padding: "6px 14px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 700,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Renew Plan
+            </Link>
+          </div>
+        )}
+
         <ProgressBar currentStep={step} totalSteps={STEPS.length} isInternship={isInternship} />
 
         <div ref={contentRef}>
@@ -3314,6 +3740,12 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
               aiCredits={aiCredits}
               onUploadJd={handleUploadJd}
               isInternship={isInternship}
+              jobType={activeJobType}
+              isPaidPlan={isPaidPlan}
+              aiPermissions={aiPermissions}
+              hotMaxCities={hotMaxCities}
+              companyCity={companyCity}
+              setAiError={setAiError}
             />
           )}
           {step === 2 && (
@@ -3324,10 +3756,23 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
               skillSuggestions={skillSuggestions}
               skillSuggestLoading={skillSuggestLoading}
               isInternship={isInternship}
+              jobType={activeJobType}
             />
           )}
-          {step === 3 && <StepScreening data={formData} setData={updateData} />}
-          {step === 4 && <StepReview data={formData} isInternship={isInternship} />}
+          {step === 3 && (
+            <StepScreening
+              data={formData}
+              setData={updateData}
+              isInternship={isInternship}
+              jobType={activeJobType}
+              onGenerateAiQuestions={handleGenerateScreeningQuestions}
+              aiLoading={aiLoading}
+              isPaidPlan={isPaidPlan}
+              aiPermissions={aiPermissions}
+              setAiError={setAiError}
+            />
+          )}
+          {step === 4 && <StepReview data={formData} isInternship={isInternship} jobType={activeJobType} />}
         </div>
         {aiError && (
           <div

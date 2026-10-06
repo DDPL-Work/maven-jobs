@@ -26,6 +26,7 @@ const jobSchema = new mongoose.Schema(
     workplaceType: String,
 
     location: String,
+    cities: { type: [String], default: [] },
     experience: String,
 
     salaryMin: { type: Number, min: 0 },

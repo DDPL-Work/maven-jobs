@@ -47,29 +47,10 @@ exports.getOffersCatalog = asyncHandler(async (req, res) => {
     Product.find({
       status: "ACTIVE",
       allowStandalone: true,
-      category: { $nin: ["USER_SEATS", "USER_SEAT"] },
     }).lean(),
   ]);
 
-  // Strictly exclude USER_SEATS / Seat-based products from /buy-online catalog
-  const filteredOffers = standaloneOffers.filter((o) => {
-    const cat = o.product?.category;
-    const pType = o.product?.productType;
-    const code = String(o.product?.code || "");
-    const sku = String(o.sku || "");
-    return (
-      cat !== "USER_SEATS" &&
-      pType !== "SEAT_BASED" &&
-      !code.includes("SEAT") &&
-      !sku.includes("SEAT")
-    );
-  });
-
-  const filteredProducts = standaloneProducts.filter(
-    (p) => !String(p.code || "").includes("SEAT") && p.category !== "USER_SEATS"
-  );
-
-  res.json({ success: true, offers: filteredOffers, products: filteredProducts });
+  res.json({ success: true, offers: standaloneOffers, products: standaloneProducts });
 });
 
 // 3b. Standalone Products Catalog
@@ -78,14 +59,9 @@ exports.getProductsCatalog = asyncHandler(async (req, res) => {
   const products = await Product.find({
     status: "ACTIVE",
     allowStandalone: true,
-    category: { $nin: ["USER_SEATS", "USER_SEAT"] },
   }).lean();
 
-  const filtered = products.filter(
-    (p) => !String(p.code || "").includes("SEAT") && p.category !== "USER_SEATS"
-  );
-
-  res.json({ success: true, products: filtered });
+  res.json({ success: true, products });
 });
 
 // PAYMENT-A. Create Razorpay Order for a Commercial Purchase

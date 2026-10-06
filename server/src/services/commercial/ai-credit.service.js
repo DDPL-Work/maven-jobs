@@ -53,15 +53,23 @@ class AiCreditService {
       
       const aiItem = (activePlan.entitlementSnapshot || []).find(e => String(e.productCode).toUpperCase() === "AI_CREDIT") ||
                      (company?.planSnapshot?.services || []).find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
-      if (aiItem && typeof aiItem.quantity === "number") {
+      if (aiItem && typeof aiItem.quantity === "number" && aiItem.quantity > 0) {
         monthlyQuantity = aiItem.quantity;
+      } else {
+        if (planCode.toUpperCase().includes("SMB")) monthlyQuantity = 50;
+        else if (planCode.toUpperCase().includes("CORP")) monthlyQuantity = 200;
+        else if (planCode.toUpperCase().includes("FREE")) monthlyQuantity = 10;
       }
     } else if (company?.planSnapshot?.services) {
+      planCode = company.planSnapshot.planCode || "FREE";
+      isPaid = planCode !== "FREE";
       const aiItem = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
-      if (aiItem && typeof aiItem.quantity === "number") {
+      if (aiItem && typeof aiItem.quantity === "number" && aiItem.quantity > 0) {
         monthlyQuantity = aiItem.quantity;
-        planCode = company.planSnapshot.planCode || "FREE";
-        isPaid = planCode !== "FREE";
+      } else {
+        if (planCode.toUpperCase().includes("SMB")) monthlyQuantity = 50;
+        else if (planCode.toUpperCase().includes("CORP")) monthlyQuantity = 200;
+        else monthlyQuantity = 10;
       }
     }
 
@@ -101,6 +109,19 @@ class AiCreditService {
     const aiProduct = await Product.findOne({ code: "AI_CREDIT" });
     if (!aiProduct) return null;
 
+    const planAiSvc = (company?.planSnapshot?.services || []).find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
+    const planAiFeatures = Array.isArray(planAiSvc?.features) ? planAiSvc.features : null;
+
+    const entitlementFeatures = planAiFeatures !== null
+      ? [
+          { key: `monthlyAllocation_${currentMonthKey}`, name: `Monthly Allocation (${currentMonthKey})`, enabled: true },
+          ...planAiFeatures,
+        ]
+      : [
+          { key: `monthlyAllocation_${currentMonthKey}`, name: `Monthly Allocation (${currentMonthKey})`, enabled: true },
+          { key: "freeMonthlyAllocation", name: "Monthly Allocation", enabled: !isPaid },
+        ];
+
     // Create fresh monthly entitlement
     const monthlyEntitlement = await Entitlement.create({
       companyId,
@@ -112,15 +133,7 @@ class AiCreditService {
       consumedQuantity: 0,
       remainingQuantity: monthlyQuantity,
       unit: "AI Use",
-      features: [
-        { key: `monthlyAllocation_${currentMonthKey}`, name: `Monthly Allocation (${currentMonthKey})`, enabled: true },
-        { key: "freeMonthlyAllocation", name: "Monthly Allocation", enabled: !isPaid },
-        { key: "improveJd", name: "Improve Job Description", enabled: true },
-        { key: "improveRequirements", name: "Improve Requirements", enabled: true },
-        { key: "improveResponsibilities", name: "Improve Responsibilities", enabled: true },
-        { key: "writeFullJd", name: "Write Full Job Description", enabled: isPaid },
-        { key: "screeningQuestions", name: "Generate Screening Questions", enabled: isPaid },
-      ],
+      features: entitlementFeatures,
       startDate: now,
       expiryDate: expiryDate,
       status: "ACTIVE",
@@ -150,7 +163,21 @@ class AiCreditService {
   }
 
   /**
-   * Get AI credits summary and feature permissions for a company
+   * Helper: extract a feature flag value from an AI_CREDIT service features array.
+   * Returns true only if the feature exists AND is explicitly enabled: true.
+   * If the feature is missing from the array, defaults to defaultValue.
+   */
+  static getAiFeatureFlag(featuresArray, key, defaultValue = false) {
+    if (!Array.isArray(featuresArray) || featuresArray.length === 0) return defaultValue;
+    const feat = featuresArray.find(f => String(f.key) === key);
+    if (!feat) return defaultValue;
+    return feat.enabled === true;
+  }
+
+  /**
+   * Get AI credits summary and feature permissions for a company.
+   * Feature flags are read directly from planSnapshot.services[AI_CREDIT].features,
+   * which is the authoritative source seeded per plan.
    */
   static async getAiQuota(companyId) {
     await this.ensureMonthlyAllowance(companyId);
@@ -169,35 +196,55 @@ class AiCreditService {
     const planCode = activePlan?.planId?.code || company?.planSnapshot?.planCode || "FREE";
     const isPaid = planCode !== "FREE";
 
-    // Feature permissions as per Spec Q5.8:
-    // Improving text is free & paid. Writing full new JD & screening questions requires paid plan.
-    const permissions = {
-      improveJobDescription: true,
-      improveRequirements: true,
-      writeFullJobDescription: isPaid,
-      writeScreeningQuestions: isPaid,
-      smartMatch: isPaid,
-    };
-
-    // If company has planSnapshot with AI_CREDIT service, planSnapshot is authoritative
+    // If company has planSnapshot with AI_CREDIT service, planSnapshot.services features are authoritative.
     if (company?.planSnapshot && Array.isArray(company.planSnapshot.services)) {
       const aiSvc = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
       if (aiSvc) {
         const total = Number(aiSvc.quantity || 0);
         const used = Number(aiSvc.usedQuantity || 0);
+        const svcFeatures = Array.isArray(aiSvc.features) ? aiSvc.features : [];
+
+        // Read the feature flags directly from the plan's AI_CREDIT service item.
+        // improveJd: allow enhancing existing JD/responsibilities/skills text
+        // generateJd: allow generating new JD/responsibilities/skills from title (no existing text)
+        // screeningQuestions: allow generating screening questions
+        const canImproveJd = this.getAiFeatureFlag(svcFeatures, "improveJd", false) ||
+                             this.getAiFeatureFlag(svcFeatures, "improveJobDescription", false);
+        const canGenerateJd = this.getAiFeatureFlag(svcFeatures, "generateJd", false) ||
+                              this.getAiFeatureFlag(svcFeatures, "writeFullJd", false) ||
+                              this.getAiFeatureFlag(svcFeatures, "writeFullJobDescription", false);
+        const canScreeningQuestions = this.getAiFeatureFlag(svcFeatures, "screeningQuestions", false) ||
+                                      this.getAiFeatureFlag(svcFeatures, "writeScreeningQuestions", false);
+
+        const permissions = {
+          improveJobDescription: canImproveJd,
+          improveRequirements: canImproveJd,
+          improveResponsibilities: canImproveJd,
+          writeFullJobDescription: canGenerateJd,
+          writeScreeningQuestions: canScreeningQuestions,
+          smartMatch: this.getAiFeatureFlag(svcFeatures, "smartMatch", false),
+          // Explicit camelCase keys for frontend consumption
+          canImproveJd,
+          canGenerateJd,
+          canGenerateScreeningQuestions: canScreeningQuestions,
+        };
+
         return {
           allocatedCredits: total,
           consumedCredits: used,
           availableCredits: Math.max(0, total - used),
           features: permissions,
+          permissions,
           planType: planCode,
           isPaid,
+          isPaidPlan: isPaid,
           expiresAt: company.planSnapshot.endDate || null,
         };
       }
     }
 
-    // Calculate total available AI credits (Free + Plan + Standalone Add-ons)
+    // Fallback: Calculate from active Entitlements (no planSnapshot)
+    // Read feature flags from the active AI entitlement's features array if present.
     const activeEntitlements = await Entitlement.find({
       companyId,
       productCode: "AI_CREDIT",
@@ -205,6 +252,28 @@ class AiCreditService {
       expiryDate: { $gte: now },
       remainingQuantity: { $gt: 0 },
     }).sort({ expiryDate: 1 });
+
+    // Merge features from all active entitlements (union — if ANY grant it, it's allowed)
+    const allEntFeatures = activeEntitlements.flatMap(e => Array.isArray(e.features) ? e.features : []);
+    const canImproveJd = this.getAiFeatureFlag(allEntFeatures, "improveJd", false) ||
+                         this.getAiFeatureFlag(allEntFeatures, "improveJobDescription", false);
+    const canGenerateJd = this.getAiFeatureFlag(allEntFeatures, "generateJd", false) ||
+                          this.getAiFeatureFlag(allEntFeatures, "writeFullJd", false) ||
+                          this.getAiFeatureFlag(allEntFeatures, "writeFullJobDescription", false);
+    const canScreeningQuestions = this.getAiFeatureFlag(allEntFeatures, "screeningQuestions", false) ||
+                                  this.getAiFeatureFlag(allEntFeatures, "writeScreeningQuestions", false);
+
+    const permissions = {
+      improveJobDescription: canImproveJd,
+      improveRequirements: canImproveJd,
+      improveResponsibilities: canImproveJd,
+      writeFullJobDescription: canGenerateJd,
+      writeScreeningQuestions: canScreeningQuestions,
+      smartMatch: this.getAiFeatureFlag(allEntFeatures, "smartMatch", false),
+      canImproveJd,
+      canGenerateJd,
+      canGenerateScreeningQuestions: canScreeningQuestions,
+    };
 
     const totalAvailable = activeEntitlements.reduce((sum, e) => sum + (e.remainingQuantity || 0), 0);
     const totalAllocated = activeEntitlements.reduce((sum, e) => sum + (e.allocatedQuantity || 0), 0);
@@ -216,6 +285,7 @@ class AiCreditService {
       allocatedCredits: totalAllocated,
       consumedCredits: Math.max(0, totalAllocated - totalAvailable),
       permissions,
+      features: permissions,
       batches: activeEntitlements.map((e) => ({
         id: e._id,
         name: e.productName,
@@ -233,12 +303,20 @@ class AiCreditService {
 
     const normalizedFeature = String(feature || "IMPROVE_JD").trim().toUpperCase();
     const quota = await this.getAiQuota(companyId);
+    const perms = quota.permissions || quota.features || {};
 
-    // Check feature permission gates
-    if ((normalizedFeature === "WRITE_FULL_JD" || normalizedFeature === "SCREENING_QUESTIONS") && !quota.isPaidPlan) {
-      const error = new Error("This AI feature (generating new content) requires an active SMB or Corporate plan. Please upgrade.");
+    // Feature permission gates — read from plan's features array, not just isPaid
+    if ((normalizedFeature === "WRITE_FULL_JD" || normalizedFeature === "IMPROVE_RESPONSIBILITIES_GENERATE" || normalizedFeature === "IMPROVE_REQUIREMENTS_GENERATE") && !perms.canGenerateJd && !perms.writeFullJobDescription) {
+      const error = new Error("Generating content from scratch requires the 'Generate JD from Title' feature. Please upgrade your plan to unlock this.");
       error.statusCode = 403;
-      error.code = "PLAN_UPGRADE_REQUIRED";
+      error.code = "FEATURE_NOT_ENABLED";
+      throw error;
+    }
+
+    if (normalizedFeature === "SCREENING_QUESTIONS" && !perms.canGenerateScreeningQuestions && !perms.writeScreeningQuestions) {
+      const error = new Error("Generating screening questions requires the 'Screening Questions' feature. Please upgrade your plan to unlock this.");
+      error.statusCode = 403;
+      error.code = "FEATURE_NOT_ENABLED";
       throw error;
     }
 

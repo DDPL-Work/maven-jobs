@@ -106,6 +106,15 @@ async function resolveCommercialLimits(company) {
  * @returns {{ total, used, left, unlimited? }} quota breakdown
  */
 async function checkAndEnforceQuota(company, type, needed = 1) {
+  // Plan Expiration Check (Q3.7)
+  if (company?.planSnapshot?.endDate && new Date(company.planSnapshot.endDate) < new Date()) {
+    const label = type === 'cvAccess' ? 'Resume Search (Max CV Access)' : 'Candidate Outreach (Max NVite Credits)';
+    const err = new Error(`Your plan has expired. You can view previously accessed CVs and jobs (up to 90 days), but new ${label} actions are locked until renewal.`);
+    err.statusCode = 403;
+    err.code = 'PLAN_EXPIRED';
+    throw err;
+  }
+
   const quotaConfig      = company.quotaConfig || {};
   const allocationPolicy = quotaConfig.allocationPolicy || 'full';
 
@@ -119,7 +128,7 @@ async function checkAndEnforceQuota(company, type, needed = 1) {
     const left = Math.max(0, total - used);
 
     if (left < needed) {
-      const label = type === 'cvAccess' ? 'Resume Search / CV access' : 'MIvites';
+      const label = type === 'cvAccess' ? 'Max CV Access' : 'Max NVite Credits';
       const err = new Error(
         left === 0
           ? `${label} quota exhausted. Your account has no active ${label} credits in the current plan.`
@@ -157,7 +166,7 @@ async function checkAndEnforceQuota(company, type, needed = 1) {
 
   if (left < needed) {
     const period = allocationPolicy === 'weekly' ? 'week' : 'month';
-    const label  = type === 'cvAccess' ? 'CV access' : 'NVite';
+    const label  = type === 'cvAccess' ? 'Max CV Access' : 'Max NVite Credits';
     const err = new Error(
       left === 0
         ? `${label} quota exhausted for this ${period}. Your limit of ${total} will reset at the start of the next ${period}.`

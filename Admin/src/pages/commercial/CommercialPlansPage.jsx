@@ -628,7 +628,11 @@ export default function CommercialPlansPage() {
                                   <tr key={idx} className="hover:bg-slate-50/50 transition">
                                     <td className="px-4 py-3.5">
                                       <div className="font-bold text-slate-900 text-xs">
-                                        {it.productName}
+                                        {code === "RESDEX" || it.productName === "ResDex Resume Search" || String(it.productName).toLowerCase() === "resdex resume search"
+                                          ? "Max CV Access"
+                                          : code === "MIVITE" || it.productName === "MIvites Candidate Outreach" || String(it.productName).toLowerCase() === "mivites candidate outreach"
+                                          ? "Max NVite Credits"
+                                          : it.productName}
                                       </div>
                                       <div className="flex items-center gap-1.5 mt-0.5">
                                         <span className="rounded bg-slate-100 px-1.5 py-0.2 font-mono text-[10px] font-semibold text-slate-600">

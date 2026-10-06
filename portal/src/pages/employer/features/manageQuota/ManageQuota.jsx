@@ -291,6 +291,18 @@ export default function ManageQuota() {
     });
   }, [servicesData]);
 
+  const formatServiceProductName = (service) => {
+    const code = String(service?.productCode || '').toUpperCase();
+    const rawName = String(service?.productName || '').trim();
+    if (code === 'RESDEX' || rawName === 'ResDex Resume Search' || rawName.toLowerCase() === 'resdex resume search') {
+      return 'Max CV Access';
+    }
+    if (code === 'MIVITE' || rawName === 'MIvites Candidate Outreach' || rawName.toLowerCase() === 'mivites candidate outreach') {
+      return 'Max NVite Credits';
+    }
+    return service?.productName || 'Product';
+  };
+
   if (loading) {
     return (
       <EmployerLayout requireAuth={false}>
@@ -327,7 +339,7 @@ export default function ManageQuota() {
           <div>
             <h1 className="mq-title">Manage Quota</h1>
             <p className="mq-subtitle">
-              Configure and distribute your active CV view limits, candidate outreach messaging, and job posting slots across your recruitment team. Job posting, Search Resume, and Send MIvite credits are allocated for your full plan cycle ({planData?.validity || 90} days), while AI credits refresh monthly without rollover.
+              Configure and distribute your active CV view limits, candidate outreach messaging, and job posting slots across your recruitment team. Job posting, Max CV Access, and Max NVite Credits are allocated for your full plan cycle ({planData?.validity || 90} days), while AI credits refresh monthly without rollover.
             </p>
           </div>
 
@@ -501,7 +513,7 @@ export default function ManageQuota() {
                     {isAi ? 'Monthly • No Rollover' : isJob ? 'Full Plan Cycle' : `${percentRemaining}% Remaining`}
                   </span>
                 </div>
-                <div className="mq-stat-label">{isAi ? 'AI Credits (Current Month)' : `${service.productName || 'Service'} Quota`}</div>
+                <div className="mq-stat-label">{isAi ? 'AI Credits (Current Month)' : `${formatServiceProductName(service)} Quota`}</div>
                 <div className="mq-stat-value-row">
                   <span className="mq-stat-value">{service.remaining?.toLocaleString() ?? 0}</span>
                   <span className="mq-stat-total">/ {(service.total || 0).toLocaleString()} {service.total === 1 ? service.unit : (service.unit?.endsWith('s') ? service.unit : `${service.unit}s`)}</span>
@@ -926,7 +938,7 @@ export default function ManageQuota() {
                         <tr key={service._id || service.productCode} className="mq-services-tr">
                           <td className="mq-services-td">
                             <div className="mq-prod-name">
-                              <span>{service.productName || 'Product'}</span>
+                              <span>{formatServiceProductName(service)}</span>
                               {isSeat && (
                                 <span style={{
                                   marginLeft: 8,

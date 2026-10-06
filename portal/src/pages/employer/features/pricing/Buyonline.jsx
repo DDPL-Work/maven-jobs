@@ -22,6 +22,8 @@ import {
   FiAlertCircle,
   FiPlus,
   FiTrash2,
+  FiEye,
+  FiLayers,
 } from "react-icons/fi";
 import { useAuth } from "../../../../AuthContext";
 import paymentService from "../../../../services/paymentService";
@@ -55,6 +57,16 @@ function useInView(threshold = 0.15) {
     return () => obs.disconnect();
   }, [threshold]);
   return [ref, visible];
+}
+
+function getProductIcon(code) {
+  const c = String(code || "").toUpperCase();
+  if (c.includes("AI")) return <FiZap className="bo-product-icon ai" />;
+  if (c.includes("SEAT")) return <FiShield className="bo-product-icon seat" />;
+  if (c.includes("RESDEX") || c.includes("RESUME")) return <FiSearch className="bo-product-icon resdex" />;
+  if (c.includes("MIVITE") || c.includes("NVITE")) return <FiMessageCircle className="bo-product-icon mivite" />;
+  if (c.includes("HOT_VACANCY") || c.includes("HOT")) return <FiStar className="bo-product-icon hot" />;
+  return <FiBriefcase className="bo-product-icon job" />;
 }
 
 const FAQS = [
@@ -110,14 +122,21 @@ export default function Buyonline() {
   // Category Filter Navigation
   const [activeCategory, setActiveCategory] = useState("all");
 
-  // Dynamic Job Post Counters
+  // Dynamic Product Stepper Counters
   const [smbJobCount, setSmbJobCount] = useState(1);
   const [hotJobCount, setHotJobCount] = useState(1);
   const [internshipJobCount, setInternshipJobCount] = useState(1);
+  const [jobSeatCount, setJobSeatCount] = useState(1);
+  const [resdexSeatCount, setResdexSeatCount] = useState(1);
+  const [resdexViewCount, setResdexViewCount] = useState(25);
+  const [aiOperationCount, setAiOperationCount] = useState(50);
 
   // Employer Login Gate State
   const [isLoginGateOpen, setIsLoginGateOpen] = useState(false);
   const pendingPaymentRef = useRef(null); // stores callback to invoke after login
+
+  // Plan Details Modal State (Combined Hiring Plans)
+  const [detailPlan, setDetailPlan] = useState(null);
 
   // Purchase Modal State
   const [selectedItemForPurchase, setSelectedItemForPurchase] = useState(null);
@@ -162,22 +181,8 @@ export default function Buyonline() {
         commercialService.fetchProducts(),
       ]);
 
-      // Filter out user seat products from customer-facing catalog
-      const filteredOffers = (offersData || []).filter((o) => {
-        const cat = o.product?.category;
-        const pType = o.product?.productType;
-        const code = String(o.product?.code || "");
-        const sku = String(o.sku || "");
-        return (
-          cat !== "USER_SEATS" &&
-          pType !== "SEAT_BASED" &&
-          !code.includes("SEAT") &&
-          !sku.includes("SEAT")
-        );
-      });
-
       setPlans(plansData || []);
-      setOffers(filteredOffers);
+      setOffers(offersData || []);
       setProducts(productsData || []);
       setCompanyEntitlements(entData);
     } catch (err) {
@@ -198,7 +203,7 @@ export default function Buyonline() {
 
   useEffect(() => {
     const cat = searchParams.get("category");
-    if (cat && ["all", "combined", "jobs", "resdex", "standalone", "custom"].includes(cat)) {
+    if (cat && ["all", "combined", "jobs", "resdex", "seats", "ai", "standalone", "custom"].includes(cat)) {
       setActiveCategory(cat);
     }
     if (location.hash) {
@@ -217,12 +222,12 @@ export default function Buyonline() {
     }).format(val || 0);
   };
 
-  // Resolve dynamic Products for SMB Job, Hot Vacancy, and Internship
+  // Resolve dynamic Products from catalog
   const smbProduct = products.find((p) => p.code === "SMB_JOB") || {
     name: "SMB Job",
     code: "SMB_JOB",
     category: "JOB_POSTING",
-    defaultPrice: 500,
+    defaultPrice: 100,
     validity: 30,
     unit: "Job",
     description: "Standard cost-effective job posting for small and medium businesses.",
@@ -232,7 +237,7 @@ export default function Buyonline() {
     name: "Hot Vacancy",
     code: "HOT_VACANCY",
     category: "JOB_POSTING",
-    defaultPrice: 1200,
+    defaultPrice: 250,
     validity: 30,
     unit: "Job",
     description: "High-visibility premium job posting with branding and top placement.",
@@ -242,10 +247,50 @@ export default function Buyonline() {
     name: "Internship Job",
     code: "INTERNSHIP_JOB",
     category: "JOB_POSTING",
-    defaultPrice: 400,
+    defaultPrice: 50,
     validity: 30,
     unit: "Job",
     description: "Targeted job posting specifically for internships and college students.",
+  };
+
+  const resdexProduct = products.find((p) => p.code === "RESDEX") || {
+    name: "ResDex Resume Search",
+    code: "RESDEX",
+    category: "RESUME_SEARCH",
+    defaultPrice: 100,
+    validity: 30,
+    unit: "Resume View",
+    description: "Search verified candidates and view complete contact information, phone, email, and CV download.",
+  };
+
+  const aiProduct = products.find((p) => p.code === "AI_CREDIT") || {
+    name: "AI Recruitment Credits",
+    code: "AI_CREDIT",
+    category: "AI",
+    defaultPrice: 10,
+    validity: 30,
+    unit: "AI Use",
+    description: "Company-wide AI credits for automated job descriptions, screening questions, and candidate matching.",
+  };
+
+  const jobSeatProduct = products.find((p) => p.code === "JOB_POSTING_SEAT") || {
+    name: "Job Posting User Seat",
+    code: "JOB_POSTING_SEAT",
+    category: "USER_SEATS",
+    defaultPrice: 1000,
+    validity: 30,
+    unit: "Seat",
+    description: "Dedicated recruiter login seat with permission to draft, publish, and manage job posts.",
+  };
+
+  const resdexSeatProduct = products.find((p) => p.code === "RESDEX_SEAT") || {
+    name: "ResDex User Seat",
+    code: "RESDEX_SEAT",
+    category: "USER_SEATS",
+    defaultPrice: 1000,
+    validity: 30,
+    unit: "Seat",
+    description: "Dedicated recruiter seat with license to search candidates, unlock CVs, and contact applicants.",
   };
 
   // Open Checkout for a Plan, Standalone Offer, or Dynamic Product
@@ -595,10 +640,16 @@ export default function Buyonline() {
             Resume Database / ResDex
           </button>
           <button
-            onClick={() => setActiveCategory("standalone")}
-            className={`bo-cat-tab ${activeCategory === "standalone" ? "active" : ""}`}
+            onClick={() => setActiveCategory("seats")}
+            className={`bo-cat-tab ${activeCategory === "seats" ? "active" : ""}`}
           >
-            Standalone & Add-ons
+            User Seats
+          </button>
+          <button
+            onClick={() => setActiveCategory("ai")}
+            className={`bo-cat-tab ${activeCategory === "ai" ? "active" : ""}`}
+          >
+            AI Credits
           </button>
           <button
             onClick={() => setActiveCategory("custom")}
@@ -634,54 +685,88 @@ export default function Buyonline() {
                       </div>
                     )}
 
-                    <div>
-                      <span className="bo-card-type-tag">
-                        {plan.planType} PLAN
+                    <div className="bo-card-top-row">
+                      <span className="bo-card-sku-tag bo-card-sku-indigo">
+                        {plan.planType || "COMBINED"} PLAN
                       </span>
-                      <h3 className="bo-card-title bo-title-font">
-                        {plan.name}
-                      </h3>
-                      <p className="bo-card-desc">
-                        {plan.description || "Comprehensive hiring package for your recruitment team."}
-                      </p>
+                      <span className="bo-card-validity-tag">
+                        {ver.validity || 90} Days Validity
+                      </span>
                     </div>
+
+                    <h3 className="bo-card-title bo-title-font">{plan.name}</h3>
+                    <div
+                      className="bo-card-subtitle"
+                      style={{
+                        color: isFeatured ? "#b45309" : "#4338ca",
+                      }}
+                    >
+                      {plan.subtitle || (
+                        plan.code === "SMB" || plan.name?.toLowerCase().includes("smb")
+                          ? "Cost-effective hiring for small & medium businesses"
+                          : plan.code === "CORPORATE" || plan.name?.toLowerCase().includes("corporate")
+                          ? "Priority top placement & maximum candidate reach"
+                          : "All-in-one comprehensive recruitment solution"
+                      )}
+                    </div>
+
+                    <p className="bo-card-desc">
+                      {plan.description || "Standard verified job postings with instant reach and candidate application delivery."}
+                    </p>
 
                     {/* Price Block */}
                     <div className="bo-price-block">
-                      <div className="bo-price-main-wrap">
-                        <span className="bo-price-val bo-title-font">
-                          {ver.finalPrice === 0 ? "Free" : formatCurrency(ver.finalPrice)}
-                        </span>
-                        {ver.discount > 0 && (
-                          <span className="bo-price-original">
-                            {formatCurrency(ver.basePrice)}
+                      <div className="bo-price-row">
+                        <div>
+                          <span className="bo-price-val bo-title-font">
+                            {ver.finalPrice === 0 ? "Free" : formatCurrency(ver.finalPrice)}
                           </span>
-                        )}
-                      </div>
-                      <div className="bo-price-tax-note">
-                        {ver.finalPrice > 0 ? "+ GST as applicable • " : ""}
-                        Valid for {ver.validity || 90} {ver.validityUnit?.toLowerCase() || "days"}
+                          {ver.finalPrice > 0 && (
+                            <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                              / plan
+                            </span>
+                          )}
+                          {ver.discount > 0 && (
+                            <span className="bo-price-original" style={{ marginLeft: "8px" }}>
+                              {formatCurrency(ver.basePrice)}
+                            </span>
+                          )}
+                          <span className="bo-price-tax-note" style={{ display: "block" }}>
+                            {ver.finalPrice > 0 ? "+ GST as applicable • " : ""}Valid for {ver.validity || 90} days
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Included Products List */}
+                    {/* Key Inclusions Features Checklist */}
                     <div className="bo-features-container">
-                      <div className="bo-features-header">
-                        Included Entitlements:
-                      </div>
-
                       {(ver.items || []).map((it, idx) => (
                         <div key={idx} className="bo-feature-item">
                           <FiCheck className="bo-check-icon" />
                           <span>
-                            <strong>{it.quantity}</strong> {it.productName} ({it.unit})
+                            <strong>{it.quantity} {it.unit}{it.quantity > 1 ? "s" : ""}</strong> {it.productName}
                           </span>
                         </div>
                       ))}
+                      <div className="bo-feature-item">
+                        <FiCheck className="bo-check-icon" />
+                        <span>Centralized master invoicing & GST tax credit</span>
+                      </div>
+                      <div className="bo-feature-item">
+                        <FiCheck className="bo-check-icon" />
+                        <span>Synchronized quota validity across all products</span>
+                      </div>
                     </div>
 
-                    {/* Purchase CTA */}
-                    <div>
+                    {/* Action Buttons: View Details Modal & Buy */}
+                    <div className="bo-card-actions-stack" style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setDetailPlan(plan)}
+                        className="bo-btn-view-details"
+                      >
+                        <FiEye style={{ width: "16px", height: "16px" }} /> View Full Plan Details
+                      </button>
                       <button
                         onClick={() => handleInitiatePurchase(plan, "PLAN")}
                         className="bo-btn-buy"
@@ -712,7 +797,7 @@ export default function Buyonline() {
                 <div className="bo-card-top-row">
                   <span className="bo-card-sku-tag">SMB JOB</span>
                   <span className="bo-card-validity-tag">
-                    {smbProduct.validity || 30} Days Validity
+                    30 Days Live Duration
                   </span>
                 </div>
 
@@ -729,13 +814,13 @@ export default function Buyonline() {
                   <div className="bo-price-row">
                     <div>
                       <span className="bo-price-val bo-title-font">
-                        {formatCurrency(smbProduct.defaultPrice || 500)}
+                        {formatCurrency(smbProduct.defaultPrice || 100)}
                       </span>
                       <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
                         / job post
                       </span>
                       <span className="bo-price-tax-note" style={{ display: "block" }}>
-                        + GST as applicable • Valid for {smbProduct.validity || 30} days
+                        + GST as applicable • 30 Days Live (Applications accessible for 90 days)
                       </span>
                     </div>
                   </div>
@@ -744,11 +829,15 @@ export default function Buyonline() {
                 <div className="bo-features-container">
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Instant live publishing on candidate job search</span>
+                    <span>Instant live publishing on candidate job search (30 Days Live - Q6.1)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Candidate applications accessible for 90 days</span>
+                    <span>Candidate applications accessible for 90 days (Q3.7)</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>1 City location included (Q6.1)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
@@ -826,7 +915,7 @@ export default function Buyonline() {
                     HOT VACANCY
                   </span>
                   <span className="bo-card-validity-tag">
-                    {hotProduct.validity || 30} Days Validity
+                    30 Days Live Duration
                   </span>
                 </div>
 
@@ -843,13 +932,13 @@ export default function Buyonline() {
                   <div className="bo-price-row">
                     <div>
                       <span className="bo-price-val bo-title-font">
-                        {formatCurrency(hotProduct.defaultPrice || 1200)}
+                        {formatCurrency(hotProduct.defaultPrice || 250)}
                       </span>
                       <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
                         / job post
                       </span>
                       <span className="bo-price-tax-note" style={{ display: "block" }}>
-                        + GST as applicable • Valid for {hotProduct.validity || 30} days
+                        + GST as applicable • 30 Days Live (Applications accessible for 90 days)
                       </span>
                     </div>
                   </div>
@@ -858,7 +947,7 @@ export default function Buyonline() {
                 <div className="bo-features-container">
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span><strong>Top Search Placement</strong> on candidate listings</span>
+                    <span><strong>Top Search Placement</strong> on candidate listings (30 Days Live - Q6.1)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
@@ -866,15 +955,19 @@ export default function Buyonline() {
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Company Logo & prominent branding badge</span>
+                    <span>Up to 3 Cities listing per vacancy (Q6.1)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Automated Push Alerts sent to matching candidates</span>
+                    <span>Company Logo & prominent branding badge (Q6.1)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Applications valid & accessible for 90 days</span>
+                    <span>Automated Push Alerts sent to matching candidates (Q6.1)</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Applications valid & accessible for 90 days (Q3.7)</span>
                   </div>
                 </div>
 
@@ -940,7 +1033,7 @@ export default function Buyonline() {
                     INTERNSHIP
                   </span>
                   <span className="bo-card-validity-tag">
-                    {internshipProduct.validity || 30} Days Validity
+                    30 Days Live Duration
                   </span>
                 </div>
 
@@ -957,13 +1050,13 @@ export default function Buyonline() {
                   <div className="bo-price-row">
                     <div>
                       <span className="bo-price-val bo-title-font">
-                        {formatCurrency(internshipProduct.defaultPrice || 400)}
+                        {formatCurrency(internshipProduct.defaultPrice || 50)}
                       </span>
                       <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
                         / internship post
                       </span>
                       <span className="bo-price-tax-note" style={{ display: "block" }}>
-                        + GST as applicable • Valid for {internshipProduct.validity || 30} days
+                        + GST as applicable • 30 Days Live (Applications accessible for 90 days)
                       </span>
                     </div>
                   </div>
@@ -972,15 +1065,15 @@ export default function Buyonline() {
                 <div className="bo-features-container">
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Dedicated student & college graduate reach</span>
+                    <span>Dedicated student & college graduate reach (30 Days Live - Q6.1)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Configurable stipend & duration filters</span>
+                    <span>Configurable stipend, duration & start date filters (Q6.8)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
-                    <span>Candidate applications accessible for 90 days</span>
+                    <span>Candidate applications accessible for 90 days (Q3.7)</span>
                   </div>
                   <div className="bo-feature-item">
                     <FiCheck className="bo-check-icon" />
@@ -1047,20 +1140,25 @@ export default function Buyonline() {
         )}
 
         {/* Section 3: ResDex / Resume Database Plans */}
-        {(activeCategory === "all" || activeCategory === "resdex") && resdexOffers.length > 0 && (
+        {/* Section 3: ResDex / Resume Database Plans */}
+        {(activeCategory === "all" || activeCategory === "resdex") && (
           <div id="resume-database" className="bo-section">
             <div className="bo-section-header">
-              <h2 className="bo-section-title bo-title-font">Resume Database (ResDex) Packs</h2>
+              <span className="bo-section-tag">Candidate Database</span>
+              <h2 className="bo-section-title bo-title-font" style={{ marginTop: "8px" }}>
+                Resume Database (ResDex) Packs
+              </h2>
               <p className="bo-section-subtitle">
                 Direct access to millions of verified candidates with candidate phone, email, and CV download.
               </p>
             </div>
 
             <div className="bo-grid-3">
+              {/* Existing standalone offers if any */}
               {resdexOffers.map((offer) => (
                 <div key={offer._id} className="bo-card">
                   <div className="bo-card-top-row">
-                    <span className="bo-card-sku-tag">RESDEX</span>
+                    <span className="bo-card-sku-tag bo-card-sku-cyan">RESDEX</span>
                     <span className="bo-card-validity-tag">{offer.validity} Days Validity</span>
                   </div>
 
@@ -1083,11 +1181,11 @@ export default function Buyonline() {
                   <div className="bo-features-container">
                     <div className="bo-feature-item">
                       <FiCheck className="bo-check-icon" />
-                      <span>Full Candidate Contact Access</span>
+                      <span>Full Candidate Contact Access (Phone & Email)</span>
                     </div>
                     <div className="bo-feature-item">
                       <FiCheck className="bo-check-icon" />
-                      <span>Advanced Skills & Experience Filters</span>
+                      <span>Advanced Skills, Location & Experience Filters</span>
                     </div>
                     <div className="bo-feature-item">
                       <FiCheck className="bo-check-icon" />
@@ -1103,24 +1201,540 @@ export default function Buyonline() {
                   </button>
                 </div>
               ))}
+
+              {/* Standard ResDex Product Card 1: 25 Views */}
+              <div className="bo-card">
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-cyan">RESDEX 25</span>
+                  <span className="bo-card-validity-tag">{resdexProduct.validity || 30} Days Validity</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">Starter Resume Pack</h3>
+                <div className="bo-card-subtitle">25 Candidate Resume Views</div>
+
+                <p className="bo-card-desc">
+                  Ideal for targeted single-role hiring with instant candidate phone & email unlock.
+                </p>
+
+                <div className="bo-price-block">
+                  <span className="bo-price-val bo-title-font">
+                    {formatCurrency((resdexProduct.defaultPrice || 100) * 25)}
+                  </span>
+                  <span className="bo-price-tax-note" style={{ display: "block" }}>+ GST as applicable</span>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>25 Verified Candidate Contact Unlocks</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Instant Candidate Phone & Email View</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Advanced Skills, Salary & Experience Filters</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Direct PDF Resume Downloads</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...resdexProduct,
+                        quantity: 25,
+                        price: (resdexProduct.defaultPrice || 100) * 25,
+                        unitPrice: resdexProduct.defaultPrice || 100,
+                        name: "25 ResDex Resume Views",
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy 25 Resume Views <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Standard ResDex Product Card 2: 100 Views (Featured) */}
+              <div className="bo-card featured">
+                <div className="bo-card-ribbon">★ Most Popular Pack</div>
+
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-cyan">RESDEX 100</span>
+                  <span className="bo-card-validity-tag">90 Days Validity</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">Professional Resume Pack</h3>
+                <div className="bo-card-subtitle">100 Candidate Resume Views</div>
+
+                <p className="bo-card-desc">
+                  Best value for active recruitment teams looking for verified talent across India.
+                </p>
+
+                <div className="bo-price-block">
+                  <span className="bo-price-val bo-title-font">
+                    {formatCurrency((resdexProduct.defaultPrice || 100) * 100)}
+                  </span>
+                  <span className="bo-price-tax-note" style={{ display: "block" }}>
+                    + GST as applicable • Valid for 90 days (Q1.4)
+                  </span>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>100 Verified Candidate Contact Unlocks</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Instant Candidate Phone & Email View</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Advanced Skills, Notice Period & CTC Filters</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Candidate Requirement Folders & Notes (Q4.1 - Q4.8)</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Unused views expire after 90 days (Recharge model - Q2.7)</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...resdexProduct,
+                        quantity: 100,
+                        validity: 90,
+                        price: (resdexProduct.defaultPrice || 100) * 100,
+                        unitPrice: resdexProduct.defaultPrice || 100,
+                        name: "100 ResDex Resume Views",
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy 100 Resume Views <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Standard ResDex Product Card 3: Dynamic Views Stepper */}
+              <div className="bo-card">
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-cyan">CUSTOM VIEWS</span>
+                  <span className="bo-card-validity-tag">{resdexProduct.validity || 30} Days Validity</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">Custom Volume Views</h3>
+                <div className="bo-card-subtitle">Select any desired view quantity</div>
+
+                <p className="bo-card-desc">
+                  Need a custom number of resume views? Adjust the counter to meet your exact targets.
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <div>
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(resdexProduct.defaultPrice || 100)}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                        / resume view
+                      </span>
+                      <span className="bo-price-tax-note" style={{ display: "block" }}>
+                        + GST as applicable • Valid for {resdexProduct.validity || 30} days
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Direct Candidate Contact & CV Unlock</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Full Access to All Filter Capabilities</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Dedicated Recruiter Workspace & Notes</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Stepper Counter */}
+                <div className="bo-stepper-container">
+                  <div className="bo-stepper-header">
+                    <span className="bo-stepper-label">Select Views:</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="bo-stepper-subtotal-val bo-title-font">
+                        {formatCurrency((resdexProduct.defaultPrice || 100) * resdexViewCount)}
+                      </span>
+                      <span className="bo-stepper-subtotal-label">+ GST as applicable</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-stepper-controls">
+                    <button
+                      type="button"
+                      disabled={resdexViewCount <= 10}
+                      onClick={() => setResdexViewCount((prev) => Math.max(10, prev - 15))}
+                      className="bo-stepper-btn"
+                      title="Decrease resume view count"
+                    >
+                      –
+                    </button>
+                    <div className="bo-stepper-display">
+                      {resdexViewCount} Views
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setResdexViewCount((prev) => prev + 15)}
+                      className="bo-stepper-btn"
+                      title="Increase resume view count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...resdexProduct,
+                        quantity: resdexViewCount,
+                        price: (resdexProduct.defaultPrice || 100) * resdexViewCount,
+                        unitPrice: resdexProduct.defaultPrice || 100,
+                        name: `${resdexViewCount} ResDex Resume Views`,
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy {resdexViewCount} Resume Views <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Section 4: Standalone & AI Add-on Products */}
-        {(activeCategory === "all" || activeCategory === "standalone") && aiOffers.length > 0 && (
-          <div id="ai-credits" className="bo-section">
+        {/* Section 4: User Seats & Recruiter Licenses */}
+        {(activeCategory === "all" || activeCategory === "seats") && (
+          <div id="user-seats" className="bo-section">
             <div className="bo-section-header">
-              <span className="bo-section-tag">Add-on Capabilities</span>
+              <span className="bo-section-tag" style={{ backgroundColor: "#e0e7ff", color: "#3730a3" }}>
+                Recruiter Collaboration
+              </span>
               <h2 className="bo-section-title bo-title-font" style={{ marginTop: "8px" }}>
-                Standalone AI & Productivity Credits
+                Recruiter User Seats & Licenses
               </h2>
               <p className="bo-section-subtitle">
-                Top up company-wide AI credits for automated job descriptions and candidate screening.
+                Scale your hiring team with dedicated recruiter logins, independent access permissions, and secure IP/time restrictions.
               </p>
             </div>
 
             <div className="bo-grid-3">
+              {/* Card 1: Job Posting User Seat */}
+              <div className="bo-card">
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-indigo">JOB POSTING SEAT</span>
+                  <span className="bo-card-validity-tag">{jobSeatProduct.validity || 30} Days Validity</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">{jobSeatProduct.name}</h3>
+                <div className="bo-card-subtitle" style={{ color: "#3730a3" }}>
+                  Dedicated sub-user seat for publishing & managing jobs
+                </div>
+
+                <p className="bo-card-desc">
+                  {jobSeatProduct.description || "Dedicated recruiter login seat with permission to draft, publish, and manage job posts."}
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <div>
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(jobSeatProduct.defaultPrice || 1000)}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                        / user seat
+                      </span>
+                      <span className="bo-price-tax-note" style={{ display: "block" }}>
+                        + GST as applicable • Valid for {jobSeatProduct.validity || 30} days
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Independent Recruiter Sub-user Login Account</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Permission to Create, Edit & Publish Job Postings</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Full Access to Candidate Applications & Responses</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Direct Recruiter Notifications for New Applicants</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Working Hours & Weekend Access Security Controls</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Stepper Counter */}
+                <div className="bo-stepper-container">
+                  <div className="bo-stepper-header">
+                    <span className="bo-stepper-label">Select Seats:</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="bo-stepper-subtotal-val bo-title-font">
+                        {formatCurrency((jobSeatProduct.defaultPrice || 1000) * jobSeatCount)}
+                      </span>
+                      <span className="bo-stepper-subtotal-label">+ GST as applicable</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-stepper-controls">
+                    <button
+                      type="button"
+                      disabled={jobSeatCount <= 1}
+                      onClick={() => setJobSeatCount((prev) => Math.max(1, prev - 1))}
+                      className="bo-stepper-btn"
+                      title="Decrease seat count"
+                    >
+                      –
+                    </button>
+                    <div className="bo-stepper-display">
+                      {jobSeatCount} {jobSeatCount > 1 ? "Seats" : "Seat"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setJobSeatCount((prev) => prev + 1)}
+                      className="bo-stepper-btn"
+                      title="Increase seat count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...jobSeatProduct,
+                        quantity: jobSeatCount,
+                        price: (jobSeatProduct.defaultPrice || 1000) * jobSeatCount,
+                        unitPrice: jobSeatProduct.defaultPrice || 1000,
+                        name: `${jobSeatCount} Job Posting User Seat${jobSeatCount > 1 ? "s" : ""}`,
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy {jobSeatCount} Job Posting Seat{jobSeatCount > 1 ? "s" : ""}{" "}
+                  <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Card 2: ResDex User Seat */}
+              <div className="bo-card featured">
+                <div className="bo-card-ribbon">★ Search Access License</div>
+
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-indigo">RESDEX SEAT</span>
+                  <span className="bo-card-validity-tag">{resdexSeatProduct.validity || 30} Days Validity</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">{resdexSeatProduct.name}</h3>
+                <div className="bo-card-subtitle" style={{ color: "#3730a3" }}>
+                  Dedicated seat for recruiters to search candidates & unlock CVs
+                </div>
+
+                <p className="bo-card-desc">
+                  {resdexSeatProduct.description || "Dedicated recruiter seat with license to search candidates, unlock CVs, and contact applicants."}
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <div>
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(resdexSeatProduct.defaultPrice || 1000)}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                        / user seat
+                      </span>
+                      <span className="bo-price-tax-note" style={{ display: "block" }}>
+                        + GST as applicable • Valid for {resdexSeatProduct.validity || 30} days
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Independent Recruiter Sub-user Login Account</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Access to Search Verified Resume Database</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Consume Shared Company CV Unlock Credits</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Save Custom Candidate Searches, Folders & Notes</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Recruiter Activity History & Quota Safeguards</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Stepper Counter */}
+                <div className="bo-stepper-container">
+                  <div className="bo-stepper-header">
+                    <span className="bo-stepper-label">Select Seats:</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="bo-stepper-subtotal-val bo-title-font">
+                        {formatCurrency((resdexSeatProduct.defaultPrice || 1000) * resdexSeatCount)}
+                      </span>
+                      <span className="bo-stepper-subtotal-label">+ GST as applicable</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-stepper-controls">
+                    <button
+                      type="button"
+                      disabled={resdexSeatCount <= 1}
+                      onClick={() => setResdexSeatCount((prev) => Math.max(1, prev - 1))}
+                      className="bo-stepper-btn"
+                      title="Decrease seat count"
+                    >
+                      –
+                    </button>
+                    <div className="bo-stepper-display">
+                      {resdexSeatCount} {resdexSeatCount > 1 ? "Seats" : "Seat"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setResdexSeatCount((prev) => prev + 1)}
+                      className="bo-stepper-btn"
+                      title="Increase seat count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...resdexSeatProduct,
+                        quantity: resdexSeatCount,
+                        price: (resdexSeatProduct.defaultPrice || 1000) * resdexSeatCount,
+                        unitPrice: resdexSeatProduct.defaultPrice || 1000,
+                        name: `${resdexSeatCount} ResDex User Seat${resdexSeatCount > 1 ? "s" : ""}`,
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy {resdexSeatCount} ResDex Seat{resdexSeatCount > 1 ? "s" : ""}{" "}
+                  <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Card 3: Enterprise Team Expansion Banner Card */}
+              <div className="bo-card" style={{ background: "linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%)" }}>
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag" style={{ background: "#dbeafe", color: "#1d4ed8" }}>
+                    TEAM EXPANSION
+                  </span>
+                  <span className="bo-card-validity-tag">Flexible Annual</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">Bulk Team Licensing</h3>
+                <div className="bo-card-subtitle" style={{ color: "#1d4ed8" }}>
+                  Have more than 10 recruiters in your hiring agency?
+                </div>
+
+                <p className="bo-card-desc">
+                  Contact our enterprise solutions team for volume discounts, centralized billing, and custom recruiter seat packages.
+                </p>
+
+                <div className="bo-features-container" style={{ marginTop: "24px" }}>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Dedicated Key Account Manager</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Centralized Master Invoicing & GST Credit</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Custom Role Permissions & Security SLAs</span>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "auto" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsSalesModalOpen(true)}
+                    className="bo-btn-contact"
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    <FiPhoneCall style={{ width: "16px", height: "16px" }} /> Contact to Sales
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section 5: Standalone & AI Add-on Products */}
+        {(activeCategory === "all" || activeCategory === "ai" || activeCategory === "standalone") && (
+          <div id="ai-credits" className="bo-section">
+            <div className="bo-section-header">
+              <span className="bo-section-tag">AI Recruitment Suite</span>
+              <h2 className="bo-section-title bo-title-font" style={{ marginTop: "8px" }}>
+                Standalone AI & Productivity Credits
+              </h2>
+              <p className="bo-section-subtitle">
+                Top up company-wide AI credits for automated job descriptions, requirement extraction, and smart screening questions.
+              </p>
+            </div>
+
+            <div className="bo-grid-3">
+              {/* Existing AI offers if any */}
               {aiOffers.map((offer) => (
                 <div key={offer._id} className="bo-card">
                   <div className="bo-card-top-row">
@@ -1161,6 +1775,230 @@ export default function Buyonline() {
                   </button>
                 </div>
               ))}
+
+              {/* Standard AI Product Card 1: 50 AI Operations */}
+              <div className="bo-card">
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-purple">AI 50</span>
+                  <span className="bo-card-validity-tag">{aiProduct.validity || 30} Days Validity</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">AI Starter Booster</h3>
+                <div className="bo-card-subtitle bo-card-subtitle-purple">50 AI Recruitment Operations</div>
+
+                <p className="bo-card-desc">
+                  Accelerate job creation with instant AI job description generation and requirement tuning.
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <span className="bo-price-val bo-title-font">
+                      {formatCurrency((aiProduct.defaultPrice || 10) * 50)}
+                    </span>
+                    <span className="bo-price-tax-note">+ GST as applicable</span>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>Instant AI Job Description Writing from Title</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>AI-Powered Requirements & Skills Extraction</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>Automated Candidate Screening Questions</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Company-wide Shared AI Operations Pool</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...aiProduct,
+                        quantity: 50,
+                        price: (aiProduct.defaultPrice || 10) * 50,
+                        unitPrice: aiProduct.defaultPrice || 10,
+                        name: "50 AI Recruitment Credits",
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Top up 50 AI Credits <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Standard AI Product Card 2: 200 AI Operations (Featured) */}
+              <div className="bo-card featured">
+                <div className="bo-card-ribbon">★ Maximum AI Productivity</div>
+
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-purple">AI 200</span>
+                  <span className="bo-card-validity-tag">30 Days (Monthly Cycle)</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">AI Pro Booster Pack</h3>
+                <div className="bo-card-subtitle bo-card-subtitle-purple">200 AI Recruitment Operations</div>
+
+                <p className="bo-card-desc">
+                  High-volume AI operations for recruitment teams handling multiple simultaneous openings.
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <span className="bo-price-val bo-title-font">
+                      {formatCurrency((aiProduct.defaultPrice || 10) * 200)}
+                    </span>
+                    <span className="bo-price-tax-note">+ GST as applicable • Valid for 30 days (Q5.6)</span>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>Instant AI Job Description Writing from Title</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>Unlimited JD Polish & Responsibility Expansion</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>Multi-role Candidate Screening Questions</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>30 Days Monthly Cycle (Unused credits expire at month-end - Q5.6)</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...aiProduct,
+                        quantity: 200,
+                        price: (aiProduct.defaultPrice || 10) * 200,
+                        unitPrice: aiProduct.defaultPrice || 10,
+                        name: "200 AI Recruitment Credits",
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Top up 200 AI Credits <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+
+              {/* Standard AI Product Card 3: Custom Counter */}
+              <div className="bo-card">
+                <div className="bo-card-top-row">
+                  <span className="bo-card-sku-tag bo-card-sku-purple">CUSTOM AI</span>
+                  <span className="bo-card-validity-tag">{aiProduct.validity || 30} Days Validity</span>
+                </div>
+
+                <h3 className="bo-card-title bo-title-font">Custom AI Volume</h3>
+                <div className="bo-card-subtitle bo-card-subtitle-purple">Select your required AI uses</div>
+
+                <p className="bo-card-desc">
+                  Select any custom quantity of AI operations tailored to your team size and posting volume.
+                </p>
+
+                <div className="bo-price-block">
+                  <div className="bo-price-row">
+                    <div>
+                      <span className="bo-price-val bo-title-font">
+                        {formatCurrency(aiProduct.defaultPrice || 10)}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 700, marginLeft: "4px" }}>
+                        / operation
+                      </span>
+                      <span className="bo-price-tax-note" style={{ display: "block" }}>
+                        + GST as applicable • Valid for {aiProduct.validity || 30} days
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-features-container">
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>Instant JD Generator & Enhancer</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiZap className="bo-sparkle-icon" />
+                    <span>Automated Screening Questions</span>
+                  </div>
+                  <div className="bo-feature-item">
+                    <FiCheck className="bo-check-icon" />
+                    <span>Shared Company-wide Credit Pool</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Stepper Counter */}
+                <div className="bo-stepper-container">
+                  <div className="bo-stepper-header">
+                    <span className="bo-stepper-label">Select Credits:</span>
+                    <div style={{ textAlign: "right" }}>
+                      <span className="bo-stepper-subtotal-val bo-title-font">
+                        {formatCurrency((aiProduct.defaultPrice || 10) * aiOperationCount)}
+                      </span>
+                      <span className="bo-stepper-subtotal-label">+ GST as applicable</span>
+                    </div>
+                  </div>
+
+                  <div className="bo-stepper-controls">
+                    <button
+                      type="button"
+                      disabled={aiOperationCount <= 25}
+                      onClick={() => setAiOperationCount((prev) => Math.max(25, prev - 25))}
+                      className="bo-stepper-btn"
+                      title="Decrease AI credits"
+                    >
+                      –
+                    </button>
+                    <div className="bo-stepper-display">
+                      {aiOperationCount} Uses
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAiOperationCount((prev) => prev + 25)}
+                      className="bo-stepper-btn"
+                      title="Increase AI credits"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() =>
+                    handleInitiatePurchase(
+                      {
+                        ...aiProduct,
+                        quantity: aiOperationCount,
+                        price: (aiProduct.defaultPrice || 10) * aiOperationCount,
+                        unitPrice: aiProduct.defaultPrice || 10,
+                        name: `${aiOperationCount} AI Recruitment Credits`,
+                      },
+                      "PRODUCT"
+                    )
+                  }
+                  className="bo-btn-buy"
+                >
+                  Buy {aiOperationCount} AI Credits <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1291,14 +2129,28 @@ export default function Buyonline() {
                 <tr>
                   <td className="bo-table-feature-title">Job Posting Users (Seats)</td>
                   {plans.map((p) => {
-                    const isCorp = p.code === "CORPORATE";
+                    const seat = p.activeVersion?.items?.find((i) => i.productCode === "JOB_POSTING_SEAT");
+                    const qty = seat?.quantity || (p.code === "CORPORATE" ? 3 : p.code === "FREE" ? 2 : 1);
                     return (
                       <td key={p._id} className="center bo-table-val-regular">
-                        {isCorp ? "3 Users" : "1 User"}
+                        {qty > 0 ? `${qty} Users` : "1 User"}
                       </td>
                     );
                   })}
                   <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Unlimited</td>
+                </tr>
+
+                <tr>
+                  <td className="bo-table-feature-title">Candidate Outreach (NVites)</td>
+                  {plans.map((p) => {
+                    const mivite = p.activeVersion?.items?.find((i) => i.productCode === "MIVITE");
+                    return (
+                      <td key={p._id} className="center bo-table-val-regular">
+                        {mivite ? `${mivite.quantity.toLocaleString()} Invites` : <span className="bo-badge-no">—</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="center" style={{ fontWeight: 700, color: "#1e293b" }}>Custom Unlimited</td>
                 </tr>
 
                 {/* ── SECTION 2: AI RECRUITMENT SUITE (Q5.4 & Q5.8) ── */}
@@ -1358,10 +2210,12 @@ export default function Buyonline() {
                 <tr>
                   <td className="bo-table-feature-title">Write Full Job Description from Title</td>
                   {plans.map((p) => {
-                    const isPaid = p.code !== "FREE";
+                    const aiItem = p.activeVersion?.items?.find((i) => i.productCode === "AI_CREDIT");
+                    const feat = aiItem?.features?.find((f) => f.key === "generateJd");
+                    const isEnabled = feat ? feat.enabled : p.code !== "FREE";
                     return (
                       <td key={p._id} className="center">
-                        {isPaid ? (
+                        {isEnabled ? (
                           <span className="bo-badge-yes"><FiCheck /> Yes</span>
                         ) : (
                           <span className="bo-badge-no">— (Paid Only)</span>
@@ -1377,10 +2231,12 @@ export default function Buyonline() {
                 <tr>
                   <td className="bo-table-feature-title">Generate Screening Questions</td>
                   {plans.map((p) => {
-                    const isPaid = p.code !== "FREE";
+                    const aiItem = p.activeVersion?.items?.find((i) => i.productCode === "AI_CREDIT");
+                    const feat = aiItem?.features?.find((f) => f.key === "screeningQuestions");
+                    const isEnabled = feat ? feat.enabled : p.code !== "FREE";
                     return (
                       <td key={p._id} className="center">
-                        {isPaid ? (
+                        {isEnabled ? (
                           <span className="bo-badge-yes"><FiCheck /> Yes</span>
                         ) : (
                           <span className="bo-badge-no">— (Paid Only)</span>
@@ -1470,10 +2326,13 @@ export default function Buyonline() {
                 <tr>
                   <td className="bo-table-feature-title">Cities Coverage Per Job</td>
                   {plans.map((p) => {
-                    const hasHot = p.activeVersion?.items?.some((i) => i.productCode === "HOT_VACANCY");
+                    const multiCityFeat = p.activeVersion?.items
+                      ?.flatMap((i) => i.features || [])
+                      ?.find((f) => f.key === "multipleCities" && f.enabled);
+                    const cityVal = multiCityFeat?.value ? `Up to ${multiCityFeat.value} Cities` : "1 City";
                     return (
                       <td key={p._id} className="center bo-table-val-regular">
-                        {hasHot ? "Up to 3 Cities" : "1 City"}
+                        {cityVal}
                       </td>
                     );
                   })}
@@ -1596,6 +2455,170 @@ export default function Buyonline() {
         </div>
       </div>
 
+      {/* Combined Hiring Plan Full Details Modal */}
+      {detailPlan && (
+        <div
+          className="bo-plan-details-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDetailPlan(null);
+          }}
+        >
+          <div className="bo-plan-details-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Bluish Gradient Header */}
+            <div className="bo-plan-details-header">
+              <div>
+                <div className="bo-plan-details-tag">
+                  <FiLayers style={{ width: "13px", height: "13px" }} />
+                  {detailPlan.planType} PACKAGE • FULL SPECIFICATIONS
+                </div>
+                <h3 className="bo-plan-details-title bo-title-font">
+                  {detailPlan.name}
+                </h3>
+                <p className="bo-plan-details-subtitle">
+                  {detailPlan.description || "Comprehensive commercial recruitment plan with bundled services and synchronized validity."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailPlan(null)}
+                className="bo-plan-details-close"
+                aria-label="Close modal"
+              >
+                <FiX style={{ width: "20px", height: "20px" }} />
+              </button>
+            </div>
+
+            {/* Bluish Price & Validity Summary Strip */}
+            <div className="bo-plan-details-price-strip">
+              <div className="bo-plan-strip-price-block">
+                <span className="bo-plan-strip-price-val bo-title-font">
+                  {detailPlan.activeVersion?.finalPrice === 0
+                    ? "Free"
+                    : formatCurrency(detailPlan.activeVersion?.finalPrice)}
+                </span>
+                {detailPlan.activeVersion?.discount > 0 && (
+                  <span className="bo-plan-strip-price-old">
+                    {formatCurrency(detailPlan.activeVersion?.basePrice)}
+                  </span>
+                )}
+                {detailPlan.activeVersion?.discount > 0 && (
+                  <span className="bo-plan-strip-discount-pill">
+                    {detailPlan.activeVersion.discount}% Off
+                  </span>
+                )}
+              </div>
+              <div className="bo-plan-strip-meta">
+                <span className="bo-plan-strip-meta-item">
+                  <FiClock style={{ width: "15px", height: "15px", color: "#002366" }} />
+                  Validity: <strong>{detailPlan.activeVersion?.validity || 90} {detailPlan.activeVersion?.validityUnit?.toLowerCase() || "days"}</strong>
+                </span>
+                <span className="bo-plan-strip-meta-item">
+                  <FiShield style={{ width: "15px", height: "15px", color: "#002366" }} />
+                  GST: <strong>{detailPlan.activeVersion?.finalPrice > 0 ? "+ 18% as applicable" : "Included"}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Body: Products & Features Grid */}
+            <div className="bo-plan-details-body">
+              <div className="bo-plan-details-body-heading">
+                <h4>
+                  Bundled Products & Entitlements ({detailPlan.activeVersion?.items?.length || 0})
+                </h4>
+                <span>All quotas and features activate simultaneously upon purchase</span>
+              </div>
+
+              <div className="bo-plan-details-grid">
+                {(detailPlan.activeVersion?.items || []).map((it, idx) => {
+                  const hasFeatures = it.features && it.features.length > 0;
+                  return (
+                    <div key={idx} className="bo-plan-details-item-card">
+                      <div className="bo-item-card-header">
+                        <div className="bo-item-card-icon">
+                          {getProductIcon(it.productCode)}
+                        </div>
+                        <div className="bo-item-card-info">
+                          <div className="bo-item-card-title-row">
+                            <span className="bo-item-card-name" title={it.productName}>
+                              {it.productName}
+                            </span>
+                            <span className="bo-item-card-qty-badge">
+                              {it.quantity} {it.unit}{it.quantity > 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <div className="bo-item-card-validity">
+                            Valid for {it.validity || detailPlan.activeVersion?.validity || 30} days
+                          </div>
+                        </div>
+                      </div>
+
+                      {hasFeatures ? (
+                        <div className="bo-item-subfeatures-list">
+                          <div className="bo-item-subfeatures-heading">Product Features & Limits:</div>
+                          {it.features.map((feat, fIdx) => (
+                            <div
+                              key={fIdx}
+                              className={`bo-item-subfeature-row ${feat.enabled ? "enabled" : "disabled"}`}
+                            >
+                              {feat.enabled ? (
+                                <FiCheck className="bo-subfeature-check" />
+                              ) : (
+                                <FiX className="bo-subfeature-cross" />
+                              )}
+                              <span className="bo-subfeature-name">
+                                {feat.name}
+                                {feat.enabled && feat.value && typeof feat.value !== "boolean" && (
+                                  <span className="bo-subfeature-val-pill">
+                                    ({feat.value} {feat.key === "multipleCities" ? "Cities" : ""})
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bo-item-no-subfeatures">
+                          <FiCheck className="bo-subfeature-check" /> Standard module access enabled
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bluish Footer */}
+            <div className="bo-plan-details-footer">
+              <div className="bo-plan-details-footer-note">
+                <FiCheckCircle style={{ width: "16px", height: "16px", color: "#002366" }} />
+                <span>Instant activation • Master GST invoicing • Synchronized quotas</span>
+              </div>
+              <div className="bo-plan-details-footer-btns">
+                <button
+                  type="button"
+                  onClick={() => setDetailPlan(null)}
+                  className="bo-btn-secondary"
+                  style={{ padding: "10px 18px", fontSize: "14px" }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const planToBuy = detailPlan;
+                    setDetailPlan(null);
+                    handleInitiatePurchase(planToBuy, "PLAN");
+                  }}
+                  className="bo-plan-details-buy-btn"
+                >
+                  Buy This Plan Now <FiArrowRight style={{ width: "16px", height: "16px" }} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Review & Purchase Checkout Modal */}
       {isPurchaseModalOpen && selectedItemForPurchase && (
         <div className="bo-modal-backdrop">
@@ -1627,13 +2650,42 @@ export default function Buyonline() {
               <div className="bo-summary-card">
                 <span className="bo-summary-title">What you will receive:</span>
                 {selectedItemForPurchase.itemType === "PLAN" ? (
-                  <div>
+                  <div style={{ maxHeight: "280px", overflowY: "auto", paddingRight: "4px" }}>
                     {(selectedItemForPurchase.activeVersion?.items || []).map((it, idx) => (
-                      <div key={idx} className="bo-summary-item">
-                        <FiCheck className="bo-check-icon" />
-                        <span>
-                          <strong>{it.quantity}</strong> {it.productName} ({it.unit})
-                        </span>
+                      <div key={idx} style={{ marginBottom: "10px", paddingBottom: "10px", borderBottom: idx < (selectedItemForPurchase.activeVersion?.items?.length - 1) ? "1px solid #f1f5f9" : "none" }}>
+                        <div className="bo-summary-item" style={{ marginBottom: it.features?.length ? "4px" : "0" }}>
+                          <FiCheck className="bo-check-icon" />
+                          <span>
+                            <strong>{it.quantity} {it.unit}{it.quantity > 1 ? "s" : ""}</strong> — {it.productName}
+                          </span>
+                        </div>
+                        {it.features && it.features.length > 0 && (
+                          <div style={{ paddingLeft: "26px", display: "flex", flexDirection: "column", gap: "3px" }}>
+                            {it.features.map((feat, fIdx) => (
+                              <div
+                                key={fIdx}
+                                style={{
+                                  fontSize: "11px",
+                                  color: feat.enabled ? "#334155" : "#94a3b8",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "5px",
+                                  textDecoration: feat.enabled ? "none" : "line-through",
+                                }}
+                              >
+                                {feat.enabled ? (
+                                  <FiCheck size={11} color="#059669" />
+                                ) : (
+                                  <FiX size={11} color="#94a3b8" />
+                                )}
+                                <span>
+                                  {feat.name}
+                                  {feat.enabled && feat.value && typeof feat.value !== "boolean" && ` (${feat.value} Cities)`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1654,14 +2706,34 @@ export default function Buyonline() {
                     </span>
                   </div>
                 )}
-                <div style={{ marginTop: "12px", fontSize: "11px", color: "#64748b" }}>
-                  Validity Period:{" "}
-                  <strong>
-                    {selectedItemForPurchase.activeVersion?.validity ||
-                      selectedItemForPurchase.validity ||
-                      30}{" "}
-                    Days
-                  </strong>
+                <div style={{ marginTop: "12px", fontSize: "12px", color: "#334155", backgroundColor: "#eff6ff", padding: "10px 14px", borderRadius: "10px", border: "1px solid #bfdbfe" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 700, color: "#002366" }}>
+                    <FiClock style={{ width: "14px", height: "14px" }} />
+                    Validity & Expiry Policy:
+                  </div>
+                  <div style={{ marginTop: "4px", fontSize: "11.5px", color: "#475569", lineHeight: 1.45 }}>
+                    {selectedItemForPurchase.itemType === "PLAN" ? (
+                      <>
+                        <strong>{selectedItemForPurchase.activeVersion?.validity || 90} Days:</strong> Synchronized validity across all bundled products. Unused credits expire when the plan ends (recharge model - Q1.4 & Q2.7).
+                      </>
+                    ) : (selectedItemForPurchase.category === "JOB_POSTING" || selectedItemForPurchase.code?.includes("JOB") || selectedItemForPurchase.code?.includes("HOT")) ? (
+                      <>
+                        <strong>30 Days Live Duration:</strong> Job postings remain live on candidate job search for 30 days. Candidate applications remain accessible for 90 days (Q6.1 & Q3.7).
+                      </>
+                    ) : (selectedItemForPurchase.category === "AI" || selectedItemForPurchase.code?.includes("AI")) ? (
+                      <>
+                        <strong>30 Days Monthly Cycle:</strong> Shared company AI credits valid for 30 days. Unused credits expire at the end of the monthly period (Q5.6).
+                      </>
+                    ) : (selectedItemForPurchase.category === "USER_SEATS" || selectedItemForPurchase.code?.includes("SEAT")) ? (
+                      <>
+                        <strong>{selectedItemForPurchase.validity || 30} Days License:</strong> Dedicated recruiter login. Past jobs and CVs remain accessible in read-only mode for up to 90 days post-expiry (Q3.7).
+                      </>
+                    ) : (
+                      <>
+                        <strong>{selectedItemForPurchase.validity || 30} Days Validity:</strong> Unused resume search credits expire when the period ends (Q2.7). Saved candidate folders kept for 90 days (Q3.7 & Q4.1).
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 

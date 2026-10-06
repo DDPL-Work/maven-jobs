@@ -473,6 +473,15 @@ const authService = {
     }
   },
 
+  generateScreeningQuestions: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/ai/screening-questions', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to generate screening questions' };
+    }
+  },
+
   suggestSkillsAutocomplete: async (query, existingSkills = []) => {
     try {
       const response = await api.post('/candidate/ai/suggest-skills-autocomplete', { query, existingSkills });

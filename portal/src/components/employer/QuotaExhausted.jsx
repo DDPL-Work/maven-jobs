@@ -8,7 +8,8 @@ export default function QuotaExhausted({
     availablePlans = [], 
     activeTab = "jobs", 
     purchaseUrl = "/manage-quota",
-    wrapLayout = true 
+    wrapLayout = true,
+    onSelectPlanType = null
 }) {
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -27,8 +28,12 @@ export default function QuotaExhausted({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handlePostJobClick = (url) => {
+    const handlePostJobClick = (url, planType) => {
         setDropdownOpen(false);
+        if (onSelectPlanType && planType) {
+            onSelectPlanType(planType);
+            return;
+        }
         if (url.startsWith('/resume-search')) {
             navigate(url);
         } else {
@@ -135,7 +140,7 @@ export default function QuotaExhausted({
                         {/* Action button: single button if 1 active, or dropdown button if > 1 active */}
                         {availablePlans.length === 1 ? (
                             <button
-                                onClick={() => handlePostJobClick(availablePlans[0].url)}
+                                onClick={() => handlePostJobClick(availablePlans[0].url, availablePlans[0].type)}
                                 style={{
                                     padding: '12px 32px',
                                     background: '#2563EB',
@@ -248,7 +253,7 @@ export default function QuotaExhausted({
                                         {availablePlans.map((plan, idx) => (
                                             <div
                                                 key={idx}
-                                                onClick={() => handlePostJobClick(plan.url)}
+                                                onClick={() => handlePostJobClick(plan.url, plan.type)}
                                                 style={{
                                                     padding: '10px 14px',
                                                     borderRadius: '8px',

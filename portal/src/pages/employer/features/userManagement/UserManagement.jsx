@@ -6,7 +6,8 @@ import {
   FiPlus, FiMoreVertical, FiChevronDown, FiInfo,
   FiSearch, FiCheck, FiX, FiLock, FiShield,
   FiClock, FiGlobe, FiTrash2, FiEdit3, FiCheckCircle,
-  FiPhone, FiArrowLeft, FiRefreshCw, FiEye, FiEyeOff, FiLoader
+  FiPhone, FiArrowLeft, FiRefreshCw, FiEye, FiEyeOff, FiLoader,
+  FiShoppingCart, FiExternalLink
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
@@ -850,6 +851,18 @@ export default function UserManagement() {
           </div>
 
           <div className="um-header-actions">
+            <a
+              href="/buy-online"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="um-btn-purchase-seats"
+              title="Purchase user seats on Buy Online"
+            >
+              <FiShoppingCart size={15} />
+              <span>Purchase User Seats</span>
+              <FiExternalLink size={13} style={{ opacity: 0.7 }} />
+            </a>
+
             <button
               type="button"
               className="um-btn-primary"

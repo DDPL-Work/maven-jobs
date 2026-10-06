@@ -22,6 +22,37 @@ import {
   getCommercialProducts,
 } from "../../services/adminApi";
 
+export const DEFAULT_PRODUCT_FEATURES = {
+  HOT_VACANCY: [
+    { key: "companyLogo", name: "Company Logo Shown", enabled: true },
+    { key: "topSearchPlacement", name: "Top Search Placement", enabled: true },
+    { key: "candidateAlerts", name: "Candidate Job Alerts", enabled: true },
+    { key: "multipleCities", name: "Multiple Cities Allowed", enabled: true, value: 3 },
+  ],
+  SMB_JOB: [
+    { key: "basicPosting", name: "Basic Job Posting", enabled: true },
+    { key: "cityAllowed", name: "City Allowed", enabled: true },
+    { key: "companyLogo", name: "Company Logo Shown", enabled: false },
+    { key: "candidateAlerts", name: "Candidate Alerts", enabled: false },
+    { key: "topSearchPlacement", name: "Top Search Placement", enabled: false },
+  ],
+  INTERNSHIP_JOB: [],
+  AI_CREDIT: [
+    { key: "improveJd", name: "Improve Job Description (Free Tier)", enabled: true },
+    { key: "generateJd", name: "Write Full JD from Title (Paid Only)", enabled: true },
+    { key: "screeningQuestions", name: "Generate Screening Questions (Paid Only)", enabled: true },
+  ],
+  RESDEX: [
+    { key: "advanceFilters", name: "Advanced Filters", enabled: true },
+    { key: "downloadCv", name: "Download PDF CV", enabled: true },
+    { key: "contactDetails", name: "View Direct Contact Info", enabled: true },
+  ],
+  MIVITE: [
+    { key: "candidateOutreach", name: "Candidate Outreach Messaging", enabled: true },
+    { key: "directInvite", name: "Direct Job Application NVites", enabled: true },
+  ],
+};
+
 export const STANDARD_PLAN_CODES = [
   { code: "FREE", label: "FREE — Free Starter Plan", defaultName: "Free Starter Plan", planType: "FREE" },
   { code: "SMB_STARTER", label: "SMB_STARTER — SMB Starter Plan", defaultName: "SMB Starter Plan", planType: "SMB" },
@@ -79,6 +110,13 @@ export default function CommercialPlanBuilderPage() {
     const validityDays = Number(planValidity || 90);
     const unitPrice = Number(prod?.defaultPrice ?? item.unitPrice ?? 0);
 
+    const resolvedFeatures =
+      item.features && item.features.length > 0
+        ? item.features
+        : (prod?.features && prod.features.length > 0
+            ? prod.features
+            : (DEFAULT_PRODUCT_FEATURES[code] || []));
+
     if (isAi) {
       // ONLY AI Credit is defined per month
       const months = Math.max(1, Math.round(validityDays / 30));
@@ -90,6 +128,7 @@ export default function CommercialPlanBuilderPage() {
 
       return {
         ...item,
+        features: resolvedFeatures,
         productCode: item.productCode || prod?.code,
         productName: item.productName || prod?.name,
         productType: prod?.productType || item.productType || "CREDIT_BASED",
@@ -113,10 +152,18 @@ export default function CommercialPlanBuilderPage() {
       );
       const subtotal = totalQty * unitPrice;
 
+      let pName = item.productName || prod?.name;
+      if (code === "RESDEX" || pName === "ResDex Resume Search" || String(pName).toLowerCase() === "resdex resume search") {
+        pName = "Max CV Access";
+      } else if (code === "MIVITE" || pName === "MIvites Candidate Outreach" || String(pName).toLowerCase() === "mivites candidate outreach") {
+        pName = "Max NVite Credits";
+      }
+
       return {
         ...item,
+        features: resolvedFeatures,
         productCode: item.productCode || prod?.code,
-        productName: item.productName || prod?.name,
+        productName: pName,
         productType: prod?.productType || item.productType || "CREDIT_BASED",
         category: prod?.category || item.category,
         unit: item.unit || prod?.unit || "Credit",
@@ -131,6 +178,72 @@ export default function CommercialPlanBuilderPage() {
         isAi: false,
       };
     }
+  };
+
+  const handleToggleFeature = (productId, featureKey) => {
+    setBuilderPlanForm((prev) => {
+      const updatedItems = prev.items.map((it) => {
+        if (String(it.productId) === String(productId)) {
+          const prod = getCatalogProduct(productId);
+          const currentFeatures =
+            it.features && it.features.length > 0
+              ? it.features
+              : (prod?.features && prod.features.length > 0
+                  ? prod.features
+                  : (DEFAULT_PRODUCT_FEATURES[String(it.productCode || prod?.code).toUpperCase()] || []));
+
+          const newFeatures = currentFeatures.map((f) => {
+            if (f.key === featureKey) {
+              const nextEnabled = !f.enabled;
+              const currentVal = f.value !== undefined ? f.value : (featureKey === "multipleCities" ? 3 : true);
+              return {
+                ...f,
+                enabled: nextEnabled,
+                value: currentVal,
+                name: (featureKey === "multipleCities" && currentVal && currentVal > 1)
+                  ? `Multiple Cities Allowed (up to ${currentVal})`
+                  : (featureKey === "multipleCities" ? "Multiple Cities Allowed" : f.name),
+              };
+            }
+            return f;
+          });
+          return { ...it, features: newFeatures };
+        }
+        return it;
+      });
+      return { ...prev, items: updatedItems };
+    });
+  };
+
+  const handleFeatureValueChange = (productId, featureKey, val) => {
+    const num = Math.max(1, parseInt(val, 10) || 1);
+    setBuilderPlanForm((prev) => {
+      const updatedItems = prev.items.map((it) => {
+        if (String(it.productId) === String(productId)) {
+          const prod = getCatalogProduct(productId);
+          const currentFeatures =
+            it.features && it.features.length > 0
+              ? it.features
+              : (prod?.features && prod.features.length > 0
+                  ? prod.features
+                  : (DEFAULT_PRODUCT_FEATURES[String(it.productCode || prod?.code).toUpperCase()] || []));
+
+          const newFeatures = currentFeatures.map((f) => {
+            if (f.key === featureKey) {
+              return {
+                ...f,
+                value: num,
+                name: featureKey === "multipleCities" ? `Multiple Cities Allowed (up to ${num})` : f.name,
+              };
+            }
+            return f;
+          });
+          return { ...it, features: newFeatures };
+        }
+        return it;
+      });
+      return { ...prev, items: updatedItems };
+    });
   };
 
   // Helper to calculate total price based on product type, quota count, and defaultPrice
@@ -1072,6 +1185,120 @@ export default function CommercialPlanBuilderPage() {
                                   </div>
                                 </div>
                               )}
+
+                              {/* Product Features & Service Entitlements Toggle List */}
+                              {computed.features && computed.features.length > 0 && (
+                                <div className="mt-3.5 pt-3 border-t border-slate-200/80">
+                                  <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                      <LuSparkles className="h-3.5 w-3.5 text-indigo-600" />
+                                      <span>Included Service Features & Capabilities</span>
+                                    </div>
+                                    <span className="text-[11px] text-slate-500 font-medium">
+                                      Click to toggle features included for this product
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {computed.features.map((feat) => {
+                                      const isEnabled = feat.enabled !== false;
+                                      const isMultipleCities = feat.key === "multipleCities";
+
+                                      if (isMultipleCities) {
+                                        const cityLimit = feat.value !== undefined ? Number(feat.value) : 3;
+                                        return (
+                                          <div
+                                            key={feat.key}
+                                            className={`flex flex-col justify-between p-3 rounded-xl border transition-all ${
+                                              isEnabled
+                                                ? "border-emerald-300 bg-emerald-50/80 text-emerald-950 shadow-xs"
+                                                : "border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300"
+                                            }`}
+                                          >
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div
+                                                className="min-w-0 pr-1 cursor-pointer flex-1"
+                                                onClick={() => handleToggleFeature(prod._id, feat.key)}
+                                              >
+                                                <div className="text-xs font-bold truncate">
+                                                  Multiple Cities Allowed
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 font-mono">
+                                                  {feat.key}
+                                                </div>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleToggleFeature(prod._id, feat.key)}
+                                                className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0 transition ${
+                                                  isEnabled
+                                                    ? "bg-emerald-600 text-white"
+                                                    : "bg-slate-200 text-slate-500"
+                                                }`}
+                                              >
+                                                {isEnabled ? <LuCheck className="h-3 w-3" /> : "✕"}
+                                              </button>
+                                            </div>
+
+                                            {isEnabled && (
+                                              <div className="mt-2.5 pt-2 border-t border-emerald-200/80 flex items-center justify-between gap-2">
+                                                <span className="text-[11px] font-semibold text-emerald-900">
+                                                  Max Cities Allowed:
+                                                </span>
+                                                <div className="flex items-center gap-1.5">
+                                                  <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="50"
+                                                    value={cityLimit}
+                                                    onChange={(e) =>
+                                                      handleFeatureValueChange(prod._id, feat.key, e.target.value)
+                                                    }
+                                                    className="w-16 rounded-lg border border-emerald-400 bg-white px-2 py-0.5 text-xs font-bold text-slate-900 text-center focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                  />
+                                                  <span className="text-[11px] text-emerald-800 font-medium">
+                                                    cities
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <button
+                                          key={feat.key}
+                                          type="button"
+                                          onClick={() => handleToggleFeature(prod._id, feat.key)}
+                                          className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
+                                            isEnabled
+                                              ? "border-emerald-300 bg-emerald-50/80 text-emerald-950 shadow-xs"
+                                              : "border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300"
+                                          }`}
+                                        >
+                                          <div className="min-w-0 pr-1">
+                                            <div className="text-xs font-bold truncate">
+                                              {feat.name || feat.key}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 font-mono">
+                                              {feat.key}
+                                            </div>
+                                          </div>
+                                          <span
+                                            className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0 ${
+                                              isEnabled
+                                                ? "bg-emerald-600 text-white"
+                                                : "bg-slate-200 text-slate-500"
+                                            }`}
+                                          >
+                                            {isEnabled ? <LuCheck className="h-3 w-3" /> : "✕"}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
@@ -1144,6 +1371,21 @@ export default function CommercialPlanBuilderPage() {
                                     </span>
                                   )}
                                 </div>
+                                {computed.features && computed.features.some((f) => f.enabled !== false) && (
+                                  <div className="flex flex-wrap gap-1 mt-1.5">
+                                    {computed.features
+                                      .filter((f) => f.enabled !== false)
+                                      .map((f) => (
+                                        <span
+                                          key={f.key}
+                                          className="inline-flex items-center gap-1 text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-medium border border-slate-200"
+                                        >
+                                          <LuCheck className="h-2.5 w-2.5 text-emerald-600" />
+                                          {f.name || f.key}
+                                        </span>
+                                      ))}
+                                  </div>
+                                )}
                               </td>
                               <td className="py-2.5 px-3">
                                 <span

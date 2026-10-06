@@ -417,6 +417,16 @@
   color: #7e22ce;
 }
 
+.bo-card-sku-indigo {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.bo-card-sku-cyan {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
 .bo-card-validity-tag {
   font-size: 12px;
   color: #64748b;
@@ -541,6 +551,192 @@
   color: #9333ea;
   flex-shrink: 0;
   margin-top: 2px;
+}
+
+/* Plan Products & Features Container */
+.bo-plan-products-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+
+.bo-plan-products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.bo-plan-products-list::-webkit-scrollbar {
+  width: 5px;
+}
+.bo-plan-products-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.bo-plan-products-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.bo-plan-products-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.bo-plan-product-card {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+}
+
+.bo-plan-product-card:hover {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 35, 102, 0.04);
+}
+
+.bo-plan-product-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bo-plan-product-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bo-product-icon {
+  width: 16px;
+  height: 16px;
+}
+.bo-product-icon.ai {
+  color: #7e22ce;
+}
+.bo-product-icon.resdex {
+  color: #0284c7;
+}
+.bo-product-icon.seat {
+  color: #4f46e5;
+}
+.bo-product-icon.mivite {
+  color: #d97706;
+}
+.bo-product-icon.hot {
+  color: #ea580c;
+}
+.bo-product-icon.job {
+  color: #002366;
+}
+
+.bo-plan-product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.bo-plan-product-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bo-plan-product-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bo-plan-product-qty-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #002366;
+  background-color: #e0e7ff;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bo-plan-product-validity-note {
+  font-size: 10.5px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.bo-plan-product-features {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bo-product-subfeature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.bo-product-subfeature-row.enabled {
+  color: #334155;
+}
+
+.bo-product-subfeature-row.disabled {
+  color: #94a3b8;
+}
+
+.bo-subfeature-check {
+  width: 13px;
+  height: 13px;
+  color: #16a34a;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bo-subfeature-cross {
+  width: 13px;
+  height: 13px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bo-subfeature-name {
+  flex: 1;
+}
+
+.bo-product-subfeature-row.disabled .bo-subfeature-name {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.bo-subfeature-val-pill {
+  display: inline-block;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
 }
 
 /* Action Buttons */
@@ -1746,4 +1942,512 @@
   max-width: 300px;
   margin: 0;
   line-height: 1.5;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Combined Hiring Plans: Card Main Inclusions & Theme-Aligned Details Modal
+   ───────────────────────────────────────────────────────────── */
+.bo-plan-main-points {
+  margin: 18px 0;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bo-plan-points-header {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #002366;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 6px;
+}
+
+.bo-plan-points-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bo-plan-point-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bo-plan-point-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background-color: #eff6ff;
+  color: #002366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.bo-plan-point-content {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bo-plan-point-title {
+  font-size: 13px;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bo-plan-point-title strong {
+  color: #002366;
+  font-weight: 700;
+}
+
+.bo-plan-point-validity {
+  font-size: 11px;
+  color: #64748b;
+  flex-shrink: 0;
+  background-color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+/* View Full Plan Details Button */
+.bo-btn-view-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #002366;
+  background-color: #eff6ff;
+  border: 1.5px solid #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bo-btn-view-details:hover {
+  background-color: #f1f5f9;
+  border-color: #002366;
+  color: #002366;
+  box-shadow: 0 4px 12px rgba(0, 35, 102, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Centered, Wider, Theme-Aligned Plan Details Modal */
+.bo-plan-details-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.bo-plan-details-modal {
+  position: relative;
+  width: 100%;
+  max-width: 940px;
+  max-height: 90vh;
+  margin: auto;
+  border-radius: 20px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 25px 50px -12px rgba(0, 35, 102, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: boModalZoom 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes boModalZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.bo-plan-details-header {
+  background: linear-gradient(135deg, #002366 0%, #0038a0 100%);
+  padding: 24px 28px;
+  color: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.bo-plan-details-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #eff6ff;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.bo-plan-details-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.bo-plan-details-subtitle {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  max-width: 680px;
+  line-height: 1.45;
+}
+
+.bo-plan-details-close {
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.bo-plan-details-close:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+.bo-plan-details-price-strip {
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bo-plan-strip-price-block {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.bo-plan-strip-price-val {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: #002366;
+}
+
+.bo-plan-strip-price-old {
+  font-size: 16px;
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.bo-plan-strip-discount-pill {
+  background-color: #eff6ff;
+  color: #002366;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid #cbd5e1;
+}
+
+.bo-plan-strip-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.bo-plan-strip-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.bo-plan-details-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  max-height: calc(90vh - 240px);
+  background-color: #f8fafc;
+}
+
+.bo-plan-details-body::-webkit-scrollbar {
+  width: 6px;
+}
+.bo-plan-details-body::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+.bo-plan-details-body-heading {
+  margin-bottom: 16px;
+}
+
+.bo-plan-details-body-heading h4 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.bo-plan-details-body-heading span {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.bo-plan-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .bo-plan-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bo-plan-details-item-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 6px rgba(0, 35, 102, 0.04);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.bo-plan-details-item-card:hover {
+  border-color: #002366;
+  box-shadow: 0 4px 16px rgba(0, 35, 102, 0.08);
+}
+
+.bo-item-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bo-item-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background-color: #eff6ff;
+  color: #002366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.bo-item-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.bo-item-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bo-item-card-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bo-item-card-qty-badge {
+  background-color: #eff6ff;
+  color: #002366;
+  font-weight: 800;
+  font-size: 11.5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid #cbd5e1;
+  flex-shrink: 0;
+}
+
+.bo-item-card-validity {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.bo-item-subfeatures-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.bo-item-subfeatures-heading {
+  font-size: 11px;
+  font-weight: 800;
+  color: #002366;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.bo-item-subfeature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.bo-item-subfeature-row.enabled {
+  color: #1e293b;
+}
+
+.bo-item-subfeature-row.enabled .bo-subfeature-check {
+  color: #16a34a;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bo-item-subfeature-row.disabled {
+  color: #94a3b8;
+}
+
+.bo-item-subfeature-row.disabled .bo-subfeature-cross {
+  color: #94a3b8;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bo-item-subfeature-row.disabled .bo-subfeature-name {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.bo-item-no-subfeatures {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #002366;
+  margin-top: 12px;
+  background-color: #eff6ff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.bo-plan-details-footer {
+  padding: 16px 28px;
+  background-color: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bo-plan-details-footer-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.bo-plan-details-footer-note svg {
+  color: #002366;
+}
+
+.bo-plan-details-footer-btns {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bo-plan-details-buy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #002366;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 11px 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 35, 102, 0.2);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bo-plan-details-buy-btn:hover {
+  background-color: #003399;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 35, 102, 0.25);
 }

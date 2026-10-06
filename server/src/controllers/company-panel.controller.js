@@ -139,9 +139,51 @@ const resolveClientUserAndCompany = async (userId) => {
     throw createHttpError(403, "No company is linked to this account");
   }
 
-  const company = await Company.findById(user.companyId);
+  let company = await Company.findById(user.companyId);
   if (!company) {
     throw createHttpError(404, "Company not found");
+  }
+
+  // Ensure company has commercial planSnapshot and services loaded
+  if (!company.planSnapshot || !company.planSnapshot.services || company.planSnapshot.services.length === 0) {
+    try {
+      const Subscription = require("../models/Subscription");
+      const activeSub = await Subscription.findOne({ companyId: company._id, status: "ACTIVE" }).sort({ createdAt: -1 });
+      if (activeSub && activeSub.entitlementSnapshot && activeSub.entitlementSnapshot.length > 0) {
+        company.planSnapshot = {
+          planId: activeSub.planId,
+          planVersionId: activeSub.planVersionId,
+          planName: activeSub.commercialSnapshot?.planName || "Active Plan",
+          planType: "SMB",
+          validity: activeSub.commercialSnapshot?.validityDays || 30,
+          startDate: activeSub.startDate,
+          endDate: activeSub.endDate,
+          services: activeSub.entitlementSnapshot.map((s) => ({
+            productId: s.productId,
+            productCode: s.productCode,
+            productName: s.productName,
+            quantity: s.quantity,
+            usedQuantity: 0,
+            unit: s.unit,
+            validity: s.validityDays,
+            features: s.features || [],
+          })),
+        };
+        company.markModified("planSnapshot");
+        await company.save();
+      } else {
+        const PurchaseService = require("../services/commercial/purchase.service");
+        await PurchaseService.assignDefaultFreePlan({
+          companyId: company._id,
+          userId: user._id,
+          actor: { id: user._id, role: user.role },
+        });
+        const refreshedCompany = await Company.findById(company._id);
+        if (refreshedCompany) company = refreshedCompany;
+      }
+    } catch (planInitErr) {
+      console.warn("[resolveClientUserAndCompany] Failed to sync planSnapshot:", planInitErr?.message);
+    }
   }
 
   return { user, company };
@@ -965,12 +1007,69 @@ exports.createJob = asyncHandler(async (req, res) => {
     throw createHttpError(403, "Company profile is inactive");
   }
 
+  // Plan Expiration Check (Q3.7)
+  if (company.planSnapshot?.endDate && new Date(company.planSnapshot.endDate) < new Date()) {
+    throw createHttpError(403, "Your plan subscription has expired. You can view existing jobs in read-only mode, but cannot post new jobs until renewal.");
+  }
+
   const title = toTrimmedString(req.body.title);
   if (!title) {
     throw createHttpError(400, "Job title is required");
   }
 
   const jobCategory = toTrimmedString(req.body.jobCategory) || "standard";
+
+  // City count validation: dynamically resolve maxCities for Hot Vacancy from company plan / entitlement
+  let locationStr = toTrimmedString(req.body.location);
+  const citiesList = Array.isArray(req.body.cities)
+    ? req.body.cities.map((c) => toTrimmedString(c)).filter(Boolean)
+    : (locationStr.includes(",") ? locationStr.split(",").map((c) => toTrimmedString(c)).filter(Boolean) : [locationStr].filter(Boolean));
+
+  let hotMaxCities = 1;
+  const hotPlanSvc = company.planSnapshot?.services?.find(
+    (s) => String(s.productCode).toUpperCase() === "HOT_VACANCY"
+  );
+  if (hotPlanSvc && Array.isArray(hotPlanSvc.features)) {
+    const mcFeat = hotPlanSvc.features.find((f) => f.key === "multipleCities");
+    if (mcFeat && mcFeat.enabled !== false) {
+      hotMaxCities = Math.max(1, Number(mcFeat.value) || 3);
+    }
+  } else {
+    try {
+      const Entitlement = require("../models/Entitlement");
+      const hotEnt = await Entitlement.findOne({
+        companyId: company._id,
+        productCode: "HOT_VACANCY",
+        status: "ACTIVE",
+        expiryDate: { $gte: new Date() },
+      }).lean();
+      if (hotEnt && Array.isArray(hotEnt.features)) {
+        const mcFeat = hotEnt.features.find((f) => f.key === "multipleCities");
+        if (mcFeat && mcFeat.enabled !== false) {
+          hotMaxCities = Math.max(1, Number(mcFeat.value) || 3);
+        }
+      }
+    } catch (_) {}
+  }
+
+  const companyCity = toTrimmedString(company.location?.city);
+
+  if (jobCategory === "management" || jobCategory === "standard") {
+    if (citiesList.length > 1) {
+      throw createHttpError(
+        400,
+        "SMB Jobs allow only 1 city (from your company profile). Upgrade to Hot Vacancy to post across multiple cities."
+      );
+    }
+    locationStr = citiesList[0] || companyCity || locationStr;
+  } else if (jobCategory === "hot") {
+    if (citiesList.length > hotMaxCities) {
+      throw createHttpError(400, `Hot Vacancies on your plan allow up to ${hotMaxCities} cities maximum.`);
+    }
+    if (Array.isArray(req.body.cities) && citiesList.length > 0) {
+      locationStr = citiesList.slice(0, hotMaxCities).join(", ");
+    }
+  }
 
   // Category mapping to commercial products
   const targetProductCode =
@@ -1102,7 +1201,15 @@ exports.createJob = asyncHandler(async (req, res) => {
     jobCategory,
     isHotVacancy: jobCategory === "hot",
     workplaceType: toTrimmedString(req.body.workplaceType),
-    location: toTrimmedString(req.body.location),
+    location: locationStr || toTrimmedString(req.body.location),
+    cities:
+      jobCategory === "hot"
+        ? citiesList.slice(0, hotMaxCities)
+        : locationStr
+        ? [locationStr]
+        : citiesList[0]
+        ? [citiesList[0]]
+        : [],
     experience: toTrimmedString(req.body.experience),
     salaryMin: toSafeNumber(req.body.salaryMin, stipend !== undefined ? stipend : 0),
     salaryMax: toSafeNumber(req.body.salaryMax, stipend !== undefined ? stipend : 0),
@@ -1110,7 +1217,7 @@ exports.createJob = asyncHandler(async (req, res) => {
     internshipDuration,
     internshipStartDate,
     skills: rawSkills,
-    deadline,
+    deadline: deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     description: toTrimmedString(req.body.description),           // Role Description
     responsibilities: toTrimmedString(req.body.responsibilities), // Key Responsibilities
     qualifications: toTrimmedString(req.body.qualifications),     // Required Skills & Qualifications
@@ -1259,6 +1366,15 @@ exports.updateJob = asyncHandler(async (req, res) => {
   if (req.body.title !== undefined) job.title = toTrimmedString(req.body.title);
   if (req.body.department !== undefined) job.department = toTrimmedString(req.body.department);
   if (req.body.location !== undefined) job.location = toTrimmedString(req.body.location);
+  if (req.body.cities !== undefined) {
+    const cList = Array.isArray(req.body.cities)
+      ? req.body.cities.map((c) => toTrimmedString(c)).filter(Boolean)
+      : [];
+    job.cities = cList;
+    if (cList.length > 0) {
+      job.location = cList.join(", ");
+    }
+  }
   if (req.body.description !== undefined) job.description = toTrimmedString(req.body.description);
   if (req.body.jobType !== undefined) job.jobType = toTrimmedString(req.body.jobType);
   if (req.body.jobCategory !== undefined) {
@@ -2153,12 +2269,26 @@ exports.enhanceDescription = asyncHandler(async (req, res) => {
     throw createHttpError(404, "Company not found");
   }
 
-  // 1. Verify that company has available AI credits
+  // 1. Verify AI credit quota and feature permissions from the plan
   const AiCreditService = require("../services/commercial/ai-credit.service");
   const quota = await AiCreditService.getAiQuota(company._id);
   if (!quota || quota.availableCredits < 1) {
     throw createHttpError(402, "You have exhausted your AI credits (0 remaining). Please purchase an AI Credit Booster pack or upgrade your plan to continue using AI enhancement.");
   }
+
+  // Read per-feature permissions strictly from planSnapshot.services (or quota permissions)
+  const aiPlanSvc = (company.planSnapshot?.services || []).find(
+    (s) => String(s.productCode).toUpperCase() === "AI_CREDIT"
+  );
+  const aiPlanFeatures = Array.isArray(aiPlanSvc?.features) ? aiPlanSvc.features : [];
+
+  const canImproveJd =
+    aiPlanFeatures.some((f) => (f.key === "improveJd" || f.key === "improveJobDescription") && f.enabled === true) ||
+    Boolean(quota.permissions?.canImproveJd || quota.permissions?.improveJobDescription);
+
+  const canGenerateJd =
+    aiPlanFeatures.some((f) => (f.key === "generateJd" || f.key === "writeFullJd" || f.key === "writeFullJobDescription") && f.enabled === true) ||
+    Boolean(quota.permissions?.canGenerateJd || quota.permissions?.writeFullJobDescription);
 
   // 2. Build Category-Specific Guidance
   let categoryGuidance = "";
@@ -2173,7 +2303,24 @@ exports.enhanceDescription = asyncHandler(async (req, res) => {
     categoryGuidance = "This is a standard professional job posting. Ensure a clear, structured, industry-standard, and professional tone.";
   }
 
-  // 3. Build Section Prompt
+  // 3. Determine feature name for this action and gate it
+  // isNewContent = user gave no existing text, purely generating from job title
+  const isNewContent = !hasText;
+  const featureName = type === "responsibilities"
+    ? (isNewContent ? "WRITE_FULL_JD" : "IMPROVE_RESPONSIBILITIES")
+    : (type === "qualifications" || type === "skills")
+    ? (isNewContent ? "WRITE_FULL_JD" : "IMPROVE_REQUIREMENTS")
+    : (isNewContent ? "WRITE_FULL_JD" : "IMPROVE_JD");
+
+  // Gate: improve requires canImproveJd; generate-from-scratch requires canGenerateJd
+  if (isNewContent && !canGenerateJd) {
+    throw createHttpError(403, "Generating content from scratch is not available on your current plan. Please upgrade to an SMB or Corporate plan to unlock this feature.");
+  }
+  if (!isNewContent && !canImproveJd) {
+    throw createHttpError(403, "Improving job description content is not available on your current plan. Please contact support.");
+  }
+
+  // 4. Build Section Prompt
   const cleanTitle = jobTitle.trim() || "the specified position";
   let systemPrompt = "";
 
@@ -2244,12 +2391,6 @@ Return ONLY the description text without any headings, labels, bullet points, in
   }
 
   // 5. Consume 1 AI Credit upon successful generation
-  const featureName = type === "responsibilities"
-    ? "IMPROVE_RESPONSIBILITIES"
-    : (type === "qualifications" || type === "skills")
-    ? "IMPROVE_REQUIREMENTS"
-    : "IMPROVE_JD";
-
   const consumption = await AiCreditService.useAiCredit({
     companyId: company._id,
     userId: req.user._id,
@@ -2271,6 +2412,112 @@ Return ONLY the description text without any headings, labels, bullet points, in
     success: true,
     data: {
       text: enhanced.trim(),
+      remainingCredits: consumption.remainingCredits,
+      creditsDeducted: 1,
+    },
+  });
+});
+
+exports.generateScreeningQuestions = asyncHandler(async (req, res) => {
+  const { jobTitle = "", skills = [], experience = "", jobCategory = "standard" } = req.body;
+
+  if (!jobTitle.trim()) {
+    throw createHttpError(400, "Job Title is required to generate screening questions");
+  }
+
+  const { company } = await resolveClientUserAndCompany(req.user._id);
+  if (!company) {
+    throw createHttpError(404, "Company not found");
+  }
+
+  const AiCreditService = require("../services/commercial/ai-credit.service");
+  const quota = await AiCreditService.getAiQuota(company._id);
+
+  // Read per-feature permission strictly from planSnapshot.services (or quota permissions)
+  const aiPlanSvc = (company.planSnapshot?.services || []).find(
+    (s) => String(s.productCode).toUpperCase() === "AI_CREDIT"
+  );
+  const aiPlanFeatures = Array.isArray(aiPlanSvc?.features) ? aiPlanSvc.features : [];
+
+  const canGenerateScreeningQuestions =
+    aiPlanFeatures.some((f) => (f.key === "screeningQuestions" || f.key === "writeScreeningQuestions") && f.enabled === true) ||
+    Boolean(quota.permissions?.canGenerateScreeningQuestions || quota.permissions?.writeScreeningQuestions);
+
+  if (!canGenerateScreeningQuestions) {
+    throw createHttpError(403, "Generating screening questions with AI is not available on your current plan. Please upgrade to an SMB or Corporate plan to unlock this feature.");
+  }
+
+  if (!quota || quota.availableCredits < 1) {
+    throw createHttpError(402, "You have exhausted your AI credits. Please purchase an AI Credit Booster pack or upgrade your plan.");
+  }
+
+  const systemPrompt = `You are an expert HR recruiter.
+Generate 4 to 5 relevant, insightful screening questions for the role "${jobTitle.trim()}".
+Required skills: ${Array.isArray(skills) ? skills.join(", ") : skills || "General"}.
+Experience level: ${experience || "Any"}.
+
+Return ONLY a valid JSON array of question objects with the following schema:
+[
+  {
+    "question": "string",
+    "type": "Yes/No",
+    "required": true,
+    "scoring": "Must"
+  }
+]
+Allowed type values: "Yes/No", "Multiple Choice", "Text".
+Allowed scoring values: "Must", "Preferred".
+Do NOT include markdown formatting or commentary, only raw JSON.`;
+
+  const userPrompt = `Generate screening questions for: ${jobTitle.trim()}`;
+
+  let questions = [];
+  try {
+    const response = await OpenAIService.createChatCompletion({
+      model: process.env.OPENAI_CHAT_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini",
+      systemPrompt,
+      userPrompt,
+      maxOutputTokens: 1000,
+    });
+    const raw = response?.output_text || response?.outputText || response?.choices?.[0]?.message?.content || "";
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    questions = JSON.parse(cleaned);
+  } catch (err) {
+    throw createHttpError(502, `Failed to generate screening questions with AI: ${err.message}`);
+  }
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw createHttpError(502, "AI was unable to generate valid screening questions. Please try again.");
+  }
+
+  // Deduct 1 credit
+  const consumption = await AiCreditService.useAiCredit({
+    companyId: company._id,
+    userId: req.user._id,
+    feature: "SCREENING_QUESTIONS",
+    actor: { userId: req.user._id, userEmail: req.user.email },
+  });
+
+  if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+    const sIndex = company.planSnapshot.services.findIndex(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
+    if (sIndex !== -1) {
+      company.planSnapshot.services[sIndex].usedQuantity = (company.planSnapshot.services[sIndex].usedQuantity || 0) + 1;
+      company.markModified("planSnapshot");
+      await company.save();
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      questions: questions.map((q, idx) => ({
+        id: Date.now() + idx,
+        question: q.question || "",
+        type: q.type || "Yes/No",
+        required: Boolean(q.required),
+        scoring: q.scoring || "Preferred",
+        options: Array.isArray(q.options) ? q.options : [],
+      })),
       remainingCredits: consumption.remainingCredits,
       creditsDeducted: 1,
     },
@@ -2705,12 +2952,21 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
         amountFormatted: (sub.commercialSnapshot?.pricePaid || 0) > 0 ? `₹ ${Number(sub.commercialSnapshot.pricePaid).toLocaleString("en-IN")}` : "Free Plan",
         status: isStillActive ? "ACTIVE" : (sub.status || "EXPIRED"),
         products: (sub.entitlementSnapshot && sub.entitlementSnapshot.length > 0)
-          ? sub.entitlementSnapshot.map((item, idx) => ({
-              id: `prod-ent-${sub._id}-${idx}`,
-              name: `${item.productName || item.productCode} (${item.quantity} ${item.unit || "Units"})`,
-              validity: `From ${formatDate(sub.startDate)} to ${formatDate(item.expiryDate || sub.endDate)}`,
-              status: isStillActive ? "ACTIVE" : "EXPIRED",
-            }))
+          ? sub.entitlementSnapshot.map((item, idx) => {
+              let pName = item.productName || item.productCode;
+              const pCode = String(item.productCode || "").toUpperCase();
+              if (pCode === "RESDEX" || pName === "ResDex Resume Search" || String(pName).toLowerCase() === "resdex resume search") {
+                pName = "Max CV Access";
+              } else if (pCode === "MIVITE" || pName === "MIvites Candidate Outreach" || String(pName).toLowerCase() === "mivites candidate outreach") {
+                pName = "Max NVite Credits";
+              }
+              return {
+                id: `prod-ent-${sub._id}-${idx}`,
+                name: `${pName} (${item.quantity} ${item.unit || "Units"})`,
+                validity: `From ${formatDate(sub.startDate)} to ${formatDate(item.expiryDate || sub.endDate)}`,
+                status: isStillActive ? "ACTIVE" : "EXPIRED",
+              };
+            })
           : [
               {
                 id: `prod-main-${sub._id}`,
@@ -3226,26 +3482,61 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   let aiTotal = 0;
   let aiLeft = 0;
   let aiUsedByAll = 0;
-  if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
-    const aiSvc = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
-    if (aiSvc) {
-      aiTotal = Number(aiSvc.quantity || 0);
-      aiUsedByAll = Number(aiSvc.usedQuantity || 0);
-      aiLeft = Math.max(0, aiTotal - aiUsedByAll);
-    }
-  } else {
-    try {
-      const AiCreditService = require("../services/commercial/ai-credit.service");
-      const aiQuota = await AiCreditService.getAiQuota(company._id);
-      aiTotal = aiQuota.allocatedCredits || 0;
-      aiLeft = aiQuota.availableCredits || 0;
-      aiUsedByAll = aiQuota.consumedCredits || 0;
-    } catch (_) {}
-  }
+  // Default feature flags — will be populated from the plan's AI_CREDIT features array
+  let aiFeatures = {
+    canImproveJd: false,
+    canGenerateJd: false,
+    canGenerateScreeningQuestions: false,
+  };
+
+  try {
+    const AiCreditService = require("../services/commercial/ai-credit.service");
+    const aiQuota = await AiCreditService.getAiQuota(company._id);
+    aiTotal = aiQuota.allocatedCredits || 0;
+    aiLeft = aiQuota.availableCredits || 0;
+    aiUsedByAll = aiQuota.consumedCredits || 0;
+    // Extract granular feature flags returned by getAiQuota
+    const qPerms = aiQuota.permissions || aiQuota.features || {};
+    aiFeatures = {
+      canImproveJd: Boolean(qPerms.canImproveJd || qPerms.improveJobDescription),
+      canGenerateJd: Boolean(qPerms.canGenerateJd || qPerms.writeFullJobDescription),
+      canGenerateScreeningQuestions: Boolean(qPerms.canGenerateScreeningQuestions || qPerms.writeScreeningQuestions),
+    };
+  } catch (_) {}
+
+  // --- Plan metadata for frontend feature gating ---
+  const planSnapshot = company.planSnapshot || null;
+  const planName = planSnapshot?.planName || company.packageType || "FREE";
+  const planCode = String(planSnapshot?.planCode || planSnapshot?.planType || company.packageType || "FREE").toUpperCase();
+  const planType = String(planSnapshot?.planType || company.packageType || "FREE").toUpperCase();
+  const isPaidPlan = Boolean(
+    planSnapshot &&
+    planCode !== "FREE" &&
+    !planCode.includes("FREE") &&
+    (
+      hotJobTotal > 0 ||
+      smbJobTotal > 0 ||
+      internshipJobTotal > 0 ||
+      jobTotal > 1 ||
+      cvTotal > 0 ||
+      nviteTotal > 0
+    )
+  );
+  const isExpired = Boolean(
+    planSnapshot?.endDate && new Date(planSnapshot.endDate) < new Date()
+  );
 
   res.status(200).json({
     success: true,
     data: {
+      // Plan metadata — used by frontend for feature gating
+      isPaidPlan,
+      isPaid: isPaidPlan,
+      planName,
+      planCode,
+      planType,
+      isExpired,
+      companyCity: company.location?.city || "",
       cvAccess: {
         total: cvTotal,
         left: cvLeftFinal,
@@ -3276,7 +3567,9 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
         usedByAll: smbJobUsedByAll,
         usedByYou: isRecruiter ? smbJobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
-        badge: "OVERALL"
+        badge: "OVERALL",
+        allowedCity: company.location?.city || "",
+        maxCities: 1,
       },
       hotVacancy: {
         total: hotJobTotal,
@@ -3284,7 +3577,18 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
         usedByAll: hotJobUsedByAll,
         usedByYou: isRecruiter ? hotJobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
-        badge: "OVERALL"
+        badge: "OVERALL",
+        maxCities: (() => {
+          let hmc = 1;
+          const hpSvc = company.planSnapshot?.services?.find(
+            (s) => String(s.productCode).toUpperCase() === "HOT_VACANCY"
+          );
+          if (hpSvc && Array.isArray(hpSvc.features)) {
+            const mc = hpSvc.features.find((f) => f.key === "multipleCities");
+            if (mc && mc.enabled !== false) hmc = Math.max(1, Number(mc.value) || 3);
+          }
+          return hmc;
+        })(),
       },
       internship: {
         total: internshipJobTotal,
@@ -3299,7 +3603,9 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
         left: aiLeft,
         usedByAll: aiUsedByAll,
         usedByYou: null,
-        badge: "OVERALL"
+        badge: "OVERALL",
+        // Granular per-feature flags sourced from the plan's AI_CREDIT product features array
+        features: aiFeatures,
       }
     }
   });
@@ -3451,11 +3757,18 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
       serviceValidityUnit = "DAYS";
     }
 
+    let displayName = s.productName;
+    if (code === "RESDEX" || displayName === "ResDex Resume Search" || String(displayName).toLowerCase() === "resdex resume search") {
+      displayName = "Max CV Access";
+    } else if (code === "MIVITE" || displayName === "MIvites Candidate Outreach" || String(displayName).toLowerCase() === "mivites candidate outreach") {
+      displayName = "Max NVite Credits";
+    }
+
     return {
       _id: s._id,
       productId: s.productId,
       productCode: s.productCode,
-      productName: s.productName,
+      productName: displayName,
       category: s.category,
       productType: s.productType,
       quantity: total,

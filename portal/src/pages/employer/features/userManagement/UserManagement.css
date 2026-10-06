@@ -56,6 +56,31 @@
   box-shadow: 0 4px 12px rgba(0, 35, 102, 0.25);
 }
 
+.um-btn-purchase-seats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ffffff;
+  color: #002366;
+  border: 1.5px solid #002366;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.um-btn-purchase-seats:hover {
+  background-color: #f0f4ff;
+  border-color: #001847;
+  color: #001847;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 35, 102, 0.12);
+}
+
 .um-btn-icon-more {
   display: inline-flex;
   align-items: center;
