@@ -27,6 +27,16 @@ const commercialPaymentSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    paymentId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    invoiceNumber: {
+      type: String,
+      default: "",
+      index: true,
+    },
     amount: {
       type: Number,
       required: true,

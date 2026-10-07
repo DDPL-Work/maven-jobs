@@ -7,8 +7,14 @@ const Entitlement = require("../../models/Entitlement");
 const CommercialOrder = require("../../models/CommercialOrder");
 const CommercialPayment = require("../../models/CommercialPayment");
 const Company = require("../../models/Company");
+const User = require("../../models/User");
 const CreditLedgerService = require("./credit-ledger.service");
 const AuditLogService = require("./audit-log.service");
+const {
+  generateInvoiceNumber,
+  buildInvoiceData,
+  generateInvoicePdfBuffer,
+} = require("../../email/templates/invoice");
 
 const DEFAULT_PRODUCT_FEATURES = {
   HOT_VACANCY: [
@@ -43,12 +49,201 @@ const DEFAULT_PRODUCT_FEATURES = {
 
 class PurchaseService {
   /**
-   * Helper to generate unique human-readable order number
+   * Helper to resolve 2-character uppercase company initials
    */
-  static generateOrderNumber() {
+  static resolveCompanyInitials(company) {
+    const raw = String(company?.name || "").trim().replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (raw.length >= 2) return raw.slice(0, 2);
+    if (raw.length === 1) return `${raw}X`;
+    return "CO";
+  }
+
+  /**
+   * Helper to resolve 2-character uppercase payment mode code
+   */
+  static resolvePaymentModeCode(paymentMethod = "ONLINE") {
+    const mode = String(paymentMethod || "ONLINE").toUpperCase().trim();
+    if (mode.startsWith("FREE")) return "FR";
+    if (mode.startsWith("RAZORPAY")) return "RZ";
+    if (mode.startsWith("ONLINE")) return "ON";
+    if (mode.startsWith("UPI")) return "UP";
+    if (mode.startsWith("CARD")) return "CA";
+    if (mode.startsWith("NET")) return "NB";
+    if (mode.startsWith("CHEQUE")) return "CH";
+    if (mode.startsWith("CASH")) return "CS";
+    if (mode.startsWith("NEFT")) return "NE";
+    if (mode.startsWith("BANK")) return "BT";
+    if (mode.startsWith("SIMULATED")) return "SM";
+    const clean = mode.replace(/[^A-Z0-9]/g, "");
+    if (clean.length >= 2) return clean.slice(0, 2);
+    if (clean.length === 1) return `${clean}X`;
+    return "ON";
+  }
+
+  /**
+   * Generate human-readable Order ID:
+   * Format: MJ{last 2 digit of year}{company inital two digit who made order}{three digit serial number}
+   * Example: MJ26DD001
+   */
+  static async generateOrderId(company) {
+    const year2 = String(new Date().getFullYear()).slice(-2);
+    const compInitials = this.resolveCompanyInitials(company);
+    const prefix = `MJ${year2}${compInitials}`;
+
+    const existingCount = await CommercialOrder.countDocuments({
+      orderNumber: new RegExp(`^${prefix}`),
+    });
+
+    let seq = existingCount + 1;
+    let orderNumber = `${prefix}${String(seq).padStart(3, "0")}`;
+
+    while (await CommercialOrder.exists({ orderNumber })) {
+      seq++;
+      orderNumber = `${prefix}${String(seq).padStart(3, "0")}`;
+    }
+
+    return orderNumber;
+  }
+
+  /**
+   * Generate human-readable Payment ID:
+   * Format: MJ{payment Mode initial two digit}{year last two digit}{4 digit serial number}
+   * Example: MJON260001
+   */
+  static async generatePaymentId(paymentMethod = "ONLINE") {
+    const modeCode = this.resolvePaymentModeCode(paymentMethod);
+    const year2 = String(new Date().getFullYear()).slice(-2);
+    const prefix = `MJ${modeCode}${year2}`;
+
+    const existingCount = await CommercialPayment.countDocuments({
+      paymentId: new RegExp(`^${prefix}`),
+    });
+
+    let seq = existingCount + 1;
+    let paymentId = `${prefix}${String(seq).padStart(4, "0")}`;
+
+    while (await CommercialPayment.exists({ paymentId })) {
+      seq++;
+      paymentId = `${prefix}${String(seq).padStart(4, "0")}`;
+    }
+
+    return paymentId;
+  }
+
+  /**
+   * Backward-compatible order number generator
+   */
+  static generateOrderNumber(company) {
+    if (company) {
+      const year2 = String(new Date().getFullYear()).slice(-2);
+      const compInitials = this.resolveCompanyInitials(company);
+      const random3 = Math.floor(100 + Math.random() * 900);
+      return `MJ${year2}${compInitials}${random3}`;
+    }
     const timestamp = Date.now().toString(36).toUpperCase();
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
     return `ORD-${timestamp}-${random}`;
+  }
+
+  /**
+   * Helper to dispatch professional order confirmation email asynchronously
+   */
+  static async sendOrderConfirmationNotification({
+    companyId,
+    userId,
+    serviceTitle,
+    transactionId,
+    orderNumber,
+    paymentId,
+    invoiceNumber,
+    amount,
+    validityDays,
+    expiryDate,
+    paymentMethod = "ONLINE",
+    inclusions = [],
+  }) {
+    try {
+      const company = await Company.findById(companyId).lean();
+      if (!company) {
+        console.warn("[PurchaseService] Company not found for order confirmation email:", companyId);
+        return;
+      }
+
+      let recipientUser = null;
+      if (userId) {
+        recipientUser = await User.findById(userId).lean();
+      }
+      if (!recipientUser) {
+        recipientUser = await User.findOne({ companyId, role: "CLIENT" }).lean();
+      }
+
+      // Collect recipient email addresses (deduplicated)
+      const recipientEmails = new Set();
+      if (recipientUser?.email) recipientEmails.add(recipientUser.email.trim().toLowerCase());
+      if (company.email) recipientEmails.add(company.email.trim().toLowerCase());
+
+      if (recipientEmails.size === 0) {
+        console.warn("[PurchaseService] No valid recipient email found for order confirmation:", companyId);
+        return;
+      }
+
+      const clientName = recipientUser?.name || company.contactPerson || company.name || "Valued Client";
+
+      // Formulate customer code and transaction ID format matching the reference specification
+      // e.g. Customer code: 260908CS21265690, Transaction ID: 260908TS43352860
+      const now = new Date();
+      const yy = String(now.getFullYear()).slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const datePrefix = `${yy}${mm}${dd}`;
+
+      const customerCode = company.customerCode || `${datePrefix}CS${String(company._id).slice(-8).toUpperCase()}`;
+      const resolvedTxnId = paymentId || transactionId || orderNumber || `${datePrefix}TS${String(Date.now()).slice(-8)}`;
+
+      // Generate dynamic Tax Invoice PDF Buffer with embedded QR Code & Maven Branding
+      let invoiceBuffer = null;
+      try {
+        const invData = buildInvoiceData({
+          company,
+          user: recipientUser,
+          invoiceNumber,
+          orderNumber,
+          paymentId: resolvedTxnId,
+          serviceTitle,
+          amount,
+          validityDays,
+          expiryDate,
+        });
+        invoiceBuffer = await generateInvoicePdfBuffer(invData);
+      } catch (pdfErr) {
+        console.warn("[PurchaseService] Warning generating invoice PDF buffer:", pdfErr?.message);
+      }
+
+      const { sendOrderConfirmationEmail } = require("../email.service");
+
+      for (const email of recipientEmails) {
+        sendOrderConfirmationEmail({
+          to: email,
+          fullName: clientName,
+          companyName: company.name,
+          serviceTitle,
+          customerCode,
+          transactionId: resolvedTxnId,
+          orderNumber,
+          invoiceNumber,
+          invoiceBuffer,
+          amount,
+          validityDays,
+          expiryDate,
+          inclusions,
+          paymentMethod,
+        }).catch((sendErr) => {
+          console.error(`[PurchaseService] Failed to send order confirmation to ${email}:`, sendErr?.message || sendErr);
+        });
+      }
+    } catch (err) {
+      console.error("[PurchaseService] sendOrderConfirmationNotification error:", err?.message || err);
+    }
   }
 
   /**
@@ -146,9 +341,15 @@ class PurchaseService {
     }
 
     // 1. Create CommercialOrder (Full listed price of upgraded plan per Q2.3)
-    const orderNumber = this.generateOrderNumber();
+    const company = await Company.findById(companyId);
+    const orderNumber = await this.generateOrderId(company);
+    const paymentId = await this.generatePaymentId(paymentMethod);
+    const invoiceNumber = generateInvoiceNumber(plan.code || plan.planType || "PLAN");
+
     const order = await CommercialOrder.create({
       orderNumber,
+      invoiceNumber,
+      paymentId,
       companyId,
       userId: effectiveUserId,
       items: [
@@ -165,6 +366,13 @@ class PurchaseService {
       ],
       subtotal: planVersion.basePrice,
       discountAmount: planVersion.discount,
+      taxType: planVersion.taxType || "IGST",
+      igstRate: planVersion.taxType === "CGST_SGST" ? 0 : (planVersion.igstRate !== undefined ? planVersion.igstRate : (planVersion.taxPercent || 18)),
+      cgstRate: planVersion.taxType === "IGST" ? 0 : (planVersion.cgstRate || 0),
+      sgstRate: planVersion.taxType === "IGST" ? 0 : (planVersion.sgstRate || 0),
+      igstAmount: planVersion.taxType === "CGST_SGST" ? 0 : (planVersion.igstAmount !== undefined ? planVersion.igstAmount : (planVersion.taxAmount || 0)),
+      cgstAmount: planVersion.taxType === "IGST" ? 0 : (planVersion.cgstAmount || 0),
+      sgstAmount: planVersion.taxType === "IGST" ? 0 : (planVersion.sgstAmount || 0),
       taxAmount: planVersion.taxAmount,
       totalAmount: planVersion.finalPrice,
       currency: planVersion.currency || "INR",
@@ -177,7 +385,9 @@ class PurchaseService {
       orderId: order._id,
       companyId,
       gateway: paymentMethod === "ONLINE" ? "RAZORPAY" : "SIMULATED",
-      gatewayPaymentId: transactionId || `PAY-${Date.now()}`,
+      gatewayPaymentId: transactionId || paymentId,
+      paymentId,
+      invoiceNumber,
       amount: planVersion.finalPrice,
       currency: planVersion.currency || "INR",
       status: "SUCCESS",
@@ -353,9 +563,15 @@ class PurchaseService {
         purchasedAt: now,
         isUpgrade: isPlanUpgrade,
         upgradedFromSubscriptionId: currentActiveSub ? currentActiveSub._id : null,
+        orderNumber,
+        paymentId,
+        invoiceNumber,
       },
       entitlementSnapshot,
       orderId: order._id,
+      orderNumber,
+      paymentId,
+      invoiceNumber,
     });
 
     // 6. Create Live Entitlements & Record Credit Ledger Entries
@@ -432,6 +648,7 @@ class PurchaseService {
         category: "",
         productType: "",
         quantity: snap.quantity,
+        basePlanQuantity: snap.basePlanQuantity || snap.quantity,
         usedQuantity: 0,
         unit: snap.unit,
         validity: itemValidity,
@@ -439,6 +656,40 @@ class PurchaseService {
         features: snap.features || [],
       };
     });
+
+    // Retain active standalone / booster add-on credits on top of the new plan
+    const activeAddons = await Entitlement.find({
+      companyId,
+      status: "ACTIVE",
+      expiryDate: { $gte: now },
+      remainingQuantity: { $gt: 0 },
+    }).populate("subscriptionId");
+
+    const standaloneAddons = activeAddons.filter(
+      (e) => e.subscriptionId && (e.subscriptionId.subscriptionType === "STANDALONE" || e.subscriptionId.subscriptionType === "ADD_ON")
+    );
+
+    for (const addon of standaloneAddons) {
+      const codeUpper = String(addon.productCode || "").toUpperCase();
+      const existing = servicesSnapshot.find((s) => String(s.productCode || "").toUpperCase() === codeUpper);
+      if (existing) {
+        existing.quantity = (Number(existing.quantity) || 0) + (addon.remainingQuantity || 0);
+      } else {
+        servicesSnapshot.push({
+          productId: addon.productId,
+          productCode: addon.productCode,
+          productName: addon.productName,
+          category: "",
+          productType: "",
+          quantity: addon.remainingQuantity,
+          usedQuantity: 0,
+          unit: addon.unit || "Credit",
+          validity: 30,
+          validityUnit: "DAYS",
+          features: addon.features || [],
+        });
+      }
+    }
 
     const totalJobLimit = servicesSnapshot.reduce((sum, s) => {
       const sCode = String(s.productCode || "").toUpperCase();
@@ -480,6 +731,28 @@ class PurchaseService {
     }
 
     await Company.findByIdAndUpdate(companyId, { $set: companyUpdate });
+
+    // 8. Dispatch Order Confirmation Email Notification
+    this.sendOrderConfirmationNotification({
+      companyId,
+      userId: effectiveUserId,
+      serviceTitle: `${plan.name} (${validityDays} Days Validity)`,
+      transactionId: payment.paymentId || payment.gatewayPaymentId || transactionId,
+      orderNumber: order.orderNumber,
+      paymentId: payment.paymentId,
+      invoiceNumber,
+      amount: planVersion.finalPrice,
+      validityDays,
+      expiryDate: endDate,
+      paymentMethod,
+      inclusions: entitlementSnapshot.map((s) => ({
+        quantity: s.quantity,
+        unit: s.unit || "Credit",
+        name: s.productName,
+      })),
+    }).catch((emailErr) => {
+      console.warn("[PurchaseService] Order confirmation email dispatch warning:", emailErr?.message);
+    });
 
     return {
       success: true,
@@ -592,24 +865,103 @@ class PurchaseService {
       throw error;
     }
 
-    const subtotal = unitPrice * orderQty;
-    const taxAmount = Math.round((subtotal * 0.18) * 100) / 100; // 18% GST
-    const totalAmount = Math.round(subtotal + taxAmount);
+    const sourceObj = offer || product;
+    const taxType = sourceObj.taxType || "IGST";
+    let igstRate = sourceObj.igstRate !== undefined ? sourceObj.igstRate : 0;
+    let cgstRate = sourceObj.cgstRate !== undefined ? sourceObj.cgstRate : 0;
+    let sgstRate = sourceObj.sgstRate !== undefined ? sourceObj.sgstRate : 0;
+
+    if (taxType === "IGST") {
+      cgstRate = 0;
+      sgstRate = 0;
+      if (igstRate === 0) igstRate = sourceObj.taxPercent !== undefined ? sourceObj.taxPercent : 18;
+    } else if (taxType === "CGST_SGST") {
+      igstRate = 0;
+      if (cgstRate === 0 && sgstRate === 0) {
+        const totalTax = sourceObj.taxPercent !== undefined ? sourceObj.taxPercent : 18;
+        cgstRate = Math.round((totalTax / 2) * 100) / 100;
+        sgstRate = Math.round((totalTax - cgstRate) * 100) / 100;
+      }
+    } else {
+      igstRate = 0;
+      cgstRate = 0;
+      sgstRate = 0;
+    }
+
+    const baseUnitRate = Number(sourceObj.basePrice ?? unitPrice ?? 0);
+    const subtotal = baseUnitRate * orderQty;
+    const discountAmount = offer && offer.discount ? offer.discount * orderQty : 0;
+    const taxable = Math.max(0, subtotal - discountAmount);
+    const igstAmount = Math.round((taxable * (igstRate / 100)) * 100) / 100;
+    const cgstAmount = Math.round((taxable * (cgstRate / 100)) * 100) / 100;
+    const sgstAmount = Math.round((taxable * (sgstRate / 100)) * 100) / 100;
+    const taxAmount = igstAmount + cgstAmount + sgstAmount;
+    const totalAmount = Math.round(taxable + taxAmount);
 
     const now = new Date();
-    const expiryDate = new Date(now.getTime() + validityDays * 24 * 60 * 60 * 1000);
+    const isAiCredit =
+      String(product.code || skuOrCode || "").toUpperCase() === "AI_CREDIT" ||
+      String(product.category || "").toUpperCase() === "AI";
+
+    // Detect if company has an active subscribed plan running currently
+    const company = await Company.findById(companyId);
+    let subQuery = Subscription.findOne({
+      companyId,
+      subscriptionType: "PLAN",
+      status: "ACTIVE",
+      endDate: { $gte: now },
+    });
+    if (typeof subQuery?.populate === "function") {
+      subQuery = subQuery.populate("planId");
+    }
+    if (typeof subQuery?.sort === "function") {
+      subQuery = subQuery.sort({ endDate: -1 });
+    }
+    let activePlanSub = await subQuery;
+
+    let expiryDate;
+    let isAddOn = false;
+
+    if (isAiCredit) {
+      // AI top-up credits are strictly tied to the current monthly cycle.
+      // Under an active plan (e.g. 90-day plan), credits expire when the current month cycle ends and do NOT carry forward.
+      const AiCreditService = require("./ai-credit.service");
+      expiryDate = await AiCreditService.getCurrentCycleExpiry(companyId);
+      validityDays = Math.max(1, Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24)));
+    } else {
+      // For any product except AI credit:
+      // When any plan is subscribed and running currently, the expiry date of the newly purchased
+      // add-on product credit or seat equals the expiry date of the current running plan!
+      if (activePlanSub && activePlanSub.endDate && new Date(activePlanSub.endDate) > now) {
+        expiryDate = new Date(activePlanSub.endDate);
+        validityDays = Math.max(1, Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        isAddOn = true;
+      } else if (company?.planSnapshot?.endDate && new Date(company.planSnapshot.endDate) > now) {
+        expiryDate = new Date(company.planSnapshot.endDate);
+        validityDays = Math.max(1, Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        isAddOn = true;
+      } else {
+        // Fallback when no plan is subscribed/running: default standalone product validity
+        expiryDate = new Date(now.getTime() + validityDays * 24 * 60 * 60 * 1000);
+      }
+    }
 
     const effectiveUserId = userId || actor.id || actor._id || null;
 
     // 1. Create Order
-    const orderNumber = this.generateOrderNumber();
+    const orderNumber = await this.generateOrderId(company);
+    const paymentId = await this.generatePaymentId(paymentMethod);
+    const invoiceNumber = generateInvoiceNumber(product.code || offer?.sku || "OFFER");
+
     const order = await CommercialOrder.create({
       orderNumber,
+      invoiceNumber,
+      paymentId,
       companyId,
       userId: effectiveUserId,
       items: [
         {
-          itemType: "STANDALONE_OFFER",
+          itemType: isAddOn ? "ADD_ON" : "STANDALONE_OFFER",
           referenceId: offer ? offer._id : product._id,
           skuOrCode,
           title: itemTitle,
@@ -620,7 +972,14 @@ class PurchaseService {
         },
       ],
       subtotal,
-      discountAmount: 0,
+      discountAmount,
+      taxType,
+      igstRate,
+      cgstRate,
+      sgstRate,
+      igstAmount,
+      cgstAmount,
+      sgstAmount,
       taxAmount,
       totalAmount,
       currency,
@@ -633,16 +992,24 @@ class PurchaseService {
       orderId: order._id,
       companyId,
       gateway: paymentMethod === "ONLINE" ? "RAZORPAY" : "SIMULATED",
-      gatewayPaymentId: transactionId || `PAY-${Date.now()}`,
+      gatewayPaymentId: transactionId || paymentId,
+      paymentId,
+      invoiceNumber,
       amount: totalAmount,
       currency,
       status: "SUCCESS",
     });
 
-    // 3. Create Separate Subscription (type = STANDALONE)
+    const isSeatProduct =
+      String(product.code || skuOrCode || "").toUpperCase().includes("SEAT") ||
+      String(product.category || "").toUpperCase() === "USER_SEATS" ||
+      String(product.unit || "").toLowerCase().includes("seat");
+
+    // 3. Create Subscription (type = ADD_ON when under active plan, else STANDALONE)
     const subscription = await Subscription.create({
       companyId,
-      subscriptionType: "STANDALONE",
+      subscriptionType: isAddOn ? "ADD_ON" : "STANDALONE",
+      planId: activePlanSub ? (activePlanSub.planId?._id || activePlanSub.planId) : null,
       productId: product._id,
       offerId: offer ? offer._id : null,
       status: "ACTIVE",
@@ -651,13 +1018,20 @@ class PurchaseService {
       commercialSnapshot: {
         pricePaid: totalAmount,
         basePrice: subtotal,
-        discount: 0,
+        discount: discountAmount,
         taxPaid: taxAmount,
         currency,
         productName: product.name,
         offerName,
         validityDays,
         purchasedAt: now,
+        isAddOn,
+        parentPlanSubscriptionId: activePlanSub ? activePlanSub._id : null,
+        parentPlanName: activePlanSub?.commercialSnapshot?.planName || activePlanSub?.planId?.name || company?.planSnapshot?.planName || null,
+        parentPlanEndDate: activePlanSub ? activePlanSub.endDate : (company?.planSnapshot?.endDate || null),
+        orderNumber,
+        paymentId,
+        invoiceNumber,
       },
       entitlementSnapshot: [
         {
@@ -667,11 +1041,15 @@ class PurchaseService {
           quantity: totalCredits,
           unit: product.unit,
           validityDays,
+          userLimit: isSeatProduct ? totalCredits : 0,
           features: product.features || [],
           expiryDate,
         },
       ],
       orderId: order._id,
+      orderNumber,
+      paymentId,
+      invoiceNumber,
     });
 
     // 4. Create Entitlement
@@ -686,10 +1064,38 @@ class PurchaseService {
       remainingQuantity: totalCredits,
       unit: product.unit,
       features: product.features || [],
+      userLimit: isSeatProduct ? totalCredits : 0,
       startDate: now,
       expiryDate,
       status: "ACTIVE",
     });
+
+    // If an active plan subscription is running, top up its entitlementSnapshot as well
+    if (activePlanSub && Array.isArray(activePlanSub.entitlementSnapshot)) {
+      const snapItem = activePlanSub.entitlementSnapshot.find(
+        (s) => String(s.productCode).toUpperCase() === String(product.code || skuOrCode).toUpperCase()
+      );
+      if (snapItem) {
+        snapItem.quantity = (Number(snapItem.quantity) || 0) + totalCredits;
+        if (isSeatProduct) {
+          snapItem.userLimit = (Number(snapItem.userLimit) || 0) + totalCredits;
+        }
+      } else {
+        activePlanSub.entitlementSnapshot.push({
+          productId: product._id,
+          productCode: product.code,
+          productName: product.name,
+          quantity: totalCredits,
+          unit: product.unit || "Job",
+          validityDays,
+          userLimit: isSeatProduct ? totalCredits : 0,
+          features: product.features || [],
+          expiryDate,
+        });
+      }
+      activePlanSub.markModified("entitlementSnapshot");
+      await activePlanSub.save();
+    }
 
     // Calculate balance after
     const activeSameProducts = await Entitlement.find({
@@ -708,26 +1114,142 @@ class PurchaseService {
       entitlementId: entitlement._id,
       productId: product._id,
       productCode: product.code,
-      transactionType: "STANDALONE_PURCHASE",
+      transactionType: isAddOn ? "ADD_ON_PURCHASE" : "STANDALONE_PURCHASE",
       quantity: totalCredits,
       balanceAfter,
       referenceType: "Order",
       referenceId: String(order._id),
       expiryDate,
       notes: offer
-        ? `Standalone offer purchase: ${offer.name} (${offer.sku})`
-        : `Dynamic product purchase: ${product.name} (Qty: ${totalCredits})`,
+        ? (isAddOn
+            ? `Add-on offer purchase: ${offer.name} (${offer.sku}) - Synced with ${activePlanSub?.commercialSnapshot?.planName || company?.planSnapshot?.planName || "Active Plan"}`
+            : `Standalone offer purchase: ${offer.name} (${offer.sku})`)
+        : (isAddOn
+            ? `Add-on product purchase: ${product.name} (Qty: ${totalCredits}) - Synced with ${activePlanSub?.commercialSnapshot?.planName || company?.planSnapshot?.planName || "Active Plan"}`
+            : `Dynamic product purchase: ${product.name} (Qty: ${totalCredits})`),
       createdBy: actor,
     });
 
     await AuditLogService.log({
-      action: "PURCHASE_STANDALONE",
+      action: isAddOn ? "PURCHASE_ADD_ON" : "PURCHASE_STANDALONE",
       targetType: "SUBSCRIPTION",
       targetId: subscription._id,
       targetName: offer ? `${offer.sku} - ${offer.name}` : `${product.code} - ${product.name} (Qty: ${totalCredits})`,
       performedBy: actor,
-      afterSnapshot: { subscription: subscription.toObject(), order: order.toObject() },
-      reason: offer ? "Standalone offer purchased" : "Dynamic product purchased",
+      afterSnapshot: {
+        subscription: subscription?.toObject ? subscription.toObject() : subscription,
+        order: order?.toObject ? order.toObject() : order,
+      },
+      reason: isAddOn ? "Add-on product purchased under active plan" : (offer ? "Standalone offer purchased" : "Dynamic product purchased"),
+    });
+
+    // 5b. Update company.planSnapshot.services so add-on credits are added on top of current credits
+    const companyToUpdate = await Company.findById(companyId);
+    if (companyToUpdate) {
+      if (!companyToUpdate.planSnapshot) {
+        companyToUpdate.planSnapshot = {
+          planName: companyToUpdate.packageType || "FREE",
+          planCode: "FREE",
+          planType: "FREE",
+          services: [],
+        };
+      }
+      if (!Array.isArray(companyToUpdate.planSnapshot.services)) {
+        companyToUpdate.planSnapshot.services = [];
+      }
+
+      const codeUpper = String(product.code || skuOrCode || "").toUpperCase();
+      const existingSvc = companyToUpdate.planSnapshot.services.find(
+        (s) => String(s.productCode || "").toUpperCase() === codeUpper
+      );
+
+      if (existingSvc) {
+        // Stack new add-on credits on top of existing credits
+        existingSvc.quantity = (Number(existingSvc.quantity) || 0) + totalCredits;
+        if (isAiCredit) {
+          existingSvc.validity = validityDays;
+        } else if (isAddOn) {
+          // Duration of add-on product is synchronized with current running plan
+          existingSvc.validity = validityDays;
+        } else if (validityDays > (existingSvc.validity || 0)) {
+          existingSvc.validity = validityDays;
+        }
+        // Merge features from purchased product/offer (e.g. unlocks paid AI features, multi-city, etc.)
+        if (Array.isArray(product.features) && product.features.length > 0) {
+          const currentFeatures = Array.isArray(existingSvc.features) ? existingSvc.features : [];
+          for (const f of product.features) {
+            const idx = currentFeatures.findIndex((cf) => cf.key === f.key);
+            if (idx >= 0) {
+              if (f.enabled) currentFeatures[idx].enabled = true;
+            } else {
+              currentFeatures.push({ ...f });
+            }
+          }
+          existingSvc.features = currentFeatures;
+        }
+      } else {
+        // Product was not previously in the plan (e.g. buying Hot Vacancy when on SMB Plan)
+        companyToUpdate.planSnapshot.services.push({
+          productId: product._id,
+          productCode: product.code,
+          productName: product.name,
+          category: product.category || "",
+          productType: product.productType || "",
+          quantity: totalCredits,
+          usedQuantity: 0,
+          unit: product.unit || "Credit",
+          validity: validityDays,
+          validityUnit: "DAYS",
+          features: product.features || [],
+        });
+      }
+
+      if (codeUpper.includes("JOB") || codeUpper.includes("VACANCY")) {
+        companyToUpdate.jobLimit = (companyToUpdate.jobLimit || 0) + totalCredits;
+      }
+      if (codeUpper === "HOT_VACANCY") {
+        companyToUpdate.profileHotVacancies = "Premium Hot Vacancy";
+      }
+      if (codeUpper.includes("NVITE") || codeUpper.includes("MIVITE")) {
+        companyToUpdate.nviteLimit = (companyToUpdate.nviteLimit || 0) + totalCredits;
+      }
+
+      companyToUpdate.markModified("planSnapshot");
+      await companyToUpdate.save();
+    }
+
+    // 6. Dispatch Order Confirmation Email Notification
+    this.sendOrderConfirmationNotification({
+      companyId,
+      userId: effectiveUserId,
+      serviceTitle: offer
+        ? (isAiCredit
+            ? `${offer.name} (${validityDays} Days - Current Monthly Cycle)`
+            : isAddOn
+            ? `${offer.name} (${validityDays} Days - Synced with ${activePlanSub?.commercialSnapshot?.planName || company?.planSnapshot?.planName || "Active Plan"})`
+            : `${offer.name} (${validityDays} Days Validity)`)
+        : (isAiCredit
+            ? `${itemTitle} (${validityDays} Days - Current Monthly Cycle)`
+            : isAddOn
+            ? `${itemTitle} (${validityDays} Days - Synced with ${activePlanSub?.commercialSnapshot?.planName || company?.planSnapshot?.planName || "Active Plan"})`
+            : `${itemTitle} (${validityDays} Days Validity)`),
+      transactionId: payment.paymentId || payment.gatewayPaymentId || transactionId,
+      orderNumber: order.orderNumber,
+      paymentId: payment.paymentId,
+      invoiceNumber,
+      amount: totalAmount,
+      validityDays,
+      expiryDate,
+      paymentMethod,
+      inclusions: [
+        {
+          quantity: totalCredits,
+          unit: product.unit || "Credit",
+          name: product.name,
+        },
+      ],
+    }).catch((emailErr) => {
+      console.warn("[PurchaseService] Standalone/Add-on order confirmation email warning:", emailErr?.message);
     });
 
     return {
@@ -737,6 +1259,9 @@ class PurchaseService {
       payment,
       addedCredits: totalCredits,
       newBalance: balanceAfter,
+      isAddOn,
+      expiryDate,
+      validityDays,
     };
   }
 

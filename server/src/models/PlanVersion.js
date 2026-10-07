@@ -25,6 +25,16 @@ const planItemSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    unitPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    basePrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     unit: {
       type: String,
       default: "Job",
@@ -104,6 +114,47 @@ const planVersionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    discountPercent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    taxType: {
+      type: String,
+      enum: ["IGST", "CGST_SGST", "NONE"],
+      default: "IGST",
+    },
+    igstRate: {
+      type: Number,
+      default: 18,
+      min: 0,
+    },
+    cgstRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    sgstRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    igstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    cgstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    sgstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     taxPercent: {
       type: Number,
       default: 18, // GST 18%
@@ -121,6 +172,11 @@ const planVersionSchema = new mongoose.Schema(
       default: 0,
     },
     sellPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    finalPayablePrice: {
       type: Number,
       default: 0,
       min: 0,

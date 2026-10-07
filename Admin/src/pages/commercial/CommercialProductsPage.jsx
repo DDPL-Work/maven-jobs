@@ -80,6 +80,13 @@ export default function CommercialProductsPage() {
     unit: "Job",
     allowStandalone: true,
     defaultPrice: "",
+    discount: 0,
+    discountPercent: 0,
+    taxType: "IGST",
+    igstRate: 18,
+    cgstRate: 0,
+    sgstRate: 0,
+    taxPercent: 18,
     minQuantity: 1,
     maxQuantity: 10000,
     autoRenewalAllowed: false,
@@ -98,6 +105,12 @@ export default function CommercialProductsPage() {
     price: 1000,
     validity: 30,
     discountPercent: 0,
+    discount: 0,
+    taxType: "IGST",
+    igstRate: 18,
+    cgstRate: 0,
+    sgstRate: 0,
+    taxPercent: 18,
     isPopular: false,
     description: "",
   });
@@ -192,6 +205,13 @@ export default function CommercialProductsPage() {
       unit: "Job",
       allowStandalone: true,
       defaultPrice: "",
+      discount: 0,
+      discountPercent: 0,
+      taxType: "IGST",
+      igstRate: 18,
+      cgstRate: 0,
+      sgstRate: 0,
+      taxPercent: 18,
       minQuantity: 1,
       maxQuantity: 10000,
       autoRenewalAllowed: false,
@@ -204,6 +224,12 @@ export default function CommercialProductsPage() {
   const handleOpenEditProduct = (prod) => {
     setEditingProduct(prod);
     setIsCustomProductCode(Boolean(prod.code && !STANDARD_PRODUCT_CODES.some((c) => c.code === prod.code)));
+    const prodTaxType = prod.taxType || (Number(prod.cgstRate) > 0 || Number(prod.sgstRate) > 0 ? "CGST_SGST" : "IGST");
+    const rawTaxPercent = Number(prod.taxPercent !== undefined ? prod.taxPercent : 18);
+    const prodIgst = prodTaxType === "IGST" ? Number(prod.igstRate !== undefined ? prod.igstRate : rawTaxPercent) : 0;
+    const prodCgst = prodTaxType === "CGST_SGST" ? Number(prod.cgstRate !== undefined ? prod.cgstRate : 9) : 0;
+    const prodSgst = prodTaxType === "CGST_SGST" ? Number(prod.sgstRate !== undefined ? prod.sgstRate : 9) : 0;
+
     setProductForm({
       name: prod.name || "",
       code: prod.code || "",
@@ -211,7 +237,14 @@ export default function CommercialProductsPage() {
       productType: prod.productType || "CREDIT_BASED",
       unit: prod.unit || "Unit",
       allowStandalone: Boolean(prod.allowStandalone),
-      defaultPrice: prod.defaultPrice ?? "",
+      defaultPrice: prod.defaultPrice ?? prod.basePrice ?? "",
+      discount: prod.discount ?? 0,
+      discountPercent: prod.discountPercent ?? 0,
+      taxType: prodTaxType,
+      igstRate: prodIgst,
+      cgstRate: prodCgst,
+      sgstRate: prodSgst,
+      taxPercent: prodIgst + prodCgst + prodSgst,
       minQuantity: prod.minQuantity || 1,
       maxQuantity: prod.maxQuantity || 10000,
       autoRenewalAllowed: Boolean(prod.autoRenewalAllowed),
@@ -223,11 +256,45 @@ export default function CommercialProductsPage() {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     try {
+      const prodBasePrice = Number(productForm.defaultPrice || 0);
+      const prodDiscount = Number(productForm.discount || 0);
+      const prodTaxable = Math.max(0, prodBasePrice - prodDiscount);
+
+      const isIgst = productForm.taxType === "IGST";
+      const igstRate = isIgst ? Number(productForm.igstRate || 0) : 0;
+      const cgstRate = !isIgst ? Number(productForm.cgstRate || 0) : 0;
+      const sgstRate = !isIgst ? Number(productForm.sgstRate || 0) : 0;
+
+      const igstAmount = Math.round((prodTaxable * igstRate) / 100);
+      const cgstAmount = Math.round((prodTaxable * cgstRate) / 100);
+      const sgstAmount = Math.round((prodTaxable * sgstRate) / 100);
+      const prodTaxAmount = igstAmount + cgstAmount + sgstAmount;
+      const prodTotal = Math.round(prodTaxable + prodTaxAmount);
+      const totalTaxPercent = igstRate + cgstRate + sgstRate;
+
+      const payload = {
+        ...productForm,
+        defaultPrice: prodBasePrice,
+        basePrice: prodBasePrice,
+        discount: prodDiscount,
+        discountPercent: prodBasePrice > 0 ? Math.round((prodDiscount / prodBasePrice) * 100) : 0,
+        taxType: isIgst ? "IGST" : "CGST_SGST",
+        igstRate,
+        cgstRate,
+        sgstRate,
+        igstAmount,
+        cgstAmount,
+        sgstAmount,
+        taxPercent: totalTaxPercent,
+        taxAmount: prodTaxAmount,
+        finalPrice: prodTotal,
+      };
+
       if (editingProduct) {
-        await updateCommercialProduct(editingProduct._id, productForm);
+        await updateCommercialProduct(editingProduct._id, payload);
         setSuccessMsg(`Product '${productForm.name}' updated successfully!`);
       } else {
-        await createCommercialProduct(productForm);
+        await createCommercialProduct(payload);
         setSuccessMsg(`Product '${productForm.name}' created successfully!`);
       }
       setIsProductDrawerOpen(false);
@@ -292,13 +359,25 @@ export default function CommercialProductsPage() {
 
   const handleOpenCreateOffer = () => {
     const prod = managingOffersProduct;
+    const baseP = (prod.defaultPrice || 500) * 4;
+    const prodTaxType = prod.taxType || "IGST";
+    const prodIgst = prodTaxType === "IGST" ? Number(prod.igstRate !== undefined ? prod.igstRate : (prod.taxPercent ?? 18)) : 0;
+    const prodCgst = prodTaxType === "CGST_SGST" ? Number(prod.cgstRate !== undefined ? prod.cgstRate : 9) : 0;
+    const prodSgst = prodTaxType === "CGST_SGST" ? Number(prod.sgstRate !== undefined ? prod.sgstRate : 9) : 0;
+
     setOfferForm({
       sku: `${prod.code}_5`,
       name: `5 ${prod.unit}s Pack`,
       quantity: 5,
-      price: (prod.defaultPrice || 500) * 4,
+      price: baseP,
       validity: prod.validity || 30,
       discountPercent: 20,
+      discount: Math.round((baseP * 20) / 100),
+      taxType: prodTaxType,
+      igstRate: prodIgst,
+      cgstRate: prodCgst,
+      sgstRate: prodSgst,
+      taxPercent: prodIgst + prodCgst + prodSgst,
       isPopular: false,
       description: `Pack of 5 ${prod.unit}s for ${prod.name}`,
     });
@@ -308,8 +387,39 @@ export default function CommercialProductsPage() {
   const handleSaveOffer = async (e) => {
     e.preventDefault();
     try {
+      const offerBasePrice = Number(offerForm.price || 0);
+      const offerDiscountPct = Number(offerForm.discountPercent || 0);
+      const offerDiscount = Math.round((offerBasePrice * offerDiscountPct) / 100);
+      const offerTaxable = Math.max(0, offerBasePrice - offerDiscount);
+
+      const isIgst = offerForm.taxType === "IGST";
+      const igstRate = isIgst ? Number(offerForm.igstRate || 0) : 0;
+      const cgstRate = !isIgst ? Number(offerForm.cgstRate || 0) : 0;
+      const sgstRate = !isIgst ? Number(offerForm.sgstRate || 0) : 0;
+
+      const igstAmount = Math.round((offerTaxable * igstRate) / 100);
+      const cgstAmount = Math.round((offerTaxable * cgstRate) / 100);
+      const sgstAmount = Math.round((offerTaxable * sgstRate) / 100);
+      const offerTaxAmount = igstAmount + cgstAmount + sgstAmount;
+      const offerTotal = Math.round(offerTaxable + offerTaxAmount);
+      const totalTaxPercent = igstRate + cgstRate + sgstRate;
+
       await createCommercialOffer({
         ...offerForm,
+        basePrice: offerBasePrice,
+        price: offerBasePrice,
+        discount: offerDiscount,
+        discountPercent: offerDiscountPct,
+        taxType: isIgst ? "IGST" : "CGST_SGST",
+        igstRate,
+        cgstRate,
+        sgstRate,
+        igstAmount,
+        cgstAmount,
+        sgstAmount,
+        taxPercent: totalTaxPercent,
+        taxAmount: offerTaxAmount,
+        finalPrice: offerTotal,
         productId: managingOffersProduct._id,
       });
       setIsOfferModalOpen(false);
@@ -479,7 +589,15 @@ export default function CommercialProductsPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 font-semibold text-slate-900">
-                      ₹{prod.defaultPrice?.toLocaleString() ?? 0}
+                      <div>₹{prod.defaultPrice?.toLocaleString() ?? 0}</div>
+                      {prod.discount > 0 && (
+                        <span className="text-[10px] text-emerald-600 block font-medium">
+                          -₹{prod.discount.toLocaleString()} Discount
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-500 block font-normal">
+                        GST: {prod.taxPercent ?? 18}% • Total: ₹{(prod.finalPrice || (Math.max(0, (prod.defaultPrice || 0) - (prod.discount || 0)) + Math.round((Math.max(0, (prod.defaultPrice || 0) - (prod.discount || 0)) * (prod.taxPercent ?? 18)) / 100))).toLocaleString()}
+                      </span>
                       <span className="text-[10px] text-slate-400 block font-normal">
                         per {prod.unit || "unit"}
                       </span>
@@ -691,23 +809,267 @@ export default function CommercialProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div>
-                  {/* Price label derives from selected code */}
-                  <label className="block text-xs font-semibold text-slate-700">
-                    {PRODUCT_CODE_DEFAULTS[productForm.code]?.priceLabel || "Unit Price (₹)"} *
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    placeholder="e.g. 500"
-                    value={productForm.defaultPrice}
-                    onChange={(e) => setProductForm({ ...productForm, defaultPrice: e.target.value === "" ? "" : Number(e.target.value) })}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none"
-                  />
+              {/* Commercial Pricing, Taxes & Discounts */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Commercial Pricing & Tax Configuration
+                  </h4>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Applied per {productForm.unit || "unit"}
+                  </span>
                 </div>
-                <div className="flex items-end pb-0.5">
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    {/* Price label derives from selected code */}
+                    <label className="block text-xs font-semibold text-slate-700">
+                      {PRODUCT_CODE_DEFAULTS[productForm.code]?.priceLabel || "Base Unit Price (₹)"} *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      placeholder="e.g. 500"
+                      value={productForm.defaultPrice}
+                      onChange={(e) => setProductForm({ ...productForm, defaultPrice: e.target.value === "" ? "" : Number(e.target.value) })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Discount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 50"
+                      value={productForm.discount || ""}
+                      onChange={(e) => setProductForm({ ...productForm, discount: e.target.value === "" ? 0 : Number(e.target.value) })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-indigo-500 focus:outline-none"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Promotional deduction
+                    </span>
+                  </div>
+                </div>
+
+                {/* GST Taxation Mode: IGST vs (CGST + SGST) */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800">
+                      GST Type & Distribution Rule
+                    </label>
+                    <span className="text-[10px] text-slate-500">
+                      {productForm.taxType === "IGST" ? "Inter-State Supply" : "Intra-State Supply"}
+                    </span>
+                  </div>
+
+                  {/* Mode Selector */}
+                  <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProductForm({
+                          ...productForm,
+                          taxType: "IGST",
+                          igstRate: productForm.igstRate > 0 ? productForm.igstRate : 18,
+                          cgstRate: 0,
+                          sgstRate: 0,
+                          taxPercent: productForm.igstRate > 0 ? productForm.igstRate : 18,
+                        })
+                      }
+                      className={`rounded-lg py-1.5 px-2 text-center transition border ${
+                        productForm.taxType === "IGST"
+                          ? "bg-indigo-50 border-indigo-500 text-indigo-700 font-bold"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      IGST (Inter-State)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProductForm({
+                          ...productForm,
+                          taxType: "CGST_SGST",
+                          igstRate: 0,
+                          cgstRate: productForm.cgstRate > 0 ? productForm.cgstRate : 9,
+                          sgstRate: productForm.sgstRate > 0 ? productForm.sgstRate : 9,
+                          taxPercent: (productForm.cgstRate > 0 ? productForm.cgstRate : 9) + (productForm.sgstRate > 0 ? productForm.sgstRate : 9),
+                        })
+                      }
+                      className={`rounded-lg py-1.5 px-2 text-center transition border ${
+                        productForm.taxType === "CGST_SGST"
+                          ? "bg-indigo-50 border-indigo-500 text-indigo-700 font-bold"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      CGST + SGST (Intra-State)
+                    </button>
+                  </div>
+
+                  {/* Tax Rate Inputs with Mutual Exclusion Auto-Zero */}
+                  {productForm.taxType === "IGST" ? (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-bold text-indigo-900">
+                          IGST Rate (%) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          required
+                          value={productForm.igstRate}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setProductForm({
+                              ...productForm,
+                              taxType: "IGST",
+                              igstRate: val,
+                              cgstRate: 0,
+                              sgstRate: 0,
+                              taxPercent: val,
+                            });
+                          }}
+                          className="mt-1 w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400">
+                          CGST Rate (%)
+                        </label>
+                        <div className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-400 font-mono">
+                          0% (Auto 0)
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400">
+                          SGST Rate (%)
+                        </label>
+                        <div className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-400 font-mono">
+                          0% (Auto 0)
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400">
+                          IGST Rate (%)
+                        </label>
+                        <div className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-400 font-mono">
+                          0% (Auto 0)
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-indigo-900">
+                          CGST Rate (%) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          required
+                          value={productForm.cgstRate}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setProductForm({
+                              ...productForm,
+                              taxType: "CGST_SGST",
+                              igstRate: 0,
+                              cgstRate: val,
+                              taxPercent: val + Number(productForm.sgstRate || 0),
+                            });
+                          }}
+                          className="mt-1 w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-indigo-900">
+                          SGST Rate (%) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          required
+                          value={productForm.sgstRate}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setProductForm({
+                              ...productForm,
+                              taxType: "CGST_SGST",
+                              igstRate: 0,
+                              sgstRate: val,
+                              taxPercent: Number(productForm.cgstRate || 0) + val,
+                            });
+                          }}
+                          className="mt-1 w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Live Computation Summary Card */}
+                {(() => {
+                  const dp = Number(productForm.defaultPrice || 0);
+                  const disc = Number(productForm.discount || 0);
+                  const taxable = Math.max(0, dp - disc);
+                  const isIgst = productForm.taxType === "IGST";
+                  const igstR = isIgst ? Number(productForm.igstRate || 0) : 0;
+                  const cgstR = !isIgst ? Number(productForm.cgstRate || 0) : 0;
+                  const sgstR = !isIgst ? Number(productForm.sgstRate || 0) : 0;
+                  const igstAmt = Math.round((taxable * igstR) / 100);
+                  const cgstAmt = Math.round((taxable * cgstR) / 100);
+                  const sgstAmt = Math.round((taxable * sgstR) / 100);
+                  const taxAmt = igstAmt + cgstAmt + sgstAmt;
+                  const total = Math.round(taxable + taxAmt);
+                  return (
+                    <div className="mt-2 rounded-xl border border-indigo-200/80 bg-indigo-50/70 p-3 text-xs space-y-1.5">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Base Price:</span>
+                        <span className="font-semibold text-slate-800">₹{dp.toLocaleString()}</span>
+                      </div>
+                      {disc > 0 && (
+                        <div className="flex justify-between text-emerald-700 font-medium">
+                          <span>Discount:</span>
+                          <span>- ₹{disc.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-slate-600">
+                        <span>Taxable Amount:</span>
+                        <span>₹{taxable.toLocaleString()}</span>
+                      </div>
+                      {isIgst ? (
+                        <div className="flex justify-between text-slate-600">
+                          <span>IGST ({igstR}%):</span>
+                          <span>+ ₹{igstAmt.toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-slate-600">
+                            <span>CGST ({cgstR}%):</span>
+                            <span>+ ₹{cgstAmt.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>SGST ({sgstR}%):</span>
+                            <span>+ ₹{sgstAmt.toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="border-t border-indigo-200/80 pt-1.5 flex justify-between font-bold text-slate-900 text-sm">
+                        <span>Total Payable / Unit:</span>
+                        <span className="text-indigo-700">₹{total.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="pt-1">
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-800">
                     <input
                       type="checkbox"
@@ -715,7 +1077,7 @@ export default function CommercialProductsPage() {
                       onChange={(e) => setProductForm({ ...productForm, allowStandalone: e.target.checked })}
                       className="rounded text-indigo-600 focus:ring-0"
                     />
-                    Allow Standalone Purchase
+                    Allow Standalone Purchase on /buy-online marketplace
                   </label>
                 </div>
               </div>
@@ -809,7 +1171,7 @@ export default function CommercialProductsPage() {
                     <th className="px-4 py-2.5">SKU</th>
                     <th className="px-4 py-2.5">Offer Title</th>
                     <th className="px-4 py-2.5">Quantity</th>
-                    <th className="px-4 py-2.5">Price</th>
+                    <th className="px-4 py-2.5">Price & GST</th>
                     <th className="px-4 py-2.5">Validity</th>
                     <th className="px-4 py-2.5">Status</th>
                     <th className="px-4 py-2.5 text-right">Action</th>
@@ -828,7 +1190,16 @@ export default function CommercialProductsPage() {
                         <td className="px-4 py-3 font-mono font-bold text-slate-800">{offer.sku}</td>
                         <td className="px-4 py-3 font-medium text-slate-900">{offer.name}</td>
                         <td className="px-4 py-3 font-semibold text-indigo-700">{offer.quantity} {managingOffersProduct.unit}s</td>
-                        <td className="px-4 py-3 font-bold text-slate-900">₹{offer.price?.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-900">
+                            ₹{(offer.finalPrice || (offer.price + Math.round((offer.price * (offer.taxPercent ?? 18)) / 100))).toLocaleString()} Total
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Base: ₹{offer.price?.toLocaleString()}
+                            {offer.discountPercent > 0 && ` (-${offer.discountPercent}%)`}
+                            {` • GST: ${offer.taxPercent ?? 18}%`}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-slate-600">{offer.validity} Days</td>
                         <td className="px-4 py-3">
                           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -880,7 +1251,7 @@ export default function CommercialProductsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-700">Quantity *</label>
                       <input
@@ -889,11 +1260,11 @@ export default function CommercialProductsPage() {
                         required
                         value={offerForm.quantity}
                         onChange={(e) => setOfferForm({ ...offerForm, quantity: Number(e.target.value) })}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700">Price (₹) *</label>
+                      <label className="block text-[11px] font-semibold text-slate-700">Base Price (₹) *</label>
                       <input
                         type="number"
                         min="0"
@@ -904,16 +1275,253 @@ export default function CommercialProductsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700">Validity (Days)</label>
+                      <label className="block text-[11px] font-semibold text-slate-700">Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={offerForm.discountPercent || 0}
+                        onChange={(e) => setOfferForm({ ...offerForm, discountPercent: Number(e.target.value) })}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* GST Taxation Mode for Offers */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-2.5 space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-800">GST Type & Distribution Rule</span>
+                      <span className="text-slate-500">
+                        {offerForm.taxType === "IGST" ? "Inter-State Supply" : "Intra-State Supply"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOfferForm({
+                            ...offerForm,
+                            taxType: "IGST",
+                            igstRate: offerForm.igstRate > 0 ? offerForm.igstRate : 18,
+                            cgstRate: 0,
+                            sgstRate: 0,
+                            taxPercent: offerForm.igstRate > 0 ? offerForm.igstRate : 18,
+                          })
+                        }
+                        className={`rounded-lg py-1 px-2 text-center text-xs transition border ${
+                          offerForm.taxType === "IGST"
+                            ? "bg-indigo-50 border-indigo-500 text-indigo-700 font-bold"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        IGST (Inter-State)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOfferForm({
+                            ...offerForm,
+                            taxType: "CGST_SGST",
+                            igstRate: 0,
+                            cgstRate: offerForm.cgstRate > 0 ? offerForm.cgstRate : 9,
+                            sgstRate: offerForm.sgstRate > 0 ? offerForm.sgstRate : 9,
+                            taxPercent: (offerForm.cgstRate > 0 ? offerForm.cgstRate : 9) + (offerForm.sgstRate > 0 ? offerForm.sgstRate : 9),
+                          })
+                        }
+                        className={`rounded-lg py-1 px-2 text-center text-xs transition border ${
+                          offerForm.taxType === "CGST_SGST"
+                            ? "bg-indigo-50 border-indigo-500 text-indigo-700 font-bold"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        CGST + SGST (Intra-State)
+                      </button>
+                    </div>
+
+                    {offerForm.taxType === "IGST" ? (
+                      <div className="grid grid-cols-3 gap-2 pt-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-indigo-900">
+                            IGST Rate (%) *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            required
+                            value={offerForm.igstRate}
+                            onChange={(e) => {
+                              const val = e.target.value === "" ? 0 : Number(e.target.value);
+                              setOfferForm({
+                                ...offerForm,
+                                taxType: "IGST",
+                                igstRate: val,
+                                cgstRate: 0,
+                                sgstRate: 0,
+                                taxPercent: val,
+                              });
+                            }}
+                            className="mt-0.5 w-full rounded-md border border-indigo-300 bg-indigo-50/30 px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-slate-400">
+                            CGST Rate (%)
+                          </label>
+                          <div className="mt-0.5 rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs text-slate-400 font-mono">
+                            0% (Auto 0)
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-slate-400">
+                            SGST Rate (%)
+                          </label>
+                          <div className="mt-0.5 rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs text-slate-400 font-mono">
+                            0% (Auto 0)
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 pt-1">
+                        <div>
+                          <label className="block text-[10px] font-medium text-slate-400">
+                            IGST Rate (%)
+                          </label>
+                          <div className="mt-0.5 rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs text-slate-400 font-mono">
+                            0% (Auto 0)
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-indigo-900">
+                            CGST Rate (%) *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            required
+                            value={offerForm.cgstRate}
+                            onChange={(e) => {
+                              const val = e.target.value === "" ? 0 : Number(e.target.value);
+                              setOfferForm({
+                                ...offerForm,
+                                taxType: "CGST_SGST",
+                                igstRate: 0,
+                                cgstRate: val,
+                                taxPercent: val + Number(offerForm.sgstRate || 0),
+                              });
+                            }}
+                            className="mt-0.5 w-full rounded-md border border-indigo-300 bg-indigo-50/30 px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-indigo-900">
+                            SGST Rate (%) *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            required
+                            value={offerForm.sgstRate}
+                            onChange={(e) => {
+                              const val = e.target.value === "" ? 0 : Number(e.target.value);
+                              setOfferForm({
+                                ...offerForm,
+                                taxType: "CGST_SGST",
+                                igstRate: 0,
+                                sgstRate: val,
+                                taxPercent: Number(offerForm.cgstRate || 0) + val,
+                              });
+                            }}
+                            className="mt-0.5 w-full rounded-md border border-indigo-300 bg-indigo-50/30 px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700">Validity (Days) *</label>
                       <input
                         type="number"
                         min="1"
+                        required
                         value={offerForm.validity}
                         onChange={(e) => setOfferForm({ ...offerForm, validity: Number(e.target.value) })}
                         className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs"
                       />
                     </div>
+                    <div className="flex items-center pt-4">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={offerForm.isPopular}
+                          onChange={(e) => setOfferForm({ ...offerForm, isPopular: e.target.checked })}
+                          className="rounded text-indigo-600 focus:ring-0"
+                        />
+                        Mark as "Popular" SKU
+                      </label>
+                    </div>
                   </div>
+
+                  {/* Live Calculation for Offer */}
+                  {(() => {
+                    const op = Number(offerForm.price || 0);
+                    const discPct = Number(offerForm.discountPercent || 0);
+                    const disc = Math.round((op * discPct) / 100);
+                    const taxable = Math.max(0, op - disc);
+                    const isIgst = offerForm.taxType === "IGST";
+                    const igstR = isIgst ? Number(offerForm.igstRate || 0) : 0;
+                    const cgstR = !isIgst ? Number(offerForm.cgstRate || 0) : 0;
+                    const sgstR = !isIgst ? Number(offerForm.sgstRate || 0) : 0;
+                    const igstAmt = Math.round((taxable * igstR) / 100);
+                    const cgstAmt = Math.round((taxable * cgstR) / 100);
+                    const sgstAmt = Math.round((taxable * sgstR) / 100);
+                    const taxAmt = igstAmt + cgstAmt + sgstAmt;
+                    const total = Math.round(taxable + taxAmt);
+                    return (
+                      <div className="rounded-lg border border-indigo-200 bg-white p-2.5 text-xs space-y-1">
+                        <div className="flex justify-between text-slate-600">
+                          <span>Base SKU Price:</span>
+                          <span className="font-semibold text-slate-800">₹{op.toLocaleString()}</span>
+                        </div>
+                        {discPct > 0 && (
+                          <div className="flex justify-between text-emerald-700 font-medium">
+                            <span>Discount ({discPct}%):</span>
+                            <span>- ₹{disc.toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-slate-600">
+                          <span>Taxable Amount:</span>
+                          <span>₹{taxable.toLocaleString()}</span>
+                        </div>
+                        {isIgst ? (
+                          <div className="flex justify-between text-slate-600">
+                            <span>IGST ({igstR}%):</span>
+                            <span>+ ₹{igstAmt.toLocaleString()}</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex justify-between text-slate-600">
+                              <span>CGST ({cgstR}%):</span>
+                              <span>+ ₹{cgstAmt.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                              <span>SGST ({sgstR}%):</span>
+                              <span>+ ₹{sgstAmt.toLocaleString()}</span>
+                            </div>
+                          </>
+                        )}
+                        <div className="border-t border-slate-100 pt-1 flex justify-between font-bold text-slate-900">
+                          <span>Total Payable Offer Price:</span>
+                          <span className="text-indigo-700">₹{total.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex justify-end gap-2 pt-2">
                     <button

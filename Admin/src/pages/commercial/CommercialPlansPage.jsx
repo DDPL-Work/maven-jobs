@@ -28,19 +28,66 @@ export { STANDARD_PLAN_CODES } from "./CommercialPlanBuilderPage";
 export function computePlanPricing(ver = {}, fallbackPlan = {}) {
   const basePrice = Number(ver?.basePrice ?? fallbackPlan?.basePrice ?? 0);
   const discount = Number(ver?.discount ?? fallbackPlan?.discount ?? 0);
-  const taxPercent = Number(
-    ver?.taxPercent !== undefined && ver?.taxPercent !== null
-      ? ver.taxPercent
-      : fallbackPlan?.taxPercent !== undefined && fallbackPlan?.taxPercent !== null
-      ? fallbackPlan.taxPercent
-      : 18
-  );
   const taxable = Math.max(0, basePrice - discount);
-  const taxAmount = Number(
-    ver?.taxAmount !== undefined && ver?.taxAmount !== null && Number(ver.taxAmount) > 0
-      ? ver.taxAmount
-      : (taxable * taxPercent) / 100
-  );
+
+  let taxType = ver?.taxType || fallbackPlan?.taxType;
+  let igstRate = Number(ver?.igstRate ?? fallbackPlan?.igstRate ?? 0);
+  let cgstRate = Number(ver?.cgstRate ?? fallbackPlan?.cgstRate ?? 0);
+  let sgstRate = Number(ver?.sgstRate ?? fallbackPlan?.sgstRate ?? 0);
+
+  if (!taxType) {
+    if (cgstRate > 0 || sgstRate > 0) {
+      taxType = "CGST_SGST";
+    } else if (igstRate > 0) {
+      taxType = "IGST";
+    } else {
+      const fallbackTax = Number(ver?.taxPercent ?? fallbackPlan?.taxPercent ?? 18);
+      taxType = "IGST";
+      igstRate = fallbackTax;
+    }
+  }
+
+  // Mutual exclusion rule
+  if (taxType === "IGST") {
+    cgstRate = 0;
+    sgstRate = 0;
+    if (igstRate === 0 && (ver?.taxPercent || fallbackPlan?.taxPercent)) {
+      igstRate = Number(ver?.taxPercent ?? fallbackPlan?.taxPercent ?? 18);
+    }
+  } else if (taxType === "CGST_SGST") {
+    igstRate = 0;
+    if (cgstRate === 0 && sgstRate === 0 && (ver?.taxPercent || fallbackPlan?.taxPercent)) {
+      const half = Number(ver?.taxPercent ?? fallbackPlan?.taxPercent ?? 18) / 2;
+      cgstRate = half;
+      sgstRate = half;
+    }
+  } else if (taxType === "NONE") {
+    igstRate = 0;
+    cgstRate = 0;
+    sgstRate = 0;
+  }
+
+  const effectiveTaxPercent = taxType === "IGST" ? igstRate : taxType === "CGST_SGST" ? (cgstRate + sgstRate) : 0;
+
+  let igstAmount = Number(ver?.igstAmount ?? fallbackPlan?.igstAmount ?? 0);
+  let cgstAmount = Number(ver?.cgstAmount ?? fallbackPlan?.cgstAmount ?? 0);
+  let sgstAmount = Number(ver?.sgstAmount ?? fallbackPlan?.sgstAmount ?? 0);
+
+  if (taxType === "IGST") {
+    igstAmount = Math.round((taxable * igstRate) / 100);
+    cgstAmount = 0;
+    sgstAmount = 0;
+  } else if (taxType === "CGST_SGST") {
+    igstAmount = 0;
+    cgstAmount = Math.round((taxable * cgstRate) / 100);
+    sgstAmount = Math.round((taxable * sgstRate) / 100);
+  } else {
+    igstAmount = 0;
+    cgstAmount = 0;
+    sgstAmount = 0;
+  }
+
+  const taxAmount = igstAmount + cgstAmount + sgstAmount;
   const computedFinal = Math.round(taxable + taxAmount);
   const finalPayablePrice =
     ver?.finalPrice !== undefined && ver?.finalPrice !== null && Number(ver.finalPrice) > 0
@@ -51,8 +98,15 @@ export function computePlanPricing(ver = {}, fallbackPlan = {}) {
     basePrice,
     discount,
     taxable,
-    taxPercent,
-    taxAmount: Math.round(taxAmount),
+    taxType,
+    igstRate,
+    cgstRate,
+    sgstRate,
+    igstAmount,
+    cgstAmount,
+    sgstAmount,
+    taxPercent: effectiveTaxPercent,
+    taxAmount,
     finalPayablePrice,
   };
 }
@@ -124,10 +178,19 @@ export default function CommercialPlansPage() {
         changelog: `New draft version ${nextVer} initiated by admin`,
         basePrice: pricing.basePrice,
         discount: pricing.discount,
+        discountPercent: pricing.basePrice > 0 ? Math.round((pricing.discount / pricing.basePrice) * 100) : 0,
+        taxType: pricing.taxType,
+        igstRate: pricing.igstRate,
+        cgstRate: pricing.cgstRate,
+        sgstRate: pricing.sgstRate,
+        igstAmount: pricing.igstAmount,
+        cgstAmount: pricing.cgstAmount,
+        sgstAmount: pricing.sgstAmount,
         taxPercent: pricing.taxPercent,
         taxAmount: pricing.taxAmount,
         finalPrice: pricing.finalPayablePrice,
         sellPrice: pricing.finalPayablePrice,
+        finalPayablePrice: pricing.finalPayablePrice,
         validity: activeVersion.validity || 90,
         items: activeVersion.items || [],
       });
@@ -577,12 +640,22 @@ export default function CommercialPlansPage() {
                         </div>
                         <div className="rounded-xl bg-white p-3 border border-slate-200/80 shadow-2xs">
                           <span className="text-slate-400 block text-[11px] font-medium">
-                            GST / Taxes ({pricing.taxPercent}%)
+                            {pricing.taxType === "IGST"
+                              ? `IGST (${pricing.igstRate}%)`
+                              : pricing.taxType === "CGST_SGST"
+                              ? `CGST+SGST (${pricing.cgstRate}% + ${pricing.sgstRate}%)`
+                              : "Taxes"}
                           </span>
                           <span className="font-bold text-indigo-600 text-sm mt-0.5 block">
                             + ₹{pricing.taxAmount.toLocaleString()}
                           </span>
-                          <span className="text-[10px] text-slate-400">Government taxes applied</span>
+                          <span className="text-[10px] text-slate-400">
+                            {pricing.taxType === "IGST"
+                              ? "Inter-state supply (CGST & SGST: ₹0)"
+                              : pricing.taxType === "CGST_SGST"
+                              ? `CGST: ₹${pricing.cgstAmount.toLocaleString()} | SGST: ₹${pricing.sgstAmount.toLocaleString()} (IGST: ₹0)`
+                              : "Tax exempt"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -614,6 +687,7 @@ export default function CommercialPlansPage() {
                               <tr>
                                 <th className="px-4 py-3">Product Name & Code</th>
                                 <th className="px-4 py-3">Quota & Allocation Cadence</th>
+                                <th className="px-4 py-3">Catalog Base Price</th>
                                 <th className="px-4 py-3">Reset / Validity Period</th>
                                 <th className="px-4 py-3">Expiry Policy</th>
                               </tr>
@@ -623,6 +697,7 @@ export default function CommercialPlansPage() {
                                 const code = String(it.productCode || "").toUpperCase();
                                 const isAi = code === "AI_CREDIT" || code.includes("AI");
                                 const itemDays = it.validity || (isAi ? 30 : planDays);
+                                const itemBasePrice = Number(it.basePrice || (it.unitPrice ? it.unitPrice * (it.quantity || 1) : 0));
 
                                 return (
                                   <tr key={idx} className="hover:bg-slate-50/50 transition">
@@ -652,6 +727,22 @@ export default function CommercialPlansPage() {
                                         <span className="inline-block mt-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                                           Total Plan Allocation ({planDays} days)
                                         </span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                      {itemBasePrice > 0 ? (
+                                        <div>
+                                          <div className="font-bold text-slate-800 text-xs">
+                                            ₹{itemBasePrice.toLocaleString()}
+                                          </div>
+                                          {it.unitPrice > 0 && (
+                                            <span className="block text-[10px] text-slate-400">
+                                              @ ₹{Number(it.unitPrice).toLocaleString()} / unit
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-400 text-[11px] italic">Included in plan</span>
                                       )}
                                     </td>
                                     <td className="px-4 py-3.5 font-medium text-slate-700">

@@ -162,6 +162,7 @@ module.exports = {
   sendNotificationEmail,
   sendApplicationConfirmation,
   sendVideoCallEmail,
+  sendOrderConfirmationEmail,
 };
 
 async function sendVideoCallEmail({ to, candidateName, companyName, companyWebsite, date, time, link, reason }) {
@@ -174,6 +175,23 @@ async function sendVideoCallEmail({ to, candidateName, companyName, companyWebsi
     };
   } catch (error) {
     console.error("Failed to send video call email:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+async function sendOrderConfirmationEmail(params) {
+  try {
+    const result = await emailModule.sendOrderConfirmationEmail(params);
+
+    return {
+      success: true,
+      messageId: result.messageId,
+    };
+  } catch (error) {
+    console.error("Failed to send order confirmation email:", error);
     return {
       success: false,
       error: error.message,

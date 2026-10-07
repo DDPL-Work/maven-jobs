@@ -8,6 +8,7 @@ router.post("/welcome", emailController.sendWelcomeEmail);
 router.post("/password-reset", emailController.sendPasswordResetEmail);
 router.post("/otp", emailController.sendOTPEmail);
 router.post("/application-confirmation", emailController.sendApplicationConfirmation);
+router.post("/order-confirmation", emailController.sendOrderConfirmationEmail);
 router.get("/verify", emailController.verifyConnection);
 router.get("/status", emailController.getStatus);
 router.get("/health", emailController.getHealth);

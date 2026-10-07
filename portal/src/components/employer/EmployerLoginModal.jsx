@@ -4,18 +4,19 @@ import { FiMail, FiLock, FiX, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/
 import authService from '../../services/authService';
 
 const overlay = {
-  position: 'fixed', inset: 0, zIndex: 9999,
-  background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)',
+  position: 'fixed', inset: 0, zIndex: 999999,
+  background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
 };
 
 const card = {
   background: '#fff', borderRadius: 24, maxWidth: 420, width: '100%',
-  padding: '40px 36px 32px', boxShadow: '0 32px 80px rgba(0,0,0,0.25)',
+  padding: '40px 36px 32px', boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
   position: 'relative',
+  zIndex: 1000000,
 };
 
-export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess, context }) {
+export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess, context, zIndex }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,7 +51,7 @@ export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess, co
   };
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={{ ...overlay, ...(zIndex ? { zIndex } : {}) }} onClick={onClose}>
       <div style={card} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} style={{
           position: 'absolute', top: 16, right: 16,

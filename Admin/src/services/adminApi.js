@@ -50,25 +50,40 @@ export function getStoredToken() {
   return getStoredSession()?.token || "";
 }
 
+let inFlightRefreshPromise = null;
+
 async function refreshAuthSession() {
-  const response = await fetch(`${API_ROOT}/auth/refresh`, {
-    method: "POST",
-    credentials: "include",
-  });
-
-  const payload = await parseJsonSafely(response);
-
-  if (!response.ok) {
-    clearStoredSession();
-    throw new Error(payload.message || "Session expired");
+  if (inFlightRefreshPromise) {
+    return inFlightRefreshPromise;
   }
 
-  setStoredSession({
-    token: payload.accessToken || payload.token,
-    user: payload.user,
-  });
+  inFlightRefreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_ROOT}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
 
-  return payload.accessToken || payload.token;
+      const payload = await parseJsonSafely(response);
+
+      if (!response.ok) {
+        clearStoredSession();
+        throw new Error(payload.message || "Session expired");
+      }
+
+      const newToken = payload.accessToken || payload.token;
+      setStoredSession({
+        token: newToken,
+        user: payload.user,
+      });
+
+      return newToken;
+    } finally {
+      inFlightRefreshPromise = null;
+    }
+  })();
+
+  return inFlightRefreshPromise;
 }
 
 export async function restoreStoredSession() {

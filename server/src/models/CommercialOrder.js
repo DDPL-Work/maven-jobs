@@ -29,6 +29,11 @@ const commercialOrderSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    invoiceNumber: {
+      type: String,
+      default: "",
+      index: true,
+    },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
@@ -47,6 +52,41 @@ const commercialOrderSchema = new mongoose.Schema(
       min: 0,
     },
     discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    taxType: {
+      type: String,
+      enum: ["IGST", "CGST_SGST", "NONE"],
+      default: "IGST",
+    },
+    igstRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    cgstRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    sgstRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    igstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    cgstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    sgstAmount: {
       type: Number,
       default: 0,
       min: 0,
@@ -75,6 +115,11 @@ const commercialOrderSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
       default: "ONLINE", // ONLINE, INVOICE, SIMULATED
+    },
+    paymentId: {
+      type: String,
+      default: "",
+      index: true,
     },
     notes: {
       type: String,

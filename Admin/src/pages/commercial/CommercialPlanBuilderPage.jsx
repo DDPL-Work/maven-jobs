@@ -86,6 +86,10 @@ export default function CommercialPlanBuilderPage() {
     validityUnit: "DAYS",
     basePrice: 0,
     discount: 0,
+    taxType: "IGST",
+    igstRate: 18,
+    cgstRate: 0,
+    sgstRate: 0,
     taxPercent: 18,
     items: [],
     publishImmediately: true,
@@ -384,6 +388,12 @@ export default function CommercialPlanBuilderPage() {
     const catalogPrice = calculateItemsCatalogPrice(mappedItems, planValidity, prodsList);
     const savedBasePrice = ver.basePrice !== undefined ? ver.basePrice : catalogPrice;
 
+    const verTaxType = ver.taxType || plan.taxType || (Number(ver.cgstRate) > 0 || Number(ver.sgstRate) > 0 ? "CGST_SGST" : "IGST");
+    const rawTax = ver.taxPercent !== undefined ? ver.taxPercent : (plan.taxPercent ?? 18);
+    const verIgst = verTaxType === "IGST" ? Number(ver.igstRate !== undefined ? ver.igstRate : rawTax) : 0;
+    const verCgst = verTaxType === "CGST_SGST" ? Number(ver.cgstRate !== undefined ? ver.cgstRate : 9) : 0;
+    const verSgst = verTaxType === "CGST_SGST" ? Number(ver.sgstRate !== undefined ? ver.sgstRate : 9) : 0;
+
     setBuilderPlanForm({
       name: plan.name || "",
       code: plan.code || "",
@@ -393,7 +403,11 @@ export default function CommercialPlanBuilderPage() {
       validityUnit: ver.validityUnit || "DAYS",
       basePrice: savedBasePrice,
       discount: ver.discount || 0,
-      taxPercent: ver.taxPercent !== undefined ? ver.taxPercent : 18,
+      taxType: verTaxType,
+      igstRate: verIgst,
+      cgstRate: verCgst,
+      sgstRate: verSgst,
+      taxPercent: verIgst + verCgst + verSgst,
       items: mappedItems,
       publishImmediately: true,
     });
@@ -441,6 +455,10 @@ export default function CommercialPlanBuilderPage() {
       validityUnit: "DAYS",
       basePrice: initialCatalogSum,
       discount: 0,
+      taxType: "IGST",
+      igstRate: 18,
+      cgstRate: 0,
+      sgstRate: 0,
       taxPercent: 18,
       items: initialItems,
       publishImmediately: true,
@@ -629,21 +647,43 @@ export default function CommercialPlanBuilderPage() {
       // Pricing calculations for payload
       const basePriceNum = Number(builderPlanForm.basePrice || 0);
       const discountNum = Number(builderPlanForm.discount || 0);
-      const taxPercentNum = Number(builderPlanForm.taxPercent !== undefined ? builderPlanForm.taxPercent : 18);
       const taxableNum = Math.max(0, basePriceNum - discountNum);
-      const taxAmountNum = Math.round((taxableNum * taxPercentNum) / 100);
+
+      const isIgst = builderPlanForm.taxType === "IGST";
+      const igstRate = isIgst ? Number(builderPlanForm.igstRate || 0) : 0;
+      const cgstRate = !isIgst ? Number(builderPlanForm.cgstRate || 0) : 0;
+      const sgstRate = !isIgst ? Number(builderPlanForm.sgstRate || 0) : 0;
+
+      const igstAmount = Math.round((taxableNum * igstRate) / 100);
+      const cgstAmount = Math.round((taxableNum * cgstRate) / 100);
+      const sgstAmount = Math.round((taxableNum * sgstRate) / 100);
+      const taxAmountNum = igstAmount + cgstAmount + sgstAmount;
       const finalPriceNum = Math.round(taxableNum + taxAmountNum);
+      const discountPercentNum = basePriceNum > 0 ? Math.round((discountNum / basePriceNum) * 100) : 0;
+      const totalTaxPercent = igstRate + cgstRate + sgstRate;
 
       const payload = {
         ...builderPlanForm,
         basePrice: basePriceNum,
         discount: discountNum,
-        taxPercent: taxPercentNum,
+        discountPercent: discountPercentNum,
+        taxType: isIgst ? "IGST" : "CGST_SGST",
+        igstRate,
+        cgstRate,
+        sgstRate,
+        igstAmount,
+        cgstAmount,
+        sgstAmount,
+        taxPercent: totalTaxPercent,
         taxAmount: taxAmountNum,
         finalPrice: finalPriceNum,
         sellPrice: finalPriceNum,
         finalPayablePrice: finalPriceNum,
-        items: computedItems,
+        items: computedItems.map((ci) => ({
+          ...ci,
+          unitPrice: ci.unitPrice,
+          basePrice: ci.subtotal,
+        })),
       };
 
       if (editingPlanId) {
@@ -671,9 +711,16 @@ export default function CommercialPlanBuilderPage() {
     return calculateItemsCatalogPrice(builderPlanForm.items, builderPlanForm.validity, availableProducts);
   }, [builderPlanForm.items, builderPlanForm.validity, availableProducts]);
 
-  // Pricing calculations for Builder Step 3
+  // Pricing calculations for Builder Step 3 & 4
   const taxable = Math.max(0, builderPlanForm.basePrice - builderPlanForm.discount);
-  const taxAmount = (taxable * builderPlanForm.taxPercent) / 100;
+  const isIgstPlan = builderPlanForm.taxType === "IGST";
+  const planIgstRate = isIgstPlan ? Number(builderPlanForm.igstRate || 0) : 0;
+  const planCgstRate = !isIgstPlan ? Number(builderPlanForm.cgstRate || 0) : 0;
+  const planSgstRate = !isIgstPlan ? Number(builderPlanForm.sgstRate || 0) : 0;
+  const planIgstAmount = Math.round((taxable * planIgstRate) / 100);
+  const planCgstAmount = Math.round((taxable * planCgstRate) / 100);
+  const planSgstAmount = Math.round((taxable * planSgstRate) / 100);
+  const taxAmount = planIgstAmount + planCgstAmount + planSgstAmount;
   const finalPrice = Math.round(taxable + taxAmount);
 
   if (loading) {
@@ -1542,30 +1589,166 @@ export default function CommercialPlanBuilderPage() {
                     </p>
                   </div>
 
-                  {/* Tax / GST Input */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-800">
-                      Tax / GST Rate (%)
+                {/* GST Taxation Mode: IGST vs (CGST + SGST) */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800">
+                      GST Taxation Mode & Statutory Distribution
                     </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={builderPlanForm.taxPercent}
-                      onChange={(e) =>
+                    <span className="text-[10px] text-slate-500">
+                      {builderPlanForm.taxType === "IGST" ? "Inter-State Supply" : "Intra-State Supply"}
+                    </span>
+                  </div>
+
+                  {/* Mode Selector */}
+                  <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() =>
                         setBuilderPlanForm({
                           ...builderPlanForm,
-                          taxPercent: Math.max(0, Number(e.target.value)),
+                          taxType: "IGST",
+                          igstRate: builderPlanForm.igstRate > 0 ? builderPlanForm.igstRate : 18,
+                          cgstRate: 0,
+                          sgstRate: 0,
+                          taxPercent: builderPlanForm.igstRate > 0 ? builderPlanForm.igstRate : 18,
                         })
                       }
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <p className="text-[10px] text-slate-500">
-                      Standard statutory GST rate (18%).
-                    </p>
+                      className={`rounded-lg py-1.5 px-2 text-center transition border ${
+                        builderPlanForm.taxType === "IGST"
+                          ? "bg-indigo-50 border-indigo-500 text-indigo-700 font-bold"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      IGST (Inter-State Supply)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBuilderPlanForm({
+                          ...builderPlanForm,
+                          taxType: "CGST_SGST",
+                          igstRate: 0,
+                          cgstRate: builderPlanForm.cgstRate > 0 ? builderPlanForm.cgstRate : 9,
+                          sgstRate: builderPlanForm.sgstRate > 0 ? builderPlanForm.sgstRate : 9,
+                          taxPercent: (builderPlanForm.cgstRate > 0 ? builderPlanForm.cgstRate : 9) + (builderPlanForm.sgstRate > 0 ? builderPlanForm.sgstRate : 9),
+                        })
+                      }
+                      className={`rounded-lg py-1.5 px-2 text-center transition border ${
+                        builderPlanForm.taxType === "CGST_SGST"
+                          ? "bg-indigo-50 border-indigo-500 text-indigo-700 font-bold"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      CGST + SGST (Intra-State Supply)
+                    </button>
                   </div>
+
+                  {/* Tax Rate Inputs with Mutual Exclusion Auto-Zero */}
+                  {builderPlanForm.taxType === "IGST" ? (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-bold text-indigo-900">
+                          IGST Rate (%) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          required
+                          value={builderPlanForm.igstRate}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setBuilderPlanForm({
+                              ...builderPlanForm,
+                              taxType: "IGST",
+                              igstRate: val,
+                              cgstRate: 0,
+                              sgstRate: 0,
+                              taxPercent: val,
+                            });
+                          }}
+                          className="mt-1 w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400">
+                          CGST Rate (%)
+                        </label>
+                        <div className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-400 font-mono">
+                          0% (Auto 0)
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400">
+                          SGST Rate (%)
+                        </label>
+                        <div className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-400 font-mono">
+                          0% (Auto 0)
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-400">
+                          IGST Rate (%)
+                        </label>
+                        <div className="mt-1 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-400 font-mono">
+                          0% (Auto 0)
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-indigo-900">
+                          CGST Rate (%) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          required
+                          value={builderPlanForm.cgstRate}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setBuilderPlanForm({
+                              ...builderPlanForm,
+                              taxType: "CGST_SGST",
+                              igstRate: 0,
+                              cgstRate: val,
+                              taxPercent: val + Number(builderPlanForm.sgstRate || 0),
+                            });
+                          }}
+                          className="mt-1 w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-indigo-900">
+                          SGST Rate (%) *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          required
+                          value={builderPlanForm.sgstRate}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setBuilderPlanForm({
+                              ...builderPlanForm,
+                              taxType: "CGST_SGST",
+                              igstRate: 0,
+                              sgstRate: val,
+                              taxPercent: Number(builderPlanForm.cgstRate || 0) + val,
+                            });
+                          }}
+                          className="mt-1 w-full rounded-lg border border-indigo-300 bg-indigo-50/30 px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
               {/* 3. Live Price Calculation Summary Invoice Card */}
               <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5 space-y-3 text-xs shadow-2xs">
@@ -1581,7 +1764,7 @@ export default function CommercialPlanBuilderPage() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-slate-600">
-                    <span>Total Catalog Products Value:</span>
+                    <span>Total Products Base Value:</span>
                     <span className="font-medium">₹{calculatedCatalogTotal.toLocaleString()}</span>
                   </div>
 
@@ -1619,14 +1802,27 @@ export default function CommercialPlanBuilderPage() {
                   )}
 
                   <div className="flex justify-between text-slate-600">
-                    <span>Taxable Amount:</span>
+                    <span>Taxable Base Amount:</span>
                     <span>₹{taxable.toLocaleString()}</span>
                   </div>
 
-                  <div className="flex justify-between text-slate-600">
-                    <span>GST ({builderPlanForm.taxPercent}%):</span>
-                    <span>+ ₹{taxAmount.toLocaleString()}</span>
-                  </div>
+                  {isIgstPlan ? (
+                    <div className="flex justify-between text-slate-600">
+                      <span>IGST ({planIgstRate}%):</span>
+                      <span>+ ₹{planIgstAmount.toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-slate-600">
+                        <span>CGST ({planCgstRate}%):</span>
+                        <span>+ ₹{planCgstAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>SGST ({planSgstRate}%):</span>
+                        <span>+ ₹{planSgstAmount.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="border-t border-indigo-200 pt-2.5 flex items-center justify-between font-black text-slate-900 text-sm">
@@ -1698,8 +1894,11 @@ export default function CommercialPlanBuilderPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-indigo-100/70 flex justify-between text-xs text-slate-600">
-                  <span>Base: ₹{builderPlanForm.basePrice.toLocaleString()} • Discount: ₹{builderPlanForm.discount.toLocaleString()} • GST: ₹{taxAmount.toLocaleString()}</span>
+                <div className="mt-4 pt-3 border-t border-indigo-100/70 flex flex-wrap justify-between gap-2 text-xs text-slate-600">
+                  <span>
+                    Base: ₹{builderPlanForm.basePrice.toLocaleString()} • Discount: ₹{builderPlanForm.discount.toLocaleString()} • Taxable: ₹{taxable.toLocaleString()} •{" "}
+                    {isIgstPlan ? `IGST (${planIgstRate}%): ₹${planIgstAmount.toLocaleString()}` : `CGST (${planCgstRate}%): ₹${planCgstAmount.toLocaleString()} + SGST (${planSgstRate}%): ₹${planSgstAmount.toLocaleString()}`}
+                  </span>
                   <span className="font-bold text-indigo-800">Total: ₹{finalPrice.toLocaleString()}</span>
                 </div>
               </div>

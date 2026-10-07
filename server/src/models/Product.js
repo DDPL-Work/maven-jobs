@@ -51,7 +51,73 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    basePrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     defaultPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    discountPercent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    taxType: {
+      type: String,
+      enum: ["IGST", "CGST_SGST", "NONE"],
+      default: "IGST",
+    },
+    igstRate: {
+      type: Number,
+      default: 18,
+      min: 0,
+    },
+    cgstRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    sgstRate: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    igstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    cgstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    sgstAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    taxPercent: {
+      type: Number,
+      default: 18,
+      min: 0,
+    },
+    taxAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    finalPrice: {
       type: Number,
       default: 0,
       min: 0,

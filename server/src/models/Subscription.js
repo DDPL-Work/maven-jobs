@@ -120,12 +120,30 @@ const subscriptionSchema = new mongoose.Schema(
       offerName: { type: String, default: "" },
       validityDays: { type: Number, default: 30 },
       purchasedAt: { type: Date, default: Date.now },
+      orderNumber: { type: String, default: "" },
+      paymentId: { type: String, default: "" },
+      invoiceNumber: { type: String, default: "" },
     },
     entitlementSnapshot: [entitlementSnapshotItemSchema],
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CommercialOrder",
       default: null,
+    },
+    orderNumber: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    paymentId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    invoiceNumber: {
+      type: String,
+      default: "",
+      index: true,
     },
     autoRenew: {
       type: Boolean,

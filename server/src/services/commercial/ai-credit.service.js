@@ -20,11 +20,37 @@ class AiCreditService {
   }
 
   /**
+   * Resolves the current monthly cycle expiry date for a company.
+   * If the company has an active plan (e.g. 90-day plan):
+   * AI credits are assigned per monthly cycle under that plan.
+   * Top-up AI credits expire strictly when the current monthly cycle ends (or when the plan ends, whichever is earlier).
+   * They do NOT carry forward past the current monthly cycle.
+   */
+  static async getCurrentCycleExpiry(companyId) {
+    const now = new Date();
+    const { end } = this.getMonthRange();
+
+    const activePlan = await Subscription.findOne({
+      companyId,
+      subscriptionType: "PLAN",
+      status: "ACTIVE",
+      endDate: { $gte: now },
+    });
+
+    if (activePlan) {
+      return activePlan.endDate < end ? activePlan.endDate : end;
+    }
+
+    return end;
+  }
+
+  /**
    * Ensures that every company (Free tier or Paid Plan) has their AI credits allowance for the current calendar month.
    * Specification:
    * 1. AI credits are monthly: unused AI credits from previous months EXPIRE at month-end and do NOT carry forward.
    * 2. Free tier gets 10 AI uses/month.
    * 3. Paid plans get their monthly AI credit quota for each active month of the subscription.
+   * 4. Top-up AI credits expire when the current monthly cycle ends and do NOT carry forward.
    */
   static async ensureMonthlyAllowance(companyId) {
     if (!companyId) return null;
@@ -51,20 +77,32 @@ class AiCreditService {
       planCode = activePlan.planId?.code || company?.planSnapshot?.planCode || "PLAN";
       isPaid = planCode !== "FREE";
       
-      const aiItem = (activePlan.entitlementSnapshot || []).find(e => String(e.productCode).toUpperCase() === "AI_CREDIT") ||
-                     (company?.planSnapshot?.services || []).find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
-      if (aiItem && typeof aiItem.quantity === "number" && aiItem.quantity > 0) {
-        monthlyQuantity = aiItem.quantity;
-      } else {
-        if (planCode.toUpperCase().includes("SMB")) monthlyQuantity = 50;
-        else if (planCode.toUpperCase().includes("CORP")) monthlyQuantity = 200;
-        else if (planCode.toUpperCase().includes("FREE")) monthlyQuantity = 10;
+      const aiPlanSnap = (activePlan.entitlementSnapshot || []).find(
+        (e) => String(e.productCode).toUpperCase() === "AI_CREDIT"
+      );
+      if (aiPlanSnap && (aiPlanSnap.basePlanQuantity || aiPlanSnap.quantity)) {
+        monthlyQuantity = aiPlanSnap.basePlanQuantity || aiPlanSnap.quantity;
+      } else if (company?.planSnapshot?.services) {
+        const aiItem = company.planSnapshot.services.find(
+          (s) => String(s.productCode).toUpperCase() === "AI_CREDIT"
+        );
+        if (aiItem && aiItem.basePlanQuantity) {
+          monthlyQuantity = aiItem.basePlanQuantity;
+        } else {
+          if (planCode.toUpperCase().includes("SMB")) monthlyQuantity = 50;
+          else if (planCode.toUpperCase().includes("CORP")) monthlyQuantity = 200;
+          else if (planCode.toUpperCase().includes("FREE")) monthlyQuantity = 10;
+        }
       }
     } else if (company?.planSnapshot?.services) {
       planCode = company.planSnapshot.planCode || "FREE";
       isPaid = planCode !== "FREE";
-      const aiItem = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
-      if (aiItem && typeof aiItem.quantity === "number" && aiItem.quantity > 0) {
+      const aiItem = company.planSnapshot.services.find(
+        (s) => String(s.productCode).toUpperCase() === "AI_CREDIT"
+      );
+      if (aiItem && aiItem.basePlanQuantity) {
+        monthlyQuantity = aiItem.basePlanQuantity;
+      } else if (aiItem && typeof aiItem.quantity === "number" && aiItem.quantity > 0) {
         monthlyQuantity = aiItem.quantity;
       } else {
         if (planCode.toUpperCase().includes("SMB")) monthlyQuantity = 50;
@@ -77,18 +115,31 @@ class AiCreditService {
     const expiryDate = activePlan && activePlan.endDate < end ? activePlan.endDate : end;
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    // Expire any past-due active AI entitlements from previous months (prevent carry forward)
+    // 1. Expire any past-due or previous-month active AI entitlements (prevent carry forward of base & top-up credits)
     await Entitlement.updateMany(
       {
         companyId,
         productCode: "AI_CREDIT",
         status: "ACTIVE",
-        expiryDate: { $lt: now },
+        $or: [
+          { expiryDate: { $lt: now } },
+          { startDate: { $lt: start } },
+        ],
       },
       { $set: { status: "EXPIRED", remainingQuantity: 0 } }
     );
 
-    // Check if active AI entitlement already exists for current calendar month
+    // Also expire any standalone/top-up subscriptions whose endDate has passed
+    await Subscription.updateMany(
+      {
+        companyId,
+        status: "ACTIVE",
+        endDate: { $lt: now },
+      },
+      { $set: { status: "EXPIRED" } }
+    );
+
+    // 2. Check if active AI entitlement already exists for current calendar month
     const existingMonthEnt = await Entitlement.findOne({
       companyId,
       productCode: "AI_CREDIT",
@@ -97,19 +148,21 @@ class AiCreditService {
       $or: [
         { "features.key": `monthlyAllocation_${currentMonthKey}` },
         { "features.key": "freeMonthlyAllocation", startDate: { $gte: start } },
-        { startDate: { $gte: start, $lte: end } }
-      ]
+        ...(activePlan ? [{ subscriptionId: activePlan._id, startDate: { $gte: start, $lte: end } }] : []),
+      ],
     });
 
     if (existingMonthEnt) {
       return existingMonthEnt;
     }
 
-    // Find AI_CREDIT product
+    // 3. Find AI_CREDIT product
     const aiProduct = await Product.findOne({ code: "AI_CREDIT" });
     if (!aiProduct) return null;
 
-    const planAiSvc = (company?.planSnapshot?.services || []).find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
+    const planAiSvc = (company?.planSnapshot?.services || []).find(
+      (s) => String(s.productCode).toUpperCase() === "AI_CREDIT"
+    );
     const planAiFeatures = Array.isArray(planAiSvc?.features) ? planAiSvc.features : null;
 
     const entitlementFeatures = planAiFeatures !== null
@@ -122,7 +175,7 @@ class AiCreditService {
           { key: "freeMonthlyAllocation", name: "Monthly Allocation", enabled: !isPaid },
         ];
 
-    // Create fresh monthly entitlement
+    // 4. Create fresh monthly entitlement
     const monthlyEntitlement = await Entitlement.create({
       companyId,
       subscriptionId: activePlan ? activePlan._id : null,
@@ -139,7 +192,21 @@ class AiCreditService {
       status: "ACTIVE",
     });
 
-    // Record in credit ledger
+    // 5. Reset company.planSnapshot.services[AI_CREDIT] for the new month cycle
+    if (company?.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+      const sIndex = company.planSnapshot.services.findIndex(
+        (s) => String(s.productCode).toUpperCase() === "AI_CREDIT"
+      );
+      if (sIndex !== -1) {
+        company.planSnapshot.services[sIndex].quantity = monthlyQuantity;
+        company.planSnapshot.services[sIndex].usedQuantity = 0;
+        company.planSnapshot.services[sIndex].validity = Math.max(1, Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24)));
+        company.markModified("planSnapshot");
+        await company.save().catch(() => {});
+      }
+    }
+
+    // 6. Record in credit ledger
     await CreditLedgerService.recordEntry({
       companyId,
       subscriptionId: activePlan ? activePlan._id : null,
@@ -196,55 +263,7 @@ class AiCreditService {
     const planCode = activePlan?.planId?.code || company?.planSnapshot?.planCode || "FREE";
     const isPaid = planCode !== "FREE";
 
-    // If company has planSnapshot with AI_CREDIT service, planSnapshot.services features are authoritative.
-    if (company?.planSnapshot && Array.isArray(company.planSnapshot.services)) {
-      const aiSvc = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
-      if (aiSvc) {
-        const total = Number(aiSvc.quantity || 0);
-        const used = Number(aiSvc.usedQuantity || 0);
-        const svcFeatures = Array.isArray(aiSvc.features) ? aiSvc.features : [];
-
-        // Read the feature flags directly from the plan's AI_CREDIT service item.
-        // improveJd: allow enhancing existing JD/responsibilities/skills text
-        // generateJd: allow generating new JD/responsibilities/skills from title (no existing text)
-        // screeningQuestions: allow generating screening questions
-        const canImproveJd = this.getAiFeatureFlag(svcFeatures, "improveJd", false) ||
-                             this.getAiFeatureFlag(svcFeatures, "improveJobDescription", false);
-        const canGenerateJd = this.getAiFeatureFlag(svcFeatures, "generateJd", false) ||
-                              this.getAiFeatureFlag(svcFeatures, "writeFullJd", false) ||
-                              this.getAiFeatureFlag(svcFeatures, "writeFullJobDescription", false);
-        const canScreeningQuestions = this.getAiFeatureFlag(svcFeatures, "screeningQuestions", false) ||
-                                      this.getAiFeatureFlag(svcFeatures, "writeScreeningQuestions", false);
-
-        const permissions = {
-          improveJobDescription: canImproveJd,
-          improveRequirements: canImproveJd,
-          improveResponsibilities: canImproveJd,
-          writeFullJobDescription: canGenerateJd,
-          writeScreeningQuestions: canScreeningQuestions,
-          smartMatch: this.getAiFeatureFlag(svcFeatures, "smartMatch", false),
-          // Explicit camelCase keys for frontend consumption
-          canImproveJd,
-          canGenerateJd,
-          canGenerateScreeningQuestions: canScreeningQuestions,
-        };
-
-        return {
-          allocatedCredits: total,
-          consumedCredits: used,
-          availableCredits: Math.max(0, total - used),
-          features: permissions,
-          permissions,
-          planType: planCode,
-          isPaid,
-          isPaidPlan: isPaid,
-          expiresAt: company.planSnapshot.endDate || null,
-        };
-      }
-    }
-
-    // Fallback: Calculate from active Entitlements (no planSnapshot)
-    // Read feature flags from the active AI entitlement's features array if present.
+    // 1. Fetch all active AI_CREDIT entitlements (sorted earliest expiry first)
     const activeEntitlements = await Entitlement.find({
       companyId,
       productCode: "AI_CREDIT",
@@ -253,15 +272,64 @@ class AiCreditService {
       remainingQuantity: { $gt: 0 },
     }).sort({ expiryDate: 1 });
 
-    // Merge features from all active entitlements (union — if ANY grant it, it's allowed)
-    const allEntFeatures = activeEntitlements.flatMap(e => Array.isArray(e.features) ? e.features : []);
-    const canImproveJd = this.getAiFeatureFlag(allEntFeatures, "improveJd", false) ||
-                         this.getAiFeatureFlag(allEntFeatures, "improveJobDescription", false);
-    const canGenerateJd = this.getAiFeatureFlag(allEntFeatures, "generateJd", false) ||
-                          this.getAiFeatureFlag(allEntFeatures, "writeFullJd", false) ||
-                          this.getAiFeatureFlag(allEntFeatures, "writeFullJobDescription", false);
-    const canScreeningQuestions = this.getAiFeatureFlag(allEntFeatures, "screeningQuestions", false) ||
-                                  this.getAiFeatureFlag(allEntFeatures, "writeScreeningQuestions", false);
+    // Also fetch exhausted entitlements still within their validity window for accurate total allocation/consumption tracking
+    const allRelevantEntitlements = await Entitlement.find({
+      companyId,
+      productCode: "AI_CREDIT",
+      expiryDate: { $gte: now },
+      status: { $in: ["ACTIVE", "EXHAUSTED"] },
+    }).sort({ expiryDate: 1 });
+
+    const entAvailable = activeEntitlements.reduce((sum, e) => sum + (e.remainingQuantity || 0), 0);
+    const entAllocated = allRelevantEntitlements.reduce((sum, e) => sum + (e.allocatedQuantity || 0), 0);
+    const entConsumed = allRelevantEntitlements.reduce((sum, e) => sum + (e.consumedQuantity || 0), 0);
+
+    // 2. Inspect planSnapshot.services for AI_CREDIT
+    let aiSvc = null;
+    let snapAllocated = 0;
+    let snapConsumed = 0;
+    if (company?.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+      aiSvc = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "AI_CREDIT");
+      if (aiSvc) {
+        snapAllocated = Number(aiSvc.quantity || 0);
+        snapConsumed = Number(aiSvc.usedQuantity || 0);
+      }
+    }
+
+    // Combined totals: Ground truth available credits comes strictly from active non-expired entitlements in the current cycle
+    const totalAvailable = entAvailable;
+    const totalAllocated = Math.max(entAllocated, snapAllocated);
+    const totalConsumed = Math.max(0, totalAllocated - totalAvailable);
+
+    // Keep company.planSnapshot.services in sync so other controllers/profile queries see identical stacked balance
+    if (aiSvc && company) {
+      let needsSave = false;
+      if (aiSvc.quantity !== totalAllocated) {
+        aiSvc.quantity = totalAllocated;
+        needsSave = true;
+      }
+      if (aiSvc.usedQuantity !== totalConsumed) {
+        aiSvc.usedQuantity = totalConsumed;
+        needsSave = true;
+      }
+      if (needsSave) {
+        company.markModified("planSnapshot");
+        await company.save().catch(() => {});
+      }
+    }
+
+    // 3. Merge feature flags (union: plan service features + active booster entitlement features)
+    const svcFeatures = Array.isArray(aiSvc?.features) ? aiSvc.features : [];
+    const entFeatures = activeEntitlements.flatMap(e => Array.isArray(e.features) ? e.features : []);
+    const mergedFeatures = [...svcFeatures, ...entFeatures];
+
+    const canImproveJd = this.getAiFeatureFlag(mergedFeatures, "improveJd", false) ||
+                         this.getAiFeatureFlag(mergedFeatures, "improveJobDescription", false);
+    const canGenerateJd = this.getAiFeatureFlag(mergedFeatures, "generateJd", false) ||
+                          this.getAiFeatureFlag(mergedFeatures, "writeFullJd", false) ||
+                          this.getAiFeatureFlag(mergedFeatures, "writeFullJobDescription", false);
+    const canScreeningQuestions = this.getAiFeatureFlag(mergedFeatures, "screeningQuestions", false) ||
+                                  this.getAiFeatureFlag(mergedFeatures, "writeScreeningQuestions", false);
 
     const permissions = {
       improveJobDescription: canImproveJd,
@@ -269,23 +337,24 @@ class AiCreditService {
       improveResponsibilities: canImproveJd,
       writeFullJobDescription: canGenerateJd,
       writeScreeningQuestions: canScreeningQuestions,
-      smartMatch: this.getAiFeatureFlag(allEntFeatures, "smartMatch", false),
+      smartMatch: this.getAiFeatureFlag(mergedFeatures, "smartMatch", false),
       canImproveJd,
       canGenerateJd,
       canGenerateScreeningQuestions: canScreeningQuestions,
     };
 
-    const totalAvailable = activeEntitlements.reduce((sum, e) => sum + (e.remainingQuantity || 0), 0);
-    const totalAllocated = activeEntitlements.reduce((sum, e) => sum + (e.allocatedQuantity || 0), 0);
+    const hasBooster = activeEntitlements.some(e => e.subscriptionId && String(e.productName || "").toLowerCase().includes("booster"));
 
     return {
-      planType: planCode,
-      isPaidPlan: isPaid,
-      availableCredits: totalAvailable,
       allocatedCredits: totalAllocated,
-      consumedCredits: Math.max(0, totalAllocated - totalAvailable),
-      permissions,
+      consumedCredits: totalConsumed,
+      availableCredits: totalAvailable,
       features: permissions,
+      permissions,
+      planType: planCode,
+      isPaid: isPaid || hasBooster,
+      isPaidPlan: isPaid,
+      expiresAt: company?.planSnapshot?.endDate || (activeEntitlements[activeEntitlements.length - 1]?.expiryDate) || null,
       batches: activeEntitlements.map((e) => ({
         id: e._id,
         name: e.productName,

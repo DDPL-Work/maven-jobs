@@ -2,7 +2,7 @@ import { LuBell, LuLogOut, LuMenu } from "react-icons/lu";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getAdminPageMeta } from "../config/adminMenuConfig";
-import { clearStoredSession, getNotifications } from "../services/adminApi";
+import { clearStoredSession, getNotifications, getStoredToken } from "../services/adminApi";
 import NotificationPanel from "./NotificationPanel";
 
 export default function AdminHeader({ toggleSidebar }) {
@@ -14,6 +14,7 @@ export default function AdminHeader({ toggleSidebar }) {
   const intervalRef = useRef(null);
 
   const fetchUnreadCount = useCallback(async () => {
+    if (!getStoredToken()) return;
     try {
       const res = await getNotifications(1, 1);
       if (res?.success) {
@@ -25,8 +26,10 @@ export default function AdminHeader({ toggleSidebar }) {
   }, []);
 
   useEffect(() => {
-    fetchUnreadCount();
-    intervalRef.current = setInterval(fetchUnreadCount, 30000);
+    if (getStoredToken()) {
+      fetchUnreadCount();
+      intervalRef.current = setInterval(fetchUnreadCount, 30000);
+    }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -34,7 +37,9 @@ export default function AdminHeader({ toggleSidebar }) {
 
   useEffect(() => {
     const handleSessionUpdate = () => {
-      fetchUnreadCount();
+      if (getStoredToken()) {
+        fetchUnreadCount();
+      }
     };
     window.addEventListener("admin-session-updated", handleSessionUpdate);
     return () => window.removeEventListener("admin-session-updated", handleSessionUpdate);

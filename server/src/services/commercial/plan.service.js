@@ -97,6 +97,78 @@ class PlanService {
     };
   }
 
+  static resolvePlanGst({
+    basePrice = 0,
+    discount = 0,
+    taxType,
+    igstRate,
+    cgstRate,
+    sgstRate,
+    taxPercent,
+    fallbackTaxPercent = 18,
+  }) {
+    const base = Math.max(0, Number(basePrice || 0));
+    const disc = Math.max(0, Number(discount || 0));
+    const taxable = Math.max(0, base - disc);
+
+    let numIgstRate = Number(igstRate !== undefined && igstRate !== null ? igstRate : 0);
+    let numCgstRate = Number(cgstRate !== undefined && cgstRate !== null ? cgstRate : 0);
+    let numSgstRate = Number(sgstRate !== undefined && sgstRate !== null ? sgstRate : 0);
+
+    let resolvedType = taxType;
+    if (!resolvedType) {
+      if (numIgstRate > 0) {
+        resolvedType = "IGST";
+      } else if (numCgstRate > 0 || numSgstRate > 0) {
+        resolvedType = "CGST_SGST";
+      } else {
+        resolvedType = "IGST";
+      }
+    }
+
+    // Mutual exclusion: If IGST applied -> CGST and SGST auto become 0.
+    // If CGST and SGST applied -> IGST auto becomes 0.
+    if (resolvedType === "IGST") {
+      numCgstRate = 0;
+      numSgstRate = 0;
+      if (numIgstRate === 0 && taxPercent !== undefined && Number(taxPercent) > 0) {
+        numIgstRate = Number(taxPercent);
+      } else if (numIgstRate === 0) {
+        numIgstRate = Number(fallbackTaxPercent || 18);
+      }
+    } else if (resolvedType === "CGST_SGST") {
+      numIgstRate = 0;
+      if (numCgstRate === 0 && numSgstRate === 0) {
+        const total = Number(taxPercent !== undefined ? taxPercent : fallbackTaxPercent || 18);
+        numCgstRate = Math.round((total / 2) * 100) / 100;
+        numSgstRate = Math.round((total - numCgstRate) * 100) / 100;
+      }
+    } else if (resolvedType === "NONE") {
+      numIgstRate = 0;
+      numCgstRate = 0;
+      numSgstRate = 0;
+    }
+
+    const igstAmount = Math.round((taxable * numIgstRate) / 100);
+    const cgstAmount = Math.round((taxable * numCgstRate) / 100);
+    const sgstAmount = Math.round((taxable * numSgstRate) / 100);
+    const taxAmount = igstAmount + cgstAmount + sgstAmount;
+    const totalTaxPercent = numIgstRate + numCgstRate + numSgstRate;
+    const finalPrice = taxable + taxAmount;
+
+    return {
+      taxType: resolvedType,
+      igstRate: numIgstRate,
+      cgstRate: numCgstRate,
+      sgstRate: numSgstRate,
+      igstAmount,
+      cgstAmount,
+      sgstAmount,
+      taxPercent: totalTaxPercent,
+      taxAmount,
+      finalPrice,
+    };
+  }
   /**
    * Helper to recalculate plan items and catalog pricing according to product duration cycle vs plan duration.
    * If a product (except AI credit) was defined for a 30-day cycle, and the plan has e.g. 90 days validity:
@@ -113,6 +185,10 @@ class PlanService {
     basePrice = 0,
     discount = 0,
     taxPercent = 18,
+    taxType,
+    igstRate,
+    cgstRate,
+    sgstRate,
     recalculatePrice = false,
     finalPrice,
     sellPrice,
@@ -122,21 +198,37 @@ class PlanService {
     if (!Array.isArray(items) || items.length === 0) {
       const numBase = Number(basePrice || 0);
       const numDisc = Number(discount || 0);
-      const numTax = Number(taxPercent !== undefined ? taxPercent : 18);
-      const taxable = Math.max(0, numBase - numDisc);
-      const taxAmount = (taxable * numTax) / 100;
-      const computedFinal = Math.round(taxable + taxAmount);
+      const gstCalc = resolvePlanGst({
+        basePrice: numBase,
+        discount: numDisc,
+        taxType,
+        igstRate,
+        cgstRate,
+        sgstRate,
+        taxPercent,
+        fallbackTaxPercent: 18,
+      });
+
       const resolvedFinal =
         rawFinalPrice !== undefined && rawFinalPrice !== null && !isNaN(Number(rawFinalPrice)) && Number(rawFinalPrice) >= 0
           ? Math.round(Number(rawFinalPrice))
-          : computedFinal;
+          : gstCalc.finalPrice;
 
       return {
         items: [],
+        catalogProductsBaseTotal: 0,
         basePrice: numBase,
         discount: numDisc,
-        taxPercent: numTax,
-        taxAmount,
+        discountPercent: numBase > 0 ? Math.round((numDisc / numBase) * 100) : 0,
+        taxType: gstCalc.taxType,
+        igstRate: gstCalc.igstRate,
+        cgstRate: gstCalc.cgstRate,
+        sgstRate: gstCalc.sgstRate,
+        igstAmount: gstCalc.igstAmount,
+        cgstAmount: gstCalc.cgstAmount,
+        sgstAmount: gstCalc.sgstAmount,
+        taxPercent: gstCalc.taxPercent,
+        taxAmount: gstCalc.taxAmount,
         finalPrice: resolvedFinal,
         sellPrice: resolvedFinal,
       };
@@ -165,7 +257,13 @@ class PlanService {
           : Math.round(validityDays / prodValidity)
       );
 
-      const unitPrice = Number(prod?.defaultPrice ?? item.unitPrice ?? 0);
+      const unitPrice = Number(
+        prod?.defaultPrice !== undefined
+          ? prod.defaultPrice
+          : prod?.basePrice !== undefined
+          ? prod.basePrice
+          : item.unitPrice ?? 0
+      );
 
       if (isAi) {
         // AI credits: monthly quota, 30 days validity, strictly no carry forward
@@ -179,6 +277,8 @@ class PlanService {
           productName: item.productName || prod?.name || "AI Credits",
           quantity: monthlyQty,
           baseQuantity: monthlyQty,
+          unitPrice,
+          basePrice: subtotal,
           unit: item.unit || prod?.unit || "AI Use",
           validity: 30, // monthly cycle
           validityUnit: "DAYS",
@@ -186,8 +286,7 @@ class PlanService {
           expiryRule: "FIXED_DAYS",
         };
       } else {
-        // Non-AI products (Jobs, Search Resume, MIvites, Seats, etc.):
-        // Defined directly as TOTAL plan credits - no multiplier applied!
+        // Non-AI products (Jobs, Search Resume, MIvites, Seats, etc.)
         const totalQty = Math.max(
           0,
           Number(item.quantity !== undefined ? item.quantity : (item.baseQuantity || 1))
@@ -209,6 +308,8 @@ class PlanService {
           productName: pName,
           quantity: totalQty,
           baseQuantity: totalQty,
+          unitPrice,
+          basePrice: subtotal,
           unit: item.unit || prod?.unit || "Unit",
           validity: validityDays, // full plan cycle
           validityUnit: planValidityUnit || "DAYS",
@@ -219,28 +320,45 @@ class PlanService {
     });
 
     const finalBasePrice =
-      !recalculatePrice && basePrice !== undefined && basePrice !== null && !isNaN(Number(basePrice))
+      !recalculatePrice && basePrice !== undefined && basePrice !== null && !isNaN(Number(basePrice)) && Number(basePrice) > 0
         ? Math.max(0, Number(basePrice))
         : calculatedCatalogSum > 0
         ? calculatedCatalogSum
         : Math.max(0, Number(basePrice || 0));
 
     const numDiscount = Math.max(0, Number(discount || 0));
-    const numTaxPercent = Math.max(0, Number(taxPercent !== undefined ? taxPercent : 18));
-    const taxable = Math.max(0, finalBasePrice - numDiscount);
-    const taxAmount = (taxable * numTaxPercent) / 100;
-    const computedFinal = Math.round(taxable + taxAmount);
 
-    const resolvedFinalPrice = (rawFinalPrice !== undefined && rawFinalPrice !== null && !isNaN(Number(rawFinalPrice)) && Number(rawFinalPrice) >= 0)
-      ? Math.round(Number(rawFinalPrice))
-      : computedFinal;
+    const gstCalc = resolvePlanGst({
+      basePrice: finalBasePrice,
+      discount: numDiscount,
+      taxType,
+      igstRate,
+      cgstRate,
+      sgstRate,
+      taxPercent,
+      fallbackTaxPercent: 18,
+    });
+
+    const resolvedFinalPrice =
+      rawFinalPrice !== undefined && rawFinalPrice !== null && !isNaN(Number(rawFinalPrice)) && Number(rawFinalPrice) >= 0
+        ? Math.round(Number(rawFinalPrice))
+        : gstCalc.finalPrice;
 
     return {
       items: recalculatedItems,
+      catalogProductsBaseTotal: calculatedCatalogSum,
       basePrice: finalBasePrice,
       discount: numDiscount,
-      taxPercent: numTaxPercent,
-      taxAmount,
+      discountPercent: finalBasePrice > 0 ? Math.round((numDiscount / finalBasePrice) * 100) : 0,
+      taxType: gstCalc.taxType,
+      igstRate: gstCalc.igstRate,
+      cgstRate: gstCalc.cgstRate,
+      sgstRate: gstCalc.sgstRate,
+      igstAmount: gstCalc.igstAmount,
+      cgstAmount: gstCalc.cgstAmount,
+      sgstAmount: gstCalc.sgstAmount,
+      taxPercent: gstCalc.taxPercent,
+      taxAmount: gstCalc.taxAmount,
       finalPrice: resolvedFinalPrice,
       sellPrice: resolvedFinalPrice,
     };
@@ -273,10 +391,16 @@ class PlanService {
       basePrice: data.basePrice,
       discount: data.discount,
       taxPercent: data.taxPercent,
+      taxType: data.taxType,
+      igstRate: data.igstRate,
+      cgstRate: data.cgstRate,
+      sgstRate: data.sgstRate,
       finalPrice: explicitFinalPrice,
       sellPrice: data.sellPrice,
       recalculatePrice: Boolean(data.recalculatePrice),
     });
+
+    const discountPercent = calcResult.basePrice > 0 ? Math.round((calcResult.discount / calcResult.basePrice) * 100) : 0;
 
     const plan = await Plan.create({
       name: String(data.name || "").trim(),
@@ -289,8 +413,20 @@ class PlanService {
       isDefault: Boolean(data.isDefault),
       displayOrder: Number(data.displayOrder || 0),
       basePrice: calcResult.basePrice,
+      discount: calcResult.discount,
+      discountPercent,
+      taxType: calcResult.taxType,
+      igstRate: calcResult.igstRate,
+      cgstRate: calcResult.cgstRate,
+      sgstRate: calcResult.sgstRate,
+      igstAmount: calcResult.igstAmount,
+      cgstAmount: calcResult.cgstAmount,
+      sgstAmount: calcResult.sgstAmount,
+      taxPercent: calcResult.taxPercent,
+      taxAmount: calcResult.taxAmount,
       finalPrice: calcResult.finalPrice,
       sellPrice: calcResult.sellPrice,
+      finalPayablePrice: calcResult.finalPrice,
     });
 
     const initialVersion = await PlanVersion.create({
@@ -303,10 +439,19 @@ class PlanService {
       validityUnit,
       basePrice: calcResult.basePrice,
       discount: calcResult.discount,
+      discountPercent,
+      taxType: calcResult.taxType,
+      igstRate: calcResult.igstRate,
+      cgstRate: calcResult.cgstRate,
+      sgstRate: calcResult.sgstRate,
+      igstAmount: calcResult.igstAmount,
+      cgstAmount: calcResult.cgstAmount,
+      sgstAmount: calcResult.sgstAmount,
       taxPercent: calcResult.taxPercent,
       taxAmount: calcResult.taxAmount,
       finalPrice: calcResult.finalPrice,
       sellPrice: calcResult.sellPrice,
+      finalPayablePrice: calcResult.finalPrice,
       currency: data.currency || "INR",
       items: calcResult.items,
       status: data.publishImmediately ? "PUBLISHED" : "DRAFT",
@@ -373,6 +518,10 @@ class PlanService {
       data.basePrice !== undefined ||
       data.discount !== undefined ||
       data.taxPercent !== undefined ||
+      data.taxType !== undefined ||
+      data.igstRate !== undefined ||
+      data.cgstRate !== undefined ||
+      data.sgstRate !== undefined ||
       data.finalPrice !== undefined ||
       data.sellPrice !== undefined ||
       data.validity !== undefined ||
@@ -406,6 +555,10 @@ class PlanService {
           basePrice: data.basePrice !== undefined ? data.basePrice : activeVer.basePrice,
           discount: data.discount !== undefined ? data.discount : activeVer.discount,
           taxPercent: data.taxPercent !== undefined ? data.taxPercent : activeVer.taxPercent,
+          taxType: data.taxType !== undefined ? data.taxType : activeVer.taxType,
+          igstRate: data.igstRate !== undefined ? data.igstRate : activeVer.igstRate,
+          cgstRate: data.cgstRate !== undefined ? data.cgstRate : activeVer.cgstRate,
+          sgstRate: data.sgstRate !== undefined ? data.sgstRate : activeVer.sgstRate,
           finalPrice: explicitFinalPrice !== undefined ? explicitFinalPrice : activeVer.finalPrice,
           sellPrice: data.sellPrice !== undefined ? data.sellPrice : activeVer.sellPrice,
           recalculatePrice: Boolean(data.recalculatePrice),
@@ -416,16 +569,37 @@ class PlanService {
         activeVer.items = calcResult.items;
         activeVer.basePrice = calcResult.basePrice;
         activeVer.discount = calcResult.discount;
+        activeVer.taxType = calcResult.taxType;
+        activeVer.igstRate = calcResult.igstRate;
+        activeVer.cgstRate = calcResult.cgstRate;
+        activeVer.sgstRate = calcResult.sgstRate;
+        activeVer.igstAmount = calcResult.igstAmount;
+        activeVer.cgstAmount = calcResult.cgstAmount;
+        activeVer.sgstAmount = calcResult.sgstAmount;
         activeVer.taxPercent = calcResult.taxPercent;
         activeVer.taxAmount = calcResult.taxAmount;
         activeVer.finalPrice = calcResult.finalPrice;
         activeVer.sellPrice = calcResult.sellPrice;
+        activeVer.discountPercent = calcResult.basePrice > 0 ? Math.round((calcResult.discount / calcResult.basePrice) * 100) : 0;
+        activeVer.finalPayablePrice = calcResult.finalPrice;
 
         await activeVer.save();
 
         plan.basePrice = calcResult.basePrice;
+        plan.discount = calcResult.discount;
+        plan.discountPercent = activeVer.discountPercent;
+        plan.taxType = calcResult.taxType;
+        plan.igstRate = calcResult.igstRate;
+        plan.cgstRate = calcResult.cgstRate;
+        plan.sgstRate = calcResult.sgstRate;
+        plan.igstAmount = calcResult.igstAmount;
+        plan.cgstAmount = calcResult.cgstAmount;
+        plan.sgstAmount = calcResult.sgstAmount;
+        plan.taxPercent = calcResult.taxPercent;
+        plan.taxAmount = calcResult.taxAmount;
         plan.finalPrice = calcResult.finalPrice;
         plan.sellPrice = calcResult.sellPrice;
+        plan.finalPayablePrice = calcResult.finalPrice;
       }
     }
 
@@ -469,6 +643,10 @@ class PlanService {
       basePrice: data.basePrice ?? latestVersionDoc?.basePrice ?? 0,
       discount: data.discount ?? latestVersionDoc?.discount ?? 0,
       taxPercent: data.taxPercent ?? latestVersionDoc?.taxPercent ?? 18,
+      taxType: data.taxType ?? latestVersionDoc?.taxType,
+      igstRate: data.igstRate ?? latestVersionDoc?.igstRate,
+      cgstRate: data.cgstRate ?? latestVersionDoc?.cgstRate,
+      sgstRate: data.sgstRate ?? latestVersionDoc?.sgstRate,
       finalPrice: explicitFinalPrice !== undefined ? explicitFinalPrice : latestVersionDoc?.finalPrice,
       sellPrice: data.sellPrice !== undefined ? data.sellPrice : latestVersionDoc?.sellPrice,
       recalculatePrice: false,
@@ -484,10 +662,19 @@ class PlanService {
       validityUnit,
       basePrice: calcResult.basePrice,
       discount: calcResult.discount,
+      discountPercent: calcResult.basePrice > 0 ? Math.round((calcResult.discount / calcResult.basePrice) * 100) : 0,
+      taxType: calcResult.taxType,
+      igstRate: calcResult.igstRate,
+      cgstRate: calcResult.cgstRate,
+      sgstRate: calcResult.sgstRate,
+      igstAmount: calcResult.igstAmount,
+      cgstAmount: calcResult.cgstAmount,
+      sgstAmount: calcResult.sgstAmount,
       taxPercent: calcResult.taxPercent,
       taxAmount: calcResult.taxAmount,
       finalPrice: calcResult.finalPrice,
       sellPrice: calcResult.sellPrice,
+      finalPayablePrice: calcResult.finalPrice,
       currency: data.currency || latestVersionDoc?.currency || "INR",
       items: calcResult.items,
       status: "DRAFT",
@@ -537,6 +724,10 @@ class PlanService {
       basePrice: data.basePrice !== undefined ? data.basePrice : version.basePrice,
       discount: data.discount !== undefined ? data.discount : version.discount,
       taxPercent: data.taxPercent !== undefined ? data.taxPercent : version.taxPercent,
+      taxType: data.taxType !== undefined ? data.taxType : version.taxType,
+      igstRate: data.igstRate !== undefined ? data.igstRate : version.igstRate,
+      cgstRate: data.cgstRate !== undefined ? data.cgstRate : version.cgstRate,
+      sgstRate: data.sgstRate !== undefined ? data.sgstRate : version.sgstRate,
       finalPrice: explicitFinalPrice !== undefined ? explicitFinalPrice : version.finalPrice,
       sellPrice: data.sellPrice !== undefined ? data.sellPrice : version.sellPrice,
       recalculatePrice: false,
@@ -547,6 +738,13 @@ class PlanService {
     version.items = calcResult.items;
     version.basePrice = calcResult.basePrice;
     version.discount = calcResult.discount;
+    version.taxType = calcResult.taxType;
+    version.igstRate = calcResult.igstRate;
+    version.cgstRate = calcResult.cgstRate;
+    version.sgstRate = calcResult.sgstRate;
+    version.igstAmount = calcResult.igstAmount;
+    version.cgstAmount = calcResult.cgstAmount;
+    version.sgstAmount = calcResult.sgstAmount;
     version.taxPercent = calcResult.taxPercent;
     version.taxAmount = calcResult.taxAmount;
     version.finalPrice = calcResult.finalPrice;
@@ -586,6 +784,10 @@ class PlanService {
       basePrice: versionToPublish.basePrice,
       discount: versionToPublish.discount,
       taxPercent: versionToPublish.taxPercent,
+      taxType: versionToPublish.taxType,
+      igstRate: versionToPublish.igstRate,
+      cgstRate: versionToPublish.cgstRate,
+      sgstRate: versionToPublish.sgstRate,
       finalPrice: versionToPublish.finalPrice,
       sellPrice: versionToPublish.sellPrice,
       recalculatePrice: false,
@@ -594,6 +796,13 @@ class PlanService {
     versionToPublish.items = calcResult.items;
     versionToPublish.basePrice = calcResult.basePrice;
     versionToPublish.discount = calcResult.discount;
+    versionToPublish.taxType = calcResult.taxType;
+    versionToPublish.igstRate = calcResult.igstRate;
+    versionToPublish.cgstRate = calcResult.cgstRate;
+    versionToPublish.sgstRate = calcResult.sgstRate;
+    versionToPublish.igstAmount = calcResult.igstAmount;
+    versionToPublish.cgstAmount = calcResult.cgstAmount;
+    versionToPublish.sgstAmount = calcResult.sgstAmount;
     versionToPublish.taxPercent = calcResult.taxPercent;
     versionToPublish.taxAmount = calcResult.taxAmount;
     versionToPublish.finalPrice = calcResult.finalPrice;
@@ -617,8 +826,20 @@ class PlanService {
     plan.currentVersion = versionToPublish.version;
     plan.status = "ACTIVE";
     plan.basePrice = versionToPublish.basePrice;
+    plan.discount = versionToPublish.discount;
+    plan.discountPercent = versionToPublish.basePrice > 0 ? Math.round((versionToPublish.discount / versionToPublish.basePrice) * 100) : 0;
+    plan.taxType = versionToPublish.taxType;
+    plan.igstRate = versionToPublish.igstRate;
+    plan.cgstRate = versionToPublish.cgstRate;
+    plan.sgstRate = versionToPublish.sgstRate;
+    plan.igstAmount = versionToPublish.igstAmount;
+    plan.cgstAmount = versionToPublish.cgstAmount;
+    plan.sgstAmount = versionToPublish.sgstAmount;
+    plan.taxPercent = versionToPublish.taxPercent;
+    plan.taxAmount = versionToPublish.taxAmount;
     plan.finalPrice = versionToPublish.finalPrice;
     plan.sellPrice = versionToPublish.sellPrice;
+    plan.finalPayablePrice = versionToPublish.finalPrice;
     await plan.save();
 
     await AuditLogService.log({

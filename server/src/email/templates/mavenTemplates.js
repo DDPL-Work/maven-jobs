@@ -990,6 +990,209 @@ const buildInvoiceRequestClientConfirmationHtml = ({
   });
 };
 
+/**
+ * 17. Commercial Order Confirmation (Client/Employer)
+ * Exact match for Naukri-style Order Confirmed notification
+ */
+const buildOrderConfirmationHtml = ({
+  fullName,
+  companyName,
+  serviceTitle,
+  customerCode,
+  transactionId,
+  orderNumber,
+  amount,
+  subtotal,
+  taxAmount,
+  validityDays,
+  expiryDate,
+  inclusions = [],
+  paymentMethod = "ONLINE",
+}) => {
+  const name = String(fullName || companyName || "Valued Client").trim().toUpperCase();
+  const title = String(serviceTitle || "Maven Commercial Subscription").trim();
+  const cCode = String(customerCode || "").trim() || "N/A";
+  const txId = String(transactionId || orderNumber || "N/A").trim();
+  const formattedAmount =
+    amount !== undefined && amount !== null && !isNaN(amount) && Number(amount) > 0
+      ? `₹ ${Number(amount).toLocaleString("en-IN")}`
+      : amount === 0 ? "Free (Included)" : "";
+
+  const inclusionsList = Array.isArray(inclusions) && inclusions.length > 0 ? inclusions : [];
+
+  const content = `
+    <!-- Top Green Confirmation Banner -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #eaf7ec; border-radius: 14px; margin-bottom: 24px;">
+      <tr>
+        <td align="center" style="padding: 26px 20px 22px 20px;">
+          <div style="margin: 0 auto 12px auto; width: 52px; height: 52px; display: inline-block;">
+            <svg width="52" height="52" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M24 4C22.2 4 20.8 5.2 19.3 5.9C17.7 6.6 15.9 6.8 14.4 7.9C13 8.9 12.1 10.5 11 11.9C9.9 13.2 8.3 14.3 7.6 15.9C7 17.5 7.3 19.3 7.1 21C6.9 22.8 5.9 24.3 5.9 26.1C5.9 27.9 6.9 29.4 7.1 31.2C7.3 32.9 7 34.7 7.6 36.3C8.3 37.9 9.9 39 11 40.3C12.1 41.7 13 43.3 14.4 44.3C15.9 45.4 17.7 45.6 19.3 46.3C20.8 47 22.2 48.2 24 48.2C25.8 48.2 27.2 47 28.7 46.3C30.3 45.6 32.1 45.4 33.6 44.3C35 43.3 35.9 41.7 37 40.3C38.1 39 39.7 37.9 40.4 36.3C41 34.7 40.7 32.9 40.9 31.2C41.1 29.4 42.1 27.9 42.1 26.1C42.1 24.3 41.1 22.8 40.9 21C40.7 19.3 41 17.5 40.4 15.9C39.7 14.3 38.1 13.2 37 11.9C35.9 10.5 35 8.9 33.6 7.9C32.1 6.8 30.3 6.6 28.7 5.9C27.2 5.2 25.8 4 24 4Z" fill="#16a34a" fill-opacity="0.16" stroke="#16a34a" stroke-width="2"/>
+              <circle cx="24" cy="24" r="14" fill="#16a34a"/>
+              <path d="M18 24.5L22 28.5L30 19.5" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h1 style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.4px;">
+            Order confirmed!
+          </h1>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Salutation & Intro -->
+    <p style="margin: 0 0 12px 0; font-size: 15px; color: #1e293b; line-height: 1.6;">
+      Dear <strong>${escapeHtml(name)}</strong>,
+    </p>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.65;">
+      Your payment has been received, the invoice for which is attached. Please keep a copy of this invoice for future reference.
+    </p>
+
+    <!-- Availed Services Card (Naukri Soft Blue Block) -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; margin: 0 0 24px 0; overflow: hidden;">
+      <tr>
+        <td align="center" style="padding: 26px 24px 22px 24px;">
+          <div style="font-size: 13px; color: #64748b; font-weight: 500; margin-bottom: 8px;">
+            You have availed the following service(s)
+          </div>
+          <div style="font-size: 21px; font-weight: 800; color: #0f172a; line-height: 1.35; margin-bottom: 20px;">
+            ${escapeHtml(title)}
+          </div>
+
+          <!-- Divider -->
+          <div style="border-top: 1px solid #dbeafe; width: 75%; margin: 0 auto 18px auto;"></div>
+
+          <!-- Customer Code & Transaction ID -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 440px; margin: 0 auto;">
+            <tr>
+              <td align="center" style="padding-bottom: 14px;">
+                <div style="font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 3px;">Customer code</div>
+                <div style="font-size: 16px; font-weight: 800; color: #0f172a; font-family: monospace, -apple-system, sans-serif; letter-spacing: 0.5px;">${escapeHtml(cCode)}</div>
+              </td>
+            </tr>
+            <tr>
+              <td align="center">
+                <div style="font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 3px;">Transaction ID</div>
+                <div style="font-size: 15px; font-weight: 800; color: #0f172a; font-family: monospace, -apple-system, sans-serif; letter-spacing: 0.5px;">${escapeHtml(txId)}</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Additional Order Summary Details -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin: 0 0 22px 0; font-size: 13px; overflow: hidden;">
+      ${orderNumber ? `
+      <tr>
+        <td style="padding: 11px 18px; border-bottom: 1px solid #f1f5f9; color: #64748b; font-weight: 600; width: 38%;">Order Number</td>
+        <td style="padding: 11px 18px; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-weight: 700; font-family: monospace;">${escapeHtml(orderNumber)}</td>
+      </tr>` : ""}
+      ${formattedAmount ? `
+      <tr>
+        <td style="padding: 11px 18px; border-bottom: 1px solid #f1f5f9; color: #64748b; font-weight: 600;">Amount Paid</td>
+        <td style="padding: 11px 18px; border-bottom: 1px solid #f1f5f9; color: #002366; font-weight: 800;">${escapeHtml(formattedAmount)} ${amount > 0 ? "+ GST (18% Included)" : ""}</td>
+      </tr>` : ""}
+      ${validityDays ? `
+      <tr>
+        <td style="padding: 11px 18px; border-bottom: ${inclusionsList.length ? "1px solid #f1f5f9" : "none"}; color: #64748b; font-weight: 600;">Validity Duration</td>
+        <td style="padding: 11px 18px; border-bottom: ${inclusionsList.length ? "1px solid #f1f5f9" : "none"}; color: #0f172a; font-weight: 600;">${escapeHtml(String(validityDays))} Days ${expiryDate ? `(Valid until ${escapeHtml(new Date(expiryDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))})` : ""}</td>
+      </tr>` : ""}
+      ${inclusionsList.length > 0 ? `
+      <tr>
+        <td style="padding: 11px 18px; color: #64748b; font-weight: 600; vertical-align: top;">Package Inclusions</td>
+        <td style="padding: 11px 18px; color: #334155;">
+          <ul style="margin: 0; padding-left: 18px; line-height: 1.55;">
+            ${inclusionsList.map((inc) => `<li><strong>${escapeHtml(inc.quantity || "")}</strong> ${escapeHtml(inc.name || inc.productName || "")}</li>`).join("")}
+          </ul>
+        </td>
+      </tr>` : ""}
+    </table>
+
+    <p style="margin: 0 0 24px 0; font-size: 13.5px; color: #475569; line-height: 1.6;">
+      To enable us to help you, please quote your customer code and transaction ID in all your future communications with us.
+    </p>
+
+    <!-- Go to Dashboard CTA Button -->
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto 28px auto;">
+      <tr>
+        <td align="center" style="background-color: #002366; border-radius: 9999px; box-shadow: 0 4px 14px rgba(0, 35, 102, 0.25);">
+          <a href="${APP_URL}/employer-dashboard" target="_blank" style="display: inline-block; padding: 13px 40px; color: #ffffff; font-size: 14.5px; font-weight: 700; text-decoration: none; border-radius: 9999px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            Access Recruiter Dashboard &rarr;
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Signature & Office Info -->
+    <div style="font-size: 13.5px; color: #334155; line-height: 1.65; margin-bottom: 20px;">
+      Regards<br />
+      <strong>Team - Customer Service</strong><br />
+      ${APP_NAME}<br />
+      <span style="color: #2563eb; text-decoration: underline;">B-8 Sector 132 Noida, UP - 201301</span>
+    </div>
+
+    <!-- Refund Disclaimer Note -->
+    <p style="margin: 0 0 28px 0; font-size: 12px; color: #64748b; line-height: 1.55;">
+      <strong>Please Note:</strong> Subscription amount once paid for the service will not be refunded. <a href="${APP_URL}/terms" target="_blank" style="color: #2563eb; text-decoration: underline;">Click here</a> to view complete terms &amp; conditions.
+    </p>
+
+    <!-- Customer Care Contact Box (Matching Screenshot 2) -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 28px; overflow: hidden;">
+      <tr>
+        <td style="padding: 22px 20px 20px 20px; text-align: center;">
+          <h3 style="margin: 0 0 18px 0; font-size: 15px; font-weight: 700; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            For further assistance, please contact our customer care
+          </h3>
+
+          <!-- Toll Free Phone Row -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 14px;">
+            <tr>
+              <td width="48" align="center" valign="middle" style="padding-right: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #ffffff; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
+                  &#128222;
+                </div>
+              </td>
+              <td align="left" valign="middle">
+                <div style="font-size: 12px; color: #64748b; line-height: 1.35;">Call on our Toll Free number between 9.30 AM and 6.00 PM IST</div>
+                <div style="font-size: 14px; font-weight: 700; color: #1e40af; margin-top: 3px;">
+                  <a href="tel:18001025557" style="color: #1e40af; text-decoration: underline;">1800 102 5557</a> &amp; <a href="tel:18005725557" style="color: #1e40af; text-decoration: underline;">1800 572 5557</a>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Support Email Row -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+            <tr>
+              <td width="48" align="center" valign="middle" style="padding-right: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #ffffff; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
+                  &#9993;
+                </div>
+              </td>
+              <td align="left" valign="middle">
+                <div style="font-size: 12px; color: #64748b; line-height: 1.35;">Write to us at</div>
+                <div style="font-size: 14px; font-weight: 700; color: #1e40af; margin-top: 3px;">
+                  <a href="mailto:service@mavenjobs.com" style="color: #1e40af; text-decoration: underline;">service@mavenjobs.com</a>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 12px; color: #64748b; line-height: 1.4;">
+            We will get back to you within 1 working day upon receipt of your query.
+          </div>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  return mavenWrapLayout(content, {
+    title: `Order confirmed - ${title} | ${APP_NAME}`,
+    showFeatureGrid: false,
+    showAppBanner: true,
+  });
+};
+
 module.exports = {
   mavenWrapLayout,
   buildWelcomeHtml,
@@ -1008,4 +1211,5 @@ module.exports = {
   buildJobPostedHtml,
   buildInvoiceRequestHtml,
   buildInvoiceRequestClientConfirmationHtml,
+  buildOrderConfirmationHtml,
 };

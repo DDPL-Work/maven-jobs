@@ -223,6 +223,75 @@ class EmailService {
     });
   }
 
+  async sendOrderConfirmationEmail(params) {
+    const { to } = params;
+    const { buildOrderConfirmationHtml } = require("../templates/mavenTemplates");
+    const html = buildOrderConfirmationHtml(params);
+    const serviceTitle = params.serviceTitle || "Commercial Recruitment Plan";
+    const appName = process.env.APP_NAME || "Maven Jobs";
+    const appUrl = process.env.CANDIDATE_WEB_URL || process.env.FRONTEND_URL || "https://naukri-3.vercel.app";
+
+    const text = [
+      `Order Confirmed! - ${appName}`,
+      "",
+      `Dear ${params.fullName || params.companyName || "Valued Client"},`,
+      "",
+      "Your payment has been received, and your commercial recruitment subscription has been activated.",
+      "Please keep a copy of this confirmation for future reference.",
+      "",
+      "SERVICE AVAILED:",
+      serviceTitle,
+      "",
+      `Customer code: ${params.customerCode || "N/A"}`,
+      `Transaction ID: ${params.transactionId || params.orderNumber || "N/A"}`,
+      params.orderNumber ? `Order Number: ${params.orderNumber}` : "",
+      params.amount !== undefined ? `Amount Paid: ₹${Number(params.amount).toLocaleString("en-IN")}` : "",
+      params.validityDays ? `Validity: ${params.validityDays} Days` : "",
+      "",
+      "To enable us to help you, please quote your customer code and transaction ID in all your future communications with us.",
+      "",
+      `Access your Recruiter Dashboard: ${appUrl}/employer-dashboard`,
+      "",
+      "Regards,",
+      "Team - Customer Service",
+      appName,
+      "B-8 Sector 132 Noida, UP - 201301",
+      "",
+      "For further assistance, please contact our customer care:",
+      "Toll Free: 1800 102 5557 & 1800 572 5557 (9.30 AM to 6.00 PM IST)",
+      "Email: service@mavenjobs.com",
+    ].filter(Boolean).join("\n");
+
+    const attachments = [...(params.attachments || [])];
+    if (params.invoiceBuffer) {
+      attachments.push({
+        filename: `Invoice_${params.invoiceNumber || params.orderNumber || "tax_invoice"}.pdf`,
+        content: params.invoiceBuffer,
+        contentType: "application/pdf",
+      });
+    } else if (params.invoiceData) {
+      try {
+        const { generateInvoicePdfBuffer } = require("../templates/invoice");
+        const pdfBuf = await generateInvoicePdfBuffer(params.invoiceData);
+        attachments.push({
+          filename: `Invoice_${params.invoiceNumber || params.invoiceData.invoice?.documentNo || "tax_invoice"}.pdf`,
+          content: pdfBuf,
+          contentType: "application/pdf",
+        });
+      } catch (pdfErr) {
+        logger.warn("[emailService] Failed to generate invoice PDF attachment:", pdfErr?.message);
+      }
+    }
+
+    return this.sendEmail({
+      to,
+      subject: `Order confirmed - ${serviceTitle} | ${appName}`,
+      html,
+      text,
+      attachments,
+    });
+  }
+
   async verifyConnection() {
     if (typeof this._provider.verifyConnection === "function") {
       return this._provider.verifyConnection();

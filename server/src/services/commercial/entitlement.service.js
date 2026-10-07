@@ -9,6 +9,11 @@ class EntitlementService {
   static async getCompanyEntitlements(companyId) {
     const now = new Date();
 
+    try {
+      const AiCreditService = require("./ai-credit.service");
+      await AiCreditService.ensureMonthlyAllowance(companyId);
+    } catch (_) {}
+
     // Fetch active subscriptions
     const activeSubscriptions = await Subscription.find({
       companyId,
@@ -64,8 +69,8 @@ class EntitlementService {
         item.latestExpiry = ent.expiryDate;
       }
 
-      if (ent.userLimit && ent.userLimit > item.userLimit) {
-        item.userLimit = ent.userLimit;
+      if (ent.userLimit) {
+        item.userLimit = (item.userLimit || 0) + ent.userLimit;
       }
 
       if (Array.isArray(ent.assignedSeats)) {

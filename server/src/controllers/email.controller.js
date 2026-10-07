@@ -394,12 +394,70 @@ async function getProductionReadiness(req, res, next) {
   }
 }
 
+async function sendOrderConfirmationEmail(req, res, next) {
+  try {
+    const {
+      to,
+      fullName,
+      companyName,
+      serviceTitle,
+      customerCode,
+      transactionId,
+      orderNumber,
+      amount,
+      subtotal,
+      taxAmount,
+      validityDays,
+      expiryDate,
+      inclusions,
+      paymentMethod,
+    } = req.body;
+
+    if (!to) {
+      return res.status(400).json({
+        success: false,
+        message: "Recipient email (to) is required",
+      });
+    }
+
+    const result = await emailModule.sendOrderConfirmationEmail({
+      to,
+      fullName,
+      companyName,
+      serviceTitle,
+      customerCode,
+      transactionId,
+      orderNumber,
+      amount,
+      subtotal,
+      taxAmount,
+      validityDays,
+      expiryDate,
+      inclusions,
+      paymentMethod,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Order confirmation email sent successfully",
+      data: result,
+    });
+  } catch (error) {
+    res.status(error.code === "EMAIL_RATE_LIMIT_ERROR" ? 429 : 500).json({
+      success: false,
+      message: "Failed to send order confirmation email",
+      error: sanitizeError(error),
+    });
+  }
+}
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendOTPEmail,
   sendApplicationConfirmation,
+  sendOrderConfirmationEmail,
   verifyConnection,
   getStatus,
   getHealth,
