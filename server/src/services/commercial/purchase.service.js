@@ -258,6 +258,7 @@ class PurchaseService {
     transactionId = "",
     actor = {},
     isUpgrade = false,
+    isRenewal = false,
   }) {
     const plan = await Plan.findById(planId);
     if (!plan || plan.status === "ARCHIVED") {
@@ -282,6 +283,11 @@ class PurchaseService {
 
     const now = new Date();
     const validityDays = Number(planVersion.validity || 90);
+    const gracePeriodDays = Number(
+      planVersion.gracePeriodDays !== undefined
+        ? planVersion.gracePeriodDays
+        : (plan.gracePeriodDays !== undefined ? plan.gracePeriodDays : 90)
+    );
     const endDate = new Date(now.getTime() + validityDays * 24 * 60 * 60 * 1000);
 
     const effectiveUserId = userId || actor.id || actor._id || null;
@@ -294,7 +300,7 @@ class PurchaseService {
       endDate: { $gte: now },
     });
 
-    if (!currentActiveSub && isUpgrade) {
+    if (!currentActiveSub && isUpgrade && !isRenewal) {
       currentActiveSub = await Subscription.findOne({
         companyId,
         subscriptionType: "PLAN",
@@ -302,7 +308,8 @@ class PurchaseService {
       }).sort({ createdAt: -1 });
     }
 
-    const isPlanUpgrade = Boolean(isUpgrade || currentActiveSub);
+    // Per Q2.4 vs Q2.7: Credit stacking ONLY occurs during mid-term upgrade/add-on, NEVER on renewal
+    const isPlanUpgrade = Boolean((isUpgrade || currentActiveSub) && !isRenewal);
 
     // Compute unused rollover credits from previous active plan if upgrading
     const rolloverCreditsMap = {}; // { [productCode]: number }
@@ -393,21 +400,129 @@ class PurchaseService {
       status: "SUCCESS",
     });
 
-    // 3. Mark old active subscription as UPGRADED and supersede its active entitlements
+    // 3. Mark old active subscription as UPGRADED or EXPIRED and handle its active entitlements
     if (currentActiveSub) {
-      currentActiveSub.status = "UPGRADED";
-      await currentActiveSub.save();
+      if (isRenewal) {
+        currentActiveSub.status = "EXPIRED";
+        await currentActiveSub.save();
+
+        // On renewal, per Q2.7, previous unused credits expire and are not carried forward
+        const expiringEnts = await Entitlement.find({
+          companyId,
+          subscriptionId: currentActiveSub._id,
+          status: "ACTIVE",
+          remainingQuantity: { $gt: 0 },
+        });
+
+        for (const ent of expiringEnts) {
+          await CreditLedgerService.recordEntry({
+            companyId,
+            subscriptionId: currentActiveSub._id,
+            entitlementId: ent._id,
+            productId: ent.productId,
+            productCode: ent.productCode,
+            transactionType: "EXPIRED",
+            quantity: -ent.remainingQuantity,
+            balanceAfter: 0,
+            referenceType: "SubscriptionRenewal",
+            referenceId: String(currentActiveSub._id),
+            expiryDate: now,
+            notes: `Unused credits expired upon plan renewal (Q2.7 policy)`,
+            createdBy: actor,
+          });
+        }
+
+        await Entitlement.updateMany(
+          {
+            companyId,
+            subscriptionId: currentActiveSub._id,
+            status: "ACTIVE",
+          },
+          {
+            $set: {
+              status: "EXPIRED",
+              remainingQuantity: 0,
+            },
+          }
+        );
+      } else {
+        currentActiveSub.status = "UPGRADED";
+        await currentActiveSub.save();
+
+        await Entitlement.updateMany(
+          {
+            companyId,
+            subscriptionId: currentActiveSub._id,
+            status: "ACTIVE",
+          },
+          {
+            $set: {
+              status: "SUPERSEDED",
+              remainingQuantity: 0,
+            },
+          }
+        );
+      }
+    }
+
+    // Per Q2.7: If not an upgrade (purchased after plan expiry or explicit renewal),
+    // forfeit any stale/expired plan entitlements from prior subscriptions
+    if (!isPlanUpgrade) {
+      const pastPlanSubs = await Subscription.find({
+        companyId,
+        subscriptionType: "PLAN",
+      }).select("_id");
+      const pastPlanSubIds = pastPlanSubs.map((s) => s._id);
+
+      const stalePlanEnts = await Entitlement.find({
+        companyId,
+        subscriptionId: { $in: pastPlanSubIds },
+        status: "ACTIVE",
+        remainingQuantity: { $gt: 0 },
+      });
+
+      for (const ent of stalePlanEnts) {
+        await CreditLedgerService.recordEntry({
+          companyId,
+          subscriptionId: ent.subscriptionId || null,
+          entitlementId: ent._id,
+          productId: ent.productId,
+          productCode: ent.productCode,
+          transactionType: "EXPIRED",
+          quantity: -ent.remainingQuantity,
+          balanceAfter: 0,
+          referenceType: isRenewal ? "SubscriptionRenewal" : "PlanExpiryRenewal",
+          referenceId: String(ent.subscriptionId || order._id),
+          expiryDate: now,
+          notes: `Unused credits expired upon plan end/renewal (Q2.7 policy)`,
+          createdBy: actor,
+        });
+      }
 
       await Entitlement.updateMany(
         {
           companyId,
-          subscriptionId: currentActiveSub._id,
+          subscriptionId: { $in: pastPlanSubIds },
           status: "ACTIVE",
         },
         {
           $set: {
-            status: "SUPERSEDED",
+            status: "EXPIRED",
             remainingQuantity: 0,
+          },
+        }
+      );
+
+      await Subscription.updateMany(
+        {
+          companyId,
+          subscriptionType: "PLAN",
+          status: "ACTIVE",
+          endDate: { $lt: now },
+        },
+        {
+          $set: {
+            status: "EXPIRED",
           },
         }
       );
@@ -560,6 +675,7 @@ class PurchaseService {
         currency: planVersion.currency || "INR",
         planName: plan.name,
         validityDays,
+        gracePeriodDays,
         purchasedAt: now,
         isUpgrade: isPlanUpgrade,
         upgradedFromSubscriptionId: currentActiveSub ? currentActiveSub._id : null,
@@ -713,6 +829,7 @@ class PurchaseService {
         billingCycle: planVersion.billingCycle,
         validity: validityDays,
         validityUnit: planVersion.validityUnit || "DAYS",
+        gracePeriodDays,
         startDate: now,
         endDate: endDate,
         assignedAt: now,
@@ -721,6 +838,8 @@ class PurchaseService {
       packageExpiresAt: endDate,
       packageType: plan.name,
       profileHotVacancies: hasHotVacancy ? "Premium Hot Vacancy" : "Standard",
+      commercialStatus: "ACTIVE",
+      planGraceExpiresAt: null,
     };
 
     if (totalJobLimit > 0) {
@@ -1396,7 +1515,7 @@ class PurchaseService {
       throw error;
     }
 
-    // Purchase current published version of the same plan
+    // Purchase current published version of the same plan with isRenewal: true
     const result = await this.purchasePlan({
       companyId,
       userId,
@@ -1404,6 +1523,8 @@ class PurchaseService {
       paymentMethod,
       transactionId,
       actor,
+      isRenewal: true,
+      isUpgrade: false,
     });
 
     existingSub.status = "EXPIRED";
@@ -1412,13 +1533,18 @@ class PurchaseService {
     result.subscription.renewedFromSubscriptionId = existingSub._id;
     await result.subscription.save();
 
+    await Company.findByIdAndUpdate(companyId, {
+      commercialStatus: "ACTIVE",
+      planGraceExpiresAt: null,
+    });
+
     await AuditLogService.log({
       action: "RENEW_PLAN",
       targetType: "SUBSCRIPTION",
       targetId: result.subscription._id,
       targetName: `Renewed Plan ID: ${existingSub.planId}`,
       performedBy: actor,
-      reason: "Subscription renewed with current published plan configuration",
+      reason: "Subscription renewed with current published plan configuration; old credits forfeited per Q2.7",
     });
 
     return result;
@@ -1426,23 +1552,132 @@ class PurchaseService {
 
   /**
    * Background / Scheduled task to check and expire subscriptions & entitlements
+   * Enforces:
+   * 1. Entitlement expiry + CreditLedger log with transactionType: "EXPIRED"
+   * 2. Subscription expiry + transition Company to EXPIRED_GRACE (90-day window) or EXPIRED_LOCKED
+   * 3. Transition of companies past 90 days grace window to EXPIRED_LOCKED
+   * 4. Activation of due SCHEDULED subscriptions (e.g. downgrades on completion date)
    */
   static async checkAndExpireSubscriptions() {
     const now = new Date();
+    let expiredEntitlementsCount = 0;
+    let expiredSubscriptionsCount = 0;
+    let activatedScheduledCount = 0;
+    let lockedGraceCompaniesCount = 0;
 
-    // 1. Expire past subscriptions
-    const expiredSubs = await Subscription.updateMany(
-      { status: "ACTIVE", endDate: { $lt: now } },
-      { $set: { status: "EXPIRED" } }
-    );
+    // 1. Expire past active entitlements and log forfeiture in credit ledger
+    const pastEntitlements = await Entitlement.find({
+      status: "ACTIVE",
+      expiryDate: { $lt: now },
+    });
 
-    // 2. Expire past entitlements
-    const expiredEnts = await Entitlement.updateMany(
-      { status: "ACTIVE", expiryDate: { $lt: now } },
-      { $set: { status: "EXPIRED" } }
-    );
+    for (const ent of pastEntitlements) {
+      const forfeitedQty = ent.remainingQuantity || 0;
+      ent.status = "EXPIRED";
+      ent.remainingQuantity = 0;
+      await ent.save();
+      expiredEntitlementsCount++;
 
-    // 3. Activate SCHEDULED subscriptions whose start date has arrived
+      if (forfeitedQty > 0) {
+        try {
+          await CreditLedgerService.recordEntry({
+            companyId: ent.companyId,
+            subscriptionId: ent.subscriptionId || null,
+            entitlementId: ent._id,
+            productId: ent.productId,
+            productCode: ent.productCode,
+            transactionType: "EXPIRED",
+            quantity: -forfeitedQty,
+            balanceAfter: 0,
+            referenceType: "ScheduledExpiry",
+            referenceId: String(ent._id),
+            expiryDate: ent.expiryDate,
+            notes: `Credits expired upon entitlement end date (${ent.expiryDate.toISOString().slice(0, 10)})`,
+            createdBy: { id: "system", role: "CRON" },
+          });
+        } catch (ledgerErr) {
+          console.error(`[checkAndExpireSubscriptions] Error logging ledger for entitlement ${ent._id}:`, ledgerErr.message);
+        }
+      }
+    }
+
+    // 2. Expire past active subscriptions and set company commercial status
+    const pastSubscriptions = await Subscription.find({
+      status: "ACTIVE",
+      endDate: { $lt: now },
+    });
+
+    for (const sub of pastSubscriptions) {
+      sub.status = "EXPIRED";
+      await sub.save();
+      expiredSubscriptionsCount++;
+
+      // Check if company has another active PLAN subscription
+      const otherActivePlan = await Subscription.findOne({
+        companyId: sub.companyId,
+        subscriptionType: "PLAN",
+        status: "ACTIVE",
+        endDate: { $gte: now },
+      });
+
+      if (!otherActivePlan) {
+        // Calculate configurable grace period per admin plan configuration (default 90 days)
+        const comp = await Company.findById(sub.companyId);
+        const configuredGraceDays = Number(
+          sub.commercialSnapshot?.gracePeriodDays !== undefined
+            ? sub.commercialSnapshot.gracePeriodDays
+            : (comp?.planSnapshot?.gracePeriodDays !== undefined ? comp.planSnapshot.gracePeriodDays : 90)
+        );
+        const graceEnd = new Date(sub.endDate.getTime() + configuredGraceDays * 24 * 60 * 60 * 1000);
+        const newCommercialStatus = (configuredGraceDays > 0 && now <= graceEnd) ? "EXPIRED_GRACE" : "EXPIRED_LOCKED";
+
+        if (comp) {
+          comp.commercialStatus = newCommercialStatus;
+          comp.planGraceExpiresAt = configuredGraceDays > 0 ? graceEnd : sub.endDate;
+          comp.packageExpiresAt = sub.endDate;
+          if (typeof comp.zeroExpiredPlanBalances === "function") {
+            comp.zeroExpiredPlanBalances();
+          }
+          await comp.save();
+        } else {
+          await Company.findByIdAndUpdate(sub.companyId, {
+            commercialStatus: newCommercialStatus,
+            planGraceExpiresAt: configuredGraceDays > 0 ? graceEnd : sub.endDate,
+            packageExpiresAt: sub.endDate,
+          });
+        }
+      }
+    }
+
+    // 3. Companies in EXPIRED_GRACE whose 90 days grace period has now elapsed
+    const expiredGraceCompanies = await Company.find({
+      commercialStatus: "EXPIRED_GRACE",
+      planGraceExpiresAt: { $lt: now },
+    });
+
+    for (const comp of expiredGraceCompanies) {
+      const activePlan = await Subscription.findOne({
+        companyId: comp._id,
+        subscriptionType: "PLAN",
+        status: "ACTIVE",
+        endDate: { $gte: now },
+      });
+
+      if (!activePlan) {
+        comp.commercialStatus = "EXPIRED_LOCKED";
+        if (typeof comp.zeroExpiredPlanBalances === "function") {
+          comp.zeroExpiredPlanBalances();
+        }
+        await comp.save();
+        lockedGraceCompaniesCount++;
+      } else {
+        comp.commercialStatus = "ACTIVE";
+        comp.planGraceExpiresAt = null;
+        await comp.save();
+      }
+    }
+
+    // 4. Activate SCHEDULED subscriptions whose start date has arrived (e.g. Downgrades Q2.5)
     const dueScheduled = await Subscription.find({
       status: "SCHEDULED",
       startDate: { $lte: now },
@@ -1451,12 +1686,53 @@ class PurchaseService {
     for (const sub of dueScheduled) {
       sub.status = "ACTIVE";
       await sub.save();
+      activatedScheduledCount++;
+
+      // Ensure entitlements exist for this activated subscription
+      const existingEntsCount = await Entitlement.countDocuments({ subscriptionId: sub._id });
+      if (existingEntsCount === 0 && sub.planVersionId) {
+        const planVer = await PlanVersion.findById(sub.planVersionId).lean();
+        if (planVer && Array.isArray(planVer.items)) {
+          for (const item of planVer.items) {
+            await Entitlement.create({
+              companyId: sub.companyId,
+              subscriptionId: sub._id,
+              productId: item.productId,
+              productCode: item.productCode,
+              productName: item.productName,
+              allocatedQuantity: item.quantity,
+              consumedQuantity: 0,
+              remainingQuantity: item.quantity,
+              unit: item.unit,
+              features: item.features || [],
+              startDate: sub.startDate,
+              expiryDate: sub.endDate,
+              status: "ACTIVE",
+            });
+          }
+        }
+      }
+
+      await Company.findByIdAndUpdate(sub.companyId, {
+        commercialStatus: "ACTIVE",
+        planGraceExpiresAt: null,
+        packageExpiresAt: sub.endDate,
+        packageType: sub.commercialSnapshot?.planName || "Active Plan",
+      });
+    }
+
+    // 5. Sweep all expired companies to guarantee balances, services, and validity are zeroed in MongoDB
+    let zeroedSummary = null;
+    if (typeof Company.expirePlansForExpiredCompanies === "function") {
+      zeroedSummary = await Company.expirePlansForExpiredCompanies();
     }
 
     return {
-      expiredSubscriptionsCount: expiredSubs.modifiedCount || 0,
-      expiredEntitlementsCount: expiredEnts.modifiedCount || 0,
-      activatedScheduledCount: dueScheduled.length,
+      expiredSubscriptionsCount,
+      expiredEntitlementsCount,
+      activatedScheduledCount,
+      lockedGraceCompaniesCount,
+      zeroedExpiredCompanies: zeroedSummary,
     };
   }
 

@@ -78,6 +78,8 @@ export default function CommercialProductsPage() {
     category: "JOB_POSTING",
     productType: "CREDIT_BASED",
     unit: "Job",
+    validity: 30,
+    validityUnit: "DAYS",
     allowStandalone: true,
     defaultPrice: "",
     discount: 0,
@@ -203,6 +205,8 @@ export default function CommercialProductsPage() {
       category: "JOB_POSTING",
       productType: "CREDIT_BASED",
       unit: "Job",
+      validity: 30,
+      validityUnit: "DAYS",
       allowStandalone: true,
       defaultPrice: "",
       discount: 0,
@@ -236,6 +240,8 @@ export default function CommercialProductsPage() {
       category: prod.category || "JOB_POSTING",
       productType: prod.productType || "CREDIT_BASED",
       unit: prod.unit || "Unit",
+      validity: prod.validity !== undefined ? prod.validity : 30,
+      validityUnit: prod.validityUnit || "DAYS",
       allowStandalone: Boolean(prod.allowStandalone),
       defaultPrice: prod.defaultPrice ?? prod.basePrice ?? "",
       discount: prod.discount ?? 0,
@@ -274,6 +280,8 @@ export default function CommercialProductsPage() {
 
       const payload = {
         ...productForm,
+        validity: Number(productForm.validity) || 30,
+        validityUnit: "DAYS",
         defaultPrice: prodBasePrice,
         basePrice: prodBasePrice,
         discount: prodDiscount,
@@ -575,7 +583,7 @@ export default function CommercialProductsPage() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="font-medium text-slate-800">{(prod.productType || "CREDIT_BASED").replace(/_/g, " ")}</div>
-                      <div className="text-[11px] text-slate-400">Unit: {prod.unit || "Unit"}</div>
+                      <div className="text-[11px] text-slate-400">Unit: {prod.unit || "Unit"} • <span className="font-semibold text-slate-600">{prod.validity || 30}d live</span></div>
                     </td>
                     <td className="px-4 py-4">
                       {prod.allowStandalone ? (
@@ -765,7 +773,7 @@ export default function CommercialProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700">Category *</label>
                   <select
@@ -806,6 +814,24 @@ export default function CommercialProductsPage() {
                     onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Live Duration (Days) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    required
+                    placeholder="e.g. 30"
+                    value={productForm.validity}
+                    onChange={(e) => setProductForm({ ...productForm, validity: e.target.value === "" ? "" : Number(e.target.value) })}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Live days on candidate portal
+                  </span>
                 </div>
               </div>
 

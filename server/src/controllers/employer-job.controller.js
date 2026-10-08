@@ -514,10 +514,15 @@ const formatJobItem = (job, statsMap, posterMap, nviteMap, currentUser) => {
   const stats = statsMap.get(jobIdStr) || { total: 0, new: 0, shortlisted: 0 };
   const now = new Date();
 
+  const isLiveExpired = Boolean(
+    (job.liveUntil && new Date(job.liveUntil) < now) ||
+    (job.deadline && new Date(job.deadline) < now)
+  );
+
   let computedStatus = "active";
   if (!job.isActive || job.approvalStatus === "REJECTED") {
     computedStatus = "closed";
-  } else if (job.deadline && new Date(job.deadline) < now) {
+  } else if (isLiveExpired) {
     computedStatus = "expired";
   }
 
@@ -545,6 +550,9 @@ const formatJobItem = (job, statsMap, posterMap, nviteMap, currentUser) => {
     status: computedStatus,
     approvalStatus: job.approvalStatus || "APPROVED",
     isActive: Boolean(job.isActive),
+    isLiveExpired,
+    liveDurationDays: job.liveDurationDays || 30,
+    liveUntil: job.liveUntil || job.deadline || null,
     postedBy: posterEmail,
     postedByLabel: posterLabel,
     isMe,
@@ -624,7 +632,10 @@ exports.getEmployerJobs = asyncHandler(async (req, res) => {
       statusConditions.push({
         isActive: true,
         approvalStatus: "APPROVED",
-        $or: [{ deadline: null }, { deadline: { $gte: now } }],
+        $and: [
+          { $or: [{ liveUntil: null }, { liveUntil: { $gte: now } }] },
+          { $or: [{ deadline: null }, { deadline: { $gte: now } }] },
+        ],
       });
     }
     if (statuses.includes("closed")) {
@@ -635,7 +646,10 @@ exports.getEmployerJobs = asyncHandler(async (req, res) => {
     if (statuses.includes("expired")) {
       statusConditions.push({
         isActive: true,
-        deadline: { $lt: now },
+        $or: [
+          { liveUntil: { $lt: now } },
+          { deadline: { $lt: now } },
+        ],
       });
     }
 
@@ -834,9 +848,14 @@ exports.getEmployerJobFilters = asyncHandler(async (req, res) => {
       });
 
       allJobs.forEach((job) => {
+        const isLiveExpired = Boolean(
+          (job.liveUntil && new Date(job.liveUntil) < now) ||
+          (job.deadline && new Date(job.deadline) < now)
+        );
+
         if (!job.isActive || job.approvalStatus === "REJECTED") {
           closedCount += 1;
-        } else if (job.deadline && new Date(job.deadline) < now) {
+        } else if (isLiveExpired) {
           expiredCount += 1;
         } else {
           activeCount += 1;

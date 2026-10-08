@@ -47,6 +47,11 @@ const planSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    gracePeriodDays: {
+      type: Number,
+      default: 90,
+      min: 0,
+    },
     basePrice: {
       type: Number,
       default: 0,

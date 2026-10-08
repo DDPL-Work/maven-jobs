@@ -119,6 +119,7 @@ const subscriptionSchema = new mongoose.Schema(
       productName: { type: String, default: "" },
       offerName: { type: String, default: "" },
       validityDays: { type: Number, default: 30 },
+      gracePeriodDays: { type: Number, default: 90 },
       purchasedAt: { type: Date, default: Date.now },
       orderNumber: { type: String, default: "" },
       paymentId: { type: String, default: "" },

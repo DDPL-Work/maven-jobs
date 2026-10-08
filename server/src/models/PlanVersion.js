@@ -103,6 +103,11 @@ const planVersionSchema = new mongoose.Schema(
       enum: ["DAYS", "MONTHS", "YEARS"],
       default: "DAYS",
     },
+    gracePeriodDays: {
+      type: Number,
+      min: 0,
+      default: 90, // read-only grace period in days after plan expiration
+    },
     basePrice: {
       type: Number,
       required: true,

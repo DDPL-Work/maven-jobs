@@ -8,6 +8,7 @@ const CandidateProfile = require("../models/CandidateProfile");
 const CompanyReview = require("../models/CompanyReview");
 const { esAvailable } = require("../config/opensearch");
 const esService = require("../services/opensearch.service");
+const { getCandidateLiveJobFilter } = require("../utils/job-live.utils");
 
 const formatCompactCount = (value = 0) => {
   const count = Number(value || 0);
@@ -355,7 +356,7 @@ async function esGetPublicJobs(req, res) {
   // Fetch available filters from MongoDB (lightweight — lean query)
   let availableFilters = { departments: [], workplaceTypes: [], locations: [], jobTypes: [] };
   try {
-    const fullPool = await Job.find({ isActive: true, approvalStatus: "APPROVED" })
+    const fullPool = await Job.find(getCandidateLiveJobFilter())
       .limit(500).lean().select("department workplaceType location jobType");
     const dedupeFilters = (arr) => {
       const seen = new Set();
@@ -488,7 +489,7 @@ exports.getPublicJobs = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
 
     // 1. Build base MongoDB query
-    const baseQuery = { isActive: true, approvalStatus: "APPROVED" };
+    const baseQuery = getCandidateLiveJobFilter();
 
     // 2. Apply $in filters for array-compatible fields
     if (department) {
@@ -654,7 +655,7 @@ exports.getPublicJobs = async (req, res) => {
     }
 
     // 8. Extract available filter options from the full pool
-    const fullPool = await Job.find({ isActive: true, approvalStatus: "APPROVED" })
+    const fullPool = await Job.find(getCandidateLiveJobFilter())
       .limit(300)
       .populate("companyId", "name industry")
       .lean();
@@ -714,11 +715,7 @@ exports.getPublicCompanyDetail = async (req, res) => {
     }
 
     const [jobs, followersCount, reviews] = await Promise.all([
-      Job.find({
-      companyId: company._id,
-      isActive: true,
-      approvalStatus: "APPROVED",
-      }).sort({ createdAt: -1 }),
+      Job.find(getCandidateLiveJobFilter({ companyId: company._id })).sort({ createdAt: -1 }),
       CandidateProfile.countDocuments({ followedCompanyIds: company._id }),
       CompanyReview.find({ companyId: company._id, status: "PUBLISHED" })
         .populate("candidateId", "name")
@@ -1004,10 +1001,9 @@ exports.getLandingPageData = async (req, res) => {
 
     const company = qr.companyId;
 
-    const jobs = await Job.find({
+    const jobs = await Job.find(getCandidateLiveJobFilter({
       companyId: company._id,
-      isActive: true,
-    });
+    }));
 
     qr.scans += 1;
     await qr.save();

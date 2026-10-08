@@ -84,6 +84,7 @@ export default function CommercialPlanBuilderPage() {
     description: "",
     validity: 90,
     validityUnit: "DAYS",
+    gracePeriodDays: 90,
     basePrice: 0,
     discount: 0,
     taxType: "IGST",
@@ -262,16 +263,18 @@ export default function CommercialPlanBuilderPage() {
 
   // Helper to update items and automatically synchronize basePrice when not manually edited
   const updateItemsAndSyncPrice = (newItems, customValidity) => {
-    const pValidity = Number(
-      customValidity !== undefined ? customValidity : builderPlanForm.validity || 90
+    const effectiveDays = Math.max(
+      1,
+      Number(customValidity !== undefined && customValidity !== "" ? customValidity : builderPlanForm.validity || 90)
     );
-    const computedItems = newItems.map((it) => {
+    const computedItems = (newItems || []).map((it) => {
       const prod = getCatalogProduct(it.productId);
-      return computeItemCycle(it, prod, pValidity);
+      return computeItemCycle(it, prod, effectiveDays);
     });
-    const newCatalogSum = calculateItemsCatalogPrice(computedItems, pValidity);
+    const newCatalogSum = calculateItemsCatalogPrice(computedItems, effectiveDays);
     setBuilderPlanForm((prev) => ({
       ...prev,
+      validity: customValidity !== undefined ? customValidity : prev.validity,
       items: computedItems,
       basePrice: isPriceManuallyEdited ? prev.basePrice : newCatalogSum,
     }));
@@ -401,6 +404,7 @@ export default function CommercialPlanBuilderPage() {
       description: plan.description || "",
       validity: planValidity,
       validityUnit: ver.validityUnit || "DAYS",
+      gracePeriodDays: ver.gracePeriodDays !== undefined ? ver.gracePeriodDays : (plan.gracePeriodDays !== undefined ? plan.gracePeriodDays : 90),
       basePrice: savedBasePrice,
       discount: ver.discount || 0,
       taxType: verTaxType,
@@ -453,6 +457,7 @@ export default function CommercialPlanBuilderPage() {
       description: "",
       validity: initialPlanValidity,
       validityUnit: "DAYS",
+      gracePeriodDays: 90,
       basePrice: initialCatalogSum,
       discount: 0,
       taxType: "IGST",
@@ -664,6 +669,8 @@ export default function CommercialPlanBuilderPage() {
 
       const payload = {
         ...builderPlanForm,
+        validity: Math.max(1, Number(builderPlanForm.validity || 90)),
+        gracePeriodDays: Math.max(0, Number(builderPlanForm.gracePeriodDays !== undefined && builderPlanForm.gracePeriodDays !== "" ? builderPlanForm.gracePeriodDays : 90)),
         basePrice: basePriceNum,
         discount: discountNum,
         discountPercent: discountPercentNum,
@@ -899,7 +906,7 @@ export default function CommercialPlanBuilderPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700">Plan Type *</label>
                   <select
@@ -919,13 +926,48 @@ export default function CommercialPlanBuilderPage() {
                   <input
                     type="number"
                     min="1"
-                    value={builderPlanForm.validity}
+                    value={builderPlanForm.validity ?? ""}
                     onChange={(e) => {
-                      const newDays = Math.max(1, Number(e.target.value));
-                      updateItemsAndSyncPrice(builderPlanForm.items, newDays);
+                      const val = e.target.value;
+                      if (val === "") {
+                        setBuilderPlanForm((prev) => ({ ...prev, validity: "" }));
+                        return;
+                      }
+                      const num = Number(val);
+                      updateItemsAndSyncPrice(builderPlanForm.items, num);
+                    }}
+                    onBlur={() => {
+                      if (!builderPlanForm.validity || Number(builderPlanForm.validity) < 1) {
+                        updateItemsAndSyncPrice(builderPlanForm.items, 90);
+                      }
                     }}
                     className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-950"
                   />
+                  <p className="mt-1 text-[11px] text-slate-400">Active duration of the plan.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">Read-Only Grace (Days) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={builderPlanForm.gracePeriodDays ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "") {
+                        setBuilderPlanForm((prev) => ({ ...prev, gracePeriodDays: "" }));
+                        return;
+                      }
+                      const newGrace = Math.max(0, Number(val));
+                      setBuilderPlanForm((prev) => ({ ...prev, gracePeriodDays: newGrace }));
+                    }}
+                    onBlur={() => {
+                      if (builderPlanForm.gracePeriodDays === "" || isNaN(Number(builderPlanForm.gracePeriodDays))) {
+                        setBuilderPlanForm((prev) => ({ ...prev, gracePeriodDays: 90 }));
+                      }
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-950"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">Post-expiry read-only window (0 = lock immediately).</p>
                 </div>
               </div>
 
@@ -1854,7 +1896,9 @@ export default function CommercialPlanBuilderPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-black text-indigo-700">₹{finalPrice.toLocaleString()}</div>
-                    <div className="text-[11px] text-slate-500">{builderPlanForm.validity} Days Validity</div>
+                    <div className="text-[11px] text-slate-500">
+                      {builderPlanForm.validity} Days Active • {builderPlanForm.gracePeriodDays ?? 90}d Read-Only Grace
+                    </div>
                   </div>
                 </div>
 

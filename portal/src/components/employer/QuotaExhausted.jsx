@@ -9,7 +9,8 @@ export default function QuotaExhausted({
     activeTab = "jobs", 
     purchaseUrl = "/manage-quota",
     wrapLayout = true,
-    onSelectPlanType = null
+    onSelectPlanType = null,
+    isPlanExpired = false,
 }) {
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -66,7 +67,7 @@ export default function QuotaExhausted({
                     marginBottom: availablePlans.length > 0 ? '8px' : '12px',
                     textAlign: 'center'
                 }}>
-                    No active {jobTypeLabel} plan found
+                    {isPlanExpired ? "Plan Expired – Renew to Continue" : `No active ${jobTypeLabel} plan found`}
                 </h1>
 
                 {availablePlans.length > 0 ? (
@@ -332,33 +333,37 @@ export default function QuotaExhausted({
                                 marginBottom: '24px',
                                 fontWeight: 400
                             }}>
-                                Continue to purchase plan
+                                {isPlanExpired
+                                    ? "Your plan has expired and remaining unused credits have ended per policy. Renew now to resume full access."
+                                    : "Continue to purchase plan"}
                             </p>
 
                             <button 
-                                onClick={() => navigate(purchaseUrl || '/manage-quota')}
+                                onClick={() => navigate(isPlanExpired ? '/buy-online?renew=true' : (purchaseUrl || '/manage-quota'))}
                                 style={{
                                     padding: '12px 32px',
-                                    background: '#2563EB',
+                                    background: isPlanExpired ? '#D97706' : '#2563EB',
                                     color: '#fff',
                                     border: 'none',
                                     borderRadius: '8px',
                                     fontSize: '15px',
                                     fontWeight: 600,
                                     cursor: 'pointer',
-                                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                                    boxShadow: isPlanExpired
+                                        ? '0 4px 14px rgba(217, 119, 6, 0.25)'
+                                        : '0 4px 14px rgba(37, 99, 235, 0.25)',
                                     transition: 'all 0.2s ease'
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = '#1D4ED8';
+                                    e.currentTarget.style.background = isPlanExpired ? '#B45309' : '#1D4ED8';
                                     e.currentTarget.style.transform = 'translateY(-1px)';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = '#2563EB';
+                                    e.currentTarget.style.background = isPlanExpired ? '#D97706' : '#2563EB';
                                     e.currentTarget.style.transform = 'translateY(0)';
                                 }}
                             >
-                                Proceed to Purchase
+                                {isPlanExpired ? "Renew Plan Now" : "Proceed to Purchase"}
                             </button>
                         </div>
                     ) : (

@@ -140,9 +140,10 @@ export default function SearchResults() {
     );
   }
 
+  const isPlanExpired = Boolean(quotaUsage?.isExpired);
   const isQuotaExhausted = useMemo(() => {
     if (quotaLoading) return false;
-    return !quotaUsage?.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0;
+    return Boolean(quotaUsage?.isExpired) || !quotaUsage?.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0;
   }, [quotaUsage, quotaLoading]);
 
   const availablePlans = useMemo(() => {
@@ -206,7 +207,8 @@ export default function SearchResults() {
         jobTypeLabel="Resume Search"
         availablePlans={availablePlans}
         activeTab="resdex"
-        purchaseUrl="/buy-online"
+        isPlanExpired={isPlanExpired}
+        purchaseUrl="/buy-online?renew=true"
         wrapLayout={true}
       />
     );

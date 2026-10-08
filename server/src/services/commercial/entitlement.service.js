@@ -25,6 +25,47 @@ class EntitlementService {
       .sort({ endDate: -1 })
       .lean();
 
+    // Real-time expiry sweep for company per Q2.7
+    try {
+      const pastEnts = await Entitlement.find({
+        companyId,
+        status: "ACTIVE",
+        expiryDate: { $lt: now },
+      });
+
+      if (pastEnts.length > 0) {
+        const CreditLedgerService = require("./credit-ledger.service");
+        for (const ent of pastEnts) {
+          const forfeitedQty = ent.remainingQuantity || 0;
+          ent.status = "EXPIRED";
+          ent.remainingQuantity = 0;
+          await ent.save();
+
+          if (forfeitedQty > 0) {
+            try {
+              await CreditLedgerService.recordEntry({
+                companyId,
+                subscriptionId: ent.subscriptionId || null,
+                entitlementId: ent._id,
+                productId: ent.productId,
+                productCode: ent.productCode,
+                transactionType: "EXPIRED",
+                quantity: -forfeitedQty,
+                balanceAfter: 0,
+                referenceType: "RealtimeExpiry",
+                referenceId: String(ent._id),
+                expiryDate: ent.expiryDate,
+                notes: `Credits expired upon plan end date (Q2.7 policy)`,
+                createdBy: { id: "system", role: "REALTIME" },
+              });
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (sweepErr) {
+      console.warn("[getCompanyEntitlements] Real-time expiry sweep warning:", sweepErr?.message);
+    }
+
     // Fetch all active entitlements
     const entitlements = await Entitlement.find({
       companyId,
@@ -89,6 +130,91 @@ class EntitlementService {
     // Identify primary active plan subscription
     const primaryPlanSub = activeSubscriptions.find((s) => s.subscriptionType === "PLAN") || null;
 
+    let commercialStatus = primaryPlanSub ? "ACTIVE" : "NO_PLAN";
+    let isGracePeriod = false;
+    let graceDaysRemaining = 0;
+    let planGraceExpiresAt = null;
+    let expiredPlan = null;
+
+    if (!primaryPlanSub) {
+      const lastExpiredSub = await Subscription.findOne({
+        companyId,
+        subscriptionType: "PLAN",
+      }).sort({ endDate: -1 }).populate("planId", "name code planType").lean();
+
+      if (lastExpiredSub && lastExpiredSub.endDate) {
+        const configuredGraceDays = Number(
+          lastExpiredSub.commercialSnapshot?.gracePeriodDays !== undefined
+            ? lastExpiredSub.commercialSnapshot.gracePeriodDays
+            : 90
+        );
+        const graceEnd = new Date(new Date(lastExpiredSub.endDate).getTime() + configuredGraceDays * 24 * 60 * 60 * 1000);
+        planGraceExpiresAt = configuredGraceDays > 0 ? graceEnd : lastExpiredSub.endDate;
+        if (configuredGraceDays > 0 && now <= graceEnd) {
+          commercialStatus = "EXPIRED_GRACE";
+          isGracePeriod = true;
+          graceDaysRemaining = Math.max(0, Math.ceil((graceEnd - now) / (1000 * 60 * 60 * 24)));
+        } else {
+          commercialStatus = "EXPIRED_LOCKED";
+        }
+
+        expiredPlan = {
+          subscriptionId: lastExpiredSub._id,
+          planName: lastExpiredSub.commercialSnapshot?.planName || lastExpiredSub.planId?.name || "Previous Plan",
+          planCode: lastExpiredSub.planId?.code,
+          endDate: lastExpiredSub.endDate,
+          gracePeriodDays: configuredGraceDays,
+          daysSinceExpiry: Math.max(0, Math.floor((now - new Date(lastExpiredSub.endDate)) / (1000 * 60 * 60 * 24))),
+        };
+      }
+    }
+
+    // Fetch Company model to read company planSnapshot and packageExpiresAt directly from Company
+    const Company = require("../../models/Company");
+    const companyDoc = await Company.findById(companyId)
+      .select("name planSnapshot commercialStatus planGraceExpiresAt packageExpiresAt")
+      .lean();
+
+    const companyPlanEndDate = companyDoc?.planSnapshot?.endDate || companyDoc?.packageExpiresAt;
+    const effectiveEndDate = companyPlanEndDate || primaryPlanSub?.endDate || null;
+
+    let daysRemaining = 0;
+    let hoursRemaining = 0;
+    let totalHoursRemaining = 0;
+    let isExpiringSoon = false;
+    let isPlanExpired = false;
+
+    if (effectiveEndDate) {
+      const diffMs = new Date(effectiveEndDate).getTime() - now.getTime();
+      if (diffMs > 0) {
+        totalHoursRemaining = Math.floor(diffMs / (1000 * 60 * 60));
+        daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        isExpiringSoon = totalHoursRemaining <= (7 * 24); // within 7 days (168 hours)
+        isPlanExpired = false;
+      } else {
+        daysRemaining = 0;
+        hoursRemaining = 0;
+        totalHoursRemaining = 0;
+        isExpiringSoon = false;
+        isPlanExpired = true;
+      }
+    }
+
+    if (isPlanExpired) {
+      // Per Q2.7 / Q3.7: When plan is expired, remaining credits are expired/unavailable (available = 0)
+      for (const item of productMap.values()) {
+        item.available = 0;
+      }
+      if (
+        companyDoc?.planSnapshot?.validity > 0 ||
+        (Array.isArray(companyDoc?.planSnapshot?.services) &&
+          companyDoc.planSnapshot.services.some((s) => s.quantity > 0 || s.usedQuantity > 0 || s.validity > 0))
+      ) {
+        Company.expirePlansForExpiredCompanies().catch(() => {});
+      }
+    }
+
     return {
       activePlan: primaryPlanSub
         ? {
@@ -98,9 +224,36 @@ class EntitlementService {
             versionNumber: primaryPlanSub.planVersionNumber,
             startDate: primaryPlanSub.startDate,
             endDate: primaryPlanSub.endDate,
-            daysRemaining: Math.max(0, Math.ceil((new Date(primaryPlanSub.endDate) - now) / (1000 * 60 * 60 * 24))),
+            daysRemaining,
+            hoursRemaining,
+            totalHoursRemaining,
           }
         : null,
+      companyPlan: (companyDoc?.planSnapshot || companyPlanEndDate)
+        ? {
+            planName: companyDoc?.planSnapshot?.planName || primaryPlanSub?.commercialSnapshot?.planName || "Active Plan",
+            planCode: companyDoc?.planSnapshot?.planCode || primaryPlanSub?.planId?.code || "",
+            planType: companyDoc?.planSnapshot?.planType || "PLAN",
+            startDate: companyDoc?.planSnapshot?.startDate || primaryPlanSub?.startDate || null,
+            endDate: effectiveEndDate,
+            packageExpiresAt: companyDoc?.packageExpiresAt || null,
+            gracePeriodDays: companyDoc?.planSnapshot?.gracePeriodDays ?? 90,
+            daysRemaining,
+            hoursRemaining,
+            totalHoursRemaining,
+            isExpiringSoon,
+            isExpired: isPlanExpired,
+          }
+        : null,
+      expiredPlan,
+      commercialStatus: companyDoc?.commercialStatus || commercialStatus,
+      isGracePeriod,
+      graceDaysRemaining,
+      planGraceExpiresAt: companyDoc?.planGraceExpiresAt || planGraceExpiresAt,
+      isExpiringSoon,
+      daysRemaining,
+      hoursRemaining,
+      totalHoursRemaining,
       activeSubscriptionsCount: activeSubscriptions.length,
       products: Array.from(productMap.values()),
     };
@@ -112,6 +265,26 @@ class EntitlementService {
   static async checkEntitlement(companyId, productCode, requestedQuantity = 1) {
     const now = new Date();
     const code = String(productCode).trim().toUpperCase();
+
+    // Check if company's plan is expired per Q2.7 / Q3.7
+    const Company = require("../../models/Company");
+    const company = await Company.findById(companyId).select("planSnapshot packageExpiresAt commercialStatus").lean();
+    const planEndDate = company?.planSnapshot?.endDate || company?.packageExpiresAt;
+    const isCompanyPlanExpired = Boolean(
+      (planEndDate && new Date(planEndDate) < now) ||
+      company?.commercialStatus === "EXPIRED_GRACE" ||
+      company?.commercialStatus === "EXPIRED_LOCKED"
+    );
+
+    if (isCompanyPlanExpired) {
+      return {
+        allowed: false,
+        available: 0,
+        requested: requestedQuantity,
+        productCode: code,
+        reason: "Plan expired",
+      };
+    }
 
     const activeEntitlements = await Entitlement.find({
       companyId,

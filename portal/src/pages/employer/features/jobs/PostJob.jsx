@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import authService from "../../../../services/authService";
+import api from "../../../../services/api";
 import QuotaExhausted from "../../../../components/employer/QuotaExhausted";
 import EmployerLayout from "../../../../components/employer/EmployerLayout";
 import { gsap } from "gsap";
@@ -2681,7 +2682,8 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const [submitError, setSubmitError] = useState("");
   const [createdJob, setCreatedJob] = useState(null);
   const location = useLocation();
-  const urlTypeParam = new URLSearchParams(location.search).get("type");
+  const [searchParams] = useSearchParams();
+  const urlTypeParam = searchParams.get("type") || new URLSearchParams(location.search).get("type");
   const [activeJobType, setActiveJobType] = useState(() => initialJobType || urlTypeParam || null);
 
   useEffect(() => {
@@ -2728,7 +2730,9 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   });
   const [isPaidPlan, setIsPaidPlan] = useState(false);
   const [isPlanExpired, setIsPlanExpired] = useState(false);
-  const currentPlanName = "Free Starter Plan";
+  const [currentPlanName, setCurrentPlanName] = useState("Free Starter Plan");
+  const [companyLiveDurationDays, setCompanyLiveDurationDays] = useState(30);
+  const [companyLiveDurations, setCompanyLiveDurations] = useState(null);
 
   useEffect(() => {
     const checkQuota = async () => {
@@ -2782,8 +2786,38 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             setCurrentPlanName(usageData.planName);
           }
 
-          if (usageData.isExpired) {
+          // Check plan expiry from quota usage and commercial status
+          let isExpired = Boolean(
+            usageData.isExpired ||
+            usageData.commercialStatus === "EXPIRED_GRACE" ||
+            usageData.commercialStatus === "EXPIRED_LOCKED"
+          );
+
+          // Secondary verification against entitlement service if isExpired is not yet true
+          if (!isExpired) {
+            try {
+              const entRes = await api.get("/company-panel/commercial/entitlements");
+              const entData = entRes.data?.data;
+              if (entData) {
+                const cPlan = entData.companyPlan;
+                const ePlan = entData.expiredPlan;
+                const cStatus = entData.commercialStatus;
+                const endDateVal = cPlan?.endDate || entData.activePlan?.endDate || ePlan?.endDate;
+                if (endDateVal && new Date(endDateVal).getTime() <= Date.now()) {
+                  isExpired = true;
+                }
+                if (cStatus === "EXPIRED_GRACE" || cStatus === "EXPIRED_LOCKED" || cPlan?.isExpired) {
+                  isExpired = true;
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (isExpired) {
             setIsPlanExpired(true);
+            setQuotaExhausted(true);
+            setAvailablePlans([]);
+            return;
           }
 
           // If no specific job type was requested (e.g. embedded in SendMivite or plain /post-job without ?type=),
@@ -2913,6 +2947,8 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         const res = await authService.getEmployerProfile();
         const comp = res?.data?.company;
         if (comp) {
+          if (comp.jobLiveDurations) setCompanyLiveDurations(comp.jobLiveDurations);
+          if (comp.jobLiveDurationDays) setCompanyLiveDurationDays(comp.jobLiveDurationDays);
           if (comp.name && !formData.companyName) {
             setFormData((p) => ({ ...p, companyName: comp.name }));
           }
@@ -3322,8 +3358,8 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
 
       const isSMB =
         activeJobType === "management" ||
-        searchParams.get("type") === "management" ||
-        (!activeJobType && !searchParams.get("type"));
+        searchParams?.get("type") === "management" ||
+        (!activeJobType && !searchParams?.get("type") && !isInternship && !isHot);
 
       const payload = {
         title: formData.jobTitle,
@@ -3350,6 +3386,15 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         deadline: formData.cvEndDate || undefined,
         screeningQuestions,
         externalLink: formData.externalLink || "",
+        liveDurationDays: (() => {
+          if (companyLiveDurations) {
+            if (isHot && companyLiveDurations.hotVacancy) return companyLiveDurations.hotVacancy;
+            if (isSMB && companyLiveDurations.smb) return companyLiveDurations.smb;
+            if (isInternship && companyLiveDurations.internship) return companyLiveDurations.internship;
+            if (companyLiveDurations.standard) return companyLiveDurations.standard;
+          }
+          return companyLiveDurationDays || 30;
+        })(),
         // Map URL ?type param → DB enum: hot → "hot", management → "management", internship → "internship"
         jobCategory: activeJobType && ["hot", "management", "internship"].includes(activeJobType)
           ? activeJobType
@@ -3610,6 +3655,8 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
       <QuotaExhausted
         jobTypeLabel={jobTypeLabel}
         availablePlans={availablePlans}
+        isPlanExpired={isPlanExpired}
+        purchaseUrl="/buy-online?renew=true"
         wrapLayout={!isEmbedded}
         onSelectPlanType={(type) => {
           setActiveJobType(type);
@@ -3727,6 +3774,59 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             </Link>
           </div>
         )}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+            background: "#F8FAFC",
+            border: "1px solid #E2E8F0",
+            borderRadius: 12,
+            padding: "10px 16px",
+            marginBottom: 16,
+            fontSize: 12.5,
+            color: "#334155",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontWeight: 700, color: "#002366" }}>Posting Type:</span>
+            <span
+              style={{
+                fontWeight: 700,
+                background: isHot ? "#FEF3C7" : isInternship ? "#F5F3FF" : isSMB ? "#EFF6FF" : "#F1F5F9",
+                color: isHot ? "#B45309" : isInternship ? "#7C3AED" : isSMB ? "#1D4ED8" : "#475569",
+                padding: "2px 8px",
+                borderRadius: 6,
+                fontSize: 12,
+              }}
+            >
+              {jobTypeLabel}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <FiClock size={15} color="#059669" />
+            <span>
+              Live on candidate portal for{" "}
+              <strong style={{ color: "#059669" }}>
+                {(() => {
+                  if (companyLiveDurations) {
+                    if (isHot && companyLiveDurations.hotVacancy) return companyLiveDurations.hotVacancy;
+                    if (isSMB && companyLiveDurations.smb) return companyLiveDurations.smb;
+                    if (isInternship && companyLiveDurations.internship) return companyLiveDurations.internship;
+                    if (companyLiveDurations.standard) return companyLiveDurations.standard;
+                  }
+                  return companyLiveDurationDays || 30;
+                })()}{" "}
+                Days
+              </strong>{" "}
+              (from Company Profile)
+            </span>
+          </div>
+        </div>
 
         <ProgressBar currentStep={step} totalSteps={STEPS.length} isInternship={isInternship} />
 

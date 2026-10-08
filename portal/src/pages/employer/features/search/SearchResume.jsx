@@ -378,9 +378,10 @@ export default function SearchResume() {
     return count;
   }, [filters]);
 
+  const isPlanExpired = Boolean(quotaUsage?.isExpired);
   const isSearchExhausted = useMemo(() => {
     if (quotaLoading) return false;
-    return !quotaUsage?.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0;
+    return Boolean(quotaUsage?.isExpired) || !quotaUsage?.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0;
   }, [quotaUsage, quotaLoading]);
 
   const isMivitesExhausted = useMemo(() => {
@@ -830,7 +831,8 @@ export default function SearchResume() {
               jobTypeLabel="Resume Search"
               availablePlans={availablePlansForSearch}
               activeTab="resdex"
-              purchaseUrl="/buy-online"
+              isPlanExpired={isPlanExpired}
+              purchaseUrl="/buy-online?renew=true"
               wrapLayout={false}
             />
           ) : (
@@ -1773,7 +1775,8 @@ export default function SearchResume() {
               jobTypeLabel="Send MIvites"
               availablePlans={availablePlansForMivites}
               activeTab="resdex"
-              purchaseUrl="/buy-online"
+              isPlanExpired={isPlanExpired}
+              purchaseUrl="/buy-online?renew=true"
               wrapLayout={false}
             />
           ) : (

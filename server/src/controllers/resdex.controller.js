@@ -257,6 +257,16 @@ async function esSearchCandidates(req, res) {
 }
 
 exports.searchCandidates = asyncHandler(async (req, res) => {
+  // Plan Expiry Check (Q3.7): Expired companies in read-only grace or locked status cannot search resumes
+  const commercialStatus = req.company?.commercialStatus || "ACTIVE";
+  if (commercialStatus === "EXPIRED_GRACE" || commercialStatus === "EXPIRED_LOCKED") {
+    return res.status(402).json({
+      success: false,
+      code: "PLAN_EXPIRED",
+      message: "Your plan has expired. You are currently in a read-only grace period and cannot search resumes. Please renew your plan to access Resdex.",
+    });
+  }
+
   // ── Quota Check: Ensure company has active Resume Search / CV access ──
   const { checkAndEnforceQuota } = require("../services/quota-enforcement.service");
   try {

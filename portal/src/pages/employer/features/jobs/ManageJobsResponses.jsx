@@ -1039,6 +1039,11 @@ export default function ManageJobsResponses() {
                             {job.status === 'closed' && (
                               <span className="mjr-job-tag closed">Closed</span>
                             )}
+                            {(job.status === 'expired' || job.isLiveExpired) && (
+                              <span className="mjr-job-tag expired" title="Live duration ended. Candidate view hidden; responses remain accessible.">
+                                Live Ended
+                              </span>
+                            )}
                           </div>
                         </div>
 

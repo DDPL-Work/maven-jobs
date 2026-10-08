@@ -158,6 +158,27 @@ exports.useCredits = asyncHandler(async (req, res) => {
   // Skip quota check if the resume has already been paid for (free re-access)
   const alreadyPaid = await PaidResume.findOne({ companyId, candidateId }).lean();
   const allocationPolicy = req.company?.quotaConfig?.allocationPolicy || 'full';
+  const commercialStatus = req.company?.commercialStatus || "ACTIVE";
+
+  // Per Q3.7: 90-day grace period allows viewing already-paid resumes; once EXPIRED_LOCKED, historical access is blocked
+  if (alreadyPaid && commercialStatus === "EXPIRED_LOCKED") {
+    const error = createHttpError(
+      402,
+      "The 90-day read-only grace period has ended. Please renew your plan to view candidate profiles."
+    );
+    error.code = "GRACE_PERIOD_EXPIRED";
+    throw error;
+  }
+
+  // Per Q3.7: Cannot view/unlock new resumes during expired grace or locked period
+  if (!alreadyPaid && (commercialStatus === "EXPIRED_GRACE" || commercialStatus === "EXPIRED_LOCKED")) {
+    const error = createHttpError(
+      402,
+      "Your plan has expired. You cannot search or unlock new resumes. Please renew your plan to access Resdex."
+    );
+    error.code = "PLAN_EXPIRED";
+    throw error;
+  }
   
   let hasCommercialResdex = false;
   let resdexCode = null;

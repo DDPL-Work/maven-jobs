@@ -71,6 +71,13 @@ export default function CompanyProfilePage() {
           websiteUrl: comp.websiteUrl || comp.website || '',
           profileHotVacancies: comp.profileHotVacancies || 'Standard',
           profileClassifieds: comp.profileClassifieds || 'Standard',
+          jobLiveDurationDays: comp.jobLiveDurationDays || 30,
+          jobLiveDurations: comp.jobLiveDurations || {
+            standard: comp.jobLiveDurationDays || 30,
+            hotVacancy: comp.jobLiveDurationDays || 30,
+            smb: comp.jobLiveDurationDays || 30,
+            internship: comp.jobLiveDurationDays || 30,
+          },
           phone1: comp.phone1 || comp.phone || '',
           phone2: comp.phone2 || comp.altPhone || '',
           // tanNumber: comp.tanNumber || '',
@@ -149,6 +156,7 @@ export default function CompanyProfilePage() {
       alias: profile.alias || '',
       contactDesignation: profile.contactDesignation || '',
       websiteUrl: profile.websiteUrl || '',
+      jobLiveDurationDays: profile.jobLiveDurationDays || 30,
       phone1: profile.phone1 || '',
       phone2: profile.phone2 || '',
       // tanNumber: profile.tanNumber || '',
@@ -210,6 +218,7 @@ export default function CompanyProfilePage() {
         contactDesignation: companyForm.contactDesignation,
         websiteUrl: companyForm.websiteUrl,
         website: companyForm.websiteUrl,
+        jobLiveDurationDays: Number(companyForm.jobLiveDurationDays) || 30,
         phone1: companyForm.phone1,
         phone: companyForm.phone1,
         phone2: companyForm.phone2,
@@ -227,6 +236,8 @@ export default function CompanyProfilePage() {
           alias: comp.alias || companyForm.alias,
           contactDesignation: comp.contactDesignation || companyForm.contactDesignation,
           websiteUrl: comp.websiteUrl || comp.website || companyForm.websiteUrl,
+          jobLiveDurationDays: comp.jobLiveDurationDays || Number(companyForm.jobLiveDurationDays) || 30,
+          jobLiveDurations: comp.jobLiveDurations || prev.jobLiveDurations,
           phone1: comp.phone1 || comp.phone || companyForm.phone1,
           phone2: comp.phone2 || comp.altPhone || companyForm.phone2,
           // tanNumber: comp.tanNumber || companyForm.tanNumber,
@@ -679,6 +690,32 @@ export default function CompanyProfilePage() {
             />
             <ProfileRow label="Profile for Hot Vacancies" value={profile.profileHotVacancies || 'Standard'} />
             <ProfileRow label="Profile for Classifieds" value={profile.profileClassifieds || 'Standard'} />
+            <ProfileRow
+              label="Job Live Duration"
+              value={
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 800, color: '#059669', fontSize: 13.5 }}>
+                      {profile.jobLiveDurationDays || 30} Days Live
+                    </span>
+                    <span style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      border: '1px solid #a7f3d0',
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                    }}>
+                      Candidate Portal Visibility
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                    Hot Vacancy: {profile.jobLiveDurations?.hotVacancy || profile.jobLiveDurationDays || 30}d • SMB Job: {profile.jobLiveDurations?.smb || profile.jobLiveDurationDays || 30}d • Internship: {profile.jobLiveDurations?.internship || profile.jobLiveDurationDays || 30}d • Standard: {profile.jobLiveDurations?.standard || profile.jobLiveDurationDays || 30}d
+                  </div>
+                </div>
+              }
+            />
             <ProfileRow label="Phone Number 1" value={profile.phone1} />
             <ProfileRow label="Phone Number 2" value={profile.phone2} />
             {/* <ProfileRow label="TAN Number" value={profile.tanNumber} /> */}
@@ -900,6 +937,10 @@ export default function CompanyProfilePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: hasHotVacancy ? '#059669' : '#94a3b8', fontWeight: 600 }}>
                   {hasHotVacancy ? <FiCheck size={13} /> : <FiLock size={13} />}
                   <span>Hot Vacancy (Logo Branding & 3 Cities)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
+                  <FiCheck size={13} />
+                  <span>Live on Candidate Portal for {profile.jobLiveDurationDays || 30} Days</span>
                 </div>
               </div>
             </div>
@@ -1187,6 +1228,23 @@ export default function CompanyProfilePage() {
                   onChange={(e) => setCompanyForm({ ...companyForm, websiteUrl: e.target.value })}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: 13.5, boxSizing: 'border-box' }}
                 />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>
+                  Job Live Duration (Days)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={companyForm.jobLiveDurationDays}
+                  onChange={(e) => setCompanyForm({ ...companyForm, jobLiveDurationDays: Number(e.target.value) || '' })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: 13.5, boxSizing: 'border-box' }}
+                />
+                <span style={{ display: 'block', fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                  Number of days all newly posted company jobs remain live on the candidate portal (default 30 days)
+                </span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>

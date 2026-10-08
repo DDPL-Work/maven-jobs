@@ -41,6 +41,7 @@ const aiService = require("../services/ai/AIService");
 
 const OpenAIService = require("../services/openai/OpenAIService");
 const { scoreJob } = require("../recommendations/engine/scoringEngine");
+const { getCandidateLiveJobFilter, isJobLiveForCandidate } = require("../utils/job-live.utils");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -878,17 +879,13 @@ const resolveQrContext = async (
 
   const jobs = await Job.find(
     mappedJobId && !expandToCompanyJobs
-      ? {
-        _id: qrCode.jobId,
-        companyId: qrCode.companyId._id,
-        isActive: true,
-        approvalStatus: "APPROVED",
-      }
-      : {
-        companyId: qrCode.companyId._id,
-        isActive: true,
-        approvalStatus: "APPROVED",
-      },
+      ? getCandidateLiveJobFilter({
+          _id: qrCode.jobId,
+          companyId: qrCode.companyId._id,
+        })
+      : getCandidateLiveJobFilter({
+          companyId: qrCode.companyId._id,
+        }),
   )
     .sort({ updatedAt: -1 })
     .limit(limit)
@@ -947,7 +944,7 @@ const getRecommendedJobs = async (profile, candidateId) => {
   }
 
   // Always fetch all active jobs to populate categories (hot vacancies first)
-  const allJobs = await Job.find({ isActive: true, approvalStatus: "APPROVED" })
+  const allJobs = await Job.find(getCandidateLiveJobFilter())
     .sort({ isHotVacancy: -1, updatedAt: -1 })
     .populate("companyId", "name logoUrl");
 
@@ -1044,18 +1041,18 @@ const getRecommendedJobs = async (profile, candidateId) => {
 };
 
 const buildSimilarJobs = async (job, candidateId) => {
-  const similarJobs = await Job.find({
-    _id: { $ne: job._id },
-    isActive: true,
-    approvalStatus: "APPROVED",
-    $or: [
-      { companyId: job.companyId?._id || job.companyId },
-      job.department ? { department: job.department } : null,
-      Array.isArray(job.skills) && job.skills.length
-        ? { skills: { $in: job.skills } }
-        : null,
-    ].filter(Boolean),
-  })
+  const similarJobs = await Job.find(
+    getCandidateLiveJobFilter({
+      _id: { $ne: job._id },
+      $or: [
+        { companyId: job.companyId?._id || job.companyId },
+        job.department ? { department: job.department } : null,
+        Array.isArray(job.skills) && job.skills.length
+          ? { skills: { $in: job.skills } }
+          : null,
+      ].filter(Boolean),
+    })
+  )
     .sort({ isHotVacancy: -1, updatedAt: -1 })
     .limit(5)
     .populate("companyId", "name logoUrl coverImageUrl");
@@ -1744,10 +1741,7 @@ exports.getJobs = asyncHandler(async (req, res) => {
       return bHot ? 1 : -1;
     });
   } else {
-    jobs = await Job.find({
-      isActive: true,
-      approvalStatus: "APPROVED",
-    })
+    jobs = await Job.find(getCandidateLiveJobFilter())
       .sort({ isHotVacancy: -1, updatedAt: -1 })
       .limit(300)
       .populate("companyId", "name industry coverImageUrl");
@@ -1812,16 +1806,16 @@ exports.getJobSuggestions = asyncHandler(async (req, res) => {
   const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(escaped, "i");
 
-  const jobs = await Job.find({
-    isActive: true,
-    approvalStatus: "APPROVED",
-    $or: [
-      { title: regex },
-      { skills: regex },
-      { location: regex },
-      { department: regex },
-    ],
-  })
+  const jobs = await Job.find(
+    getCandidateLiveJobFilter({
+      $or: [
+        { title: regex },
+        { skills: regex },
+        { location: regex },
+        { department: regex },
+      ],
+    })
+  )
     .sort({ updatedAt: -1 })
     .limit(3)
     .populate("companyId", "name")
@@ -1849,8 +1843,8 @@ exports.getJobDetail = asyncHandler(async (req, res) => {
     req.user ? ensureCandidateProfile(req.user) : Promise.resolve(null),
   ]);
 
-  if (!job || !job.isActive || job.approvalStatus !== "APPROVED") {
-    throw createHttpError(404, "Job not found");
+  if (!job || !isJobLiveForCandidate(job)) {
+    throw createHttpError(404, "Job not found or is no longer live");
   }
 
   const companyIdStr = String(job.companyId?._id || job.companyId || "");
@@ -1953,8 +1947,8 @@ exports.createApplication = asyncHandler(async (req, res) => {
 
   const job = await Job.findById(jobId).populate("companyId", "name");
 
-  if (!job || !job.isActive || job.approvalStatus !== "APPROVED") {
-    throw createHttpError(404, "Job is not available for applications");
+  if (!job || !isJobLiveForCandidate(job)) {
+    throw createHttpError(404, "This job posting has expired and is no longer accepting applications");
   }
 
   const existingApplication = await Application.findOne({

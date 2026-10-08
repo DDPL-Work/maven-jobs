@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import {
   FiPlus, FiMoreVertical, FiChevronDown, FiInfo,
   FiSearch, FiCheck, FiX, FiLock, FiShield,
-  FiClock, FiGlobe, FiTrash2, FiEdit3, FiCheckCircle,
+  FiClock, FiGlobe, FiTrash2, FiEdit3, FiCheckCircle, FiAlertCircle,
   FiPhone, FiArrowLeft, FiRefreshCw, FiEye, FiEyeOff, FiLoader,
   FiShoppingCart, FiExternalLink
 } from 'react-icons/fi';
@@ -194,10 +194,33 @@ export default function UserManagement() {
     return sorted.join(', ');
   };
 
-  // Toast notification
+  // Toast notification state: { message, type: 'success' | 'error' } | null
   const [toast, setToast] = useState(null);
-  const showToast = (message) => {
-    setToast(message);
+  const showToast = (message, type = 'success') => {
+    if (!message) return;
+    let detectedType = type;
+    if (type !== 'error') {
+      const lower = String(message).toLowerCase();
+      if (
+        lower.includes('fail') ||
+        lower.includes('err') ||
+        lower.includes('cannot') ||
+        lower.includes("can't") ||
+        lower.includes('not allowed') ||
+        lower.includes('not included') ||
+        lower.includes('not available') ||
+        lower.includes('limit reached') ||
+        lower.includes('locked') ||
+        lower.includes('invalid') ||
+        lower.includes('denied') ||
+        lower.includes('unable') ||
+        lower.includes('expired') ||
+        lower.includes('no recruiter')
+      ) {
+        detectedType = 'error';
+      }
+    }
+    setToast({ message: String(message), type: detectedType });
     setTimeout(() => setToast(null), 3500);
   };
 
@@ -334,7 +357,7 @@ export default function UserManagement() {
     });
   }, [users, activeTab, userFilter, searchQuery]);
 
-  // Master Checkbox - Only RECRUITERs can be selected (CLIENTs cannot be selected)
+  // Master Checkbox - Only RECRUITERs can be selected (Super Users cannot be selected)
   const selectableUsers = useMemo(() => {
     return filteredUsers.filter((u) => !u.isSuperUser);
   }, [filteredUsers]);
@@ -352,7 +375,7 @@ export default function UserManagement() {
 
   const handleSelectUser = (id) => {
     const target = users.find((u) => u.id === id);
-    if (target?.isSuperUser) return; // CLIENT cannot be selected
+    if (target?.isSuperUser) return; // Super User cannot be selected
     setSelectedUserIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -530,7 +553,7 @@ export default function UserManagement() {
   const handleDeleteUser = async (userId) => {
     const target = users.find((u) => u.id === userId);
     if (target?.isSuperUser) {
-      showToast('CLIENT cannot be deleted');
+      showToast('Super User cannot be deleted', 'error');
       return;
     }
     setConfirmModal({
@@ -544,7 +567,7 @@ export default function UserManagement() {
           setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
           showToast(`RECRUITER "${target?.name || ''}" deleted successfully.`);
         } catch (err) {
-          showToast(err?.message || 'Failed to delete user');
+          showToast(err?.message || 'Failed to delete user', 'error');
         }
       }
     });
@@ -564,7 +587,7 @@ export default function UserManagement() {
           setSelectedUserIds([]);
           showToast('Selected user(s) removed successfully.');
         } catch (err) {
-          showToast(err?.message || 'Failed to delete users');
+          showToast(err?.message || 'Failed to delete users', 'error');
         }
       }
     });
@@ -600,7 +623,7 @@ export default function UserManagement() {
         setOtpSessionId(res.data.sessionId);
         setMaskedPhone(res.data.maskedPhone); // can be masked email or phone
         setOtpTimer(res.data.expiresInSeconds || 600);
-        showToast(`Verification OTP sent to CLIENT's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
+        showToast(`Verification OTP sent to Super User's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
       }
     } catch (err) {
       setDomainError(err?.message || 'Failed to send OTP');
@@ -758,7 +781,7 @@ export default function UserManagement() {
         u.id,
         u.name,
         u.email,
-        u.isSuperUser ? 'CLIENT' : 'RECRUITER',
+        u.isSuperUser ? 'Super User' : 'RECRUITER',
         u.isRestricted ? 'Yes' : 'No',
         u.resdex ? 'Yes' : 'No',
         u.jobPosting ? 'Yes' : 'No',
@@ -813,21 +836,32 @@ export default function UserManagement() {
               top: 24,
               right: 24,
               zIndex: 99999,
-              backgroundColor: '#002366',
+              backgroundColor: toast.type === 'error' ? '#DC2626' : '#002366',
               color: '#ffffff',
               padding: '12px 20px',
               borderRadius: 8,
-              boxShadow: '0 8px 24px rgba(0, 35, 102, 0.2)',
+              boxShadow: toast.type === 'error'
+                ? '0 8px 24px rgba(220, 38, 38, 0.28)'
+                : '0 8px 24px rgba(0, 35, 102, 0.2)',
+              border: toast.type === 'error'
+                ? '1px solid rgba(254, 202, 202, 0.3)'
+                : '1px solid rgba(255, 255, 255, 0.12)',
               fontSize: 14,
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               gap: 8,
               animation: 'umFadeIn 0.2s ease',
+              maxWidth: '440px',
+              lineHeight: 1.4,
             }}
           >
-            <FiCheckCircle size={17} color="#10b981" />
-            {toast}
+            {toast.type === 'error' ? (
+              <FiAlertCircle size={18} color="#FFFFFF" style={{ flexShrink: 0 }} />
+            ) : (
+              <FiCheckCircle size={17} color="#10b981" style={{ flexShrink: 0 }} />
+            )}
+            <span>{toast.message}</span>
           </div>
         )}
 
@@ -1472,8 +1506,8 @@ export default function UserManagement() {
                               cursor: 'not-allowed',
                               opacity: 0.35,
                             }}
-                            title="CLIENT cannot be selected"
-                            aria-label="CLIENT cannot be selected"
+                            title="Super User cannot be selected"
+                            aria-label="Super User cannot be selected"
                           />
                         ) : (
                           <input
@@ -1509,7 +1543,7 @@ export default function UserManagement() {
                             <div className="um-user-name-row" style={{ cursor: 'pointer' }}>
                               <span className="um-user-name" style={{ cursor: 'pointer' }}>{u.name}</span>
                               {u.isSuperUser && (
-                                <span className="um-badge-superuser" style={{ cursor: 'pointer' }}>CLIENT</span>
+                                <span className="um-badge-superuser" style={{ cursor: 'pointer' }}>Super User</span>
                               )}
                             </div>
                             <span className="um-user-email" style={{ cursor: 'pointer' }}>{u.email}</span>
@@ -1587,7 +1621,7 @@ export default function UserManagement() {
                         </button>
                       </td>
 
-                      {/* Row Actions on Hover: CLIENT shows ONLY Edit; RECRUITERs show Edit & Delete */}
+                      {/* Row Actions on Hover: Super User shows ONLY Edit; RECRUITERs show Edit & Delete */}
                       <td className="um-td um-td-actions" style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
                         <div className="um-row-actions">
                           <button
@@ -1975,7 +2009,7 @@ export default function UserManagement() {
                           <FiShield size={20} color="#0ea5e9" />
                         </div>
                         <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                          To authorize {domainAction === 'delete' ? `deleting the domain ${targetDomain}` : domainAction === 'edit' ? `editing the domain ${targetDomain}` : 'adding a new domain'}, enter the 6-digit OTP sent to the CLIENT's registered {otpMethod === 'email' ? 'email' : 'mobile number'}:{' '}
+                          To authorize {domainAction === 'delete' ? `deleting the domain ${targetDomain}` : domainAction === 'edit' ? `editing the domain ${targetDomain}` : 'adding a new domain'}, enter the 6-digit OTP sent to the Super User's registered {otpMethod === 'email' ? 'email' : 'mobile number'}:{' '}
                           <strong style={{ color: '#002366' }}>{maskedPhone}</strong>
                         </div>
                       </div>
@@ -2069,7 +2103,7 @@ export default function UserManagement() {
                       }}
                     >
                       <FiCheckCircle size={17} color="#10b981" />
-                      CLIENT {otpMethod === 'email' ? 'Email' : 'Phone'} Verified ({maskedPhone})
+                      Super User {otpMethod === 'email' ? 'Email' : 'Phone'} Verified ({maskedPhone})
                     </div>
 
                     <div className="um-form-group">

@@ -38,6 +38,14 @@ const jobSchema = new mongoose.Schema(
     skills: [String],
 
     deadline: Date,
+    liveDurationDays: {
+      type: Number,
+      default: 30,
+    },
+    liveUntil: {
+      type: Date,
+      index: true,
+    },
 
     description: String,        // Role Description
     responsibilities: String,   // Key Responsibilities
@@ -120,6 +128,21 @@ jobSchema.index({ isActive: 1, approvalStatus: 1, isHotVacancy: -1, updatedAt: -
 jobSchema.pre("save", function (next) {
   if (this.isModified("jobCategory") || this.isHotVacancy === undefined) {
     this.isHotVacancy = this.jobCategory === "hot";
+  }
+  if (typeof next === "function") next();
+});
+
+// Calculate default liveUntil and deadline based on liveDurationDays
+jobSchema.pre("save", function (next) {
+  if (!this.liveDurationDays) {
+    this.liveDurationDays = 30;
+  }
+  if (!this.liveUntil) {
+    const baseDate = this.createdAt ? new Date(this.createdAt) : new Date();
+    this.liveUntil = new Date(baseDate.getTime() + this.liveDurationDays * 24 * 60 * 60 * 1000);
+  }
+  if (!this.deadline) {
+    this.deadline = this.liveUntil;
   }
   if (typeof next === "function") next();
 });

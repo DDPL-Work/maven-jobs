@@ -156,6 +156,7 @@ const { initResdexReportScheduler } = require("./src/scheduler/resdexReport.sche
 const { initSearchLogsScheduler } = require("./src/scheduler/searchLogs.scheduler");
 const { initRemindersScheduler } = require("./src/scheduler/reminders.scheduler");
 const { initRequirementAlertScheduler } = require("./src/scheduler/requirementAlert.scheduler");
+const { initSubscriptionExpiryScheduler } = require("./src/scheduler/subscriptionExpiry.scheduler");
 
 connectDB()
   .then(() => {
@@ -165,6 +166,7 @@ connectDB()
     initSearchLogsScheduler();
     initRemindersScheduler();
     initRequirementAlertScheduler();
+    initSubscriptionExpiryScheduler();
   })
   .catch((error) => {
     console.error("[server] Failed to connect to database:", error);

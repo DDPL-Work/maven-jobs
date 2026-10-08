@@ -1166,6 +1166,8 @@ exports.createJob = asyncHandler(async (req, res) => {
   }
 
   const parsedStipend = stipend !== undefined ? Number(stipend || 0) : undefined;
+  const liveDurationDays = 30;
+  const liveUntil = new Date(Date.now() + liveDurationDays * 24 * 60 * 60 * 1000);
 
   const job = await Job.create({
     companyId: company._id,
@@ -1184,7 +1186,9 @@ exports.createJob = asyncHandler(async (req, res) => {
     internshipDuration: String(internshipDuration || "").trim(),
     internshipStartDate: String(internshipStartDate || "").trim(),
     skills,
-    deadline,
+    deadline: deadline || liveUntil,
+    liveDurationDays,
+    liveUntil,
     description: description.trim(),
     responsibilities: responsibilities.trim(),
     qualifications: qualifications.trim(),

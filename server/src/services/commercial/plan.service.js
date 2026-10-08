@@ -198,7 +198,7 @@ class PlanService {
     if (!Array.isArray(items) || items.length === 0) {
       const numBase = Number(basePrice || 0);
       const numDisc = Number(discount || 0);
-      const gstCalc = resolvePlanGst({
+      const gstCalc = this.resolvePlanGst({
         basePrice: numBase,
         discount: numDisc,
         taxType,
@@ -328,7 +328,7 @@ class PlanService {
 
     const numDiscount = Math.max(0, Number(discount || 0));
 
-    const gstCalc = resolvePlanGst({
+    const gstCalc = this.resolvePlanGst({
       basePrice: finalBasePrice,
       discount: numDiscount,
       taxType,
@@ -382,6 +382,7 @@ class PlanService {
     // Calculate item quotas and catalog prices based on product duration cycle vs plan duration
     const validity = Math.max(1, Number(data.validity || 90));
     const validityUnit = data.validityUnit || "DAYS";
+    const gracePeriodDays = Math.max(0, Number(data.gracePeriodDays !== undefined ? data.gracePeriodDays : 90));
     const explicitFinalPrice = data.finalPrice !== undefined ? data.finalPrice : data.sellPrice;
 
     const calcResult = await PlanService.recalculatePlanItemsAndPricing({
@@ -412,6 +413,7 @@ class PlanService {
       featured: Boolean(data.featured),
       isDefault: Boolean(data.isDefault),
       displayOrder: Number(data.displayOrder || 0),
+      gracePeriodDays,
       basePrice: calcResult.basePrice,
       discount: calcResult.discount,
       discountPercent,
@@ -437,6 +439,7 @@ class PlanService {
       billingCycle: data.billingCycle || "CUSTOM",
       validity,
       validityUnit,
+      gracePeriodDays,
       basePrice: calcResult.basePrice,
       discount: calcResult.discount,
       discountPercent,
@@ -511,6 +514,7 @@ class PlanService {
     if (data.featured !== undefined) plan.featured = Boolean(data.featured);
     if (data.isDefault !== undefined) plan.isDefault = Boolean(data.isDefault);
     if (data.displayOrder !== undefined) plan.displayOrder = Number(data.displayOrder);
+    if (data.gracePeriodDays !== undefined) plan.gracePeriodDays = Math.max(0, Number(data.gracePeriodDays));
 
     // Also update the active/published plan version if pricing or items are provided
     if (
@@ -525,7 +529,8 @@ class PlanService {
       data.finalPrice !== undefined ||
       data.sellPrice !== undefined ||
       data.validity !== undefined ||
-      data.billingCycle !== undefined
+      data.billingCycle !== undefined ||
+      data.gracePeriodDays !== undefined
     ) {
       let activeVer = await PlanVersion.findOne({
         planId: plan._id,
@@ -542,6 +547,7 @@ class PlanService {
         if (data.name !== undefined) activeVer.name = `${plan.name} v${activeVer.version}`;
         if (data.description !== undefined) activeVer.description = data.description;
         if (data.billingCycle !== undefined) activeVer.billingCycle = data.billingCycle;
+        if (data.gracePeriodDays !== undefined) activeVer.gracePeriodDays = Math.max(0, Number(data.gracePeriodDays));
 
         const validityDays = Math.max(1, Number(data.validity !== undefined ? data.validity : activeVer.validity));
         const validityUnit = data.validityUnit || activeVer.validityUnit || "DAYS";
@@ -633,6 +639,7 @@ class PlanService {
 
     const validity = Math.max(1, Number(data.validity || latestVersionDoc?.validity || 90));
     const validityUnit = data.validityUnit || latestVersionDoc?.validityUnit || "DAYS";
+    const gracePeriodDays = Math.max(0, Number(data.gracePeriodDays ?? latestVersionDoc?.gracePeriodDays ?? plan.gracePeriodDays ?? 90));
     const rawItems = Array.isArray(data.items) ? data.items : (latestVersionDoc?.items || []);
     const explicitFinalPrice = data.finalPrice !== undefined ? data.finalPrice : data.sellPrice;
 
@@ -660,6 +667,7 @@ class PlanService {
       billingCycle: data.billingCycle || latestVersionDoc?.billingCycle || "CUSTOM",
       validity,
       validityUnit,
+      gracePeriodDays,
       basePrice: calcResult.basePrice,
       discount: calcResult.discount,
       discountPercent: calcResult.basePrice > 0 ? Math.round((calcResult.discount / calcResult.basePrice) * 100) : 0,
@@ -711,6 +719,7 @@ class PlanService {
     if (data.billingCycle !== undefined) version.billingCycle = data.billingCycle;
     if (data.description !== undefined) version.description = data.description;
     if (data.changelog !== undefined) version.changelog = data.changelog;
+    if (data.gracePeriodDays !== undefined) version.gracePeriodDays = Math.max(0, Number(data.gracePeriodDays));
 
     const validity = Math.max(1, Number(data.validity !== undefined ? data.validity : version.validity));
     const validityUnit = data.validityUnit || version.validityUnit || "DAYS";

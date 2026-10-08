@@ -74,6 +74,29 @@ exports.createCommercialOrder = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "Invalid purchase amount" });
   }
 
+  // If purchasing standalone products (productId or offerId without planId), verify company's plan is not expired
+  if (!planId) {
+    try {
+      const entCheck = await EntitlementService.getCompanyEntitlements(companyId);
+      const isPlanExpired = Boolean(
+        entCheck?.companyPlan?.isExpired ||
+        entCheck?.isPlanExpired ||
+        entCheck?.commercialStatus === "EXPIRED_GRACE" ||
+        entCheck?.commercialStatus === "EXPIRED_LOCKED" ||
+        Boolean(entCheck?.expiredPlan) ||
+        (entCheck?.companyPlan?.endDate && new Date(entCheck.companyPlan.endDate) < new Date())
+      );
+      if (isPlanExpired) {
+        return res.status(403).json({
+          success: false,
+          message: "Your subscription plan has expired. Standalone products cannot be purchased without an active plan. Please purchase or renew a combined hiring plan.",
+        });
+      }
+    } catch (checkErr) {
+      console.error("[createCommercialOrder] Entitlement check error:", checkErr);
+    }
+  }
+
   const rzp = getRzp();
   let rzpOrder;
   try {
@@ -228,6 +251,27 @@ exports.purchaseProductOffer = asyncHandler(async (req, res) => {
 
   if (!offerId && !productId) {
     return res.status(400).json({ success: false, message: "offerId or productId is required" });
+  }
+
+  // Verify company's plan is not expired before purchasing standalone products
+  try {
+    const entCheck = await EntitlementService.getCompanyEntitlements(companyId);
+    const isPlanExpired = Boolean(
+      entCheck?.companyPlan?.isExpired ||
+      entCheck?.isPlanExpired ||
+      entCheck?.commercialStatus === "EXPIRED_GRACE" ||
+      entCheck?.commercialStatus === "EXPIRED_LOCKED" ||
+      Boolean(entCheck?.expiredPlan) ||
+      (entCheck?.companyPlan?.endDate && new Date(entCheck.companyPlan.endDate) < new Date())
+    );
+    if (isPlanExpired) {
+      return res.status(403).json({
+        success: false,
+        message: "Your subscription plan has expired. Standalone products cannot be purchased without an active plan. Please purchase or renew a combined hiring plan.",
+      });
+    }
+  } catch (checkErr) {
+    console.error("[purchaseProductOffer] Entitlement check error:", checkErr);
   }
 
   const result = await PurchaseService.purchaseProductOffer({

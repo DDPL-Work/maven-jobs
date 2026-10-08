@@ -226,14 +226,61 @@ const formatCompanyForClient = (company, options = {}) => {
     addressLabel: company.addressLabel || "Primary Address",
     profileHotVacancies: company.profileHotVacancies || "Standard",
     profileClassifieds: company.profileClassifieds || "Standard",
+    jobLiveDurationDays: company.jobLiveDurationDays || 30,
+    jobLiveDurations: {
+      standard: company.jobLiveDurations?.standard || company.jobLiveDurationDays || 30,
+      hotVacancy: company.jobLiveDurations?.hotVacancy || company.jobLiveDurationDays || 30,
+      smb: company.jobLiveDurations?.smb || company.jobLiveDurationDays || 30,
+      internship: company.jobLiveDurations?.internship || company.jobLiveDurationDays || 30,
+    },
     specialties: company.specialties || [],
     perks: company.perks || [],
     linkedIn: company.linkedIn || "",
     status: company.status || "ACTIVE",
     packageType: company.packageType || "STANDARD",
     plan: company.planSnapshot?.planName || company.packageType || "FREE",
-    planSnapshot: company.planSnapshot || null,
-    services: company.planSnapshot?.services || [],
+    planSnapshot: (() => {
+      const now = new Date();
+      const planEnd = company.planSnapshot?.endDate || company.packageExpiresAt;
+      const isPlanExpired = Boolean(
+        (planEnd && new Date(planEnd) < now) ||
+        company.commercialStatus === "EXPIRED_GRACE" ||
+        company.commercialStatus === "EXPIRED_LOCKED" ||
+        (company.commercialStatus === "NO_PLAN" && (planEnd ? new Date(planEnd) < now : true))
+      );
+      if (!company.planSnapshot) return null;
+      const rawSnapshot = typeof company.planSnapshot.toObject === "function" ? company.planSnapshot.toObject() : { ...company.planSnapshot };
+      if (isPlanExpired) {
+        rawSnapshot.validity = 0;
+        rawSnapshot.services = (rawSnapshot.services || []).map((s) => ({
+          ...(typeof s.toObject === "function" ? s.toObject() : s),
+          quantity: 0,
+          usedQuantity: 0,
+          validity: 0,
+        }));
+      }
+      return rawSnapshot;
+    })(),
+    services: (() => {
+      const now = new Date();
+      const planEnd = company.planSnapshot?.endDate || company.packageExpiresAt;
+      const isPlanExpired = Boolean(
+        (planEnd && new Date(planEnd) < now) ||
+        company.commercialStatus === "EXPIRED_GRACE" ||
+        company.commercialStatus === "EXPIRED_LOCKED" ||
+        (company.commercialStatus === "NO_PLAN" && (planEnd ? new Date(planEnd) < now : true))
+      );
+      const rawServices = company.planSnapshot?.services || [];
+      if (isPlanExpired) {
+        return rawServices.map((s) => ({
+          ...(typeof s.toObject === "function" ? s.toObject() : s),
+          quantity: 0,
+          usedQuantity: 0,
+          validity: 0,
+        }));
+      }
+      return rawServices;
+    })(),
     jobLimit: resolvedJobLimit,
     activeJobCount,
     remainingSlots: Math.max(resolvedJobLimit - activeJobCount, 0),
@@ -1098,6 +1145,16 @@ exports.createJob = asyncHandler(async (req, res) => {
     Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship" }),
   ]);
 
+  // Plan Expiry Check (Q3.7): Expired companies in read-only grace or locked status cannot post new jobs
+  if (company.commercialStatus === "EXPIRED_GRACE" || company.commercialStatus === "EXPIRED_LOCKED") {
+    const error = createHttpError(
+      402,
+      "Your plan has expired. You are currently in a read-only grace period and cannot post new jobs. Please renew your plan to post jobs."
+    );
+    error.code = "PLAN_EXPIRED";
+    throw error;
+  }
+
   let hasCommercialEntitlement = false;
   let entitlementCodeToConsume = null;
 
@@ -1120,6 +1177,15 @@ exports.createJob = asyncHandler(async (req, res) => {
   let matchingPlanService = null;
 
   if (!hasCommercialEntitlement) {
+    const now = new Date();
+    const isPlanSnapshotExpired = Boolean(company.planSnapshot?.endDate && new Date(company.planSnapshot.endDate) < now);
+
+    if (isPlanSnapshotExpired) {
+      const error = createHttpError(402, "Your plan validity has ended. Please renew your plan to post new jobs.");
+      error.code = "PLAN_EXPIRED";
+      throw error;
+    }
+
     if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
       matchingPlanService = company.planSnapshot.services.find(
         (s) =>
@@ -1192,6 +1258,40 @@ exports.createJob = asyncHandler(async (req, res) => {
   const internshipDuration = toTrimmedString(req.body.internshipDuration);
   const internshipStartDate = toTrimmedString(req.body.internshipStartDate);
 
+  // Resolve live duration days configured for this product (SMB Job, Hot Vacancy, Internship)
+  // Priority:
+  // 1. Explicit request payload liveDurationDays
+  // 2. Company profile configured duration (per category or company.jobLiveDurationDays)
+  // 3. Matching plan service / snapshot validity
+  // 4. Product master validity
+  let liveDurationDays = 30;
+  if (req.body.liveDurationDays && Number(req.body.liveDurationDays) > 0) {
+    liveDurationDays = Number(req.body.liveDurationDays);
+  } else if (company.jobLiveDurations) {
+    if (jobCategory === "hot" && company.jobLiveDurations.hotVacancy) {
+      liveDurationDays = Number(company.jobLiveDurations.hotVacancy) || 30;
+    } else if (jobCategory === "management" && company.jobLiveDurations.smb) {
+      liveDurationDays = Number(company.jobLiveDurations.smb) || 30;
+    } else if (jobCategory === "internship" && company.jobLiveDurations.internship) {
+      liveDurationDays = Number(company.jobLiveDurations.internship) || 30;
+    } else if (company.jobLiveDurations.standard) {
+      liveDurationDays = Number(company.jobLiveDurations.standard) || 30;
+    }
+  } else if (company.jobLiveDurationDays) {
+    liveDurationDays = Number(company.jobLiveDurationDays) || 30;
+  } else if (matchingPlanService && matchingPlanService.validity) {
+    liveDurationDays = Number(matchingPlanService.validity) || 30;
+  } else {
+    try {
+      const Product = require("../models/Product");
+      const prodRecord = await Product.findOne({ code: targetProductCode }).select("validity").lean();
+      if (prodRecord && prodRecord.validity) {
+        liveDurationDays = Number(prodRecord.validity) || 30;
+      }
+    } catch (_) {}
+  }
+  const liveUntil = new Date(Date.now() + liveDurationDays * 24 * 60 * 60 * 1000);
+
   const job = await Job.create({
     companyId: company._id,
     title,
@@ -1217,7 +1317,9 @@ exports.createJob = asyncHandler(async (req, res) => {
     internshipDuration,
     internshipStartDate,
     skills: rawSkills,
-    deadline: deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    deadline: deadline || liveUntil,
+    liveDurationDays,
+    liveUntil,
     description: toTrimmedString(req.body.description),           // Role Description
     responsibilities: toTrimmedString(req.body.responsibilities), // Key Responsibilities
     qualifications: toTrimmedString(req.body.qualifications),     // Required Skills & Qualifications
@@ -1925,6 +2027,17 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   if (req.body.addressLabel !== undefined) company.addressLabel = toTrimmedString(req.body.addressLabel);
   if (req.body.profileHotVacancies !== undefined) company.profileHotVacancies = toTrimmedString(req.body.profileHotVacancies);
   if (req.body.profileClassifieds !== undefined) company.profileClassifieds = toTrimmedString(req.body.profileClassifieds);
+  if (req.body.jobLiveDurationDays !== undefined) {
+    company.jobLiveDurationDays = Math.max(1, Number(req.body.jobLiveDurationDays) || 30);
+  }
+  if (req.body.jobLiveDurations && typeof req.body.jobLiveDurations === "object") {
+    company.jobLiveDurations = {
+      standard: Math.max(1, Number(req.body.jobLiveDurations.standard) || company.jobLiveDurations?.standard || 30),
+      hotVacancy: Math.max(1, Number(req.body.jobLiveDurations.hotVacancy) || company.jobLiveDurations?.hotVacancy || 30),
+      smb: Math.max(1, Number(req.body.jobLiveDurations.smb) || company.jobLiveDurations?.smb || 30),
+      internship: Math.max(1, Number(req.body.jobLiveDurations.internship) || company.jobLiveDurations?.internship || 30),
+    };
+  }
   if (req.body.companyType !== undefined || req.body.type !== undefined) {
     company.type = toTrimmedString(req.body.companyType || req.body.type);
   }
@@ -3522,9 +3635,20 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       nviteTotal > 0
     )
   );
+  const companyPlanEndDate = planSnapshot?.endDate || company.packageExpiresAt;
   const isExpired = Boolean(
-    planSnapshot?.endDate && new Date(planSnapshot.endDate) < new Date()
+    (companyPlanEndDate && new Date(companyPlanEndDate) < new Date()) ||
+    company.commercialStatus === "EXPIRED_GRACE" ||
+    company.commercialStatus === "EXPIRED_LOCKED"
   );
+
+  // Per Q2.7: If plan is expired, unused credits are gone and cannot be used
+  const finalCvLeft = isExpired ? 0 : cvLeftFinal;
+  const finalNviteLeft = isExpired ? 0 : nviteLeftFinal;
+  const finalJobLeft = isExpired ? 0 : jobLeftFinal;
+  const finalSmbJobLeft = isExpired ? 0 : smbJobLeftFinal;
+  const finalHotJobLeft = isExpired ? 0 : hotJobLeftFinal;
+  const finalInternshipJobLeft = isExpired ? 0 : internshipJobLeftFinal;
 
   res.status(200).json({
     success: true,
@@ -3536,10 +3660,12 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       planCode,
       planType,
       isExpired,
+      commercialStatus: company.commercialStatus || (isExpired ? "EXPIRED_GRACE" : "ACTIVE"),
+      isGracePeriod: company.commercialStatus === "EXPIRED_GRACE",
       companyCity: company.location?.city || "",
       cvAccess: {
         total: cvTotal,
-        left: cvLeftFinal,
+        left: finalCvLeft,
         usedByAll: cvUsedByAll,
         usedByYou: isRecruiter ? cvUsedByYou : null,
         licensesAssigned: `${resdexSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -3547,7 +3673,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       nvite: {
         total: nviteTotal,
-        left: nviteLeftFinal,
+        left: finalNviteLeft,
         usedByAll: nviteUsedByAll,
         usedByYou: isRecruiter ? nviteUsedByYou : null,
         licensesAssigned: `${resdexSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -3555,7 +3681,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       jobPosting: {
         total: jobTotal,
-        left: jobLeftFinal,
+        left: finalJobLeft,
         usedByAll: jobUsedByAll,
         usedByYou: isRecruiter ? jobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -3563,7 +3689,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       smbJobPosting: {
         total: smbJobTotal,
-        left: smbJobLeftFinal,
+        left: finalSmbJobLeft,
         usedByAll: smbJobUsedByAll,
         usedByYou: isRecruiter ? smbJobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -3573,7 +3699,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       hotVacancy: {
         total: hotJobTotal,
-        left: hotJobLeftFinal,
+        left: finalHotJobLeft,
         usedByAll: hotJobUsedByAll,
         usedByYou: isRecruiter ? hotJobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,
@@ -3592,7 +3718,7 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
       },
       internship: {
         total: internshipJobTotal,
-        left: internshipJobLeftFinal,
+        left: finalInternshipJobLeft,
         usedByAll: internshipJobUsedByAll,
         usedByYou: isRecruiter ? internshipJobUsedByYou : null,
         licensesAssigned: `${jobPostingSubUsers}/${totalSubUsers || 1} users assigned`,

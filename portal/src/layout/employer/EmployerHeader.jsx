@@ -11,6 +11,7 @@ import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
 import authService from '../../services/authService';
 import FeedbackModal from '../../components/employer/FeedbackModal';
+import PlanExpiryBanner from '../../components/employer/PlanExpiryBanner';
 
 const C = {
   navy: "#002366",
@@ -427,6 +428,7 @@ export default function EmployerHeader({
         boxShadow: scrolled ? "0 4px 24px rgba(0,35,102,.08)" : "none",
         transition: "box-shadow .25s"
       }}>
+        <PlanExpiryBanner />
         <div style={{
           maxWidth: 1160, margin: "0 auto", padding: "0 20px",
           display: "flex", alignItems: "center", gap: 0, height: 58

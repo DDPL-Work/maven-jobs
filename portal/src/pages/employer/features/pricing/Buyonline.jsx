@@ -383,11 +383,16 @@ export default function Buyonline() {
   // Plan Details Modal State (Combined Hiring Plans)
   const [detailPlan, setDetailPlan] = useState(null);
 
+  // Plan Expired Standalone Purchase Restriction Modal
+  const [isPlanExpiredModalOpen, setIsPlanExpiredModalOpen] = useState(false);
+  const [blockedStandaloneItem, setBlockedStandaloneItem] = useState(null);
+
   // Purchase Modal State
   const [selectedItemForPurchase, setSelectedItemForPurchase] = useState(null);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [purchaseSuccessData, setPurchaseSuccessData] = useState(null);
+  const [successCountDown, setSuccessCountDown] = useState(3);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
 
@@ -414,6 +419,45 @@ export default function Buyonline() {
   // FAQ Accordion State
   const [activeFaq, setActiveFaq] = useState(null);
 
+  // Standalone Product Helper: checks if item is a standalone product (not a combined plan)
+  const checkIfStandaloneProduct = (item, type) => {
+    if (type === "PLAN") return false;
+    if (item?.itemType === "PLAN") return false;
+    if (item?.planType) return false;
+    if (item?.activeVersion) return false;
+    if (item?.items && Array.isArray(item.items)) return false;
+    return true;
+  };
+
+  // Check if company's plan is expired
+  const checkIsCompanyPlanExpired = (entData) => {
+    const data = entData || companyEntitlements;
+    if (!data) return false;
+    if (data.companyPlan?.isExpired) return true;
+    if (data.isPlanExpired) return true;
+    if (
+      data.commercialStatus === "EXPIRED_GRACE" ||
+      data.commercialStatus === "EXPIRED_LOCKED"
+    ) {
+      return true;
+    }
+    if (Boolean(data.expiredPlan)) return true;
+    if (data.companyPlan?.endDate && new Date(data.companyPlan.endDate) < new Date()) {
+      return true;
+    }
+    if (data.activePlan?.endDate && new Date(data.activePlan.endDate) < new Date()) {
+      return true;
+    }
+    if (data.packageExpiresAt && new Date(data.packageExpiresAt) < new Date()) {
+      return true;
+    }
+    const hasActive = Boolean(data.activePlan && data.activePlan.daysRemaining > 0);
+    if (!hasActive && (data.companyPlan || data.expiredPlan)) {
+      return true;
+    }
+    return false;
+  };
+
   // Load commercial catalog from backend
   const loadCommercialData = async () => {
     setLoading(true);
@@ -430,9 +474,11 @@ export default function Buyonline() {
       setOffers(offersData || []);
       setProducts(productsData || []);
       setCompanyEntitlements(entData);
+      return { plansData, offersData, entData, productsData };
     } catch (err) {
       console.error("[Buyonline] Load failed:", err);
       setError("Unable to load commercial plans. Please try again.");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -447,8 +493,15 @@ export default function Buyonline() {
   }, []);
 
   useEffect(() => {
+    const isRenew = searchParams.get("renew") === "true";
     const cat = searchParams.get("category");
-    if (cat && ["all", "combined", "jobs", "resdex", "seats", "ai", "standalone", "custom"].includes(cat)) {
+    if (isRenew) {
+      setActiveCategory("combined");
+      setTimeout(() => {
+        const el = document.getElementById("plans-section") || document.querySelector(".bo-plans-grid") || document.querySelector(".bo-category-nav");
+        if (el) el.scrollIntoView({ behavior: "smooth" });
+      }, 350);
+    } else if (cat && ["all", "combined", "jobs", "resdex", "seats", "ai", "standalone", "custom"].includes(cat)) {
       setActiveCategory(cat);
     }
     if (location.hash) {
@@ -458,6 +511,27 @@ export default function Buyonline() {
       }, 400);
     }
   }, [searchParams, location.hash]);
+
+  // Auto-close purchase success modal after 3 seconds with live countdown
+  useEffect(() => {
+    if (!isSuccessModalOpen) {
+      setSuccessCountDown(3);
+      return;
+    }
+    setSuccessCountDown(3);
+    const interval = setInterval(() => {
+      setSuccessCountDown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setIsSuccessModalOpen(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isSuccessModalOpen]);
 
   // Resolve dynamic Products from catalog
   const smbProduct = products.find((p) => p.code === "SMB_JOB") || {
@@ -607,9 +681,10 @@ export default function Buyonline() {
   };
 
   // Open Checkout for a Plan, Standalone Offer, or Dynamic Product
-  const handleInitiatePurchase = (item, type = "PLAN") => {
+  const handleInitiatePurchase = async (item, type = "PLAN") => {
     setPaymentError("");
     const purchaseItem = { ...item, itemType: type };
+    const isStandalone = checkIfStandaloneProduct(purchaseItem, type);
 
     // Check employer authentication immediately upon clicking the Buy button from any card
     const employerUser = getEmployerUser();
@@ -617,15 +692,27 @@ export default function Buyonline() {
       // User is not logged in: queue opening this purchase modal and open login modal
       pendingItemRef.current = purchaseItem;
       setSelectedItemForPurchase(purchaseItem);
-      pendingPaymentRef.current = () => {
-        setSelectedItemForPurchase(purchaseItem);
-        setIsPurchaseModalOpen(true);
-      };
       setIsLoginGateOpen(true);
       return;
     }
 
-    // User is logged in: directly show the purchase modal, do NOT open login modal
+    // User is logged in: Check plan expiry for standalone purchases immediately after authentication
+    let currentEnt = companyEntitlements;
+    if (!currentEnt) {
+      try {
+        currentEnt = await commercialService.fetchEntitlements();
+        if (currentEnt) setCompanyEntitlements(currentEnt);
+      } catch (_) {}
+    }
+
+    const isExpired = checkIsCompanyPlanExpired(currentEnt);
+    if (isStandalone && isExpired) {
+      setBlockedStandaloneItem(purchaseItem);
+      setIsPlanExpiredModalOpen(true);
+      return;
+    }
+
+    // User is logged in and not restricted: directly show the purchase modal
     pendingItemRef.current = null;
     pendingPaymentRef.current = null;
     setSelectedItemForPurchase(purchaseItem);
@@ -868,23 +955,50 @@ export default function Buyonline() {
   const resdexOffers = offers.filter((o) => o.product?.category === "RESUME_SEARCH");
   const aiOffers = offers.filter((o) => o.product?.category === "AI");
 
+  // Navigate to Combined Plans from the expired plan restriction modal
+  const handleGoToCombinedPlans = () => {
+    setIsPlanExpiredModalOpen(false);
+    setBlockedStandaloneItem(null);
+    setActiveCategory("combined");
+    setTimeout(() => {
+      const el =
+        document.getElementById("combined-plans") ||
+        document.getElementById("plans-section") ||
+        document.querySelector(".bo-plans-grid") ||
+        document.querySelector(".bo-category-nav");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 120);
+  };
+
   // Called by EmployerLoginModal after a successful employer login
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => {
     setIsLoginGateOpen(false);
     setAuthRefresh((prev) => prev + 1);
-    loadCommercialData();
 
-    // Directly open the purchase modal with the pending purchase item
+    // Refresh commercial catalog & entitlements immediately
+    const refreshed = await loadCommercialData();
+    const freshEnt = refreshed?.entData;
+
+    // Check authentication has succeeded: inspect pending item
     const targetItem = pendingItemRef.current || selectedItemForPurchase;
-    const resume = pendingPaymentRef.current;
     pendingItemRef.current = null;
     pendingPaymentRef.current = null;
 
     if (targetItem) {
+      const isStandalone = checkIfStandaloneProduct(targetItem, targetItem.itemType);
+      const isExpired = checkIsCompanyPlanExpired(freshEnt);
+
+      // Just after checking authentication, if purchasing a standalone product while plan is expired:
+      if (isStandalone && isExpired) {
+        setBlockedStandaloneItem(targetItem);
+        setIsPlanExpiredModalOpen(true);
+        return;
+      }
+
       setSelectedItemForPurchase(targetItem);
       setIsPurchaseModalOpen(true);
-    } else if (resume) {
-      setTimeout(() => resume(), 120);
     }
   };
 
@@ -907,42 +1021,7 @@ export default function Buyonline() {
             Post jobs, discover verified candidates, search the Naukri-grade resume database, and accelerate your recruitment with flexible plans built for your scale.
           </p>
         </div>
-
-        {/* Current Subscription Awareness Banner */}
-        {companyEntitlements?.activePlan && (
-          <div className="bo-active-banner">
-            <div className="bo-active-banner-inner">
-              <div className="bo-active-banner-left">
-                <div className="bo-active-icon-box">
-                  <FiAward style={{ width: "24px", height: "24px" }} />
-                </div>
-                <div>
-                  <div className="bo-active-status-row">
-                    <span className="bo-active-status-tag">Active Subscription</span>
-                    <span className="bo-active-pill">Active</span>
-                  </div>
-                  <h3 className="bo-active-plan-title">
-                    {companyEntitlements.activePlan.planName}
-                    <span className="bo-active-validity-note">
-                      (Valid until {new Date(companyEntitlements.activePlan.endDate).toLocaleDateString()} • {companyEntitlements.activePlan.daysRemaining} days left)
-                    </span>
-                  </h3>
-                </div>
-              </div>
-
-              {/* Balances pills */}
-              <div className="bo-active-pills-row">
-                {(companyEntitlements.products || []).slice(0, 4).map((p) => (
-                  <div key={p.code} className="bo-balance-pill">
-                    <span className="bo-balance-pill-label">{p.name}: </span>
-                    <span className="bo-balance-pill-value">{p.available} remaining</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
+        
         {/* Category Navigation Bar */}
         <div className="bo-category-nav">
           <button
@@ -3477,6 +3556,18 @@ export default function Buyonline() {
             <p style={{ fontSize: "12px", color: "#64748b", marginTop: "8px" }}>
               Your <strong>{purchaseSuccessData.item?.name}</strong> has been activated and added to your commercial entitlement registry.
             </p>
+            <div style={{
+              display: "inline-block",
+              backgroundColor: "#f1f5f9",
+              color: "#64748b",
+              fontSize: "11px",
+              fontWeight: 600,
+              padding: "3px 10px",
+              borderRadius: "12px",
+              marginTop: "8px",
+            }}>
+              Auto-closing in {successCountDown}s...
+            </div>
 
             <div className="bo-success-details-box">
               <div className="bo-success-row">
@@ -3573,6 +3664,184 @@ export default function Buyonline() {
                 className="bo-btn-contact"
               >
                 Go to Recruiter Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Expired – Standalone Purchase Blocked Modal */}
+      {isPlanExpiredModalOpen && (
+        <div
+          className="bo-modal-backdrop"
+          style={{ zIndex: 99999 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsPlanExpiredModalOpen(false);
+              setBlockedStandaloneItem(null);
+            }
+          }}
+        >
+          <div className="bo-modal-box bo-modal-md" style={{ maxWidth: "520px", padding: "32px 28px" }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "14px",
+                    backgroundColor: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FiAlertCircle style={{ width: "26px", height: "26px", color: "#dc2626" }} />
+                </div>
+                <div>
+                  <div
+                    style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "#dc2626",
+                      backgroundColor: "#fee2e2",
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    Subscription Expired
+                  </div>
+                  <h3
+                    className="bo-title-font"
+                    style={{ fontSize: "19px", fontWeight: 800, color: "#0f172a", margin: 0 }}
+                  >
+                    Combined Plan Required
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPlanExpiredModalOpen(false);
+                  setBlockedStandaloneItem(null);
+                }}
+                className="bo-modal-close-btn"
+                aria-label="Close modal"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#94a3b8",
+                  padding: "4px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <FiX style={{ width: "20px", height: "20px" }} />
+              </button>
+            </div>
+
+            {/* Explanation Body */}
+            <p style={{ fontSize: "14px", color: "#475569", lineHeight: 1.6, margin: "0 0 16px 0" }}>
+              Your company's subscription plan has <strong>expired</strong>. Under our recruiter business policy, standalone products (such as individual job postings, resume database views, user seats, or AI packs) cannot be purchased without an active base plan.
+            </p>
+
+            {/* Attempted Item Card */}
+            {blockedStandaloneItem && (
+              <div
+                style={{
+                  backgroundColor: "#fff7ed",
+                  border: "1px solid #fed7aa",
+                  borderRadius: "12px",
+                  padding: "12px 16px",
+                  marginBottom: "18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "11px", color: "#9a3412", fontWeight: 600, textTransform: "uppercase" }}>
+                    Attempted Standalone Product
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#7c2d12", marginTop: "2px" }}>
+                    {blockedStandaloneItem.name || blockedStandaloneItem.productName || "Standalone Product"}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "#dc2626",
+                    backgroundColor: "#fee2e2",
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Restricted
+                </span>
+              </div>
+            )}
+
+            {/* Business Guidance Note */}
+            <div
+              style={{
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+                padding: "12px 14px",
+                marginBottom: "24px",
+                fontSize: "13px",
+                color: "#334155",
+                lineHeight: 1.5,
+              }}
+            >
+              💡 <strong>Next Step:</strong> You can only purchase a <strong>Combined Hiring Plan</strong> (such as Starter, SMB, or Corporate). Combined plans include bundled job postings, resume search views, and recruiter seats with full validity.
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={handleGoToCombinedPlans}
+                className="bo-btn-buy"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  padding: "12px 20px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                }}
+              >
+                Browse Combined Hiring Plans <FiArrowRight style={{ width: "16px", height: "16px" }} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPlanExpiredModalOpen(false);
+                  setBlockedStandaloneItem(null);
+                }}
+                className="bo-btn-contact"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  padding: "10px 18px",
+                  fontSize: "13px",
+                }}
+              >
+                Cancel
               </button>
             </div>
           </div>
