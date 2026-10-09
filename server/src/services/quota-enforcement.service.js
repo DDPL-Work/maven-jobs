@@ -56,7 +56,7 @@ async function resolveCommercialLimits(company) {
     const credit = await Credit.findOne({ companyId: company._id }).lean();
     
     if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
-      cvTotal = credit?.lifetimePurchased || 0;
+      cvTotal = 0;
       nviteTotal = 0;
       for (const s of company.planSnapshot.services) {
         const code = String(s.productCode || "").toUpperCase();
@@ -117,14 +117,16 @@ async function checkAndEnforceQuota(company, type, needed = 1) {
 
   const quotaConfig      = company.quotaConfig || {};
   const allocationPolicy = quotaConfig.allocationPolicy || 'full';
+  const planStartDate    = company?.planSnapshot?.startDate ? new Date(company.planSnapshot.startDate) : null;
 
   // ── 'full' policy ──────────────────────────────────────────────────────────
   if (allocationPolicy === 'full') {
     const limits = await resolveCommercialLimits(company);
     const total = type === 'cvAccess' ? limits.cvTotal : limits.nviteTotal;
+    const fullDateFilter = planStartDate ? { createdAt: { $gte: planStartDate } } : {};
     const used = type === 'cvAccess'
-      ? await countCvUsage(company._id, {})
-      : await countNviteUsage(company._id, {});
+      ? await countCvUsage(company._id, fullDateFilter)
+      : await countNviteUsage(company._id, fullDateFilter);
     const left = Math.max(0, total - used);
 
     if (left < needed) {
@@ -147,12 +149,16 @@ async function checkAndEnforceQuota(company, type, needed = 1) {
   let total      = 0;
 
   if (allocationPolicy === 'weekly') {
-    dateFilter = { createdAt: { $gte: getStartOfWeek() } };
+    const sow = getStartOfWeek();
+    const filterStart = planStartDate ? new Date(Math.max(sow.getTime(), planStartDate.getTime())) : sow;
+    dateFilter = { createdAt: { $gte: filterStart } };
     total = type === 'cvAccess'
       ? (quotaConfig.weekly?.cvAccess ?? 0)
       : (quotaConfig.weekly?.nvite   ?? 0);
   } else if (allocationPolicy === 'monthly') {
-    dateFilter = { createdAt: { $gte: getStartOfMonth() } };
+    const som = getStartOfMonth();
+    const filterStart = planStartDate ? new Date(Math.max(som.getTime(), planStartDate.getTime())) : som;
+    dateFilter = { createdAt: { $gte: filterStart } };
     total = type === 'cvAccess'
       ? (quotaConfig.monthly?.cvAccess ?? 0)
       : (quotaConfig.monthly?.nvite    ?? 0);

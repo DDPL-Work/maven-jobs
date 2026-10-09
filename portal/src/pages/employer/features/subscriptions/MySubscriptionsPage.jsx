@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FiPhone, FiMail, FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertCircle, FiPackage, FiLoader } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
@@ -13,29 +13,68 @@ export default function MySubscriptionsPage() {
   const [invoiceToast, setInvoiceToast] = useState(null);
   const [requestingInvoiceId, setRequestingInvoiceId] = useState(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchSubscriptions() {
-      try {
-        setLoading(true);
-        const res = await authService.getEmployerSubscriptions();
-        if (isMounted && res?.data) {
-          setSubscriptionData(res.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch subscriptions from server:', err);
-      } finally {
-        if (isMounted) setLoading(false);
+  const fetchSubscriptions = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const res = await authService.getEmployerSubscriptions();
+      if (res?.data) {
+        setSubscriptionData(res.data);
       }
+    } catch (err) {
+      console.error('Failed to fetch subscriptions from server:', err);
+    } finally {
+      if (!silent) setLoading(false);
     }
+  }, []);
 
+  useEffect(() => {
     fetchSubscriptions();
 
-    return () => {
-      isMounted = false;
+    const handleExternalChange = () => {
+      fetchSubscriptions(true);
     };
-  }, []);
+
+    window.addEventListener('employer-credits-changed', handleExternalChange);
+    window.addEventListener('plan-status-changed', handleExternalChange);
+    return () => {
+      window.removeEventListener('employer-credits-changed', handleExternalChange);
+      window.removeEventListener('plan-status-changed', handleExternalChange);
+    };
+  }, [fetchSubscriptions]);
+
+  // Real-time automatic AJAX trigger on active plan expiration
+  const expiryCheckHandledRef = useRef(null);
+  useEffect(() => {
+    const subs = subscriptionData?.subscriptions || [];
+    const activeSub = subs.find((s) => s.status === 'ACTIVE' && s.endDateIso);
+    if (!activeSub?.endDateIso) return;
+
+    const endMs = new Date(activeSub.endDateIso).getTime();
+    const diffMs = endMs - Date.now();
+
+    if (diffMs <= 0) {
+      if (expiryCheckHandledRef.current !== activeSub.endDateIso) {
+        expiryCheckHandledRef.current = activeSub.endDateIso;
+        const timer = setTimeout(() => {
+          fetchSubscriptions(true);
+          window.dispatchEvent(new CustomEvent('employer-credits-changed'));
+          window.dispatchEvent(new CustomEvent('plan-status-changed'));
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+      return;
+    }
+
+    if (diffMs <= 24 * 60 * 60 * 1000) {
+      const timer = setTimeout(() => {
+        fetchSubscriptions(true);
+        window.dispatchEvent(new CustomEvent('employer-credits-changed'));
+        window.dispatchEvent(new CustomEvent('plan-status-changed'));
+      }, diffMs + 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [subscriptionData, fetchSubscriptions]);
 
   // Strictly dynamic data from MongoDB — NO static or dummy fallback data
   const subscriptions = subscriptionData?.subscriptions || [];
@@ -196,6 +235,11 @@ export default function MySubscriptionsPage() {
                             <span className="msp-plan-type-pill">
                               {sub.planType || (sub.amountPaid === 0 ? 'FREE' : 'SMB')}
                             </span>
+                            {sub.status === 'SCHEDULED' && (
+                              <span style={{ marginLeft: 6, fontSize: '0.72rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: 9999, fontWeight: 700 }}>
+                                SCHEDULED
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -257,7 +301,9 @@ export default function MySubscriptionsPage() {
 
                         <div className="msp-product-list">
                           {(sub.products || []).map((prod, pIdx) => {
-                            const isActive = String(prod.status || '').toUpperCase() === 'ACTIVE';
+                            const statusStr = String(prod.status || sub.status || '').toUpperCase();
+                            const isScheduled = statusStr === 'SCHEDULED';
+                            const isActive = statusStr === 'ACTIVE';
                             return (
                               <div key={prod.id || pIdx} className="msp-product-row">
                                 {/* Left bullet & details */}
@@ -275,9 +321,9 @@ export default function MySubscriptionsPage() {
                                   </div>
                                 </div>
 
-                                {/* Right Active / Expired badge */}
-                                <span className={`msp-status-badge ${isActive ? 'msp-badge-active' : 'msp-badge-inactive'}`}>
-                                  {prod.status || 'ACTIVE'}
+                                {/* Right Active / Expired / Scheduled badge */}
+                                <span className={`msp-status-badge ${isScheduled ? 'msp-badge-scheduled' : isActive ? 'msp-badge-active' : 'msp-badge-inactive'}`}>
+                                  {isScheduled ? 'SCHEDULED' : (prod.status || 'ACTIVE')}
                                 </span>
                               </div>
                             );

@@ -92,7 +92,7 @@ const subscriptionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["ACTIVE", "EXPIRED", "CANCELLED", "SCHEDULED", "UPGRADED"],
+      enum: ["ACTIVE", "EXPIRED", "CANCELLED", "SCHEDULED", "UPGRADED", "SUPERSEDED"],
       default: "ACTIVE",
       index: true,
     },

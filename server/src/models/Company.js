@@ -205,6 +205,25 @@ const companySchema = new mongoose.Schema(
         },
       ],
     },
+
+    // Scheduled upcoming plan (for deferred downgrades)
+    scheduledPlan: {
+      subscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: "Subscription", default: null },
+      planId: { type: mongoose.Schema.Types.ObjectId, ref: "Plan", default: null },
+      planVersionId: { type: mongoose.Schema.Types.ObjectId, ref: "PlanVersion", default: null },
+      planVersionNumber: { type: Number, default: 1 },
+      planName: { type: String, default: "" },
+      planCode: { type: String, default: "" },
+      planType: { type: String, default: "" },
+      billingCycle: { type: String, default: "CUSTOM" },
+      validity: { type: Number, default: 30 },
+      validityUnit: { type: String, default: "DAYS" },
+      gracePeriodDays: { type: Number, default: 90 },
+      startDate: { type: Date, default: null },
+      endDate: { type: Date, default: null },
+      scheduledAt: { type: Date, default: Date.now },
+      services: Array,
+    },
   },
   { timestamps: true }
 );
@@ -375,6 +394,45 @@ companySchema.post("init", function (doc) {
       }
 
       CompanyModel.updateOne({ _id: doc._id }, updatePayload).catch(() => {});
+
+      // Persistently expire active plan entitlements in MongoDB for this expired company
+      const EntitlementModel = mongoose.models.Entitlement || mongoose.model("Entitlement");
+      const SubscriptionModel = mongoose.models.Subscription || mongoose.model("Subscription");
+      if (EntitlementModel && SubscriptionModel) {
+        SubscriptionModel.find({
+          companyId: doc._id,
+          subscriptionType: { $in: ["STANDALONE", "ADD_ON"] },
+          status: "ACTIVE",
+          endDate: { $gte: now },
+        })
+          .select("_id")
+          .then((standaloneSubs) => {
+            const standaloneSubIds = (standaloneSubs || []).map((s) => s._id);
+            EntitlementModel.updateMany(
+              {
+                companyId: doc._id,
+                status: "ACTIVE",
+                subscriptionId: { $nin: standaloneSubIds },
+              },
+              {
+                $set: {
+                  status: "EXPIRED",
+                  remainingQuantity: 0,
+                },
+              }
+            ).catch(() => {});
+          })
+          .catch(() => {});
+      }
+
+      // Also ensure legacy Credit balances are zeroed
+      const CreditModel = mongoose.models.Credit || mongoose.model("Credit");
+      if (CreditModel) {
+        CreditModel.updateOne(
+          { companyId: doc._id },
+          { $set: { balance: 0, lifetimePurchased: 0, lifetimeUsed: 0 } }
+        ).catch(() => {});
+      }
     }
   }
 });
@@ -471,6 +529,57 @@ companySchema.statics.expirePlansForExpiredCompanies = async function () {
       },
     }
   );
+
+  // 5. Expire active plan entitlements in MongoDB for all expired companies
+  try {
+    const EntitlementModel = mongoose.models.Entitlement || mongoose.model("Entitlement");
+    const SubscriptionModel = mongoose.models.Subscription || mongoose.model("Subscription");
+    if (EntitlementModel && SubscriptionModel) {
+      const expiredCompDocs = await this.find({
+        $or: [
+          { "planSnapshot.endDate": { $exists: true, $ne: null, $lt: now } },
+          { packageExpiresAt: { $exists: true, $ne: null, $lt: now } },
+          { commercialStatus: { $in: ["EXPIRED_GRACE", "EXPIRED_LOCKED"] } },
+        ],
+      }).select("_id");
+      const compIdList = expiredCompDocs.map((c) => c._id);
+
+      if (compIdList.length > 0) {
+        const activeStandaloneSubs = await SubscriptionModel.find({
+          companyId: { $in: compIdList },
+          subscriptionType: { $in: ["STANDALONE", "ADD_ON"] },
+          status: "ACTIVE",
+          endDate: { $gte: now },
+        }).select("_id");
+        const activeStandaloneSubIds = activeStandaloneSubs.map((s) => s._id);
+
+        await EntitlementModel.updateMany(
+          {
+            companyId: { $in: compIdList },
+            status: "ACTIVE",
+            subscriptionId: { $nin: activeStandaloneSubIds },
+          },
+          {
+            $set: {
+              status: "EXPIRED",
+              remainingQuantity: 0,
+            },
+          }
+        );
+
+        // 6. Zero out legacy Credit balances for all expired companies
+        const CreditModel = mongoose.models.Credit || mongoose.model("Credit");
+        if (CreditModel) {
+          await CreditModel.updateMany(
+            { companyId: { $in: compIdList } },
+            { $set: { balance: 0, lifetimePurchased: 0, lifetimeUsed: 0 } }
+          ).catch(() => {});
+        }
+      }
+    }
+  } catch (entErr) {
+    console.warn("[expirePlansForExpiredCompanies] Entitlement expiry warning:", entErr?.message);
+  }
 
   return {
     expiredActiveTransitioned: expiredActiveCompanies.length,

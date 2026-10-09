@@ -14,6 +14,12 @@ class EntitlementService {
       await AiCreditService.ensureMonthlyAllowance(companyId);
     } catch (_) {}
 
+    // Real-time check and activation for any due SCHEDULED subscriptions (Downgrade activation)
+    try {
+      const PurchaseService = require("./purchase.service");
+      await PurchaseService.activateScheduledSubscriptions(companyId);
+    } catch (_) {}
+
     // Fetch active subscriptions
     const activeSubscriptions = await Subscription.find({
       companyId,
@@ -61,6 +67,9 @@ class EntitlementService {
             } catch (_) {}
           }
         }
+
+        const PurchaseService = require("./purchase.service");
+        await PurchaseService.syncCompanyPlanSnapshotWithActiveEntitlements(companyId).catch(() => {});
       }
     } catch (sweepErr) {
       console.warn("[getCompanyEntitlements] Real-time expiry sweep warning:", sweepErr?.message);
@@ -172,11 +181,13 @@ class EntitlementService {
     // Fetch Company model to read company planSnapshot and packageExpiresAt directly from Company
     const Company = require("../../models/Company");
     const companyDoc = await Company.findById(companyId)
-      .select("name planSnapshot commercialStatus planGraceExpiresAt packageExpiresAt")
+      .select("name planSnapshot commercialStatus planGraceExpiresAt packageExpiresAt scheduledPlan")
       .lean();
 
     const companyPlanEndDate = companyDoc?.planSnapshot?.endDate || companyDoc?.packageExpiresAt;
-    const effectiveEndDate = companyPlanEndDate || primaryPlanSub?.endDate || null;
+    const effectiveEndDate = (primaryPlanSub?.endDate && new Date(primaryPlanSub.endDate) >= now)
+      ? primaryPlanSub.endDate
+      : (companyPlanEndDate || primaryPlanSub?.endDate || null);
 
     let daysRemaining = 0;
     let hoursRemaining = 0;
@@ -206,6 +217,55 @@ class EntitlementService {
       for (const item of productMap.values()) {
         item.available = 0;
       }
+
+      // Persistently vanish/expire plan entitlements in MongoDB so they never leak on renewal
+      try {
+        const activeStandaloneSubs = await Subscription.find({
+          companyId,
+          subscriptionType: { $in: ["STANDALONE", "ADD_ON"] },
+          status: "ACTIVE",
+          endDate: { $gte: now },
+        }).select("_id");
+        const activeStandaloneSubIds = activeStandaloneSubs.map((s) => s._id);
+
+        const expiredEnts = await Entitlement.find({
+          companyId,
+          status: "ACTIVE",
+          subscriptionId: { $nin: activeStandaloneSubIds },
+        });
+
+        if (expiredEnts.length > 0) {
+          for (const ent of expiredEnts) {
+            const forfeitedQty = ent.remainingQuantity || 0;
+            ent.status = "EXPIRED";
+            ent.remainingQuantity = 0;
+            await ent.save();
+
+            if (forfeitedQty > 0) {
+              try {
+                await CreditLedgerService.recordEntry({
+                  companyId,
+                  subscriptionId: ent.subscriptionId || null,
+                  entitlementId: ent._id,
+                  productId: ent.productId,
+                  productCode: ent.productCode,
+                  transactionType: "EXPIRED",
+                  quantity: -forfeitedQty,
+                  balanceAfter: 0,
+                  referenceType: "RealtimePlanExpiry",
+                  referenceId: String(ent._id),
+                  expiryDate: now,
+                  notes: `Credits expired upon plan expiration (Q2.7 policy)`,
+                  createdBy: { id: "system", role: "REALTIME" },
+                });
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[getCompanyEntitlements] Error expiring entitlements for expired company:", err?.message);
+      }
+
       if (
         companyDoc?.planSnapshot?.validity > 0 ||
         (Array.isArray(companyDoc?.planSnapshot?.services) &&
@@ -245,6 +305,7 @@ class EntitlementService {
             isExpired: isPlanExpired,
           }
         : null,
+      scheduledPlan: companyDoc?.scheduledPlan || null,
       expiredPlan,
       commercialStatus: companyDoc?.commercialStatus || commercialStatus,
       isGracePeriod,
@@ -265,6 +326,12 @@ class EntitlementService {
   static async checkEntitlement(companyId, productCode, requestedQuantity = 1) {
     const now = new Date();
     const code = String(productCode).trim().toUpperCase();
+
+    // Real-time check and activation for any due SCHEDULED subscriptions
+    try {
+      const PurchaseService = require("./purchase.service");
+      await PurchaseService.activateScheduledSubscriptions(companyId);
+    } catch (_) {}
 
     // Check if company's plan is expired per Q2.7 / Q3.7
     const Company = require("../../models/Company");
