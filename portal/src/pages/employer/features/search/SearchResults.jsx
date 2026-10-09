@@ -6,6 +6,7 @@ import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import CandidateCard from '../../../../components/employer/CandidateCard';
 import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
+import QuotaExhausted from '../../../../components/employer/QuotaExhausted';
 import './SearchResume.css';
 
 const C = {
@@ -39,6 +40,8 @@ export default function SearchResults() {
   const [sort, setSort] = useState("relevance");
   const [showFilters, setShowFilters] = useState(false);
   const [folderCandidateId, setFolderCandidateId] = useState(null);
+  const [quotaUsage, setQuotaUsage] = useState(null);
+  const [quotaLoading, setQuotaLoading] = useState(true);
 
   const filtersFromUrl = useMemo(() => {
     const f = {};
@@ -49,6 +52,10 @@ export default function SearchResults() {
   }, [searchParams]);
 
   const fetchResults = useCallback(async (page = 1) => {
+    if (quotaUsage && (!quotaUsage.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0)) {
+      setSearching(false);
+      return;
+    }
     setSearching(true);
     try {
       const params = Object.fromEntries(searchParams.entries());
@@ -64,7 +71,7 @@ export default function SearchResults() {
       setPagination({ page: 1, limit: 20, total: 0, totalPages: 0 });
     }
     setSearching(false);
-  }, [searchParams, sort]);
+  }, [searchParams, sort, quotaUsage]);
 
   useEffect(() => {
     if (candidates.length > 0) {
@@ -79,13 +86,22 @@ export default function SearchResults() {
     if (!userStored) { setSessionExpired(true); setLoading(false); return; }
     const load = async () => {
       try {
-        const dashRes = await authService.getEmployerDashboard().catch(() => null);
+        const [dashRes, quotaRes] = await Promise.all([
+          authService.getEmployerDashboard().catch(() => null),
+          authService.getQuotaUsage().catch(() => null),
+        ]);
         if (dashRes?.success) {
           setCompany(dashRes.data.company || dashRes.data);
           setUser(dashRes.data.user || dashRes.data);
         }
+        if (quotaRes) {
+          setQuotaUsage(quotaRes.data || quotaRes);
+        }
       } catch { setSessionExpired(true); }
-      setLoading(false);
+      finally {
+        setLoading(false);
+        setQuotaLoading(false);
+      }
     };
     load();
   }, []);
@@ -124,8 +140,78 @@ export default function SearchResults() {
     );
   }
 
-  if (loading) {
+  const isPlanExpired = Boolean(quotaUsage?.isExpired);
+  const isQuotaExhausted = useMemo(() => {
+    if (quotaLoading) return false;
+    return Boolean(quotaUsage?.isExpired) || !quotaUsage?.cvAccess || Number(quotaUsage.cvAccess.left || 0) <= 0;
+  }, [quotaUsage, quotaLoading]);
+
+  const availablePlans = useMemo(() => {
+    if (!quotaUsage) return [];
+    const available = [];
+    if (Number(quotaUsage.nvite?.left || 0) > 0) {
+      available.push({
+        label: "Send MIvites",
+        type: "mivite",
+        url: "/resume-search?tab=mivites",
+        left: Number(quotaUsage.nvite.left || 0),
+        total: Number(quotaUsage.nvite.total || 0),
+      });
+    }
+    if (Number(quotaUsage.hotVacancy?.left || 0) > 0) {
+      available.push({
+        label: "Hot Vacancy",
+        type: "hot",
+        url: "/post-job?type=hot",
+        left: Number(quotaUsage.hotVacancy.left || 0),
+        total: Number(quotaUsage.hotVacancy.total || 0),
+      });
+    }
+    if (Number(quotaUsage.jobPosting?.left || 0) > 0) {
+      available.push({
+        label: "Standard Job",
+        type: "standard",
+        url: "/post-job",
+        left: Number(quotaUsage.jobPosting.left || 0),
+        total: Number(quotaUsage.jobPosting.total || 0),
+      });
+    }
+    if (Number(quotaUsage.internship?.left || 0) > 0) {
+      available.push({
+        label: "Internship",
+        type: "internship",
+        url: "/post-job?type=internship",
+        left: Number(quotaUsage.internship.left || 0),
+        total: Number(quotaUsage.internship.total || 0),
+      });
+    }
+    if (Number(quotaUsage.smbJobPosting?.left || 0) > 0) {
+      available.push({
+        label: "SMB Job",
+        type: "management",
+        url: "/post-job?type=management",
+        left: Number(quotaUsage.smbJobPosting.left || 0),
+        total: Number(quotaUsage.smbJobPosting.total || 0),
+      });
+    }
+    return available;
+  }, [quotaUsage]);
+
+  if (loading || quotaLoading) {
     return <SearchResultsSkeleton />;
+  }
+
+  if (isQuotaExhausted) {
+    return (
+      <QuotaExhausted
+        jobTypeLabel="Resume Search"
+        availablePlans={availablePlans}
+        activeTab="resdex"
+        isPlanExpired={isPlanExpired}
+        purchaseUrl="/buy-online?renew=true"
+        wrapLayout={true}
+      />
+    );
   }
 
   return (

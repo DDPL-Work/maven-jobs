@@ -88,4 +88,7 @@ router.patch("/settings", protectCrmPanel, crmPanelController.updateSettings);
 
 router.get("/payments", protectCrmPanel, adminController.getPayments);
 
+router.get("/invoice-requests", protectCrmPanel, crmPanelController.getInvoiceRequests);
+router.patch("/invoice-requests/:id/status", protectCrmPanel, crmPanelController.updateInvoiceRequestStatus);
+
 module.exports = router;

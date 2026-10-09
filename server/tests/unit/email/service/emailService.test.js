@@ -205,6 +205,40 @@ describe("EmailService", () => {
     });
   });
 
+  describe("sendOrderConfirmationEmail", () => {
+    test("sends order confirmation email with all details", async () => {
+      mockProvider.sendEmail.mockResolvedValue({
+        success: true,
+        messageId: "order-conf-msg",
+      });
+
+      const result = await service.sendOrderConfirmationEmail({
+        to: "client@example.com",
+        fullName: "SUDHANSHU GAUR",
+        companyName: "Tech Solutions Pvt Ltd",
+        serviceTitle: "Naukri 360 Pro 3 Month Subscription Lite",
+        customerCode: "260908CS21265690",
+        transactionId: "260908TS43352860",
+        orderNumber: "ORD-TEST-1234",
+        amount: 25000,
+        validityDays: 90,
+        inclusions: [
+          { quantity: 10, unit: "Job", name: "SMB Job Postings" },
+          { quantity: 500, unit: "View", name: "Resume Search Views" },
+        ],
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockProvider.sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "client@example.com",
+          subject: expect.stringContaining("Order confirmed"),
+          html: expect.stringContaining("260908CS21265690"),
+        })
+      );
+    });
+  });
+
   describe("verifyConnection", () => {
     test("delegates to provider", async () => {
       mockProvider.verifyConnection = jest.fn().mockResolvedValue(true);

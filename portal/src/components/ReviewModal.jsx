@@ -16,9 +16,11 @@ export default function ReviewModal({ companyId, companyName, onClose, onSuccess
   const [selectedRating, setSelectedRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleSubmit = async () => {
     if (!selectedRating) return;
+    setSubmitError("");
     setReviewSubmitting(true);
     try {
       const savedUser = (() => {
@@ -47,7 +49,7 @@ export default function ReviewModal({ companyId, companyName, onClose, onSuccess
         onClose();
       }
     } catch (error) {
-      alert(error?.message || "Failed to submit review");
+      setSubmitError(error?.message || "Failed to submit review. Please try again.");
     } finally {
       setReviewSubmitting(false);
     }
@@ -335,6 +337,9 @@ export default function ReviewModal({ companyId, companyName, onClose, onSuccess
               {reviewSubmitting ? "Submitting..." : "Submit Review"}
             </button>
           </div>
+          {submitError && (
+            <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10, fontWeight: 500, textAlign: 'center' }}>{submitError}</p>
+          )}
         </div>
       </div>
     </div>

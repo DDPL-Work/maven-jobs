@@ -21,7 +21,7 @@ import {
 } from "react-icons/fi";
 import { FaRupeeSign, FaStar } from "react-icons/fa";
 import { useAuth } from "../../../../AuthContext";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import { TOP_CATEGORIES } from "../../../../data/jobs";
 import { usePublicJobs, useLandingHome } from "../../../../hooks/useLandingQueries";
 import {
@@ -39,7 +39,7 @@ import formatCompactCount from "../../../../utils/formatCompactCount";
 import computeRelevanceScore from "../../../../utils/computeRelevanceScore";
 import AvatarDropdown from "../../../../components/common/AvatarDropdown";
 import GlobalSearchForm from "../../../../components/common/GlobalSearchForm";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 // Data moved to data/jobs.js
 const FILTER_CATEGORIES = [
@@ -362,7 +362,7 @@ export default function JobListingPage() {
             ? [...stackTags, ...skills]
             : ["Full-Time", j.department || "Engineering"],
         logo: j.companyLogo || company[0],
-        logoUrl: profile.logoUrl || companyLogoUrl,
+        logoUrl: (Boolean(j.isHotVacancy || j.jobCategory === "hot")) ? (companyLogoUrl || profile.logoUrl || "") : "",
         coverUrl: j.companyCoverUrl || companyObj.coverImageUrl || "",
         logoColor: profile.color || "#002366",
         featured: i < 3,
@@ -379,6 +379,8 @@ export default function JobListingPage() {
         type: companyObj.type || companyObj.industry || "Corporate",
         date: new Date(j.createdAt || Date.now()).getTime(),
         externalLink: j.externalLink || "",
+        jobCategory: j.jobCategory || "standard",
+        isHotVacancy: Boolean(j.isHotVacancy || j.jobCategory === "hot"),
       };
     });
 
@@ -402,6 +404,14 @@ export default function JobListingPage() {
     } else if (sortBy === "newest") {
       formatted.sort((a, b) => b.date - a.date);
     }
+
+    // Always keep hot vacancies pinned to the top of the candidate listing
+    formatted.sort((a, b) => {
+      const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+      const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+      if (aHot === bHot) return 0;
+      return bHot ? 1 : -1;
+    });
 
     setBackendJobs({ jobs: formatted, total, totalPages });
 
@@ -569,11 +579,11 @@ export default function JobListingPage() {
     } else if (category.id === "loc") {
       options = dedupeLocations(
         fromApi?.locations ||
-          jobs.reduce(
-            (acc, job) =>
-              appendUnique(acc, toCanonicalLocation(job.loc || job.location)),
-            [],
-          ),
+        jobs.reduce(
+          (acc, job) =>
+            appendUnique(acc, toCanonicalLocation(job.loc || job.location)),
+          [],
+        ),
       );
     } else if (category.id === "salaryRange") {
       options = jobs.reduce(
@@ -1043,17 +1053,17 @@ export default function JobListingPage() {
                   <div className="jlp-filter-options">
                     {displayOptions.map((opt) => {
                       const isAll = opt === "All" || opt === "All Domain";
-                        const isChecked = isAll
-                          ? selected.length === 0
-                          : selected.some(s => {
-                              const S = s.toLowerCase();
-                              const O = opt.toLowerCase();
-                              if (O === S) return true;
-                              if (urlKey === "location" && O.includes(S)) return true;
-                              if (urlKey === "jobType" && O.includes(S)) return true;
-                              if (urlKey === "department" && O.includes(S)) return true;
-                              return false;
-                            });
+                      const isChecked = isAll
+                        ? selected.length === 0
+                        : selected.some(s => {
+                          const S = s.toLowerCase();
+                          const O = opt.toLowerCase();
+                          if (O === S) return true;
+                          if (urlKey === "location" && O.includes(S)) return true;
+                          if (urlKey === "jobType" && O.includes(S)) return true;
+                          if (urlKey === "department" && O.includes(S)) return true;
+                          return false;
+                        });
                       return (
                         <div
                           key={opt}
@@ -1154,7 +1164,7 @@ export default function JobListingPage() {
             jobs.map((job) => (
               <div
                 key={job.id}
-                className={`jlp-job-card${job.featured ? " featured" : ""}`}
+                className={`jlp-job-card${job.isHotVacancy ? " hot-vacancy" : job.featured ? " featured" : ""}`}
               >
                 {job.coverUrl ? (
                   <div
@@ -1162,7 +1172,18 @@ export default function JobListingPage() {
                     style={{ backgroundImage: `url(${job.coverUrl})` }}
                   />
                 ) : null}
-                {job.featured && (
+                {job.isHotVacancy ? (
+                  <div
+                    className="jlp-featured-badge"
+                    style={{
+                      background: "linear-gradient(135deg, #ef4444, #f97316)",
+                      color: "#fff",
+                      boxShadow: "0 2px 8px rgba(239, 68, 68, 0.35)",
+                    }}
+                  >
+                    🔥 Hot Vacancy
+                  </div>
+                ) : job.featured && (
                   <div className="jlp-featured-badge">
                     <FaStar size={12} className="inline mr-1" /> Featured
                   </div>
@@ -1174,9 +1195,9 @@ export default function JobListingPage() {
                     style={
                       !job.logoUrl
                         ? {
-                            background: job.logoColor || "#002366",
-                            color: "#fff",
-                          }
+                          background: job.logoColor || "#002366",
+                          color: "#fff",
+                        }
                         : undefined
                     }
                   >
@@ -1236,11 +1257,11 @@ export default function JobListingPage() {
                     </span>
                   ))}
                   {job.tags.length > 5 && (
-                    <button 
+                    <button
                       className="jlp-tag"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setExpandedSkills(prev => ({...prev, [job.id]: !prev[job.id]}));
+                        setExpandedSkills(prev => ({ ...prev, [job.id]: !prev[job.id] }));
                       }}
                       style={{ background: "transparent", border: "1px dashed var(--brand-blue)", color: "var(--brand-blue)" }}
                     >
@@ -1444,9 +1465,9 @@ export default function JobListingPage() {
                         style={
                           !c.logoUrl
                             ? {
-                                background: c.color || "#002366",
-                                color: "white",
-                              }
+                              background: c.color || "#002366",
+                              color: "white",
+                            }
                             : undefined
                         }
                       >
@@ -1574,8 +1595,8 @@ export default function JobListingPage() {
           const selectedSet = new Set(draftFilters[activeModal] || []);
           const filteredOptions = modalSearch
             ? allOptions.filter((opt) =>
-                opt.toLowerCase().includes(modalSearch.toLowerCase()),
-              )
+              opt.toLowerCase().includes(modalSearch.toLowerCase()),
+            )
             : allOptions;
           const selectedCount = selectedSet.size;
           const showSearch = allOptions.length > 8;
@@ -1648,17 +1669,17 @@ export default function JobListingPage() {
                     <div className="jlp-modal-grid">
                       {filteredOptions.map((opt) => {
                         const isAll = opt === "All" || opt === "All Domain";
-                          const isChecked = isAll
-                            ? (draftFilters[activeModal] || []).length === 0
-                            : [...selectedSet].some(s => {
-                                const S = s.toLowerCase();
-                                const O = opt.toLowerCase();
-                                if (O === S) return true;
-                                if (activeModal === "loc" && O.includes(S)) return true;
-                                if (activeModal === "type" && O.includes(S)) return true;
-                                if (activeModal === "dept" && O.includes(S)) return true;
-                                return false;
-                              });
+                        const isChecked = isAll
+                          ? (draftFilters[activeModal] || []).length === 0
+                          : [...selectedSet].some(s => {
+                            const S = s.toLowerCase();
+                            const O = opt.toLowerCase();
+                            if (O === S) return true;
+                            if (activeModal === "loc" && O.includes(S)) return true;
+                            if (activeModal === "type" && O.includes(S)) return true;
+                            if (activeModal === "dept" && O.includes(S)) return true;
+                            return false;
+                          });
                         return (
                           <div
                             key={opt}

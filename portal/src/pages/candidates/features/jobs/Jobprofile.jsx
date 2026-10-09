@@ -37,8 +37,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../AuthContext";
 import authService from "../../../../services/authService";
 import SkeletonPage from "../../../../components/Skeleton";
-import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import ReviewModal from "../../../../components/ReviewModal";
 
 const PERK_MAP = {
@@ -114,8 +114,8 @@ const Jobprofile = () => {
       try {
         const res = user
           ? await authService
-              .getCompanyDetail(id)
-              .catch(() => authService.getPublicCompanyDetail(id))
+            .getCompanyDetail(id)
+            .catch(() => authService.getPublicCompanyDetail(id))
           : await authService.getPublicCompanyDetail(id);
         if (res?.success && res?.data) {
           const c = res.data.company;
@@ -1279,10 +1279,10 @@ const Jobprofile = () => {
                         </p>
                         {job.desc && job.desc.length > 150 && (
                           <button
-                            onClick={() => setExpandedJobs(prev => ({...prev, [job.id]: !prev[job.id]}))}
+                            onClick={() => setExpandedJobs(prev => ({ ...prev, [job.id]: !prev[job.id] }))}
                             style={{
-                              background: "none", border: "none", color: "#1E5EFF", 
-                              fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", 
+                              background: "none", border: "none", color: "#1E5EFF",
+                              fontSize: "0.8rem", fontWeight: 700, cursor: "pointer",
                               padding: 0, marginBottom: 18
                             }}
                           >
@@ -1311,12 +1311,12 @@ const Jobprofile = () => {
                               key={tag}
                               style={{
                                 fontSize: "0.75rem",
-                    letterSpacing: "0.01em",
-                    background: "#1e3a8a",
-                    color: "white",
-                    padding: "2px 6px",
-                    borderRadius: "20px",
-                    border: "1px solid #e2e8f0"
+                                letterSpacing: "0.01em",
+                                background: "#1e3a8a",
+                                color: "white",
+                                padding: "2px 6px",
+                                borderRadius: "20px",
+                                border: "1px solid #e2e8f0"
                               }}
                             >
                               {tag}

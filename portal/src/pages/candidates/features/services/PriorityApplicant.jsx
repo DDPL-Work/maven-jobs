@@ -4,8 +4,8 @@ import {
   FiArrowRight, FiAward, FiBarChart2, FiBell, FiCheck, FiChevronRight,
   FiMail, FiSearch, FiSend, FiStar, FiTrendingUp, FiZap,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./PriorityApplicant.css";
 
 const FAQItem = ({ q, a }) => (

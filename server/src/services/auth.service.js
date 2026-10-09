@@ -465,7 +465,14 @@ const resolveSessionContext = async ({
   }
 
   if (tokenRecord.revokedAt) {
-    await revokeSession({ sessionId, reason: "refresh_token_revoked" });
+    const isWithinGracePeriod =
+      tokenRecord.revokedReason === "rotated" &&
+      tokenRecord.revokedAt &&
+      Date.now() - new Date(tokenRecord.revokedAt).getTime() < 15000;
+
+    if (!isWithinGracePeriod) {
+      await revokeSession({ sessionId, reason: "refresh_token_revoked" });
+    }
     throw createHttpError(401, "Refresh token revoked");
   }
 

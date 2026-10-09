@@ -43,8 +43,8 @@ import "./JobDetailsPage.css";
 import SkeletonPage from "../../../../components/Skeleton";
 import { AITrigger } from "../../../../components/LazyAI";
 import { aiService } from "../../../../services/aiService";
-import LandingFooter from "../../../../components/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 import { calculateJobMatch } from "../../../../utils/jobMatching";
 import ReviewModal from "../../../../components/ReviewModal";
 
@@ -163,7 +163,7 @@ export default function JobDetailsPage() {
             id: j._id || j.id,
             companyId,
             companyName: j.companyName || company,
-            companyLogoUrl: j.companyLogoUrl || "",
+            companyLogoUrl: (Boolean(j.isHotVacancy || j.jobCategory === "hot")) ? (j.companyLogoUrl || "") : "",
             title,
             company,
             rating: j.companyRating || (4.0 + Math.random() * 0.8).toFixed(1),
@@ -191,18 +191,18 @@ export default function JobDetailsPage() {
               responsibilities:
                 typeof j.responsibilities === "string"
                   ? j.responsibilities
-                      .split("\n")
-                      .map((s) => s.trim().replace(/^•\s*/, ""))
-                      .filter(Boolean)
+                    .split("\n")
+                    .map((s) => s.trim().replace(/^•\s*/, ""))
+                    .filter(Boolean)
                   : Array.isArray(j.responsibilities)
                     ? j.responsibilities
                     : [],
               qualifications:
                 typeof j.qualifications === "string"
                   ? j.qualifications
-                      .split("\n")
-                      .map((s) => s.trim().replace(/^•\s*/, ""))
-                      .filter(Boolean)
+                    .split("\n")
+                    .map((s) => s.trim().replace(/^•\s*/, ""))
+                    .filter(Boolean)
                   : Array.isArray(j.qualifications)
                     ? j.qualifications
                     : [],
@@ -245,7 +245,7 @@ export default function JobDetailsPage() {
                 company:
                   sj.companyId?.name || sj.companyName || sj.company || company,
                 companyLogoUrl:
-                  sj.companyLogoUrl || sj.companyId?.logoUrl || "",
+                  (Boolean(sj.isHotVacancy || sj.jobCategory === "hot")) ? (sj.companyLogoUrl || sj.companyId?.logoUrl || "") : "",
                 companyCoverUrl:
                   sj.companyCoverUrl || sj.companyId?.coverImageUrl || "",
                 rating:
@@ -512,7 +512,7 @@ export default function JobDetailsPage() {
                   <span className="jdp-reviews">
                     {job.reviewsCount || 0} Reviews
                   </span>
-                  <span 
+                  <span
                     onClick={() => setShowReviewModal(true)}
                     className="text-blue-600 text-[13px] font-semibold cursor-pointer hover:underline ml-2"
                   >

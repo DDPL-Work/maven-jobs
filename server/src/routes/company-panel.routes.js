@@ -91,12 +91,15 @@ router.get("/profile", controller.getProfile);
 router.patch("/profile", controller.updateProfile);
 router.patch("/profile/media", uploadCompanyMedia, controller.updateCompanyMedia);
 router.get("/subscriptions", controller.getSubscriptions);
+router.post("/subscriptions/request-invoice", controller.requestSubscriptionInvoice);
 
 // Account
 router.post("/delete-account", controller.deleteAccount);
 
 // AI
 router.post("/ai/enhance-description", controller.enhanceDescription);
+router.post("/ai/screening-questions", controller.generateScreeningQuestions);
+router.post("/ai/generate-screening-questions", controller.generateScreeningQuestions);
 router.post("/ai/suggest-skills", controller.suggestSkills);
 
 // Notifications

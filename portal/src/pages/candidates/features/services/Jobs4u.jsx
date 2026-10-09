@@ -4,8 +4,8 @@ import {
   FiArrowRight, FiBell, FiCheck, FiChevronRight, FiClock,
   FiHeadphones, FiList, FiSearch, FiSend, FiTarget, FiUsers,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./Jobs4u.css";
 
 const FAQItem = ({ q, a }) => (

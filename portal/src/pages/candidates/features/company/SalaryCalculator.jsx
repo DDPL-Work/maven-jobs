@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import {
   FaCalculator, FaCheckCircle, FaInfoCircle, FaRupeeSign
 } from "react-icons/fa";
-import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./CompanyResearch.css";
 
 const formatINR = (n) =>

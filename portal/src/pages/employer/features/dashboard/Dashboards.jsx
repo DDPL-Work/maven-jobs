@@ -91,10 +91,12 @@ import {
   flushIceCandidates,
   stopMediaStream,
 } from "../../../../utils/webrtc";
-import EmployerHeader from "../../../../components/employer/EmployerHeader";
+import EmployerHeader from "../../../../layout/employer/EmployerHeader";
 import { SkeletonPage } from "../../../../components/Skeleton";
 import Cropper from "react-easy-crop";
 import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
+import { useToast } from "../../../../context/ToastContext";
+import missingImg from "../../../../../assets/missing.png";
 
 /* ── Tokens ─────────────────────────────────────────────── */
 const C = {
@@ -885,6 +887,107 @@ function SectionHead({ title, action }) {
   );
 }
 
+/* ── Tab Empty State (Shared across all dashboard tabs) ───── */
+function TabEmptyState({
+  title = "No Data Found",
+  description = "No items available to display right now.",
+  actionText,
+  onAction,
+  style = {},
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: "48px 20px",
+        width: "100%",
+        boxSizing: "border-box",
+        ...style,
+      }}
+    >
+      <div
+        style={{
+          width: 220,
+          maxWidth: "100%",
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <img
+          src={missingImg}
+          alt="No data"
+          style={{
+            width: "100%",
+            maxHeight: 180,
+            objectFit: "contain",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          fontFamily: C.fd,
+          fontSize: 16,
+          fontWeight: 800,
+          color: C.s900,
+          marginBottom: 6,
+        }}
+      >
+        {title}
+      </div>
+      <p
+        style={{
+          fontSize: 13.5,
+          color: C.s500,
+          maxWidth: 420,
+          lineHeight: 1.55,
+          margin: 0,
+        }}
+      >
+        {description}
+      </p>
+      {actionText && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          style={{
+            marginTop: 18,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "8px 20px",
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 700,
+            fontFamily: C.fd,
+            border: `1.5px solid ${C.navy}`,
+            background: C.navy,
+            color: "#fff",
+            cursor: "pointer",
+            transition: "all .16s ease",
+            boxShadow: "0 2px 8px rgba(0, 35, 102, 0.18)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = C.navyD;
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = C.navy;
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          {actionText}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function HelpDeskChatForm() {
   const [issue, setIssue] = useState("");
   const [desc, setDesc] = useState("");
@@ -900,6 +1003,7 @@ function HelpDeskChatForm() {
     },
   ]);
   const [chatInput, setChatInput] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -907,7 +1011,7 @@ function HelpDeskChatForm() {
       setChatStarted(true);
       setChatMessages((msgs) => [...msgs, { from: "user", text: desc }]);
     } else {
-      alert("Your request has been submitted. Our team will contact you soon.");
+      setSubmitted(true);
     }
   }
 
@@ -1138,6 +1242,11 @@ function HelpDeskChatForm() {
         >
           {contactMethod === "Chat" ? "Start Chat" : "Submit Request"}
         </button>
+        {submitted && (
+          <div style={{ marginTop: 12, padding: '10px 14px', background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 8, color: '#065f46', fontWeight: 600, fontSize: 14 }}>
+            ✓ Your request has been submitted. Our team will contact you soon.
+          </div>
+        )}
       </form>
     </div>
   );
@@ -1619,16 +1728,15 @@ function ProgressSection({
               })
             ) : (
               <tr>
-                <td
-                  colSpan={4}
-                  style={{
-                    padding: "40px 16px",
-                    textAlign: "center",
-                    color: C.s400,
-                    fontSize: 13,
-                  }}
-                >
-                  No applications found for this filter.
+                <td colSpan={4} style={{ padding: "20px 0" }}>
+                  <TabEmptyState
+                    title="No Applications Found"
+                    description={
+                      filter === "ALL"
+                        ? "No candidate applications have been received yet. Create or promote your job postings to start receiving applicants."
+                        : `No applications currently match the "${prettifyStatus(filter)}" status.`
+                    }
+                  />
                 </td>
               </tr>
             )}
@@ -1703,6 +1811,46 @@ export default function EmployerProfile() {
 
   const [topNavTab, setTopNavTab] = useState("home");
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const navTabsRef = useRef(null);
+  const [canTabsScrollLeft, setCanTabsScrollLeft] = useState(false);
+  const [canTabsScrollRight, setCanTabsScrollRight] = useState(false);
+
+  const checkNavTabsScroll = useCallback(() => {
+    const el = navTabsRef.current;
+    if (!el) return;
+    setCanTabsScrollLeft(el.scrollLeft > 6);
+    setCanTabsScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 6);
+  }, []);
+
+  const scrollNavTabs = (direction) => {
+    const el = navTabsRef.current;
+    if (!el) return;
+    const amount = direction === "right" ? 180 : -180;
+    el.scrollBy({ left: amount, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const el = navTabsRef.current;
+    if (!el) return;
+    checkNavTabsScroll();
+    el.addEventListener("scroll", checkNavTabsScroll, { passive: true });
+    window.addEventListener("resize", checkNavTabsScroll);
+    let ro = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => checkNavTabsScroll());
+      ro.observe(el);
+    }
+    return () => {
+      el.removeEventListener("scroll", checkNavTabsScroll);
+      window.removeEventListener("resize", checkNavTabsScroll);
+      if (ro) ro.disconnect();
+    };
+  }, [checkNavTabsScroll]);
+
+  useEffect(() => {
+    checkNavTabsScroll();
+  }, [activeTab, checkNavTabsScroll]);
+
   const [dashboard, setDashboard] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [scheduledCalls, setScheduledCalls] = useState([]);
@@ -1814,6 +1962,7 @@ export default function EmployerProfile() {
   const rtcConfig = useMemo(() => buildWebRtcConfig(), []);
   const chatEndRef = useRef(null);
   const chatSocketRef = useRef(null);
+  const { showToast } = useToast();
 
   const hasPremiumX = () => {
     const plan = (
@@ -2351,7 +2500,7 @@ export default function EmployerProfile() {
   const startCall = useCallback(
     async (mode) => {
       if (!CALLS_ENABLED) {
-        alert("Calls are disabled. Chat-only mode is active.");
+        showToast("Calls are disabled. Chat-only mode is active.", "warning");
         return;
       }
       if (!activeConversation?.id) {
@@ -2400,7 +2549,7 @@ export default function EmployerProfile() {
       } catch (error) {
         setShowCall(false);
         setCallStatus("failed");
-        alert(error?.message || "Unable to start the call");
+        showToast(error?.message || "Unable to start the call", "error");
       }
     },
     [activeConversation?.id],
@@ -2408,7 +2557,7 @@ export default function EmployerProfile() {
 
   const acceptIncomingCall = useCallback(async () => {
     if (!CALLS_ENABLED) {
-      alert("Calls are disabled. Chat-only mode is active.");
+      showToast("Calls are disabled. Chat-only mode is active.", "warning");
       return;
     }
     if (!activeConversation?.id) {
@@ -2453,7 +2602,7 @@ export default function EmployerProfile() {
     } catch (error) {
       setShowCall(false);
       setCallStatus("failed");
-      alert(error?.message || "Unable to accept the call");
+      showToast(error?.message || "Unable to accept the call", "error");
     }
   }, [activeConversation, callMode]);
 
@@ -2646,7 +2795,7 @@ export default function EmployerProfile() {
 
   const handleResumeUpload = async (applicationId, file) => {
     if (!file || file.type !== "application/pdf") {
-      alert("Please select a PDF file");
+      showToast("Please select a PDF file", "warning");
       return;
     }
     setUploadingResumeAppId(applicationId);
@@ -2655,7 +2804,7 @@ export default function EmployerProfile() {
       const refetch = await authService.getEmployerDashboard();
       if (refetch?.data) setDashboard(refetch.data);
     } catch (err) {
-      alert(err?.message || "Failed to upload resume");
+      showToast(err?.message || "Failed to upload resume", "error");
     } finally {
       setUploadingResumeAppId(null);
     }
@@ -2672,7 +2821,7 @@ export default function EmployerProfile() {
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch {
-      alert("Unable to preview resume");
+      showToast("Unable to preview resume", "error");
     }
   };
 
@@ -3274,6 +3423,7 @@ export default function EmployerProfile() {
   /* ═══ RENDER ═══ */
   return (
     <>
+      {/* ── Toast Notification ── */}
       <style>{`
         @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -3282,8 +3432,8 @@ export default function EmployerProfile() {
         body{background:#f0f4fb;font-family:'DM Sans',system-ui,sans-serif;color:${C.s800}}
         .pd-notif-overlay { position: fixed; inset: 0; background: rgba(0, 35, 102, 0.35); backdrop-filter: blur(4px); z-index: 10000; opacity: 0; visibility: hidden; transition: all 0.3s; }
         .pd-notif-overlay.show { opacity: 1; visibility: visible; }
-        .pd-notif-sidebar { position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; z-index: 10001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.1); display: flex; flex-direction: column; transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .pd-notif-sidebar.show { right: 0; }
+        .pd-notif-sidebar { position: fixed; top: 0; right: -400px; left: auto !important; width: 400px; height: 100vh; background: white; z-index: 10001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.1); display: flex; flex-direction: column; transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .pd-notif-sidebar.show { right: 0 !important; left: auto !important; }
         .pd-notif-head { padding: 22px 24px; border-bottom: 1px solid ${C.s200}; display: flex; align-items: center; justify-content: space-between; }
         .pd-notif-head h3 { font-family: ${C.fd}; font-size: 18px; font-weight: 800; color: ${C.navy}; margin:0;}
         .pd-notif-close { background: ${C.s100}; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: ${C.s500}; cursor: pointer; transition: all 0.2s; }
@@ -3449,16 +3599,68 @@ export default function EmployerProfile() {
           align-items: center;
         }
 
-        .ep-nav-tabs-wrap {
+        .ep-nav-tabs-container {
+          position: relative;
+          width: 100%;
           border-top: 1px solid ${C.s100};
+        }
+        .ep-nav-tabs-wrap {
           display: flex;
           padding-left: 16px;
+          padding-right: 16px;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
+          scroll-behavior: smooth;
         }
         .ep-nav-tabs-wrap::-webkit-scrollbar {
           display: none;
+        }
+        .ep-nav-scroll-overlay {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 48px;
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          pointer-events: none;
+        }
+        .ep-nav-scroll-overlay-left {
+          left: 0;
+          justify-content: flex-start;
+          padding-left: 6px;
+          background: linear-gradient(to right, rgba(255,255,255,0.96) 45%, rgba(255,255,255,0) 100%);
+        }
+        .ep-nav-scroll-overlay-right {
+          right: 0;
+          justify-content: flex-end;
+          padding-right: 6px;
+          background: linear-gradient(to left, rgba(255,255,255,0.96) 45%, rgba(255,255,255,0) 100%);
+        }
+        .ep-nav-scroll-btn {
+          pointer-events: auto;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 1px solid ${C.s200};
+          box-shadow: 0 2px 8px rgba(0,35,102,0.14);
+          color: ${C.navy};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer !important;
+          transition: all 0.16s ease;
+        }
+        .ep-nav-scroll-btn:hover {
+          background: ${C.s50};
+          border-color: ${C.navy};
+          transform: scale(1.08);
+          box-shadow: 0 4px 12px rgba(0,35,102,0.22);
+        }
+        .ep-nav-scroll-btn:active {
+          transform: scale(0.95);
         }
 
         .ep-candidates-grid {
@@ -4105,25 +4307,48 @@ export default function EmployerProfile() {
                   </div>
 
                   {/* Inner nav tabs */}
-                  <div
-                    className="ep-nav-tabs-wrap"
-                    style={{
-                      borderTop: `1px solid ${C.s100}`,
-                      display: "flex",
-                      paddingLeft: 16,
-                      overflowX: "auto",
-                    }}
-                  >
-                    {NAV_TABS.map((t) => (
-                      <button
-                        key={t}
-                        className={`ep-nav-link${activeTab === t ? " active" : ""}`}
-                        onClick={() => setActiveTab(t)}
-                        style={{ textTransform: "none" }}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                  <div className="ep-nav-tabs-container">
+                    {canTabsScrollLeft && (
+                      <div className="ep-nav-scroll-overlay ep-nav-scroll-overlay-left">
+                        <button
+                          type="button"
+                          className="ep-nav-scroll-btn"
+                          aria-label="Scroll tabs left"
+                          onClick={() => scrollNavTabs("left")}
+                        >
+                          <FiChevronLeft size={16} />
+                        </button>
+                      </div>
+                    )}
+
+                    <div
+                      ref={navTabsRef}
+                      className="ep-nav-tabs-wrap"
+                    >
+                      {NAV_TABS.map((t) => (
+                        <button
+                          key={t}
+                          className={`ep-nav-link${activeTab === t ? " active" : ""}`}
+                          onClick={() => setActiveTab(t)}
+                          style={{ textTransform: "none" }}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+
+                    {canTabsScrollRight && (
+                      <div className="ep-nav-scroll-overlay ep-nav-scroll-overlay-right">
+                        <button
+                          type="button"
+                          className="ep-nav-scroll-btn"
+                          aria-label="Scroll tabs right"
+                          onClick={() => scrollNavTabs("right")}
+                        >
+                          <FiChevronRight size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </Card>
 
@@ -4508,17 +4733,11 @@ export default function EmployerProfile() {
                             </div>
                           ))
                         ) : (
-                          <div
-                            style={{
-                              gridColumn: "1 / -1",
-                              color: C.s500,
-                              fontSize: 13,
-                              textAlign: "center",
-                              padding: "40px 16px",
-                            }}
-                          >
-                            No candidate conversations are available yet. Once
-                            applications arrive, they'll appear here.
+                          <div style={{ gridColumn: "1 / -1" }}>
+                            <TabEmptyState
+                              title="No Candidates Found"
+                              description="No candidate conversations or applicants are available yet. Once applications arrive, they'll appear here."
+                            />
                           </div>
                         )}
                       </div>
@@ -4735,7 +4954,7 @@ export default function EmployerProfile() {
                           );
                         }
                       } catch (err) {
-                        alert("Failed to update call");
+                        showToast("Failed to update call", "error");
                       }
                     }}
                   />
@@ -5122,61 +5341,67 @@ export default function EmployerProfile() {
                         );
                       })
                     ) : (
-                      <div
-                        style={{
-                          padding: "32px 20px",
-                          textAlign: "center",
-                          color: C.s400,
-                          fontSize: 13,
+                      <TabEmptyState
+                        title="No Open Roles Found"
+                        description={
+                          jobFilter === "all"
+                            ? "No jobs have been posted yet. Create and publish a job listing to start receiving qualified applicants."
+                            : `No jobs match the "${jobFilter}" filter. Select another filter or post a new job.`
+                        }
+                        actionText={jobFilter === "all" ? "+ Post a Job" : "Clear Filter"}
+                        onAction={() => {
+                          if (jobFilter === "all") {
+                            navigate("/post-job");
+                          } else {
+                            setJobFilter("all");
+                          }
                         }}
-                      >
-                        No jobs match the current filter.
-                      </div>
+                      />
                     )}
                     {/* Jobs footer: View All button (pagination removed) */}
-                    <div
-                      style={{
-                        padding: "12px 20px",
-                        borderTop: `1px solid ${C.s100}`,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <span
-                        style={{ fontSize: 12, color: C.s400, fontWeight: 600 }}
-                      >
-                        {filteredJobs.length > 0
-                          ? `Showing ${Math.min(jobPageSize, filteredJobs.length)} of ${filteredJobs.length} job${filteredJobs.length !== 1 ? "s" : ""}`
-                          : "No jobs match the current filter"}
-                      </span>
-                      <button
-                        onClick={() => navigate("/employer/jobs-responses")}
+                    {filteredJobs.length > 0 && (
+                      <div
                         style={{
-                          display: "inline-flex",
+                          padding: "12px 20px",
+                          borderTop: `1px solid ${C.s100}`,
+                          display: "flex",
+                          justifyContent: "space-between",
                           alignItems: "center",
-                          gap: 6,
-                          padding: "7px 18px",
-                          borderRadius: 9,
-                          fontSize: 12.5,
-                          fontWeight: 700,
-                          border: `1.5px solid ${C.navy}`,
-                          background: C.navy,
-                          color: "#fff",
-                          cursor: "pointer",
-                          fontFamily: C.fd,
-                          transition: "all .15s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = C.navyD;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = C.navy;
                         }}
                       >
-                        View all <FiArrowRight size={13} />
-                      </button>
-                    </div>
+                        <span
+                          style={{ fontSize: 12, color: C.s400, fontWeight: 600 }}
+                        >
+                          Showing {Math.min(jobPageSize, filteredJobs.length)} of {filteredJobs.length} job{filteredJobs.length !== 1 ? "s" : ""}
+                        </span>
+                        <button
+                          onClick={() => navigate("/employer/jobs-responses")}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "7px 18px",
+                            borderRadius: 9,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            border: `1.5px solid ${C.navy}`,
+                            background: C.navy,
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontFamily: C.fd,
+                            transition: "all .15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = C.navyD;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = C.navy;
+                          }}
+                        >
+                          View all <FiArrowRight size={13} />
+                        </button>
+                      </div>
+                    )}
                   </Card>
                 )}
 
@@ -5184,11 +5409,13 @@ export default function EmployerProfile() {
                 {activeTab === "Comments" && (
                   <Card className="ep-card">
                     <SectionHead title="Comments" />
-                    {companyReviews
-                      .slice(
-                        reviewPage * reviewPageSize,
-                        (reviewPage + 1) * reviewPageSize,
-                      )
+                    {companyReviews.length > 0 ? (
+                      <>
+                        {companyReviews
+                          .slice(
+                            reviewPage * reviewPageSize,
+                            (reviewPage + 1) * reviewPageSize,
+                          )
                       .map((u, i) => {
                         const isLiked = likedReviews[u.id];
                         const reviewerName =
@@ -5613,6 +5840,13 @@ export default function EmployerProfile() {
                         </div>
                       </div>
                     </div>
+                  </>
+                    ) : (
+                      <TabEmptyState
+                        title="No Comments Yet"
+                        description="No candidate reviews or feedback comments have been submitted for your company profile yet."
+                      />
+                    )}
                     {shareMessage && (
                       <div
                         style={{
@@ -6100,8 +6334,10 @@ export default function EmployerProfile() {
                       </li>
                     ))}
                   </ul>
-                  <button
-                    onClick={() => navigate("/employer-dashboard/pricing")}
+                  <Link
+                    to="/buy-online"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                       width: "100%",
                       display: "flex",
@@ -6118,6 +6354,8 @@ export default function EmployerProfile() {
                       border: "1px solid rgba(255,255,255,.2)",
                       cursor: "pointer",
                       backdropFilter: "blur(4px)",
+                      textDecoration: "none",
+                      boxSizing: "border-box",
                       transition: "all .18s",
                     }}
                     onMouseEnter={(e) => {
@@ -6129,7 +6367,7 @@ export default function EmployerProfile() {
                     }}
                   >
                     <FiZap size={13} /> Upgrade to Premium X
-                  </button>
+                  </Link>
                 </Card>
 
                 {/* ─ Company Info snippet ─ */}
@@ -11698,7 +11936,11 @@ function ScheduledCallsSection({ calls, fetching, onUpdateCall }) {
   if (!calls || calls.length === 0) {
     return (
       <Card className="ep-card">
-        <div style={{ padding: 20, color: C.s400 }}>No scheduled calls found.</div>
+        <SectionHead title="Scheduled Calls" />
+        <TabEmptyState
+          title="No Scheduled Calls"
+          description="You don't have any upcoming or completed candidate video interviews scheduled at this time."
+        />
       </Card>
     );
   }

@@ -5,8 +5,9 @@ import * as XLSX from 'xlsx';
 import {
   FiPlus, FiMoreVertical, FiChevronDown, FiInfo,
   FiSearch, FiCheck, FiX, FiLock, FiShield,
-  FiClock, FiGlobe, FiTrash2, FiEdit3, FiCheckCircle,
-  FiPhone, FiArrowLeft, FiRefreshCw, FiEye, FiEyeOff, FiLoader
+  FiClock, FiGlobe, FiTrash2, FiEdit3, FiCheckCircle, FiAlertCircle,
+  FiPhone, FiArrowLeft, FiRefreshCw, FiEye, FiEyeOff, FiLoader,
+  FiShoppingCart, FiExternalLink
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
@@ -43,6 +44,14 @@ export default function UserManagement() {
 
   // Users state — loaded from API
   const [users, setUsers] = useState([]);
+  const [seatLimits, setSeatLimits] = useState({
+    planName: '',
+    planType: '',
+    isExpired: false,
+    jobPosting: { total: 0, used: 0, remaining: 0 },
+    resdex: { total: 0, used: 0, remaining: 0 },
+    jobBooster: { total: 0, used: 0, remaining: 0 },
+  });
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
 
@@ -53,6 +62,9 @@ export default function UserManagement() {
     try {
       const result = await userManagementService.getUsers();
       setUsers(result.data || []);
+      if (result.seatLimits) {
+        setSeatLimits(result.seatLimits);
+      }
     } catch (err) {
       setApiError(err?.message || 'Failed to load users');
     } finally {
@@ -64,6 +76,21 @@ export default function UserManagement() {
 
   // Selected Users
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+
+  // Plan Seat Quota Calculations
+  const resdexCount = useMemo(() => users.filter((u) => u.resdex).length, [users]);
+  const jobPostingCount = useMemo(() => users.filter((u) => u.jobPosting).length, [users]);
+  const jobBoosterCount = useMemo(() => users.filter((u) => u.jobBooster).length, [users]);
+
+  const totalResdexLimit = seatLimits?.resdex?.total ?? 0;
+  const totalJobPostingLimit = seatLimits?.jobPosting?.total ?? 0;
+  const totalJobBoosterLimit = seatLimits?.jobBooster?.total ?? totalJobPostingLimit;
+
+  const isResdexFull = totalResdexLimit > 0 && resdexCount >= totalResdexLimit;
+  const isResdexLocked = totalResdexLimit === 0;
+  const isJobPostingFull = totalJobPostingLimit > 0 && jobPostingCount >= totalJobPostingLimit;
+  const isJobPostingLocked = totalJobPostingLimit === 0;
+  const isJobBoosterFull = totalJobBoosterLimit > 0 && jobBoosterCount >= totalJobBoosterLimit;
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,10 +194,33 @@ export default function UserManagement() {
     return sorted.join(', ');
   };
 
-  // Toast notification
+  // Toast notification state: { message, type: 'success' | 'error' } | null
   const [toast, setToast] = useState(null);
-  const showToast = (message) => {
-    setToast(message);
+  const showToast = (message, type = 'success') => {
+    if (!message) return;
+    let detectedType = type;
+    if (type !== 'error') {
+      const lower = String(message).toLowerCase();
+      if (
+        lower.includes('fail') ||
+        lower.includes('err') ||
+        lower.includes('cannot') ||
+        lower.includes("can't") ||
+        lower.includes('not allowed') ||
+        lower.includes('not included') ||
+        lower.includes('not available') ||
+        lower.includes('limit reached') ||
+        lower.includes('locked') ||
+        lower.includes('invalid') ||
+        lower.includes('denied') ||
+        lower.includes('unable') ||
+        lower.includes('expired') ||
+        lower.includes('no recruiter')
+      ) {
+        detectedType = 'error';
+      }
+    }
+    setToast({ message: String(message), type: detectedType });
     setTimeout(() => setToast(null), 3500);
   };
 
@@ -248,25 +298,44 @@ export default function UserManagement() {
     setEditingUser(null);
     setFormName('');
     setFormEmail('');
-    setFormJobPosting(true);
-    setFormJobBooster(true);
+    setFormJobPosting(!isJobPostingFull && !isJobPostingLocked);
+    setFormJobBooster(!isJobPostingFull && !isJobPostingLocked && !isJobBoosterFull);
     setFormResdex(false);
     setFormErrors({});
   };
 
-  // Close dropdowns on outside click
-  const dropdownRef = useRef(null);
+  // Close dropdowns on outside click & escape
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (
+        !e.target.closest(
+          '.um-popover-menu, .um-security-popover, .um-time-popover, .um-dropdown-trigger, .um-btn-icon-more, .um-msq-container'
+        )
+      ) {
         setOpenDropdown(null);
         setShowWeekendMsq(false);
-      } else if (weekendMsqRef.current && !weekendMsqRef.current.contains(e.target)) {
+      } else if (
+        weekendMsqRef.current &&
+        !weekendMsqRef.current.contains(e.target) &&
+        !e.target.closest('.um-msq-container')
+      ) {
+        setShowWeekendMsq(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setOpenDropdown(null);
         setShowWeekendMsq(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   // Filtered Users List
@@ -288,7 +357,7 @@ export default function UserManagement() {
     });
   }, [users, activeTab, userFilter, searchQuery]);
 
-  // Master Checkbox - Only RECRUITERs can be selected (CLIENTs cannot be selected)
+  // Master Checkbox - Only RECRUITERs can be selected (Super Users cannot be selected)
   const selectableUsers = useMemo(() => {
     return filteredUsers.filter((u) => !u.isSuperUser);
   }, [filteredUsers]);
@@ -306,7 +375,7 @@ export default function UserManagement() {
 
   const handleSelectUser = (id) => {
     const target = users.find((u) => u.id === id);
-    if (target?.isSuperUser) return; // CLIENT cannot be selected
+    if (target?.isSuperUser) return; // Super User cannot be selected
     setSelectedUserIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -318,6 +387,37 @@ export default function UserManagement() {
     if (!target) return;
 
     const newValue = !target[field];
+
+    // Client-side quota guard when enabling
+    if (newValue) {
+      if (field === 'resdex') {
+        if (isResdexLocked) {
+          showToast('ResDex is not included in your current plan. Please upgrade to unlock.');
+          return;
+        }
+        if (isResdexFull) {
+          showToast(`ResDex seat limit (${totalResdexLimit}) reached. Upgrade plan or unassign another user's seat.`);
+          return;
+        }
+      }
+      if (field === 'jobPosting') {
+        if (isJobPostingLocked) {
+          showToast('Job Posting is not available in your current plan.');
+          return;
+        }
+        if (isJobPostingFull) {
+          showToast(`Job Posting seat limit (${totalJobPostingLimit}) reached. Upgrade plan or unassign another user's seat.`);
+          return;
+        }
+      }
+      if (field === 'jobBooster') {
+        if (isJobBoosterFull) {
+          showToast(`Job Booster seat limit (${totalJobBoosterLimit}) reached.`);
+          return;
+        }
+      }
+    }
+
     const updatedPermissions = {
       jobPosting: target.jobPosting,
       jobBooster: target.jobBooster,
@@ -338,6 +438,7 @@ export default function UserManagement() {
     try {
       await userManagementService.updateUser(userId, updatedPermissions);
       showToast(`Updated ${field === 'jobPosting' ? 'Job Posting' : field === 'jobBooster' ? 'Job Booster' : 'Resdex'} permission`);
+      fetchUsers();
     } catch (err) {
       // Roll back on failure
       setUsers((prev) =>
@@ -414,12 +515,13 @@ export default function UserManagement() {
       });
       setUsers((prev) => [...prev, result.data]);
       showToast(`User "${trimmedName}" added successfully!`);
+      fetchUsers();
 
       // Reset inputs
       setFormName('');
       setFormEmail('');
-      setFormJobPosting(true);
-      setFormJobBooster(true);
+      setFormJobPosting(!isJobPostingFull && !isJobPostingLocked);
+      setFormJobBooster(!isJobPostingFull && !isJobPostingLocked && !isJobBoosterFull);
       setFormResdex(false);
       setFormErrors({});
 
@@ -451,7 +553,7 @@ export default function UserManagement() {
   const handleDeleteUser = async (userId) => {
     const target = users.find((u) => u.id === userId);
     if (target?.isSuperUser) {
-      showToast('CLIENT cannot be deleted');
+      showToast('Super User cannot be deleted', 'error');
       return;
     }
     setConfirmModal({
@@ -465,7 +567,7 @@ export default function UserManagement() {
           setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
           showToast(`RECRUITER "${target?.name || ''}" deleted successfully.`);
         } catch (err) {
-          showToast(err?.message || 'Failed to delete user');
+          showToast(err?.message || 'Failed to delete user', 'error');
         }
       }
     });
@@ -485,7 +587,7 @@ export default function UserManagement() {
           setSelectedUserIds([]);
           showToast('Selected user(s) removed successfully.');
         } catch (err) {
-          showToast(err?.message || 'Failed to delete users');
+          showToast(err?.message || 'Failed to delete users', 'error');
         }
       }
     });
@@ -521,7 +623,7 @@ export default function UserManagement() {
         setOtpSessionId(res.data.sessionId);
         setMaskedPhone(res.data.maskedPhone); // can be masked email or phone
         setOtpTimer(res.data.expiresInSeconds || 600);
-        showToast(`Verification OTP sent to CLIENT's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
+        showToast(`Verification OTP sent to Super User's ${method === 'email' ? 'email' : 'phone'} (${res.data.maskedPhone})`);
       }
     } catch (err) {
       setDomainError(err?.message || 'Failed to send OTP');
@@ -679,7 +781,7 @@ export default function UserManagement() {
         u.id,
         u.name,
         u.email,
-        u.isSuperUser ? 'CLIENT' : 'RECRUITER',
+        u.isSuperUser ? 'Super User' : 'RECRUITER',
         u.isRestricted ? 'Yes' : 'No',
         u.resdex ? 'Yes' : 'No',
         u.jobPosting ? 'Yes' : 'No',
@@ -696,14 +798,9 @@ export default function UserManagement() {
     showToast('Data exported to Excel successfully.');
   };
 
-  // Calculate dynamic permission counts
-  const resdexCount = users.filter(u => u.resdex).length;
-  const jobPostingCount = users.filter(u => u.jobPosting).length;
-  const jobBoosterCount = users.filter(u => u.jobBooster).length;
-
   return (
     <EmployerLayout activeTab="home">
-      <div className="um-container" ref={dropdownRef}>
+      <div className="um-container">
         {/* Breadcrumb Navigation */}
         <EmployerBreadcrumb
           items={[
@@ -739,29 +836,67 @@ export default function UserManagement() {
               top: 24,
               right: 24,
               zIndex: 99999,
-              backgroundColor: '#002366',
+              backgroundColor: toast.type === 'error' ? '#DC2626' : '#002366',
               color: '#ffffff',
               padding: '12px 20px',
               borderRadius: 8,
-              boxShadow: '0 8px 24px rgba(0, 35, 102, 0.2)',
+              boxShadow: toast.type === 'error'
+                ? '0 8px 24px rgba(220, 38, 38, 0.28)'
+                : '0 8px 24px rgba(0, 35, 102, 0.2)',
+              border: toast.type === 'error'
+                ? '1px solid rgba(254, 202, 202, 0.3)'
+                : '1px solid rgba(255, 255, 255, 0.12)',
               fontSize: 14,
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               gap: 8,
               animation: 'umFadeIn 0.2s ease',
+              maxWidth: '440px',
+              lineHeight: 1.4,
             }}
           >
-            <FiCheckCircle size={17} color="#10b981" />
-            {toast}
+            {toast.type === 'error' ? (
+              <FiAlertCircle size={18} color="#FFFFFF" style={{ flexShrink: 0 }} />
+            ) : (
+              <FiCheckCircle size={17} color="#10b981" style={{ flexShrink: 0 }} />
+            )}
+            <span>{toast.message}</span>
           </div>
         )}
 
         {/* Page Top Header */}
         <div className="um-header">
-          <h1 className="um-title">Manage users & permissions</h1>
+          <div>
+            <h1 className="um-title">Manage users & permissions</h1>
+            {/* {seatLimits?.planName && (
+              <div className="um-plan-badge-row">
+                <span className="um-plan-badge">
+                  Plan: <strong>{seatLimits.planName}</strong>
+                </span>
+                <span className="um-plan-seat-pill">
+                  Job Posting Seats: <strong>{jobPostingCount}/{totalJobPostingLimit}</strong>
+                </span>
+                <span className="um-plan-seat-pill">
+                  ResDex Seats: <strong>{resdexCount}/{totalResdexLimit}</strong>
+                </span>
+              </div>
+            )} */}
+          </div>
 
           <div className="um-header-actions">
+            <a
+              href="/buy-online"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="um-btn-purchase-seats"
+              title="Purchase user seats on Buy Online"
+            >
+              <FiShoppingCart size={15} />
+              <span>Purchase User Seats</span>
+              <FiExternalLink size={13} style={{ opacity: 0.7 }} />
+            </a>
+
             <button
               type="button"
               className="um-btn-primary"
@@ -769,8 +904,8 @@ export default function UserManagement() {
                 setEditingUser(null);
                 setFormName('');
                 setFormEmail('');
-                setFormJobPosting(true);
-                setFormJobBooster(true);
+                setFormJobPosting(!isJobPostingFull && !isJobPostingLocked);
+                setFormJobBooster(!isJobPostingFull && !isJobPostingLocked && !isJobBoosterFull);
                 setFormResdex(false);
                 setFormErrors({});
                 setShowAddModal(true);
@@ -780,7 +915,7 @@ export default function UserManagement() {
               Add user
             </button>
 
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
                 className="um-btn-icon-more"
@@ -791,11 +926,14 @@ export default function UserManagement() {
               </button>
 
               {openDropdown === 'options' && (
-                <div className="um-popover-menu">
+                <div className="um-popover-menu align-right" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
                     className="um-popover-item"
-                    onClick={handleExportExcel}
+                    onClick={() => {
+                      setOpenDropdown(null);
+                      handleExportExcel();
+                    }}
                   >
                     Export users Excel
                   </button>
@@ -804,6 +942,17 @@ export default function UserManagement() {
             </div>
           </div>
         </div>
+
+        {/* Backdrop for open dropdowns & popovers */}
+        {openDropdown && (
+          <div
+            className="um-dropdown-backdrop"
+            onClick={() => {
+              setOpenDropdown(null);
+              setShowWeekendMsq(false);
+            }}
+          />
+        )}
 
         {/* Tabs & Top Controls Bar */}
         <div className="um-tabs-row">
@@ -819,71 +968,72 @@ export default function UserManagement() {
 
           <div className="um-tabs-right">
             {/* Allowed Domains Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
-                className="um-dropdown-trigger"
+                className={`um-dropdown-trigger ${openDropdown === 'domains' ? 'active' : ''}`}
                 onClick={() => setOpenDropdown(openDropdown === 'domains' ? null : 'domains')}
               >
-                Allowed Domains <FiChevronDown size={14} />
+                Allowed Domains <FiChevronDown size={14} className={openDropdown === 'domains' ? 'rotate' : ''} />
               </button>
 
               {openDropdown === 'domains' && (
-                <div className="um-popover-menu" style={{ width: 240 }}>
-                  <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                    Allowed Domains
-                  </div>
-                  {allowedDomains.map((dom) => (
-                    <div
-                      key={dom}
-                      onMouseEnter={() => setHoveredDomain(dom)}
-                      onMouseLeave={() => setHoveredDomain(null)}
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: 13,
-                        color: '#0f172a',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: hoveredDomain === dom ? '#f8fafc' : 'transparent',
-                      }}
-                    >
-                      <span>{dom}</span>
-                      {hoveredDomain === dom ? (
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdown(null);
-                              handleOpenDomainModal('edit', dom);
-                            }}
-                            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 2 }}
-                            title="Edit Domain"
-                          >
-                            <FiEdit3 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdown(null);
-                              handleOpenDomainModal('delete', dom);
-                            }}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2 }}
-                            title="Delete Domain"
-                          >
-                            <FiTrash2 size={13} />
-                          </button>
-                        </div>
-                      ) : (
-                        <FiCheck size={14} color="#10b981" />
-                      )}
-                    </div>
-                  ))}
-                  <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 4, paddingTop: 4 }}>
+                <div className="um-popover-menu um-domains-popover" onClick={(e) => e.stopPropagation()}>
+                  <div className="um-domains-header">
+                    <span className="um-domains-header-title">Allowed Domains</span>
                     <button
                       type="button"
-                      className="um-popover-item"
-                      style={{ color: '#0284c7', fontWeight: 600 }}
+                      className="um-domains-close-btn"
+                      onClick={() => setOpenDropdown(null)}
+                      aria-label="Close"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </div>
+                  <div className="um-domains-list">
+                    {allowedDomains.length === 0 ? (
+                      <div className="um-domains-empty">No allowed domains configured</div>
+                    ) : (
+                      allowedDomains.map((dom) => (
+                        <div
+                          key={dom}
+                          className="um-domain-row"
+                        >
+                          <span className="um-domain-name">{dom}</span>
+                          <div className="um-domain-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdown(null);
+                                handleOpenDomainModal('edit', dom);
+                              }}
+                              className="um-domain-btn edit"
+                              title="Edit Domain"
+                              aria-label="Edit Domain"
+                            >
+                              <FiEdit3 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdown(null);
+                                handleOpenDomainModal('delete', dom);
+                              }}
+                              className="um-domain-btn delete"
+                              title="Delete Domain"
+                              aria-label="Delete Domain"
+                            >
+                              <FiTrash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="um-domains-footer">
+                    <button
+                      type="button"
+                      className="um-popover-item um-btn-add-domain"
                       onClick={() => {
                         setOpenDropdown(null);
                         handleOpenDomainModal('add', '');
@@ -897,20 +1047,32 @@ export default function UserManagement() {
             </div>
 
             {/* Account Security Dropdown (Matching Screenshot 1) */}
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
-                className="um-dropdown-trigger"
+                className={`um-dropdown-trigger ${openDropdown === 'security' ? 'active' : ''}`}
                 onClick={() => setOpenDropdown(openDropdown === 'security' ? null : 'security')}
               >
-                Account Security <FiChevronDown size={14} />
+                Account Security <FiChevronDown size={14} className={openDropdown === 'security' ? 'rotate' : ''} />
               </button>
 
               {openDropdown === 'security' && (
                 <div className="um-security-popover" onClick={(e) => e.stopPropagation()}>
+                  <div className="um-popover-modal-header">
+                    <h3 className="um-popover-modal-title">Account Security</h3>
+                    <button
+                      type="button"
+                      className="um-popover-modal-close"
+                      onClick={() => setOpenDropdown(null)}
+                      aria-label="Close"
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
+
                   {/* Password Settings */}
-                  <div>
-                    <h3 className="um-popover-heading">Password Settings</h3>
+                  <div className="um-security-section">
+                    <h4 className="um-popover-heading">Password Settings</h4>
 
                     <label className="um-toggle-row">
                       <span className="um-switch">
@@ -944,10 +1106,10 @@ export default function UserManagement() {
                   </div>
 
                   {/* Enhanced Security (using OTP for login) settings */}
-                  <div>
-                    <h3 className="um-popover-heading">
+                  <div className="um-security-section">
+                    <h4 className="um-popover-heading">
                       Enhanced Security (using OTP for login) settings
-                    </h3>
+                    </h4>
                     <p className="um-popover-subtext">
                       OTP security will shield your account from hackers
                     </p>
@@ -972,18 +1134,28 @@ export default function UserManagement() {
             </div>
 
             {/* Time Restrictions Dropdown (Matching Screenshot 2) */}
-            <div style={{ position: 'relative' }}>
+            <div className="um-dropdown-wrapper">
               <button
                 type="button"
-                className="um-dropdown-trigger"
+                className={`um-dropdown-trigger ${openDropdown === 'time' ? 'active' : ''}`}
                 onClick={() => setOpenDropdown(openDropdown === 'time' ? null : 'time')}
               >
-                Time Restrictions <FiChevronDown size={14} />
+                Time Restrictions <FiChevronDown size={14} className={openDropdown === 'time' ? 'rotate' : ''} />
               </button>
 
               {openDropdown === 'time' && (
                 <div className="um-time-popover" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="um-popover-heading">Time Restrictions</h3>
+                  <div className="um-popover-modal-header">
+                    <h3 className="um-popover-modal-title">Time Restrictions</h3>
+                    <button
+                      type="button"
+                      className="um-popover-modal-close"
+                      onClick={() => setOpenDropdown(null)}
+                      aria-label="Close"
+                    >
+                      <FiX size={18} />
+                    </button>
+                  </div>
 
                   {/* Block access for RECRUITER on (MSQ Multi-select) */}
                   <div className="um-restriction-field">
@@ -1210,7 +1382,7 @@ export default function UserManagement() {
                 </th>
 
                 <th className="um-th" style={{ minWidth: 260 }}>
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <div className="um-dropdown-wrapper" style={{ position: 'relative', display: 'inline-block' }}>
                     <button
                       type="button"
                       style={{
@@ -1274,17 +1446,29 @@ export default function UserManagement() {
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Resdex</div>
-                  <div className="um-th-metric-sub">{resdexCount} ({resdexCount} licenses)</div>
+                  <div className="um-th-metric-sub">
+                    {totalResdexLimit > 0
+                      ? `${resdexCount} / ${totalResdexLimit} licenses`
+                      : '0 / 0 (No licenses)'}
+                  </div>
                 </th>
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Job Posting</div>
-                  <div className="um-th-metric-sub">{jobPostingCount}</div>
+                  <div className="um-th-metric-sub">
+                    {totalJobPostingLimit > 0
+                      ? `${jobPostingCount} / ${totalJobPostingLimit} seats`
+                      : `${jobPostingCount} seats`}
+                  </div>
                 </th>
 
                 <th className="um-th um-th-metric">
                   <div className="um-th-metric-title">Job Booster</div>
-                  <div className="um-th-metric-sub">{jobBoosterCount}</div>
+                  <div className="um-th-metric-sub">
+                    {totalJobBoosterLimit > 0
+                      ? `${jobBoosterCount} / ${totalJobBoosterLimit} seats`
+                      : `${jobBoosterCount} seats`}
+                  </div>
                 </th>
 
                 <th className="um-th um-th-actions" style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
@@ -1322,8 +1506,8 @@ export default function UserManagement() {
                               cursor: 'not-allowed',
                               opacity: 0.35,
                             }}
-                            title="CLIENT cannot be selected"
-                            aria-label="CLIENT cannot be selected"
+                            title="Super User cannot be selected"
+                            aria-label="Super User cannot be selected"
                           />
                         ) : (
                           <input
@@ -1359,7 +1543,7 @@ export default function UserManagement() {
                             <div className="um-user-name-row" style={{ cursor: 'pointer' }}>
                               <span className="um-user-name" style={{ cursor: 'pointer' }}>{u.name}</span>
                               {u.isSuperUser && (
-                                <span className="um-badge-superuser" style={{ cursor: 'pointer' }}>CLIENT</span>
+                                <span className="um-badge-superuser" style={{ cursor: 'pointer' }}>Super User</span>
                               )}
                             </div>
                             <span className="um-user-email" style={{ cursor: 'pointer' }}>{u.email}</span>
@@ -1371,14 +1555,22 @@ export default function UserManagement() {
                       <td className="um-td um-metric-cell">
                         <button
                           type="button"
-                          className="um-permission-badge"
-                          title="Click to toggle Resdex access"
+                          className={`um-permission-badge ${!u.resdex && (isResdexLocked || isResdexFull) ? 'disabled-seat' : ''}`}
+                          title={
+                            u.resdex
+                              ? 'Click to remove Resdex access'
+                              : isResdexLocked
+                              ? 'ResDex is not included in current plan (Upgrade to unlock)'
+                              : isResdexFull
+                              ? `ResDex seat limit reached (${totalResdexLimit}/${totalResdexLimit} assigned)`
+                              : 'Click to toggle Resdex access'
+                          }
                           onClick={() => handleTogglePermission(u.id, 'resdex')}
                         >
                           {u.resdex ? (
                             <FiCheck className="um-icon-check" size={18} />
                           ) : (
-                            <FiX className="um-icon-cross" size={18} />
+                            <FiX className={`um-icon-cross ${isResdexLocked ? 'locked' : ''}`} size={18} />
                           )}
                         </button>
                       </td>
@@ -1387,8 +1579,16 @@ export default function UserManagement() {
                       <td className="um-td um-metric-cell">
                         <button
                           type="button"
-                          className="um-permission-badge"
-                          title="Click to toggle Job Posting access"
+                          className={`um-permission-badge ${!u.jobPosting && (isJobPostingLocked || isJobPostingFull) ? 'disabled-seat' : ''}`}
+                          title={
+                            u.jobPosting
+                              ? 'Click to remove Job Posting access'
+                              : isJobPostingLocked
+                              ? 'Job Posting is not available in current plan'
+                              : isJobPostingFull
+                              ? `Job Posting seat limit reached (${totalJobPostingLimit}/${totalJobPostingLimit} assigned)`
+                              : 'Click to toggle Job Posting access'
+                          }
                           onClick={() => handleTogglePermission(u.id, 'jobPosting')}
                         >
                           {u.jobPosting ? (
@@ -1403,8 +1603,14 @@ export default function UserManagement() {
                       <td className="um-td um-metric-cell">
                         <button
                           type="button"
-                          className="um-permission-badge"
-                          title="Click to toggle Job Booster access"
+                          className={`um-permission-badge ${!u.jobBooster && isJobBoosterFull ? 'disabled-seat' : ''}`}
+                          title={
+                            u.jobBooster
+                              ? 'Click to remove Job Booster access'
+                              : isJobBoosterFull
+                              ? `Job Booster seat limit reached (${totalJobBoosterLimit}/${totalJobBoosterLimit} assigned)`
+                              : 'Click to toggle Job Booster access'
+                          }
                           onClick={() => handleTogglePermission(u.id, 'jobBooster')}
                         >
                           {u.jobBooster ? (
@@ -1415,7 +1621,7 @@ export default function UserManagement() {
                         </button>
                       </td>
 
-                      {/* Row Actions on Hover: CLIENT shows ONLY Edit; RECRUITERs show Edit & Delete */}
+                      {/* Row Actions on Hover: Super User shows ONLY Edit; RECRUITERs show Edit & Delete */}
                       <td className="um-td um-td-actions" style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
                         <div className="um-row-actions">
                           <button
@@ -1527,24 +1733,41 @@ export default function UserManagement() {
 
                   <div className="um-permissions-card">
                     {/* Job Posting */}
-                    <label className="um-checkbox-row">
+                    <label className={`um-checkbox-row ${isJobPostingFull && (!editingUser || !editingUser.jobPosting) ? 'disabled-seat' : ''}`}>
                       <input
                         type="checkbox"
                         checked={formJobPosting}
+                        disabled={isJobPostingLocked || (isJobPostingFull && (!editingUser || !editingUser.jobPosting))}
                         onChange={(e) => {
                           const checked = e.target.checked;
                           setFormJobPosting(checked);
                           if (!checked) setFormJobBooster(false); // Booster requires Job Posting
                         }}
                       />
-                      <span>Job Posting</span>
+                      <div className="um-checkbox-label-content">
+                        <span>Job Posting</span>
+                        {isJobPostingLocked ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Not available in current plan)
+                          </span>
+                        ) : isJobPostingFull && (!editingUser || !editingUser.jobPosting) ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Seat limit reached: {jobPostingCount}/{totalJobPostingLimit} used)
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#64748b' }}>
+                            ({Math.max(0, totalJobPostingLimit - jobPostingCount)} of {totalJobPostingLimit} seats available)
+                          </span>
+                        )}
+                      </div>
                     </label>
 
                     {/* Job Booster */}
-                    <label className="um-checkbox-row">
+                    <label className={`um-checkbox-row ${(!formJobPosting || (isJobBoosterFull && (!editingUser || !editingUser.jobBooster))) ? 'disabled-seat' : ''}`}>
                       <input
                         type="checkbox"
                         checked={formJobBooster}
+                        disabled={!formJobPosting || (isJobBoosterFull && (!editingUser || !editingUser.jobBooster))}
                         onChange={(e) => {
                           const checked = e.target.checked;
                           setFormJobBooster(checked);
@@ -1565,15 +1788,28 @@ export default function UserManagement() {
                     </label>
 
                     {/* Resdex */}
-                    <label className="um-checkbox-row">
+                    <label className={`um-checkbox-row ${(isResdexLocked || (isResdexFull && (!editingUser || !editingUser.resdex))) ? 'disabled-seat' : ''}`}>
                       <input
                         type="checkbox"
                         checked={formResdex}
+                        disabled={isResdexLocked || (isResdexFull && (!editingUser || !editingUser.resdex))}
                         onChange={(e) => setFormResdex(e.target.checked)}
                       />
                       <div className="um-checkbox-label-content">
                         <span>Resdex</span>
-                        <span style={{ fontSize: 12.5, color: '#64748b' }}>(includes NVite)</span>
+                        {isResdexLocked ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Not in plan - Upgrade to unlock ResDex)
+                          </span>
+                        ) : isResdexFull && (!editingUser || !editingUser.resdex) ? (
+                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                            (Seat limit reached: {resdexCount}/{totalResdexLimit} used)
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#64748b' }}>
+                            ({Math.max(0, totalResdexLimit - resdexCount)} of {totalResdexLimit} licenses available)
+                          </span>
+                        )}
                         <FiLock size={13} color="#64748b" title="Consumes 1 Resdex license" />
                       </div>
                     </label>
@@ -1773,7 +2009,7 @@ export default function UserManagement() {
                           <FiShield size={20} color="#0ea5e9" />
                         </div>
                         <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-                          To authorize {domainAction === 'delete' ? `deleting the domain ${targetDomain}` : domainAction === 'edit' ? `editing the domain ${targetDomain}` : 'adding a new domain'}, enter the 6-digit OTP sent to the CLIENT's registered {otpMethod === 'email' ? 'email' : 'mobile number'}:{' '}
+                          To authorize {domainAction === 'delete' ? `deleting the domain ${targetDomain}` : domainAction === 'edit' ? `editing the domain ${targetDomain}` : 'adding a new domain'}, enter the 6-digit OTP sent to the Super User's registered {otpMethod === 'email' ? 'email' : 'mobile number'}:{' '}
                           <strong style={{ color: '#002366' }}>{maskedPhone}</strong>
                         </div>
                       </div>
@@ -1867,7 +2103,7 @@ export default function UserManagement() {
                       }}
                     >
                       <FiCheckCircle size={17} color="#10b981" />
-                      CLIENT {otpMethod === 'email' ? 'Email' : 'Phone'} Verified ({maskedPhone})
+                      Super User {otpMethod === 'email' ? 'Email' : 'Phone'} Verified ({maskedPhone})
                     </div>
 
                     <div className="um-form-group">

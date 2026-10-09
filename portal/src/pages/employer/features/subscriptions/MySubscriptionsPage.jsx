@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPhone, FiMail, FiChevronDown, FiChevronUp, FiCheckCircle, FiPackage, FiLoader } from 'react-icons/fi';
+import { FiPhone, FiMail, FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertCircle, FiPackage, FiLoader } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import authService from '../../../../services/authService';
+import './MySubscriptionsPage.css';
 
 export default function MySubscriptionsPage() {
   const [loading, setLoading] = useState(true);
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [expandedCards, setExpandedCards] = useState({ 0: true }); // First card open by default
   const [invoiceToast, setInvoiceToast] = useState(null);
+  const [requestingInvoiceId, setRequestingInvoiceId] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,12 +53,44 @@ export default function MySubscriptionsPage() {
     }));
   };
 
-  const handleRequestInvoice = (sub, e) => {
+  const handleRequestInvoice = async (sub, e) => {
     e.stopPropagation();
-    setInvoiceToast(`Invoice requested for Transaction ID #${sub.transactionId}. Sent to your registered email.`);
-    setTimeout(() => {
-      setInvoiceToast(null);
-    }, 4500);
+    const planName = sub.planName || sub.products?.[0]?.name || 'Subscription Plan';
+    const subTargetId = sub.id || sub.transactionId;
+
+    try {
+      setRequestingInvoiceId(subTargetId);
+      const res = await authService.requestSubscriptionInvoice({
+        planName,
+        transactionId: sub.transactionId || '',
+        amount: sub.amountPaid || 0,
+        subscriptionId: sub.id || '',
+      });
+
+      const message =
+        res?.message ||
+        `Invoice requested for "${planName}" (#${sub.transactionId}). Sent to your registered email.`;
+
+      setInvoiceToast({
+        type: 'success',
+        message,
+      });
+    } catch (err) {
+      console.error('Failed to request invoice:', err);
+      const errorMessage =
+        err?.message ||
+        err?.response?.data?.message ||
+        'Unable to submit invoice request right now. Please try again.';
+      setInvoiceToast({
+        type: 'error',
+        message: errorMessage,
+      });
+    } finally {
+      setRequestingInvoiceId(null);
+      setTimeout(() => {
+        setInvoiceToast(null);
+      }, 5500);
+    }
   };
 
   const getInitials = (name) => {
@@ -70,14 +104,9 @@ export default function MySubscriptionsPage() {
 
   return (
     <EmployerLayout activeTab="subscriptions">
-      <div style={{
-        maxWidth: 1260,
-        margin: '0 auto',
-        padding: '24px 32px 60px',
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-      }}>
+      <div className="msp-container">
         {/* Breadcrumb Navigation */}
-        <div style={{ marginBottom: 20 }}>
+        <div className="msp-breadcrumb-wrapper">
           <EmployerBreadcrumb
             items={[
               { label: 'Employer Dashboard', path: '/employer-dashboard' },
@@ -88,155 +117,53 @@ export default function MySubscriptionsPage() {
 
         {/* Floating Toast feedback */}
         {invoiceToast && (
-          <div style={{
-            position: 'fixed',
-            top: 24,
-            right: 24,
-            zIndex: 9999,
-            backgroundColor: '#0f172a',
-            color: '#ffffff',
-            padding: '14px 20px',
-            borderRadius: 12,
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            border: '1px solid #334155',
-            fontSize: 14,
-            fontWeight: 500,
-          }}>
-            <FiCheckCircle size={20} color="#34d399" style={{ flexShrink: 0 }} />
+          <div className="msp-toast">
+            <FiCheckCircle size={18} color="#34d399" style={{ flexShrink: 0 }} />
             <span>{invoiceToast}</span>
           </div>
         )}
 
         {/* Page Title & Subtitle */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{
-            fontSize: 28,
-            fontWeight: 800,
-            color: '#0f172a',
-            margin: 0,
-            letterSpacing: '-0.4px',
-            lineHeight: 1.25,
-          }}>
+        <div className="msp-header-wrapper">
+          <h1 className="msp-page-title">
             Subscription Status
           </h1>
-          <p style={{
-            fontSize: 14.5,
-            color: '#64748b',
-            marginTop: 6,
-            marginBottom: 0,
-            fontWeight: 400,
-          }}>
+          <p className="msp-page-subtitle">
             List of all services purchased on this account
           </p>
         </div>
 
         {/* Tab Navigation with underline */}
-        <div style={{
-          borderBottom: '1px solid #e2e8f0',
-          marginBottom: 32,
-          position: 'relative',
-        }}>
-          <div style={{
-            display: 'inline-block',
-            position: 'relative',
-            paddingBottom: 12,
-            fontWeight: 700,
-            fontSize: 15,
-            color: '#0f172a',
-            cursor: 'pointer',
-          }}>
+        <div className="msp-tabs-bar">
+          <div className="msp-tab-item">
             <span>All subscriptions ({subscriptions.length})</span>
-            <div style={{
-              position: 'absolute',
-              bottom: -1,
-              left: 0,
-              right: 0,
-              height: 3,
-              backgroundColor: '#ef4444',
-              borderRadius: '2px 2px 0 0',
-            }} />
+            <div className="msp-tab-indicator" />
           </div>
         </div>
 
         {/* Main 2-Column Layout */}
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 28,
-          alignItems: 'flex-start',
-        }}>
+        <div className="msp-layout">
           {/* Left Column: Subscriptions List */}
-          <div style={{
-            flex: '1 1 680px',
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 20,
-          }}>
+          <div className="msp-subs-col">
             {loading ? (
-              <div style={{
-                backgroundColor: '#ffffff',
-                borderRadius: 14,
-                border: '1px solid #e2e8f0',
-                padding: '48px 24px',
-                textAlign: 'center',
-                color: '#64748b',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                fontSize: 14.5,
-              }}>
-                <FiLoader className="animate-spin" size={20} color="#1e5eff" />
-                <span>Loading subscriptions from database...</span>
+              <div className="msp-state-card">
+                <div className="msp-loading-content">
+                  <FiLoader className="animate-spin" size={20} color="#1e5eff" />
+                  <span>Loading subscriptions from database...</span>
+                </div>
               </div>
             ) : subscriptions.length === 0 ? (
-              <div style={{
-                backgroundColor: '#ffffff',
-                borderRadius: 14,
-                border: '1px solid #e2e8f0',
-                padding: '48px 32px',
-                textAlign: 'center',
-                boxShadow: '0 1px 4px rgba(15, 23, 42, 0.04)',
-              }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  backgroundColor: '#f1f5f9',
-                  color: '#64748b',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 16,
-                }}>
+              <div className="msp-state-card">
+                <div className="msp-empty-icon">
                   <FiPackage size={26} />
                 </div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
+                <h3 className="msp-empty-title">
                   No subscriptions purchased yet
                 </h3>
-                <p style={{ fontSize: 14, color: '#64748b', maxWidth: 440, margin: '0 auto 20px', lineHeight: 1.5 }}>
+                <p className="msp-empty-desc">
                   There are currently no active or previous subscriptions recorded for this account. Explore our packages to post vacancies and search candidates.
                 </p>
-                <Link
-                  to="/employer-dashboard/pricing"
-                  style={{
-                    display: 'inline-block',
-                    backgroundColor: '#002366',
-                    color: '#ffffff',
-                    padding: '10px 24px',
-                    borderRadius: 8,
-                    fontWeight: 600,
-                    fontSize: 14,
-                    textDecoration: 'none',
-                    transition: 'opacity 0.2s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                >
+                <Link to="/employer-dashboard/pricing" className="msp-explore-btn">
                   Explore Packages
                 </Link>
               </div>
@@ -244,137 +171,78 @@ export default function MySubscriptionsPage() {
               subscriptions.map((sub, idx) => {
                 const isExpanded = !!expandedCards[idx];
                 return (
-                  <div
-                    key={sub.id || idx}
-                    style={{
-                      backgroundColor: '#ffffff',
-                      borderRadius: 14,
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 1px 4px rgba(15, 23, 42, 0.04)',
-                      overflow: 'hidden',
-                      transition: 'border-color 0.2s, box-shadow 0.2s',
-                    }}
-                  >
+                  <div key={sub.id || idx} className="msp-card">
                     {/* Card Header Summary */}
                     <div
+                      className="msp-card-header"
                       onClick={() => toggleCard(idx)}
-                      style={{
-                        padding: '24px 28px',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 20,
-                        backgroundColor: '#ffffff',
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleCard(idx);
+                        }
                       }}
                     >
                       {/* Left 3 Data Columns */}
-                      <div style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        gap: 48,
-                      }}>
-                        {/* Transaction ID */}
-                        <div>
-                          <div style={{
-                            fontSize: 12,
-                            textTransform: 'none',
-                            color: '#8c9aa8',
-                            fontWeight: 500,
-                            marginBottom: 4,
-                            letterSpacing: '0.2px',
-                          }}>
-                            Transaction ID
+                      <div className="msp-meta-grid">
+                        {/* Plan Type */}
+                        <div className="msp-meta-item">
+                          <div className="msp-meta-label">
+                            Plan Type
                           </div>
-                          <div style={{
-                            fontSize: 17,
-                            fontWeight: 700,
-                            color: '#0f172a',
-                            letterSpacing: '-0.2px',
-                          }}>
-                            {sub.transactionId}
+                          <div className="msp-meta-value msp-meta-val-tx">
+                            <span className="msp-plan-type-pill">
+                              {sub.planType || (sub.amountPaid === 0 ? 'FREE' : 'SMB')}
+                            </span>
                           </div>
                         </div>
 
                         {/* Date */}
-                        <div>
-                          <div style={{
-                            fontSize: 12,
-                            textTransform: 'none',
-                            color: '#8c9aa8',
-                            fontWeight: 500,
-                            marginBottom: 4,
-                            letterSpacing: '0.2px',
-                          }}>
+                        <div className="msp-meta-item">
+                          <div className="msp-meta-label">
                             Date
                           </div>
-                          <div style={{
-                            fontSize: 16,
-                            fontWeight: 700,
-                            color: '#0f172a',
-                          }}>
+                          <div className="msp-meta-value">
                             {sub.date}
                           </div>
                         </div>
 
                         {/* Amount Paid */}
-                        <div>
-                          <div style={{
-                            fontSize: 12,
-                            textTransform: 'none',
-                            color: '#8c9aa8',
-                            fontWeight: 500,
-                            marginBottom: 4,
-                            letterSpacing: '0.2px',
-                          }}>
+                        <div className="msp-meta-item">
+                          <div className="msp-meta-label">
                             Amount Paid
                           </div>
-                          <div style={{
-                            fontSize: 16,
-                            fontWeight: 700,
-                            color: '#0f172a',
-                          }}>
+                          <div className="msp-meta-value">
                             {sub.amountFormatted}
                           </div>
                         </div>
                       </div>
 
                       {/* Right action: Request invoice & chevron */}
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                      }}>
+                      <div className="msp-card-actions">
                         <button
                           type="button"
+                          className="msp-invoice-btn"
                           onClick={(e) => handleRequestInvoice(sub, e)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            color: '#1e5eff',
-                            fontSize: 14.5,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            outline: 'none',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
                         >
-                          Request invoice
+                          {requestingInvoiceId === (sub.id || sub.transactionId) ? (
+                            <>
+                              <FiLoader
+                                size={15}
+                                style={{
+                                  display: 'inline-block',
+                                  animation: 'spin 1s linear infinite',
+                                }}
+                              />
+                              <span>Requesting...</span>
+                            </>
+                          ) : (
+                            'Request invoice'
+                          )}
                         </button>
-                        <span style={{
-                          color: '#1e5eff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
+                        <span className="msp-chevron">
                           {isExpanded ? <FiChevronUp size={18} /> : <FiChevronDown size={18} />}
                         </span>
                       </div>
@@ -382,85 +250,33 @@ export default function MySubscriptionsPage() {
 
                     {/* Expanded Accordion Body */}
                     {isExpanded && (
-                      <div style={{
-                        padding: '0 28px 24px 28px',
-                        borderTop: '1px solid #f1f5f9',
-                      }}>
-                        <div style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: '#8c9aa8',
-                          letterSpacing: '0.8px',
-                          textTransform: 'uppercase',
-                          marginTop: 20,
-                          marginBottom: 18,
-                        }}>
-                          PRODUCT DESCRIPTION
+                      <div className="msp-accordion-body">
+                        <div className="msp-section-tag">
+                          Product Description
                         </div>
 
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 18,
-                        }}>
+                        <div className="msp-product-list">
                           {(sub.products || []).map((prod, pIdx) => {
                             const isActive = String(prod.status || '').toUpperCase() === 'ACTIVE';
                             return (
-                              <div
-                                key={prod.id || pIdx}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'flex-start',
-                                  justifyContent: 'space-between',
-                                  gap: 20,
-                                }}
-                              >
+                              <div key={prod.id || pIdx} className="msp-product-row">
                                 {/* Left bullet & details */}
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'flex-start',
-                                  gap: 12,
-                                }}>
-                                  <span style={{
-                                    width: 7,
-                                    height: 7,
-                                    borderRadius: '50%',
-                                    backgroundColor: '#cbd5e1',
-                                    marginTop: 6,
-                                    flexShrink: 0,
-                                  }} />
+                                <div className="msp-product-left">
+                                  <span className="msp-product-dot" />
                                   <div>
-                                    <div style={{
-                                      fontSize: 14.5,
-                                      fontWeight: 600,
-                                      color: '#1e293b',
-                                      lineHeight: 1.4,
-                                    }}>
-                                      {prod.name}
+                                    <div className="msp-product-name">
+                                      {String(prod.name || '')
+                                        .replace(/ResDex Resume Search/gi, 'Max CV Access')
+                                        .replace(/MIvites Candidate Outreach/gi, 'Max NVite Credits')}
                                     </div>
-                                    <div style={{
-                                      fontSize: 12.5,
-                                      color: '#8c9aa8',
-                                      marginTop: 3,
-                                    }}>
+                                    <div className="msp-product-validity">
                                       {prod.validity}
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Right Active / Expired badge */}
-                                <span style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  padding: '3px 12px',
-                                  borderRadius: 20,
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.6px',
-                                  flexShrink: 0,
-                                  backgroundColor: isActive ? '#eaf8ef' : '#f1f5f9',
-                                  color: isActive ? '#16a34a' : '#64748b',
-                                  border: isActive ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
-                                }}>
+                                <span className={`msp-status-badge ${isActive ? 'msp-badge-active' : 'msp-badge-inactive'}`}>
                                   {prod.status || 'ACTIVE'}
                                 </span>
                               </div>
@@ -476,194 +292,77 @@ export default function MySubscriptionsPage() {
           </div>
 
           {/* Right Column: For Sales enquiry & CRM Approver */}
-          <div style={{
-            flex: '0 0 310px',
-            width: 310,
-          }}>
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 14,
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 4px rgba(15, 23, 42, 0.04)',
-              padding: '24px',
-            }}>
-              <h3 style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: '#0f172a',
-                margin: 0,
-                marginBottom: 16,
-              }}>
+          <div className="msp-sidebar-col">
+            <div className="msp-sales-card">
+              <h3 className="msp-sales-title">
                 For Sales enquiry
               </h3>
 
-              <div style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#8c9aa8',
-                letterSpacing: '0.8px',
-                textTransform: 'uppercase',
-                marginBottom: 14,
-              }}>
+              <div className="msp-sales-region">
                 {salesEnquiry.region || 'INDIA'}
               </div>
 
               {/* Toll Free */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                marginBottom: 14,
-              }}>
-                <div style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  backgroundColor: '#eff6ff',
-                  color: '#1e5eff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
+              <div className="msp-contact-item">
+                <div className="msp-contact-icon">
                   <FiPhone size={15} />
                 </div>
                 <div>
-                  <div style={{
-                    fontSize: 11,
-                    color: '#8c9aa8',
-                    fontWeight: 500,
-                    lineHeight: 1,
-                  }}>
+                  <div className="msp-contact-label">
                     Toll Free
                   </div>
-                  <div style={{
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    marginTop: 3,
-                  }}>
+                  <a
+                    href={`tel:${salesEnquiry.tollFree.replace(/\s+/g, '')}`}
+                    className="msp-contact-val"
+                  >
                     {salesEnquiry.tollFree}
-                  </div>
+                  </a>
                 </div>
               </div>
 
               {/* Email */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                marginBottom: 20,
-              }}>
-                <div style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  backgroundColor: '#eff6ff',
-                  color: '#1e5eff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
+              <div className="msp-contact-item">
+                <div className="msp-contact-icon">
                   <FiMail size={15} />
                 </div>
                 <div>
-                  <div style={{
-                    fontSize: 11,
-                    color: '#8c9aa8',
-                    fontWeight: 500,
-                    lineHeight: 1,
-                  }}>
+                  <div className="msp-contact-label">
                     Email
                   </div>
-                  <div style={{
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    marginTop: 3,
-                  }}>
+                  <a
+                    href={`mailto:${salesEnquiry.email}`}
+                    className="msp-contact-val"
+                  >
                     {salesEnquiry.email}
-                  </div>
+                  </a>
                 </div>
               </div>
 
               {/* CRM Approver Card (Only if approver exists in DB) */}
               {approver && (
-                <div style={{
-                  backgroundColor: '#f8fafc',
-                  borderRadius: 10,
-                  border: '1px solid #edf2f7',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                }}>
+                <div className="msp-approver-card">
                   {approver.avatar ? (
                     <img
                       src={approver.avatar}
                       alt={approver.name}
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        flexShrink: 0,
-                        border: '1px solid #cbd5e1',
-                      }}
+                      className="msp-approver-avatar"
                     />
                   ) : (
-                    <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '50%',
-                      backgroundColor: '#1e5eff',
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      fontSize: 14,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
+                    <div className="msp-approver-fallback">
                       {getInitials(approver.name)}
                     </div>
                   )}
 
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{
-                      fontWeight: 700,
-                      color: '#0f172a',
-                      fontSize: 14,
-                      lineHeight: 1.3,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}>
+                  <div className="msp-approver-info">
+                    <div className="msp-approver-name" title={approver.name}>
                       {approver.name}
                     </div>
                     {approver.email && (
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: '#64748b',
-                          marginTop: 2,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                        title={approver.email}
-                      >
+                      <div className="msp-approver-email" title={approver.email}>
                         {approver.email}
                       </div>
                     )}
-                    <div style={{
-                      fontSize: 10.5,
-                      fontWeight: 600,
-                      color: '#1e5eff',
-                      marginTop: 2,
-                      textTransform: 'uppercase'
-                    }}>
+                    <div className="msp-approver-role">
                       {approver.role === 'APPROVER' ? 'ACCOUNT MANAGER' : (approver.role || 'ACCOUNT MANAGER')}
                     </div>
                   </div>

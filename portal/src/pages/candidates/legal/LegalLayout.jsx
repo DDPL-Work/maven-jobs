@@ -1,5 +1,5 @@
-import CandidateHeader from "../../../components/common/CandidateHeader";
-import LandingFooter from "../../../components/LandingFooter";
+import CandidateHeader from "../../../layout/candidate/CandidateHeader";
+import LandingFooter from "../../../layout/candidate/LandingFooter";
 import "./LegalPages.css";
 
 export default function LegalLayout({ icon: Icon, title, intro, updated, children }) {

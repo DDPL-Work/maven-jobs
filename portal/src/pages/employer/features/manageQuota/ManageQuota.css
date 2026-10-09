@@ -167,6 +167,24 @@
   color: #15803d;
 }
 
+.mq-stat-badge.ai {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.mq-stat-badge.job {
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.mq-stat-icon-wrapper.ai {
+  background: #f5f3ff;
+}
+
+.mq-stat-icon-wrapper.job {
+  background: #fdf2f8;
+}
+
 .mq-stat-label {
   font-size: 12.5px;
   font-weight: 600;
@@ -217,6 +235,14 @@
 
 .mq-stat-progress-fill.nvite {
   background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.mq-stat-progress-fill.ai {
+  background: linear-gradient(90deg, #a855f7, #6d28d9);
+}
+
+.mq-stat-progress-fill.job {
+  background: linear-gradient(90deg, #f43f5e, #be185d);
 }
 
 .mq-stat-footer {
@@ -739,3 +765,268 @@
   margin-top: 16px;
   font-style: italic;
 }
+
+/* Extra Stat Card Variants */
+.mq-stat-icon-wrapper.job {
+  background: #fdf2f8;
+}
+.mq-stat-badge.job {
+  background: #fce7f3;
+  color: #be185d;
+}
+.mq-stat-progress-fill.job {
+  background: #ec4899;
+}
+
+.mq-stat-icon-wrapper.ai {
+  background: #f5f3ff;
+}
+.mq-stat-badge.ai {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.mq-stat-progress-fill.ai {
+  background: #8b5cf6;
+}
+
+.mq-stat-icon-wrapper.service {
+  background: #f1f5f9;
+}
+.mq-stat-badge.service {
+  background: #e2e8f0;
+  color: #334155;
+}
+.mq-stat-progress-fill.service {
+  background: #475569;
+}
+
+/* Active Subscribed Plan Banner */
+.mq-plan-banner {
+  background: linear-gradient(135deg, #002366 0%, #0c3b8a 50%, #1e40af 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(0, 35, 102, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mq-plan-banner::after {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.mq-plan-banner-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mq-plan-banner-title-area {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mq-plan-banner-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.mq-plan-banner-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mq-plan-pill {
+  font-size: 11px;
+  font-weight: 700;
+  background: #10b981;
+  color: #ffffff;
+  padding: 3px 9px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mq-plan-banner-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 4px;
+}
+
+.mq-plan-banner-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mq-plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+}
+
+.mq-plan-banner-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.mq-plan-guarantee {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #67e8f9;
+}
+
+/* Subscribed Products & Entitlements Section */
+.mq-services-section {
+  margin-bottom: 24px;
+}
+
+.mq-services-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.mq-services-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mq-services-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mq-services-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.mq-services-th {
+  background: #f8fafc;
+  padding: 12px 14px;
+  font-weight: 700;
+  color: #475569;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.mq-services-tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s ease;
+}
+
+.mq-services-tr:hover {
+  background: #f8fafc;
+}
+
+.mq-services-td {
+  padding: 14px;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.mq-prod-name {
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mq-prod-code {
+  font-family: monospace;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.mq-mini-progress {
+  width: 90px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.mq-mini-fill {
+  height: 100%;
+  background: #002366;
+  border-radius: 4px;
+}
+
+.mq-feature-tag {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 2px 4px 2px 0;
+}
+

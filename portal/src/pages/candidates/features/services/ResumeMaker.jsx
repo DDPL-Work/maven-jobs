@@ -4,8 +4,8 @@ import {
   FiArrowRight, FiCheck, FiChevronRight, FiDownload, FiEdit3,
   FiFileText, FiLayout, FiMousePointer, FiShield, FiZap,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./ResumeMaker.css";
 
 const FAQItem = ({ q, a }) => (

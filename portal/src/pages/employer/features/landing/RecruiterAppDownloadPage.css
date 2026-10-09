@@ -1,0 +1,1376 @@
+/* RecruiterAppDownloadPage.css - Recruiter & Employer Mobile Suite */
+.recruiter-app-page {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #0f172a;
+  overflow-x: hidden;
+}
+
+/* Hero Section */
+.rap-hero {
+  position: relative;
+  background: linear-gradient(135deg, #001233 0%, #002366 52%, #047857 100%);
+  color: #ffffff;
+  padding: 72px 24px 88px;
+  overflow: hidden;
+}
+
+.rap-hero-glow-1 {
+  position: absolute;
+  top: -100px;
+  right: -80px;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rap-hero-glow-2 {
+  position: absolute;
+  bottom: -120px;
+  left: -80px;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rap-hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 26px 26px;
+  pointer-events: none;
+}
+
+.rap-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.rap-hero-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.rap-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 100px;
+  background: rgba(16, 185, 129, 0.16);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.rap-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
+.rap-hero-title {
+  font-size: 3.2rem;
+  font-weight: 900;
+  line-height: 1.14;
+  letter-spacing: -0.03em;
+  margin: 0 0 20px;
+  color: #ffffff;
+}
+
+.rap-hero-title-highlight {
+  background: linear-gradient(90deg, #34d399 0%, #60a5fa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.rap-hero-sub {
+  font-size: 1.15rem;
+  line-height: 1.68;
+  color: rgba(255, 255, 255, 0.84);
+  margin: 0 0 32px;
+  max-width: 580px;
+}
+
+/* Store Buttons */
+.rap-store-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.rap-store-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 24px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  text-decoration: none;
+  font-family: inherit;
+  transition: all 0.22s ease;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  border: 2px solid transparent;
+}
+
+.rap-store-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.4);
+  border-color: #34d399;
+}
+
+.rap-store-btn-tag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.rap-store-btn-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.rap-store-btn-dark {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+}
+
+.rap-store-btn-dark:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+
+.rap-store-btn-dark .rap-store-btn-tag {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.rap-store-btn-dark .rap-store-btn-title {
+  color: #ffffff;
+}
+
+/* SMS Work Phone Box */
+.rap-sms-box {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  padding: 18px 22px;
+  max-width: 520px;
+}
+
+.rap-sms-label {
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rap-sms-form {
+  display: flex;
+  gap: 10px;
+}
+
+.rap-sms-input-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rap-sms-prefix {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.rap-sms-input {
+  width: 100%;
+  padding: 12px 14px 12px 50px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.rap-sms-input:focus {
+  border-color: #34d399;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.rap-sms-submit {
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.rap-sms-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.55);
+}
+
+.rap-sms-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #34d399;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* ─── HYPER-REALISTIC iPHONE 18 PRO MAX CHASSIS ─── */
+.rap-phone-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  padding: 0 30px;
+}
+
+/* Video Auto-Runner Control Bar */
+.phone-video-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px 16px;
+  border-radius: 100px;
+  margin-bottom: 16px;
+  max-width: 340px;
+  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 30;
+}
+
+.phone-video-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phone-video-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  animation: videoDotPulse 1.4s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes videoDotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.7); opacity: 0.5; }
+}
+
+.phone-video-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.phone-video-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Step Progress Segments */
+.phone-video-progress {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 14px;
+}
+
+.phone-progress-seg {
+  flex: 1;
+  height: 3px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: background 0.3s;
+}
+
+.phone-progress-seg.active {
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
+}
+
+/* Outer Titanium Body & Hardware Buttons */
+.iphone18-device {
+  position: relative;
+  width: 340px;
+  height: 690px;
+  background: linear-gradient(145deg, #3d4350 0%, #181b22 35%, #2a2f3a 70%, #121419 100%);
+  border-radius: 56px;
+  padding: 4px;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 0 2.5px #121418,
+    0 0 0 3.5px rgba(255, 255, 255, 0.08),
+    0 35px 80px -15px rgba(0, 0, 0, 0.85),
+    0 20px 40px -10px rgba(0, 18, 51, 0.6);
+  user-select: none;
+}
+
+/* Hardware Buttons: Left Side */
+.iphone-btn-action {
+  position: absolute;
+  top: 110px;
+  left: -7px;
+  width: 4.5px;
+  height: 28px;
+  background: linear-gradient(to right, #2b303b, #4a5263);
+  border-radius: 3px 0 0 3px;
+  box-shadow: -1px 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.iphone-btn-volume-up {
+  position: absolute;
+  top: 154px;
+  left: -7px;
+  width: 4.5px;
+  height: 52px;
+  background: linear-gradient(to right, #2b303b, #4a5263);
+  border-radius: 3px 0 0 3px;
+  box-shadow: -1px 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.iphone-btn-volume-down {
+  position: absolute;
+  top: 218px;
+  left: -7px;
+  width: 4.5px;
+  height: 52px;
+  background: linear-gradient(to right, #2b303b, #4a5263);
+  border-radius: 3px 0 0 3px;
+  box-shadow: -1px 0 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Hardware Buttons: Right Side */
+.iphone-btn-power {
+  position: absolute;
+  top: 160px;
+  right: -7px;
+  width: 4.5px;
+  height: 74px;
+  background: linear-gradient(to left, #2b303b, #4a5263);
+  border-radius: 0 3px 3px 0;
+  box-shadow: 1px 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.iphone-btn-camera {
+  position: absolute;
+  bottom: 150px;
+  right: -6.5px;
+  width: 4px;
+  height: 48px;
+  background: linear-gradient(to left, #232833, #383f4f);
+  border-radius: 0 3px 3px 0;
+  box-shadow: inset 1px 0 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Inner Uniform Bezel (Razor Thin OLED Bezel) */
+.iphone18-inner-frame {
+  width: 100%;
+  height: 100%;
+  background: #000000;
+  border-radius: 52px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 3.5px solid #000000;
+}
+
+/* Screen Interior */
+.iphone18-screen {
+  flex: 1;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 47px;
+  position: relative;
+}
+
+/* Status Bar */
+.iphone-status-bar {
+  height: 44px;
+  padding: 10px 22px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 30;
+  background: #f8fafc;
+}
+
+.iphone-status-time {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  width: 54px;
+}
+
+/* Floating Dynamic Island */
+.iphone-dynamic-island {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 106px;
+  height: 27px;
+  background: #000000;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 11px;
+  gap: 6px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  z-index: 40;
+}
+
+.iphone-dynamic-island:hover {
+  width: 138px;
+  height: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.iphone-island-camera {
+  width: 10.5px;
+  height: 10.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #1e293b 0%, #030712 60%, #1e1b4b 100%);
+  box-shadow: inset 0 0 1.5px rgba(255, 255, 255, 0.4);
+}
+
+.iphone-island-sensor {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #0a0a0a;
+  box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Status Icons */
+.iphone-status-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 54px;
+  justify-content: flex-end;
+}
+
+.iphone-signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 11px;
+}
+
+.iphone-signal-bars .bar {
+  width: 2.5px;
+  background: #0f172a;
+  border-radius: 1px;
+}
+
+.iphone-signal-bars .bar-1 { height: 3px; }
+.iphone-signal-bars .bar-2 { height: 5.5px; }
+.iphone-signal-bars .bar-3 { height: 8px; }
+.iphone-signal-bars .bar-4 { height: 11px; }
+
+.iphone-net-type {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+}
+
+.iphone-battery-icon {
+  width: 21px;
+  height: 11px;
+  border: 1.5px solid #0f172a;
+  border-radius: 3.5px;
+  padding: 1.5px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.iphone-battery-fill {
+  height: 100%;
+  width: 90%;
+  background: #0f172a;
+  border-radius: 1.5px;
+}
+
+.iphone-battery-terminal {
+  position: absolute;
+  right: -3.5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 4.5px;
+  background: #0f172a;
+  border-radius: 0 1.5px 1.5px 0;
+}
+
+/* Screen Content Body */
+.iphone-screen-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.iphone-screen-content::-webkit-scrollbar {
+  display: none;
+}
+
+/* Recruiter Cockpit Inside iPhone */
+.rap-screen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.rap-screen-logo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #002366;
+  letter-spacing: -0.01em;
+}
+
+.rap-screen-quota-badge {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3.5px 9px;
+  border-radius: 20px;
+}
+
+/* Interactive Tab Switcher in Screen */
+.rap-screen-stat-pill {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 4px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rap-screen-stat-pill:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+}
+
+.rap-screen-stat-pill.active {
+  background: #002366;
+  border-color: #002366;
+  box-shadow: 0 4px 12px rgba(0, 35, 102, 0.25);
+}
+
+.rap-screen-stat-pill.active .rap-screen-stat-num {
+  color: #ffffff;
+}
+
+.rap-screen-stat-pill.active .rap-screen-stat-lbl {
+  color: #93c5fd;
+}
+
+/* ─── AUTHENTIC iOS IN-CALL SCREEN ─── */
+.iphone-call-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 15%, #182232 0%, #0d131d 55%, #05080f 100%);
+  color: #ffffff;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 42px 18px 14px;
+  animation: callSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  text-align: center;
+  border-radius: 47px;
+  overflow: hidden;
+}
+
+.iphone-call-top-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.iphone-call-cloud-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.iphone-call-name {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+
+.iphone-call-duration {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 16px;
+}
+
+.iphone-call-avatar-circle {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  border: 2.5px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 700;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.12);
+  margin: 0 auto 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.iphone-call-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.rap-screen-cand-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.iphone-call-role-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* 2x3 iOS Control Grid */
+.iphone-call-grid-2x3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 12px;
+  width: 100%;
+  max-width: 250px;
+  margin: 0 auto 16px;
+}
+
+.iphone-call-action-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.iphone-call-circle-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.iphone-call-circle-btn:active {
+  transform: scale(0.92);
+}
+
+.iphone-call-circle-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.iphone-call-action-label {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+  text-transform: lowercase;
+  letter-spacing: 0.01em;
+}
+
+/* iOS Decline / Hangup Button */
+.iphone-call-hangup-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #eb4d3d;
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  cursor: pointer;
+  margin: 0 auto;
+  box-shadow: 0 8px 24px rgba(235, 77, 61, 0.5);
+  transition: all 0.2s;
+}
+
+.iphone-call-hangup-btn:hover {
+  transform: scale(1.06);
+  background: #f05242;
+}
+
+.iphone-call-hangup-btn svg {
+  transform: rotate(135deg);
+}
+
+/* White Home Indicator for Call Screen */
+.iphone-call-home-bar {
+  width: 130px;
+  height: 4.5px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.7);
+  margin: 12px auto 0;
+}
+
+/* In-App Toast Alert */
+.iphone-inapp-toast {
+  position: absolute;
+  top: 48px;
+  left: 14px;
+  right: 14px;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  z-index: 45;
+  animation: toastDrop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@keyframes toastDrop {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bottom Tab Bar Inside Phone */
+.iphone-bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 10px 4px;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.iphone-tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.iphone-tab-item.active {
+  color: #002366;
+}
+
+.iphone-tab-item.active svg {
+  color: #059669;
+}
+
+.rap-screen-candidate-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 13px 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  margin-bottom: 12px;
+}
+
+.rap-screen-cand-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.rap-screen-cand-name {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.rap-screen-cand-title {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.rap-screen-cand-match {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 2.5px 7px;
+  border-radius: 6px;
+}
+
+.rap-screen-cand-chips {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 11px;
+  flex-wrap: wrap;
+}
+
+.rap-screen-chip {
+  font-size: 0.64rem;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-weight: 600;
+}
+
+.rap-screen-cand-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+}
+
+.rap-screen-btn-call {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  padding: 7px 10px;
+  border-radius: 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  cursor: pointer;
+}
+
+.rap-screen-btn-shortlist {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 7px 10px;
+  border-radius: 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+/* iOS Home Indicator Bar */
+.iphone-home-indicator-wrap {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border-bottom-left-radius: 47px;
+  border-bottom-right-radius: 47px;
+}
+
+.iphone-home-indicator {
+  width: 134px;
+  height: 4.5px;
+  border-radius: 100px;
+  background: #0f172a;
+  opacity: 0.82;
+}
+
+/* Floating Badges on Mockup */
+.rap-float-badge-1 {
+  position: absolute;
+  top: 70px;
+  left: -52px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 11px 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #0f172a;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  animation: rapFloat 4s ease-in-out infinite;
+  z-index: 25;
+}
+
+.rap-float-badge-2 {
+  position: absolute;
+  bottom: 110px;
+  right: -52px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 11px 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #0f172a;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  animation: rapFloat 4s ease-in-out infinite 2s;
+  z-index: 25;
+}
+
+@keyframes rapFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Trust Bar */
+.rap-trust-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 24px 0;
+}
+
+.rap-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  text-align: center;
+}
+
+.rap-trust-num {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.rap-trust-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Features Section */
+.rap-features-section {
+  padding: 84px 24px;
+  background: #ffffff;
+}
+
+.rap-section-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 56px;
+}
+
+.rap-section-tag {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #059669;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.rap-section-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 14px;
+  letter-spacing: -0.02em;
+}
+
+.rap-section-desc {
+  font-size: 1.05rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.rap-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.rap-feature-card {
+  background: #f8fafc;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 32px 28px;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.rap-feature-card:hover {
+  transform: translateY(-4px);
+  background: #ffffff;
+  border-color: #6ee7b7;
+  box-shadow: 0 20px 40px -10px rgba(5, 150, 105, 0.08);
+}
+
+.rap-feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  margin-bottom: 20px;
+}
+
+.rap-feature-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 10px;
+}
+
+.rap-feature-text {
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Enterprise QR Box */
+.rap-qr-showcase {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-radius: 28px;
+  border: 1.5px solid #a7f3d0;
+  padding: 48px;
+  margin: 72px auto;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.rap-qr-box {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 16px 36px rgba(5, 150, 105, 0.14);
+  text-align: center;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.rap-qr-code-img {
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* Recruiter Testimonials */
+.rap-reviews-section {
+  padding: 80px 24px;
+  background: #f8fafc;
+}
+
+.rap-reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.rap-review-card {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  padding: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.rap-review-stars {
+  display: flex;
+  gap: 4px;
+  color: #f59e0b;
+  margin-bottom: 14px;
+}
+
+.rap-review-quote {
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: #334155;
+  margin: 0 0 18px;
+  font-style: italic;
+}
+
+.rap-reviewer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rap-reviewer-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #002366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.rap-reviewer-name {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.rap-reviewer-role {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* Security & Compliance */
+.rap-security-bar {
+  background: #001233;
+  color: #ffffff;
+  padding: 48px 24px;
+}
+
+.rap-security-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.rap-sec-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rap-sec-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.rap-sec-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.rap-sec-desc {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+/* Responsive Rules */
+@media (max-width: 1024px) {
+  .rap-hero-layout {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    text-align: center;
+  }
+  .rap-hero-sub {
+    margin: 0 auto 32px;
+  }
+  .rap-store-buttons {
+    justify-content: center;
+  }
+  .rap-sms-box {
+    margin: 0 auto;
+  }
+  .rap-features-grid,
+  .rap-reviews-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .rap-security-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+  .rap-qr-showcase {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .rap-hero {
+    padding: 48px 16px 64px;
+  }
+  .rap-hero-title {
+    font-size: 2.3rem;
+  }
+  .rap-trust-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .rap-features-grid,
+  .rap-reviews-grid,
+  .rap-security-grid {
+    grid-template-columns: 1fr;
+  }
+  .rap-sms-form {
+    flex-direction: column;
+  }
+  .rap-sms-submit {
+    width: 100%;
+  }
+  .rap-float-badge-1,
+  .rap-float-badge-2 {
+    display: none;
+  }
+  .rap-qr-showcase {
+    padding: 32px 20px;
+  }
+}

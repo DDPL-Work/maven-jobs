@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   FiCalendar, FiClock, FiZap, FiInfo, FiEdit2,
   FiExternalLink, FiPieChart, FiTrendingUp, FiCheckCircle,
-  FiRotateCcw, FiSave, FiLayers, FiSend
+  FiRotateCcw, FiSave, FiLayers, FiSend,
+  FiPackage, FiShield, FiBriefcase, FiCpu, FiCheck, FiUsers
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
@@ -31,6 +32,10 @@ export default function ManageQuota() {
     },
   });
 
+  const [rawServerData, setRawServerData] = useState(null);
+  const [planData, setPlanData] = useState(null);
+  const [servicesData, setServicesData] = useState([]);
+
   const [editDrafts, setEditDrafts] = useState({
     cvAccess: null,
     nvite: null,
@@ -49,8 +54,11 @@ export default function ManageQuota() {
       setLoading(true);
       const res = await authService.getQuotaManagement();
       if (res.success && res.data) {
+        setRawServerData(res.data);
         setAllocationPolicy(res.data.allocationPolicy || 'full');
         setPolicyAllocations(res.data);
+        setPlanData(res.data.plan || null);
+        setServicesData(Array.isArray(res.data.services) ? res.data.services : []);
       }
     } catch (error) {
       showToast(error.message || 'Failed to load quota configuration');
@@ -68,36 +76,65 @@ export default function ManageQuota() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Resdex Usage Summary Data dynamically computed from full policy
+  // Helper date formatter
+  const formatDate = (dateVal) => {
+    if (!dateVal) return '—';
+    try {
+      return new Date(dateVal).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return String(dateVal);
+    }
+  };
+
+  const calcDaysLeft = (endDateVal) => {
+    if (!endDateVal) return null;
+    try {
+      const end = new Date(endDateVal).getTime();
+      const now = Date.now();
+      const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 0;
+    } catch {
+      return null;
+    }
+  };
+
+  // Resdex Usage Summary Data dynamically computed from full policy (no dummy data)
   const resdexUsageData = useMemo(() => {
-    const cvTotal = policyAllocations.full.total || 0;
-    const nviteTotal = policyAllocations.full.total || 0; // Need to fix this, it should be policyAllocations.full.nvite.total, let's just destructure.
+    const fullCv = policyAllocations.full?.cvAccess || { total: 0, used: 0 };
+    const fullNvite = policyAllocations.full?.nvite || { total: 0, used: 0 };
 
     return [
-      { label: 'Default', cv: policyAllocations.full.cvAccess.total.toLocaleString(), nvite: policyAllocations.full.nvite.total.toLocaleString(), isBold: false },
+      { label: 'Default', cv: fullCv.total.toLocaleString(), nvite: fullNvite.total.toLocaleString(), isBold: false },
       { label: 'Purchased', cv: '—', nvite: '—', isBold: false },
-      { label: 'Total*', cv: policyAllocations.full.cvAccess.total.toLocaleString(), nvite: policyAllocations.full.nvite.total.toLocaleString(), isBold: true },
-      { label: 'Released', cv: policyAllocations.full.cvAccess.total.toLocaleString(), nvite: policyAllocations.full.nvite.total.toLocaleString(), isBold: true },
-      { label: 'Used', cv: policyAllocations.full.cvAccess.used.toLocaleString(), nvite: policyAllocations.full.nvite.used.toLocaleString(), isBold: false, isWarning: true },
-      { label: 'Remaining', cv: Math.max(0, policyAllocations.full.cvAccess.total - policyAllocations.full.cvAccess.used).toLocaleString(), nvite: Math.max(0, policyAllocations.full.nvite.total - policyAllocations.full.nvite.used).toLocaleString(), isBold: true, isSuccess: true },
+      { label: 'Total*', cv: fullCv.total.toLocaleString(), nvite: fullNvite.total.toLocaleString(), isBold: true },
+      { label: 'Released', cv: fullCv.total.toLocaleString(), nvite: fullNvite.total.toLocaleString(), isBold: true },
+      { label: 'Used', cv: fullCv.used.toLocaleString(), nvite: fullNvite.used.toLocaleString(), isBold: false, isWarning: true },
+      { label: 'Remaining', cv: Math.max(0, fullCv.total - fullCv.used).toLocaleString(), nvite: Math.max(0, fullNvite.total - fullNvite.used).toLocaleString(), isBold: true, isSuccess: true },
     ];
   }, [policyAllocations.full]);
 
   // Active policy quota data
-  const currentPolicyData = policyAllocations[allocationPolicy];
+  const currentPolicyData = policyAllocations[allocationPolicy] || {
+    cvAccess: { total: 0, used: 0 },
+    nvite: { total: 0, used: 0 },
+  };
 
   // Compute Balances and Percentages dynamically with drafts
   const currentCvTotal = allocationPolicy !== 'full' && editDrafts.cvAccess !== null && !isNaN(parseInt(String(editDrafts.cvAccess).replace(/,/g, ''), 10))
     ? parseInt(String(editDrafts.cvAccess).replace(/,/g, ''), 10)
-    : currentPolicyData.cvAccess.total;
-  const currentCvUsed = currentPolicyData.cvAccess.used;
+    : (currentPolicyData.cvAccess?.total || 0);
+  const currentCvUsed = currentPolicyData.cvAccess?.used || 0;
   const cvBalance = Math.max(0, currentCvTotal - currentCvUsed);
   const cvPercent = Math.min(100, Math.round((currentCvUsed / (currentCvTotal || 1)) * 100)) || 0;
 
   const currentNviteTotal = allocationPolicy !== 'full' && editDrafts.nvite !== null && !isNaN(parseInt(String(editDrafts.nvite).replace(/,/g, ''), 10))
     ? parseInt(String(editDrafts.nvite).replace(/,/g, ''), 10)
-    : currentPolicyData.nvite.total;
-  const currentNviteUsed = currentPolicyData.nvite.used;
+    : (currentPolicyData.nvite?.total || 0);
+  const currentNviteUsed = currentPolicyData.nvite?.used || 0;
   const nviteBalance = Math.max(0, currentNviteTotal - currentNviteUsed);
   const nvitePercent = Math.min(100, Math.round((currentNviteUsed / (currentNviteTotal || 1)) * 100)) || 0;
 
@@ -113,12 +150,17 @@ export default function ManageQuota() {
     setAllocationPolicy(policy);
   };
 
-  // Handle Edit Start (only allowed in weekly and monthly modes)
+  // Handle Edit Start (only allowed in weekly and monthly modes and ONLY if credits > 0)
   const handleStartEdit = (key) => {
     if (allocationPolicy === 'full') return;
+    const fullPool = policyAllocations.full?.[key]?.total || 0;
+    if (fullPool <= 0) {
+      showToast(`Cannot edit: 0 ${key === 'cvAccess' ? 'CV Access' : 'NVite'} credits in your active plan.`);
+      return;
+    }
     setEditDrafts((prev) => ({
       ...prev,
-      [key]: String(policyAllocations[allocationPolicy][key].total),
+      [key]: String(policyAllocations[allocationPolicy]?.[key]?.total || 0),
     }));
     setEditErrors((prev) => ({
       ...prev,
@@ -132,20 +174,9 @@ export default function ManageQuota() {
     if (!isEditing) return;
 
     const handlePointerDown = (e) => {
-      // If clicking inside an inline edit box, continue editing
-      if (e.target.closest('.mq-inline-edit-box')) {
-        return;
-      }
-      // If clicking on an edit pencil button, handleStartEdit will handle switching
-      if (e.target.closest('.mq-btn-edit-pencil')) {
-        return;
-      }
-      // If clicking Save settings button, handleSaveAllSettings will handle saving
-      if (saveBtnRef.current && saveBtnRef.current.contains(e.target)) {
-        return;
-      }
-
-      // Any other place hit -> unsaved changes get removed
+      if (e.target.closest('.mq-inline-edit-box')) return;
+      if (e.target.closest('.mq-btn-edit-pencil')) return;
+      if (saveBtnRef.current && saveBtnRef.current.contains(e.target)) return;
       handleCancelAllDrafts();
     };
 
@@ -160,33 +191,39 @@ export default function ManageQuota() {
     let hasError = false;
     const newErrors = { cvAccess: '', nvite: '' };
     
-    // Default to active data if not edited
     const activeData = policyAllocations[allocationPolicy] || {};
     
     let cvTotal = activeData.cvAccess?.total || 0;
     let nviteTotal = activeData.nvite?.total || 0;
 
     if (allocationPolicy !== 'full') {
-      if (editDrafts.cvAccess !== null) {
+      const fullCvPool = policyAllocations.full?.cvAccess?.total || 0;
+      const fullNvitePool = policyAllocations.full?.nvite?.total || 0;
+
+      if (fullCvPool <= 0) {
+        cvTotal = 0;
+      } else if (editDrafts.cvAccess !== null) {
         const num = parseInt(String(editDrafts.cvAccess).replace(/,/g, ''), 10);
         if (isNaN(num) || num < 0) {
           newErrors.cvAccess = 'Enter a valid positive number';
           hasError = true;
-        } else if (num < activeData.cvAccess.used) {
-          newErrors.cvAccess = `Cannot be less than used (${activeData.cvAccess.used.toLocaleString()})`;
+        } else if (num < (activeData.cvAccess?.used || 0)) {
+          newErrors.cvAccess = `Cannot be less than used (${(activeData.cvAccess?.used || 0).toLocaleString()})`;
           hasError = true;
         } else {
           cvTotal = num;
         }
       }
 
-      if (editDrafts.nvite !== null) {
+      if (fullNvitePool <= 0) {
+        nviteTotal = 0;
+      } else if (editDrafts.nvite !== null) {
         const num = parseInt(String(editDrafts.nvite).replace(/,/g, ''), 10);
         if (isNaN(num) || num < 0) {
           newErrors.nvite = 'Enter a valid positive number';
           hasError = true;
-        } else if (num < activeData.nvite.used) {
-          newErrors.nvite = `Cannot be less than used (${activeData.nvite.used.toLocaleString()})`;
+        } else if (num < (activeData.nvite?.used || 0)) {
+          newErrors.nvite = `Cannot be less than used (${(activeData.nvite?.used || 0).toLocaleString()})`;
           hasError = true;
         } else {
           nviteTotal = num;
@@ -217,8 +254,8 @@ export default function ManageQuota() {
         ...prev,
         [allocationPolicy]: {
           ...prev[allocationPolicy],
-          cvAccess: { ...prev[allocationPolicy].cvAccess, total: cvTotal },
-          nvite: { ...prev[allocationPolicy].nvite, total: nviteTotal },
+          cvAccess: { ...prev[allocationPolicy]?.cvAccess, total: cvTotal },
+          nvite: { ...prev[allocationPolicy]?.nvite, total: nviteTotal },
         },
       }));
       setEditDrafts({ cvAccess: null, nvite: null });
@@ -231,25 +268,39 @@ export default function ManageQuota() {
     }
   };
 
-  // Reset to default
+  // Reset to default (Restores TRUE server allocations, no dummy numbers)
   const handleResetSettings = () => {
-    setAllocationPolicy('weekly');
-    setPolicyAllocations({
-      weekly: {
-        cvAccess: { total: 3630, used: 212 },
-        nvite: { total: 181140, used: 0 },
-      },
-      monthly: {
-        cvAccess: { total: 15000, used: 890 },
-        nvite: { total: 250000, used: 12400 },
-      },
-      full: {
-        cvAccess: { total: 25000, used: 21582 },
-        nvite: { total: 250000, used: 68860 },
-      },
-    });
+    if (rawServerData) {
+      setAllocationPolicy(rawServerData.allocationPolicy || 'full');
+      setPolicyAllocations(rawServerData);
+    }
     handleCancelAllDrafts();
-    showToast('Settings restored to default allocations.');
+    showToast('Settings restored to company default allocations.');
+  };
+
+  // Filter extra services from planSnapshot that are not already in CV Access or NVite, and exclude seat products (which are recruiter licenses)
+  const extraServices = useMemo(() => {
+    return servicesData.filter((s) => {
+      const code = String(s.productCode || '').toUpperCase();
+      const cat = String(s.category || '').toUpperCase();
+      const unitStr = String(s.unit || '').toLowerCase();
+      const isSeat = s.isSeat || code.includes('SEAT') || cat === 'USER_SEATS' || unitStr.includes('seat');
+      return !isSeat &&
+             !code.includes('CV') && !code.includes('RESDEX') && cat !== 'RESUME_SEARCH' &&
+             !code.includes('NVITE') && !code.includes('MIVITE') && cat !== 'MIVITES';
+    });
+  }, [servicesData]);
+
+  const formatServiceProductName = (service) => {
+    const code = String(service?.productCode || '').toUpperCase();
+    const rawName = String(service?.productName || '').trim();
+    if (code === 'RESDEX' || rawName === 'ResDex Resume Search' || rawName.toLowerCase() === 'resdex resume search') {
+      return 'Max CV Access';
+    }
+    if (code === 'MIVITE' || rawName === 'MIvites Candidate Outreach' || rawName.toLowerCase() === 'mivites candidate outreach') {
+      return 'Max NVite Credits';
+    }
+    return service?.productName || 'Product';
   };
 
   if (loading) {
@@ -288,7 +339,7 @@ export default function ManageQuota() {
           <div>
             <h1 className="mq-title">Manage Quota</h1>
             <p className="mq-subtitle">
-              Configure and distribute your active CV view limits and NVite messaging allowances across your recruitment team.
+              Configure and distribute your active CV view limits, candidate outreach messaging, and job posting slots across your recruitment team. Job posting, Max CV Access, and Max NVite Credits are allocated for your full plan cycle ({planData?.validity || 90} days), while AI credits refresh monthly without rollover.
             </p>
           </div>
 
@@ -313,6 +364,54 @@ export default function ManageQuota() {
           </div>
         </div>
 
+        {/* EXTRA SECTION: Active Subscribed Plan Banner */}
+        {planData && (
+          <div className="mq-plan-banner">
+            <div className="mq-plan-banner-top">
+              <div className="mq-plan-banner-title-area">
+                <div className="mq-plan-banner-icon">
+                  <FiPackage size={24} />
+                </div>
+                <div>
+                  <h2 className="mq-plan-banner-name">
+                    {planData.planName || 'Active Commercial Plan'}
+                    <span className="mq-plan-pill">{planData.planType || 'ACTIVE'}</span>
+                  </h2>
+                  <div className="mq-plan-banner-sub">
+                    Plan Code: <strong style={{ color: '#ffffff' }}>{planData.planCode || 'FREE'}</strong>
+                    {planData.billingCycle && ` • Cycle: ${planData.billingCycle}`}
+                    {planData.startDate && ` • Start: ${formatDate(planData.startDate)}`}
+                    {planData.endDate && ` • Valid Till: ${formatDate(planData.endDate)}`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mq-plan-banner-chips">
+                {planData.endDate && (
+                  <div className="mq-plan-chip">
+                    <FiClock size={13} />
+                    <span>{calcDaysLeft(planData.endDate)} Days Remaining</span>
+                  </div>
+                )}
+                {planData.planVersionNumber && (
+                  <div className="mq-plan-chip">
+                    <FiZap size={13} />
+                    <span>Catalog v{planData.planVersionNumber}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mq-plan-banner-footer">
+              <div className="mq-plan-guarantee">
+                <FiShield size={15} />
+                <span>Locked Catalog Specifications Guarantee</span>
+              </div>
+              <span>Allocations are permanently locked into your profile at registration and remain immune to catalog revisions.</span>
+            </div>
+          </div>
+        )}
+
         {/* Top Summary Stat Cards */}
         <div className="mq-stats-grid">
           {/* Stat 1: CV Access Balance */}
@@ -322,7 +421,7 @@ export default function ManageQuota() {
                 <FiLayers size={22} color="#002366" />
               </div>
               <span className="mq-stat-badge cv">
-                {100 - cvPercent}% Remaining
+                {currentCvTotal > 0 ? `${100 - cvPercent}% Remaining` : 'Not in Plan'}
               </span>
             </div>
             <div className="mq-stat-label">CV Access Available</div>
@@ -338,7 +437,7 @@ export default function ManageQuota() {
             </div>
             <div className="mq-stat-footer">
               <span>{currentCvUsed.toLocaleString()} Used</span>
-              <span>{cvBalance.toLocaleString()} {allocationPolicy === 'full' ? 'Remaining' : 'Balance'}</span>
+              <span>{cvBalance.toLocaleString()} {currentCvTotal > 0 ? (allocationPolicy === 'full' ? 'Remaining' : 'Balance') : 'Available'}</span>
             </div>
           </div>
 
@@ -349,7 +448,7 @@ export default function ManageQuota() {
                 <FiSend size={22} color="#0284c7" />
               </div>
               <span className="mq-stat-badge nvite">
-                {100 - nvitePercent}% Remaining
+                {currentNviteTotal > 0 ? `${100 - nvitePercent}% Remaining` : 'Not in Plan'}
               </span>
             </div>
             <div className="mq-stat-label">NVite Credits Available</div>
@@ -380,15 +479,70 @@ export default function ManageQuota() {
             <div className="mq-stat-label">Current Release Cycle</div>
             <div className="mq-stat-value-row">
               <span className="mq-stat-value">
-                {allocationPolicy === 'weekly' ? 'Weekly' : allocationPolicy === 'monthly' ? 'Monthly' : 'Full Access'}
+                {allocationPolicy === 'weekly' ? 'Weekly' : allocationPolicy === 'monthly' ? 'Monthly' : 'Full Plan Cycle'}
               </span>
             </div>
             <div className="mq-cycle-desc">
               {allocationPolicy === 'weekly' && 'Weekly assigned quota resets every Monday 00:00 IST.'}
               {allocationPolicy === 'monthly' && 'Monthly assigned quota replenishes on the 1st of each month.'}
-              {allocationPolicy === 'full' && 'Total pool credits unlocked without periodic limits (read-only).'}
+              {allocationPolicy === 'full' && `Job postings, CV access, and NVites are allocated for your full plan cycle (${planData?.validity || 90} days). AI credits refresh monthly without rollover.`}
             </div>
           </div>
+
+          {/* EXTRA STAT CARDS: Dynamically generated for other plan services (e.g. SMB Jobs, AI Credits) */}
+          {extraServices.map((service) => {
+            const code = String(service.productCode || '').toUpperCase();
+            const isJob = code.includes('JOB') || service.category === 'JOB_POSTING' || String(service.unit).toLowerCase().includes('job');
+            const isAi = code.includes('AI') || service.category === 'AI' || String(service.unit).toLowerCase().includes('ai');
+            const iconVariant = isJob ? 'job' : isAi ? 'ai' : 'service';
+            const percentRemaining = Math.max(0, 100 - (service.percentUsed || 0));
+
+            return (
+              <div key={service._id || service.productCode} className="mq-stat-card">
+                <div className="mq-stat-top">
+                  <div className={`mq-stat-icon-wrapper ${iconVariant}`}>
+                    {isJob ? (
+                      <FiBriefcase size={22} color="#be185d" />
+                    ) : isAi ? (
+                      <FiCpu size={22} color="#6d28d9" />
+                    ) : (
+                      <FiPackage size={22} color="#475569" />
+                    )}
+                  </div>
+                  <span className={`mq-stat-badge ${iconVariant}`}>
+                    {isAi ? 'Monthly • No Rollover' : isJob ? 'Full Plan Cycle' : `${percentRemaining}% Remaining`}
+                  </span>
+                </div>
+                <div className="mq-stat-label">{isAi ? 'AI Credits (Current Month)' : `${formatServiceProductName(service)} Quota`}</div>
+                <div className="mq-stat-value-row">
+                  <span className="mq-stat-value">{service.remaining?.toLocaleString() ?? 0}</span>
+                  <span className="mq-stat-total">/ {(service.total || 0).toLocaleString()} {service.total === 1 ? service.unit : (service.unit?.endsWith('s') ? service.unit : `${service.unit}s`)}</span>
+                </div>
+                <div className="mq-stat-progress-bar">
+                  <div
+                    className={`mq-stat-progress-fill ${iconVariant}`}
+                    style={{ width: `${service.percentUsed || 0}%` }}
+                  />
+                </div>
+                <div className="mq-stat-footer">
+                  <span>{(service.used || 0).toLocaleString()} Used</span>
+                  <span>{(service.remaining || 0).toLocaleString()} Available</span>
+                </div>
+                {isAi && (
+                  <div style={{ fontSize: '11px', color: '#6d28d9', marginTop: '8px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FiInfo size={12} />
+                    <span>Monthly allowance — remaining credits do not carry forward to next month</span>
+                  </div>
+                )}
+                {isJob && (
+                  <div style={{ fontSize: '11px', color: '#be185d', marginTop: '8px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FiInfo size={12} />
+                    <span>Allocated for full plan cycle ({planData?.validity || service.validity || 90} days)</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Main Workspace Layout (2 Columns) */}
@@ -459,7 +613,8 @@ export default function ManageQuota() {
                 <div className="mq-policy-option-content">
                   <div className="mq-policy-title-row">
                     <FiZap size={16} />
-                    <span className="mq-policy-title">Full access</span>
+                    <span className="mq-policy-title">Full Plan Cycle</span>
+                    <span className="mq-pill-recommended">Default</span>
                   </div>
                 </div>
               </label>
@@ -489,17 +644,21 @@ export default function ManageQuota() {
                         <div>
                           <div className="mq-metric-name">Max CV Access</div>
                           <div className="mq-metric-helper">
-                            {allocationPolicy === 'weekly' && 'Weekly assigned resume unlock quota'}
-                            {allocationPolicy === 'monthly' && 'Monthly assigned resume unlock quota'}
-                            {allocationPolicy === 'full' && 'Total pool resume views & contact unlocks'}
+                            {(policyAllocations.full?.cvAccess?.total || 0) === 0
+                              ? 'No CV unlock credits in active plan (locked at 0)'
+                              : allocationPolicy === 'weekly'
+                              ? 'Weekly assigned resume unlock quota'
+                              : allocationPolicy === 'monthly'
+                              ? 'Monthly assigned resume unlock quota'
+                              : `Total pool resume views & contact unlocks allocated for full plan cycle (${planData?.validity || 90} days)`}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    {/* Total (Editable only in weekly & monthly) */}
+                    {/* Total (Editable only in weekly & monthly and if credits > 0) */}
                     <td className="mq-td" style={{ textAlign: 'right' }}>
-                      {allocationPolicy !== 'full' && editDrafts.cvAccess !== null ? (
+                      {allocationPolicy !== 'full' && (policyAllocations.full?.cvAccess?.total || 0) > 0 && editDrafts.cvAccess !== null ? (
                         <div className="mq-inline-edit-box">
                           <input
                             type="number"
@@ -520,7 +679,7 @@ export default function ManageQuota() {
                       ) : (
                         <div className="mq-value-with-edit">
                           <span className="mq-num-bold">{currentCvTotal.toLocaleString()}</span>
-                          {allocationPolicy !== 'full' && (
+                          {allocationPolicy !== 'full' && (policyAllocations.full?.cvAccess?.total || 0) > 0 && (
                             <button
                               type="button"
                               className="mq-btn-edit-pencil"
@@ -538,12 +697,12 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Used */}
-                    <td className="mq-td" style={{ textAlign: 'right', color: '#64748b' }}>
+                    <td className="mq-td" data-label="Used" style={{ textAlign: 'right', color: '#64748b' }}>
                       <span className="mq-num-used">{currentCvUsed.toLocaleString()}</span>
                     </td>
 
                     {/* Balance / Remaining */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label={allocationPolicy === 'full' ? 'Remaining' : 'Balance'} style={{ textAlign: 'right' }}>
                       <span className="mq-num-balance">{cvBalance.toLocaleString()}</span>
                     </td>
                   </tr>
@@ -558,17 +717,21 @@ export default function ManageQuota() {
                         <div>
                           <div className="mq-metric-name">Max NVite Credits</div>
                           <div className="mq-metric-helper">
-                            {allocationPolicy === 'weekly' && 'Weekly assigned candidate outreach credits'}
-                            {allocationPolicy === 'monthly' && 'Monthly assigned candidate outreach credits'}
-                            {allocationPolicy === 'full' && 'Total pool email & WhatsApp invitation credits'}
+                            {(policyAllocations.full?.nvite?.total || 0) === 0
+                              ? 'No NVite outreach credits in active plan (locked at 0)'
+                              : allocationPolicy === 'weekly'
+                              ? 'Weekly assigned candidate outreach credits'
+                              : allocationPolicy === 'monthly'
+                              ? 'Monthly assigned candidate outreach credits'
+                              : `Total pool candidate outreach credits allocated for full plan cycle (${planData?.validity || 90} days)`}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    {/* Total (Editable only in weekly & monthly) */}
+                    {/* Total (Editable only in weekly & monthly and if credits > 0) */}
                     <td className="mq-td" style={{ textAlign: 'right' }}>
-                      {allocationPolicy !== 'full' && editDrafts.nvite !== null ? (
+                      {allocationPolicy !== 'full' && (policyAllocations.full?.nvite?.total || 0) > 0 && editDrafts.nvite !== null ? (
                         <div className="mq-inline-edit-box">
                           <input
                             type="number"
@@ -589,7 +752,7 @@ export default function ManageQuota() {
                       ) : (
                         <div className="mq-value-with-edit">
                           <span className="mq-num-bold">{currentNviteTotal.toLocaleString()}</span>
-                          {allocationPolicy !== 'full' && (
+                          {allocationPolicy !== 'full' && (policyAllocations.full?.nvite?.total || 0) > 0 && (
                             <button
                               type="button"
                               className="mq-btn-edit-pencil"
@@ -607,12 +770,12 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Used */}
-                    <td className="mq-td" style={{ textAlign: 'right', color: '#64748b' }}>
+                    <td className="mq-td" data-label="Used" style={{ textAlign: 'right', color: '#64748b' }}>
                       <span className="mq-num-used">{currentNviteUsed.toLocaleString()}</span>
                     </td>
 
                     {/* Balance / Remaining */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label={allocationPolicy === 'full' ? 'Remaining' : 'Balance'} style={{ textAlign: 'right' }}>
                       <span className="mq-num-balance">{nviteBalance.toLocaleString()}</span>
                     </td>
                   </tr>
@@ -633,7 +796,7 @@ export default function ManageQuota() {
               </button>
               <span className="mq-footer-tip">
                 {allocationPolicy === 'full'
-                  ? 'Full access mode provides unrestricted access to the total pool; no allocation limits can be edited.'
+                  ? `Full access mode provides unrestricted access to the total pool allocated for the full cycle of your plan days (${planData?.validity || 90} days).`
                   : 'Changes apply instantly across all active recruiters in your company account.'}
               </span>
             </div>
@@ -733,6 +896,158 @@ export default function ManageQuota() {
             </div>
           </div>
         </div>
+
+        {/* EXTRA SECTION: Subscribed Products & Entitlement Quotas Full Table */}
+        {servicesData.length > 0 && (
+          <div className="mq-services-section">
+            <div className="mq-services-card">
+              <div className="mq-services-header">
+                <div>
+                  <h3 className="mq-services-title">
+                    <FiLayers size={18} color="#002366" />
+                    Subscribed Products & Entitlement Quotas
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+                    Live resource allocations and feature specifications locked into your company profile from your commercial subscription.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mq-table-wrapper">
+                <table className="mq-services-table">
+                  <thead>
+                    <tr>
+                      <th className="mq-services-th">Product & SKU</th>
+                      <th className="mq-services-th">Entitlement Quota</th>
+                      <th className="mq-services-th">Utilization</th>
+                      <th className="mq-services-th" style={{ textAlign: 'right' }}>Used</th>
+                      <th className="mq-services-th" style={{ textAlign: 'right' }}>Remaining Balance</th>
+                      <th className="mq-services-th">Validity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {servicesData.map((service) => {
+                      const percent = service.percentUsed || 0;
+                      const code = String(service.productCode || '').toUpperCase();
+                      const cat = String(service.category || '').toUpperCase();
+                      const unitStr = String(service.unit || '').toLowerCase();
+                      const isSeat = service.isSeat || code.includes('SEAT') || cat === 'USER_SEATS' || unitStr.includes('seat');
+                      const isAi = !isSeat && (code.includes('AI') || cat === 'AI' || service.isAi);
+
+                      return (
+                        <tr key={service._id || service.productCode} className="mq-services-tr">
+                          <td className="mq-services-td">
+                            <div className="mq-prod-name">
+                              <span>{formatServiceProductName(service)}</span>
+                              {isSeat && (
+                                <span style={{
+                                  marginLeft: 8,
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  color: '#0284c7',
+                                  background: '#e0f2fe',
+                                  padding: '2px 7px',
+                                  borderRadius: 10,
+                                  display: 'inline-block'
+                                }}>
+                                  Recruiter Seat
+                                </span>
+                              )}
+                            </div>
+                            <div className="mq-prod-code">{service.productCode}</div>
+                            {isSeat && (
+                              <div style={{ marginTop: 4 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/employer/settings/users')}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    color: '#002366',
+                                    fontSize: 11.5,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 3
+                                  }}
+                                >
+                                  Manage Seat Assignments →
+                                </button>
+                              </div>
+                            )}
+                            {Array.isArray(service.features) && service.features.length > 0 && (
+                              <div style={{ marginTop: 6 }}>
+                                {service.features.map((feat) => (
+                                  <span key={feat.key || feat.name} className="mq-feature-tag">
+                                    ✓ {feat.name || feat.key}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="mq-services-td">
+                            <strong style={{ color: '#0f172a', fontSize: 13.5 }}>
+                              {(service.total || 0).toLocaleString()} {service.total === 1 ? service.unit : (service.unit?.endsWith('s') ? service.unit : `${service.unit}s`)}
+                            </strong>
+                          </td>
+                          <td className="mq-services-td">
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>{percent}%</span>
+                            <div className="mq-mini-progress">
+                              <div className="mq-mini-fill" style={{ width: `${percent}%` }} />
+                            </div>
+                          </td>
+                          <td className="mq-services-td" style={{ textAlign: 'right', color: '#64748b' }}>
+                            <span className="mq-num-used">{(service.used || 0).toLocaleString()}</span>
+                            {isSeat && (
+                              <div style={{ fontSize: 11, color: '#64748b' }}>assigned</div>
+                            )}
+                          </td>
+                          <td className="mq-services-td" style={{ textAlign: 'right' }}>
+                            <span className="mq-num-balance" style={{ color: service.remaining > 0 ? '#047857' : '#dc2626' }}>
+                              {(service.remaining || 0).toLocaleString()}
+                            </span>
+                            {isSeat && (
+                              <div style={{ fontSize: 11, color: service.remaining > 0 ? '#047857' : '#dc2626' }}>available</div>
+                            )}
+                          </td>
+                          <td className="mq-services-td">
+                            {(() => {
+                              if (isAi) {
+                                return (
+                                  <div>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#6d28d9', background: '#f5f3ff', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
+                                      Monthly Cycle
+                                    </span>
+                                    <div style={{ fontSize: 11, color: '#7c3aed', marginTop: 3, fontWeight: 500 }}>
+                                      No carry forward
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
+                                    {planData?.validity || service.validity || 30} {service.validityUnit || 'DAYS'}
+                                  </span>
+                                  <div style={{ fontSize: 11, color: '#047857', marginTop: 3, fontWeight: 600 }}>
+                                    Full Plan Cycle
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </EmployerLayout>
   );

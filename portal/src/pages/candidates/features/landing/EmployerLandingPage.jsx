@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-
 import {
   FiArrowRight,
   FiUsers,
@@ -30,8 +29,8 @@ import { useEmployerLanding } from "../../../../hooks/useLandingQueries";
 import ForgotPassword from "../../../../auth/ForgotPassword";
 import "./EmployerLandingPage.css";
 import { SkeletonHomePage } from "../../../../components/Skeleton";
-import EmployerFooter from "../../../../components/EmployerFooter";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 
 const getInitials = (value = "Company") =>
@@ -552,6 +551,18 @@ const EmployerLandingPage = () => {
               width="100%"
               height="100%"
               title="Spline Background"
+            />
+            {/* Overlay to hide the Spline watermark */}
+            <div 
+              style={{ 
+                position: "absolute", 
+                bottom: 0, 
+                right: 0, 
+                width: "180px", 
+                height: "60px", 
+                backgroundColor: "#020617", 
+                zIndex: 1 
+              }} 
             />
             <div className="elp-hero-overlay" />
           </div>

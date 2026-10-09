@@ -50,25 +50,40 @@ export function getStoredToken() {
   return getStoredSession()?.token || "";
 }
 
+let inFlightRefreshPromise = null;
+
 async function refreshAuthSession() {
-  const response = await fetch(`${API_ROOT}/auth/refresh`, {
-    method: "POST",
-    credentials: "include",
-  });
-
-  const payload = await parseJsonSafely(response);
-
-  if (!response.ok) {
-    clearStoredSession();
-    throw new Error(payload.message || "Session expired");
+  if (inFlightRefreshPromise) {
+    return inFlightRefreshPromise;
   }
 
-  setStoredSession({
-    token: payload.accessToken || payload.token,
-    user: payload.user,
-  });
+  inFlightRefreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_ROOT}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
 
-  return payload.accessToken || payload.token;
+      const payload = await parseJsonSafely(response);
+
+      if (!response.ok) {
+        clearStoredSession();
+        throw new Error(payload.message || "Session expired");
+      }
+
+      const newToken = payload.accessToken || payload.token;
+      setStoredSession({
+        token: newToken,
+        user: payload.user,
+      });
+
+      return newToken;
+    } finally {
+      inFlightRefreshPromise = null;
+    }
+  })();
+
+  return inFlightRefreshPromise;
 }
 
 export async function restoreStoredSession() {
@@ -310,3 +325,171 @@ export async function markAllNotificationsRead() {
     method: "PATCH",
   });
 }
+
+// ── Commercial Management APIs ──
+export async function getCommercialDashboard() {
+  return request("/commercial/dashboard");
+}
+
+export async function getCommercialProducts(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") query.set(k, v);
+  });
+  const qs = query.toString();
+  return request(`/commercial/products${qs ? `?${qs}` : ""}`);
+}
+
+export async function getCommercialProductById(id) {
+  return request(`/commercial/products/${id}`);
+}
+
+export async function createCommercialProduct(payload) {
+  return request("/commercial/products", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateCommercialProduct(id, payload) {
+  return request(`/commercial/products/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function setCommercialProductStatus(id, status) {
+  return request(`/commercial/products/${id}/status`, {
+    method: "POST",
+    body: { status },
+  });
+}
+
+export async function deleteCommercialProduct(id) {
+  return request(`/commercial/products/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getCommercialOffers(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") query.set(k, v);
+  });
+  const qs = query.toString();
+  return request(`/commercial/offers${qs ? `?${qs}` : ""}`);
+}
+
+export async function createCommercialOffer(payload) {
+  return request("/commercial/offers", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateCommercialOffer(id, payload) {
+  return request(`/commercial/offers/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function deleteCommercialOffer(id) {
+  return request(`/commercial/offers/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getCommercialPlans(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") query.set(k, v);
+  });
+  const qs = query.toString();
+  return request(`/commercial/plans${qs ? `?${qs}` : ""}`);
+}
+
+export async function getCommercialPlanById(id) {
+  return request(`/commercial/plans/${id}`);
+}
+
+export async function createCommercialPlan(payload) {
+  return request("/commercial/plans", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateCommercialPlan(id, payload) {
+  return request(`/commercial/plans/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function setCommercialPlanStatus(id, status) {
+  return request(`/commercial/plans/${id}/status`, {
+    method: "POST",
+    body: { status },
+  });
+}
+
+export async function createCommercialPlanVersion(planId, payload) {
+  return request(`/commercial/plans/${planId}/versions`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateCommercialPlanVersion(versionId, payload) {
+  return request(`/commercial/versions/${versionId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function publishCommercialPlanVersion(planId, versionId) {
+  return request(`/commercial/plans/${planId}/publish`, {
+    method: "POST",
+    body: { versionId },
+  });
+}
+
+export async function getCommercialSubscriptions(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") query.set(k, v);
+  });
+  const qs = query.toString();
+  return request(`/commercial/subscriptions${qs ? `?${qs}` : ""}`);
+}
+
+export async function getCommercialSubscriptionById(id) {
+  return request(`/commercial/subscriptions/${id}`);
+}
+
+export async function getCommercialCreditLedger(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") query.set(k, v);
+  });
+  const qs = query.toString();
+  return request(`/commercial/credit-ledger${qs ? `?${qs}` : ""}`);
+}
+
+export async function adjustCommercialCredit(payload) {
+  return request("/commercial/credit-ledger/adjust", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function getCommercialAuditLogs(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") query.set(k, v);
+  });
+  const qs = query.toString();
+  return request(`/commercial/audit-logs${qs ? `?${qs}` : ""}`);
+}
+

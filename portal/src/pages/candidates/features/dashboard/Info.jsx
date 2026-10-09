@@ -14,24 +14,24 @@ import authService from '../../../../services/authService';
 import { useCandidateApplications, useCandidateSavedJobs } from '../../../../hooks/useCandidateQueries';
 import { useSaveJob } from '../../../../hooks/useCandidateMutations';
 import { SkeletonStatsRow, SkeletonTable } from '../../../../components/Skeleton';
-import LandingFooter from '../../../../components/LandingFooter';
-import CandidateHeader from '../../../../components/common/CandidateHeader';
+import LandingFooter from '../../../../layout/candidate/LandingFooter';
+import CandidateHeader from '../../../../layout/candidate/CandidateHeader';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const STATUS_MAP = {
-    APPLIED:      { color: '#6366f1', bg: '#EEF2FF', icon: <FiSend size={13} />,        label: 'Applied',         step: 1 },
-    SCREENING:    { color: '#0ea5e9', bg: '#e0f2fe', icon: <FiEye size={13} />,         label: 'In Screening',    step: 2 },
-    SHORTLISTED:  { color: '#10b981', bg: '#ecfdf5', icon: <FiCheckCircle size={13} />, label: 'Shortlisted',     step: 3 },
-    INTERVIEW:    { color: '#f59e0b', bg: '#fffbeb', icon: <FiMail size={13} />,        label: 'Interview',       step: 4 },
-    OFFERED:      { color: '#8b5cf6', bg: '#f5f3ff', icon: <FiAward size={13} />,       label: 'Offered',         step: 5 },
-    HIRED:        { color: '#059669', bg: '#d1fae5', icon: <FiCheckCircle size={13} />, label: 'Hired 🎉',         step: 6 },
-    REJECTED:     { color: '#ef4444', bg: '#fef2f2', icon: <FiXCircle size={13} />,     label: 'Rejected',        step: 0 },
+    APPLIED: { color: '#6366f1', bg: '#EEF2FF', icon: <FiSend size={13} />, label: 'Applied', step: 1 },
+    SCREENING: { color: '#0ea5e9', bg: '#e0f2fe', icon: <FiEye size={13} />, label: 'In Screening', step: 2 },
+    SHORTLISTED: { color: '#10b981', bg: '#ecfdf5', icon: <FiCheckCircle size={13} />, label: 'Shortlisted', step: 3 },
+    INTERVIEW: { color: '#f59e0b', bg: '#fffbeb', icon: <FiMail size={13} />, label: 'Interview', step: 4 },
+    OFFERED: { color: '#8b5cf6', bg: '#f5f3ff', icon: <FiAward size={13} />, label: 'Offered', step: 5 },
+    HIRED: { color: '#059669', bg: '#d1fae5', icon: <FiCheckCircle size={13} />, label: 'Hired 🎉', step: 6 },
+    REJECTED: { color: '#ef4444', bg: '#fef2f2', icon: <FiXCircle size={13} />, label: 'Rejected', step: 0 },
 };
 
 const COMPANY_COLORS = [
-    '#6366f1','#10b981','#002366','#f59e0b','#ec4899',
-    '#0ea5e9','#8b5cf6','#ef4444','#f43f5e','#3b82f6',
+    '#6366f1', '#10b981', '#002366', '#f59e0b', '#ec4899',
+    '#0ea5e9', '#8b5cf6', '#ef4444', '#f43f5e', '#3b82f6',
 ];
 const companyColor = (str = '') => {
     let hash = 0;
@@ -44,11 +44,11 @@ function relDate(dateStr) {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
     const diff = (Date.now() - d) / 1000;
-    if (diff < 60)   return 'just now';
+    if (diff < 60) return 'just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
-    if (diff < 604800)return `${Math.floor(diff / 86400)}d ago`;
-    return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'2-digit' });
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -212,39 +212,39 @@ function SavedJobsModal({ onClose, user }) {
                         const salary = formatSalary(job);
                         const jobColor = companyColor(job.companyName);
                         return (
-                        <div key={job.id} style={{ padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', gap: 16, transition: 'all .2s', background: removingId === job.id ? '#f8fafc' : '#fff', opacity: removingId === job.id ? 0.5 : 1 }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,35,102,.15)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,35,102,.08)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                            <div style={{ width: 48, height: 48, borderRadius: 14, background: `${jobColor}15`, border: `2px solid ${jobColor}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--fd)', fontSize: 20, fontWeight: 800, color: jobColor, flexShrink: 0 }}>
-                                {job.companyLogoUrl ? (
-                                    <img src={job.companyLogoUrl} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-                                ) : companyInitial(job.companyName)}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                                    <h3 style={{ fontFamily: 'var(--fd)', fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>{job.title}</h3>
-                                    <button onClick={() => handleRemove(job.id)} disabled={removingId === job.id} title="Remove" style={{ background: '#fef2f2', border: 'none', width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: removingId === job.id ? 'not-allowed' : 'pointer', color: '#ef4444', flexShrink: 0, transition: 'all .2s', opacity: removingId === job.id ? 0.5 : 1 }}
-                                        onMouseEnter={e => { if (removingId !== job.id) e.currentTarget.style.background = '#fee2e2'; }}
-                                        onMouseLeave={e => { if (removingId !== job.id) e.currentTarget.style.background = '#fef2f2'; }}>
-                                        <FiTrash2 size={13} />
-                                    </button>
+                            <div key={job.id} style={{ padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', gap: 16, transition: 'all .2s', background: removingId === job.id ? '#f8fafc' : '#fff', opacity: removingId === job.id ? 0.5 : 1 }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,35,102,.15)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,35,102,.08)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+                                <div style={{ width: 48, height: 48, borderRadius: 14, background: `${jobColor}15`, border: `2px solid ${jobColor}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--fd)', fontSize: 20, fontWeight: 800, color: jobColor, flexShrink: 0 }}>
+                                    {job.companyLogoUrl ? (
+                                        <img src={job.companyLogoUrl} alt="" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+                                    ) : companyInitial(job.companyName)}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', fontWeight: 600, marginBottom: 10 }}>
-                                    <span style={{ color: '#475569' }}>{job.companyName}</span>
-                                    {job.location && <><span>•</span><span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><FiMapPin size={11} />{job.location}</span></>}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                        {salary && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', background: '#f1f5f9', padding: '3px 9px', borderRadius: 6 }}>{salary}</span>}
-                                        {job.jobType && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', background: '#f1f5f9', padding: '3px 9px', borderRadius: 6 }}>{job.jobType}</span>}
-                                        {job.lastUpdated && <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>{job.lastUpdated}</span>}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                                        <h3 style={{ fontFamily: 'var(--fd)', fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>{job.title}</h3>
+                                        <button onClick={() => handleRemove(job.id)} disabled={removingId === job.id} title="Remove" style={{ background: '#fef2f2', border: 'none', width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: removingId === job.id ? 'not-allowed' : 'pointer', color: '#ef4444', flexShrink: 0, transition: 'all .2s', opacity: removingId === job.id ? 0.5 : 1 }}
+                                            onMouseEnter={e => { if (removingId !== job.id) e.currentTarget.style.background = '#fee2e2'; }}
+                                            onMouseLeave={e => { if (removingId !== job.id) e.currentTarget.style.background = '#fef2f2'; }}>
+                                            <FiTrash2 size={13} />
+                                        </button>
                                     </div>
-                                    <Link to={`/job/${job.id}`} onClick={handleClose} style={{ background: '#002366', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: 'var(--fd)', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                        View <FiExternalLink size={11} />
-                                    </Link>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', fontWeight: 600, marginBottom: 10 }}>
+                                        <span style={{ color: '#475569' }}>{job.companyName}</span>
+                                        {job.location && <><span>•</span><span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><FiMapPin size={11} />{job.location}</span></>}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                            {salary && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', background: '#f1f5f9', padding: '3px 9px', borderRadius: 6 }}>{salary}</span>}
+                                            {job.jobType && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', background: '#f1f5f9', padding: '3px 9px', borderRadius: 6 }}>{job.jobType}</span>}
+                                            {job.lastUpdated && <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>{job.lastUpdated}</span>}
+                                        </div>
+                                        <Link to={`/job/${job.id}`} onClick={handleClose} style={{ background: '#002366', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: 'var(--fd)', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            View <FiExternalLink size={11} />
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
                         );
                     })}
                 </div>
@@ -310,8 +310,8 @@ export default function Info() {
     // ── filter logic ──
     const filteredApps = applications.filter(app => {
         if (activeFilter === 'all') return true;
-        if (activeFilter === 'active') return ['APPLIED','SCREENING','SHORTLISTED','INTERVIEW','OFFERED'].includes(app.status);
-        if (activeFilter === 'action') return ['SHORTLISTED','INTERVIEW','OFFERED','HIRED'].includes(app.status);
+        if (activeFilter === 'active') return ['APPLIED', 'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFERED'].includes(app.status);
+        if (activeFilter === 'action') return ['SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED'].includes(app.status);
         if (activeFilter === 'hired') return app.status === 'HIRED';
         if (activeFilter === 'rejected') return app.status === 'REJECTED';
         return true;
@@ -320,19 +320,19 @@ export default function Info() {
     // ── computed stats from real data ──
     const stats = {
         total: applications.length,
-        actionNeeded: applications.filter(a => ['SHORTLISTED','INTERVIEW','OFFERED','HIRED'].includes(a.status)).length,
-        shortlisted: applications.filter(a => ['SHORTLISTED','INTERVIEW','OFFERED','HIRED'].includes(a.status)).length,
+        actionNeeded: applications.filter(a => ['SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED'].includes(a.status)).length,
+        shortlisted: applications.filter(a => ['SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED'].includes(a.status)).length,
         hired: applications.filter(a => a.status === 'HIRED').length,
         rejected: applications.filter(a => a.status === 'REJECTED').length,
         screening: applications.filter(a => a.status === 'SCREENING').length,
     };
 
     const FILTER_TABS = [
-        { id: 'all',      label: 'All',           count: applications.length },
-        { id: 'active',   label: 'In Progress',    count: applications.filter(a => ['APPLIED','SCREENING','SHORTLISTED','INTERVIEW','OFFERED'].includes(a.status)).length },
-        { id: 'action',   label: 'Recruiter Action', count: stats.actionNeeded },
-        { id: 'hired',    label: 'Hired / Offered', count: stats.hired + applications.filter(a=>a.status==='OFFERED').length },
-        { id: 'rejected', label: 'Rejected',       count: stats.rejected },
+        { id: 'all', label: 'All', count: applications.length },
+        { id: 'active', label: 'In Progress', count: applications.filter(a => ['APPLIED', 'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFERED'].includes(a.status)).length },
+        { id: 'action', label: 'Recruiter Action', count: stats.actionNeeded },
+        { id: 'hired', label: 'Hired / Offered', count: stats.hired + applications.filter(a => a.status === 'OFFERED').length },
+        { id: 'rejected', label: 'Rejected', count: stats.rejected },
     ];
 
     // ── pagination ──
@@ -360,11 +360,11 @@ export default function Info() {
     const sc = selectedApp ? (STATUS_MAP[selectedApp.status] || STATUS_MAP.APPLIED) : null;
 
     const PROGRESS_STEPS = selectedApp ? [
-        { label: 'Applied',      done: true },
-        { label: 'Screening',    done: ['SCREENING','SHORTLISTED','INTERVIEW','OFFERED','HIRED'].includes(selectedApp.status) },
-        { label: 'Shortlisted',  done: ['SHORTLISTED','INTERVIEW','OFFERED','HIRED'].includes(selectedApp.status) },
-        { label: 'Interview',    done: ['INTERVIEW','OFFERED','HIRED'].includes(selectedApp.status) },
-        { label: 'Decision',     done: ['OFFERED','HIRED','REJECTED'].includes(selectedApp.status) },
+        { label: 'Applied', done: true },
+        { label: 'Screening', done: ['SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED'].includes(selectedApp.status) },
+        { label: 'Shortlisted', done: ['SHORTLISTED', 'INTERVIEW', 'OFFERED', 'HIRED'].includes(selectedApp.status) },
+        { label: 'Interview', done: ['INTERVIEW', 'OFFERED', 'HIRED'].includes(selectedApp.status) },
+        { label: 'Decision', done: ['OFFERED', 'HIRED', 'REJECTED'].includes(selectedApp.status) },
     ] : [];
 
     const donePct = PROGRESS_STEPS.length > 1
@@ -448,7 +448,7 @@ export default function Info() {
         }
       `}</style>
 
-<CandidateHeader />
+            <CandidateHeader />
             {/* ── TOP HEADER BAR ── */}
             <div className="info-header-bar" style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '18px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, position: 'sticky', top: 0, zIndex: 100 }}>
                 <div>
@@ -570,17 +570,17 @@ export default function Info() {
                                 { pct: Math.round((applications.filter(a => ['APPLIED'].includes(a.status)).length / Math.max(stats.total, 1)) * 100), color: '#6366f1' },
                                 { pct: Math.round((stats.screening / Math.max(stats.total, 1)) * 100), color: '#0ea5e9' },
                                 { pct: Math.round((applications.filter(a => a.status === 'SHORTLISTED').length / Math.max(stats.total, 1)) * 100), color: '#10b981' },
-                                { pct: Math.round((applications.filter(a => ['INTERVIEW','OFFERED','HIRED'].includes(a.status)).length / Math.max(stats.total, 1)) * 100), color: '#f59e0b' },
+                                { pct: Math.round((applications.filter(a => ['INTERVIEW', 'OFFERED', 'HIRED'].includes(a.status)).length / Math.max(stats.total, 1)) * 100), color: '#f59e0b' },
                                 { pct: Math.round((stats.rejected / Math.max(stats.total, 1)) * 100), color: '#ef4444' },
                             ].map((s, i) => s.pct > 0 ? <div key={i} style={{ width: `${s.pct}%`, background: s.color, transition: 'width .6s', minWidth: s.pct > 0 ? 4 : 0 }} /> : null)}
                         </div>
                         <div className="info-pipeline-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
                             {[
-                                { label: 'Applied', count: applications.filter(a=>a.status==='APPLIED').length, color: '#6366f1', bg: '#EEF2FF', icon: <FiSend size={14}/> },
-                                { label: 'Screening', count: stats.screening, color: '#0ea5e9', bg: '#e0f2fe', icon: <FiEye size={14}/> },
-                                { label: 'Shortlisted', count: applications.filter(a=>a.status==='SHORTLISTED').length, color: '#10b981', bg: '#ecfdf5', icon: <FiCheckCircle size={14}/> },
-                                { label: 'Interview / Offer', count: applications.filter(a=>['INTERVIEW','OFFERED','HIRED'].includes(a.status)).length, color: '#f59e0b', bg: '#fffbeb', icon: <FiMail size={14}/> },
-                                { label: 'Rejected', count: stats.rejected, color: '#ef4444', bg: '#fef2f2', icon: <FiXCircle size={14}/> },
+                                { label: 'Applied', count: applications.filter(a => a.status === 'APPLIED').length, color: '#6366f1', bg: '#EEF2FF', icon: <FiSend size={14} /> },
+                                { label: 'Screening', count: stats.screening, color: '#0ea5e9', bg: '#e0f2fe', icon: <FiEye size={14} /> },
+                                { label: 'Shortlisted', count: applications.filter(a => a.status === 'SHORTLISTED').length, color: '#10b981', bg: '#ecfdf5', icon: <FiCheckCircle size={14} /> },
+                                { label: 'Interview / Offer', count: applications.filter(a => ['INTERVIEW', 'OFFERED', 'HIRED'].includes(a.status)).length, color: '#f59e0b', bg: '#fffbeb', icon: <FiMail size={14} /> },
+                                { label: 'Rejected', count: stats.rejected, color: '#ef4444', bg: '#fef2f2', icon: <FiXCircle size={14} /> },
                             ].map((s, i) => (
                                 <div key={i} style={{ padding: '12px 14px', borderRadius: 12, background: s.bg, border: `1px solid ${s.color}22` }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, color: s.color }}>

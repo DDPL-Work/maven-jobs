@@ -9,8 +9,8 @@ import {
   FiCpu,
   FiTrash2,
 } from "react-icons/fi";
-import CandidateHeader from "../../../components/common/CandidateHeader";
-import LandingFooter from "../../../components/LandingFooter";
+import CandidateHeader from "../../../layout/candidate/CandidateHeader";
+import LandingFooter from "../../../layout/candidate/LandingFooter";
 import "./PrivacyPolicy.css";
 
 const STATS = [

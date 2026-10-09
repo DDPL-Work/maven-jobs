@@ -19,8 +19,8 @@ import { useCandidateSavedJobs } from "../../../../hooks/useCandidateQueries";
 import { useSaveJob } from "../../../../hooks/useCandidateMutations";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import SkeletonPage from "../../../../components/Skeleton";
-import LandingFooter from "../../../../components/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 
 const MATCH_COLORS = {

@@ -48,33 +48,94 @@ async function countNviteUsage(companyId, dateFilter) {
  * @throws {Error} statusCode=429 if quota is exhausted
  * @returns {{ total, used, left, unlimited? }} quota breakdown
  */
+async function resolveCommercialLimits(company) {
+  let cvTotal = 0;
+  let nviteTotal = 0;
+  try {
+    const Credit = require('../models/Credit');
+    const credit = await Credit.findOne({ companyId: company._id }).lean();
+    
+    if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
+      cvTotal = credit?.lifetimePurchased || 0;
+      nviteTotal = 0;
+      for (const s of company.planSnapshot.services) {
+        const code = String(s.productCode || "").toUpperCase();
+        const cat = String(s.category || "").toUpperCase();
+        if (code.includes("CV") || code.includes("RESDEX") || code.includes("RESUME") || cat === "RESUME_SEARCH") {
+          cvTotal += (s.quantity || 0);
+        }
+        if (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES") {
+          nviteTotal += (s.quantity || 0);
+        }
+      }
+    } else {
+      const Package = require('../models/Package');
+      const pkg = await Package.findOne({ name: company.packageType || "STANDARD" });
+      cvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
+      nviteTotal = company.nviteLimit || pkg?.nviteLimit || 0;
+    }
+
+    const Entitlement = require('../models/Entitlement');
+    const activeEnts = await Entitlement.find({
+      companyId: company._id,
+      status: "ACTIVE",
+      expiryDate: { $gte: new Date() },
+      remainingQuantity: { $gt: 0 },
+    }).lean();
+
+    for (const ent of activeEnts) {
+      const pCode = String(ent.productCode || "").toUpperCase();
+      if (pCode.includes("CV") || pCode.includes("RESDEX") || pCode.includes("RESUME")) {
+        cvTotal = Math.max(cvTotal, ent.remainingQuantity || 0);
+      } else if (pCode.includes("NVITE") || pCode.includes("MIVITE")) {
+        nviteTotal = Math.max(nviteTotal, ent.remainingQuantity || 0);
+      }
+    }
+  } catch (_) {}
+
+  return { cvTotal, nviteTotal };
+}
+
+/**
+ * checkAndEnforceQuota
+ *
+ * @param {Object} company                  Mongoose Company document (with quotaConfig)
+ * @param {'cvAccess'|'nvite'} type         Which quota to check
+ * @param {number} [needed=1]               How many units are being requested
+ * @throws {Error} statusCode=429 if quota is exhausted
+ * @returns {{ total, used, left, unlimited? }} quota breakdown
+ */
 async function checkAndEnforceQuota(company, type, needed = 1) {
+  // Plan Expiration Check (Q3.7)
+  if (company?.planSnapshot?.endDate && new Date(company.planSnapshot.endDate) < new Date()) {
+    const label = type === 'cvAccess' ? 'Resume Search (Max CV Access)' : 'Candidate Outreach (Max NVite Credits)';
+    const err = new Error(`Your plan has expired. You can view previously accessed CVs and jobs (up to 90 days), but new ${label} actions are locked until renewal.`);
+    err.statusCode = 403;
+    err.code = 'PLAN_EXPIRED';
+    throw err;
+  }
+
   const quotaConfig      = company.quotaConfig || {};
   const allocationPolicy = quotaConfig.allocationPolicy || 'full';
 
   // ── 'full' policy ──────────────────────────────────────────────────────────
-  // CV access: controlled entirely by Credit.balance (monetary), no period quota
-  if (allocationPolicy === 'full' && type === 'cvAccess') {
-    return { total: Infinity, used: 0, left: Infinity, unlimited: true };
-  }
-
-  // NVite 'full': check company.nviteLimit (0 = unlimited)
-  if (allocationPolicy === 'full' && type === 'nvite') {
-    const total = company.nviteLimit || 0;
-    if (total === 0) {
-      const used = await countNviteUsage(company._id, {});
-      return { total: Infinity, used, left: Infinity, unlimited: true };
-    }
-    const used = await countNviteUsage(company._id, {});
+  if (allocationPolicy === 'full') {
+    const limits = await resolveCommercialLimits(company);
+    const total = type === 'cvAccess' ? limits.cvTotal : limits.nviteTotal;
+    const used = type === 'cvAccess'
+      ? await countCvUsage(company._id, {})
+      : await countNviteUsage(company._id, {});
     const left = Math.max(0, total - used);
+
     if (left < needed) {
+      const label = type === 'cvAccess' ? 'Max CV Access' : 'Max NVite Credits';
       const err = new Error(
         left === 0
-          ? `NVite quota exhausted. Your account has used all ${total} NVites in the current plan.`
-          : `NVite quota insufficient. Only ${left} NVite${left === 1 ? '' : 's'} remaining but ${needed} requested.`
+          ? `${label} quota exhausted. Your account has no active ${label} credits in the current plan.`
+          : `${label} quota insufficient. Only ${left} credit${left === 1 ? '' : 's'} remaining but ${needed} requested.`
       );
       err.statusCode = 429;
-      err.code       = 'NVITE_QUOTA_EXHAUSTED';
+      err.code       = type === 'cvAccess' ? 'CV_QUOTA_EXHAUSTED' : 'NVITE_QUOTA_EXHAUSTED';
       err.quotaInfo  = { type, total, used, left, allocationPolicy };
       throw err;
     }
@@ -105,7 +166,7 @@ async function checkAndEnforceQuota(company, type, needed = 1) {
 
   if (left < needed) {
     const period = allocationPolicy === 'weekly' ? 'week' : 'month';
-    const label  = type === 'cvAccess' ? 'CV access' : 'NVite';
+    const label  = type === 'cvAccess' ? 'Max CV Access' : 'Max NVite Credits';
     const err = new Error(
       left === 0
         ? `${label} quota exhausted for this ${period}. Your limit of ${total} will reset at the start of the next ${period}.`

@@ -8,6 +8,7 @@ const CandidateProfile = require("../models/CandidateProfile");
 const CompanyReview = require("../models/CompanyReview");
 const { esAvailable } = require("../config/opensearch");
 const esService = require("../services/opensearch.service");
+const { getCandidateLiveJobFilter } = require("../utils/job-live.utils");
 
 const formatCompactCount = (value = 0) => {
   const count = Number(value || 0);
@@ -219,11 +220,13 @@ const jobMatchesFilter = (job, filter = "") => {
 const formatPublicJob = (job, reviewMap = new Map()) => {
   const companyId = String(job.companyId?._id || job.companyId || "");
   const r = reviewMap.get(companyId) || {};
+  const isHot = Boolean(job.isHotVacancy || job.jobCategory === "hot");
+  const visibleLogoUrl = isHot ? (job.companyId?.logoUrl || "") : "";
   return {
     id: String(job._id),
     companyId,
     companyName: job.companyId?.name || "Unknown company",
-    companyLogoUrl: job.companyId?.logoUrl || "",
+    companyLogoUrl: visibleLogoUrl,
     companyCoverUrl: job.companyId?.coverImageUrl || "",
     company: job.companyId
       ? {
@@ -232,7 +235,7 @@ const formatPublicJob = (job, reviewMap = new Map()) => {
         industry: job.companyId.industry || "",
         type: job.companyId.packageType || "",
         location: job.companyId.location || {},
-        logoUrl: job.companyId.logoUrl || "",
+        logoUrl: visibleLogoUrl,
         coverImageUrl: job.companyId.coverImageUrl || "",
       }
       : null,
@@ -251,6 +254,8 @@ const formatPublicJob = (job, reviewMap = new Map()) => {
     externalLink: job.externalLink || "",
     skills: Array.isArray(job.skills) ? job.skills : [],
     deadline: job.deadline || null,
+    jobCategory: job.jobCategory || "standard",
+    isHotVacancy: Boolean(job.isHotVacancy || job.jobCategory === "hot"),
     isActive: Boolean(job.isActive),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
@@ -327,6 +332,14 @@ async function esGetPublicJobs(req, res) {
     filteredHits = esHits.filter((j) => !applicationMap.has(j.id));
   }
 
+  // Ensure hot vacancies are placed first at the top
+  filteredHits.sort((a, b) => {
+    const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+    const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+    if (aHot === bHot) return 0;
+    return bHot ? 1 : -1;
+  });
+
   // Fetch review data for paginated jobs
   const companyIds = [...new Set(filteredHits.map((j) => j.companyId).filter(Boolean))];
   let reviewMap = new Map();
@@ -343,7 +356,7 @@ async function esGetPublicJobs(req, res) {
   // Fetch available filters from MongoDB (lightweight — lean query)
   let availableFilters = { departments: [], workplaceTypes: [], locations: [], jobTypes: [] };
   try {
-    const fullPool = await Job.find({ isActive: true, approvalStatus: "APPROVED" })
+    const fullPool = await Job.find(getCandidateLiveJobFilter())
       .limit(500).lean().select("department workplaceType location jobType");
     const dedupeFilters = (arr) => {
       const seen = new Set();
@@ -395,6 +408,8 @@ async function esGetPublicJobs(req, res) {
       externalLink: j.externalLink || "",
       skills: Array.isArray(j.skills) ? j.skills : [],
       isActive: Boolean(j.isActive),
+      jobCategory: j.jobCategory || "standard",
+      isHotVacancy: Boolean(j.isHotVacancy || j.jobCategory === "hot"),
       rating: r.avgRating ? Math.round(r.avgRating * 10) / 10 : null,
       reviews: r.reviewCount || 0,
       hasScreeningQuestions: false,
@@ -474,7 +489,7 @@ exports.getPublicJobs = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
 
     // 1. Build base MongoDB query
-    const baseQuery = { isActive: true, approvalStatus: "APPROVED" };
+    const baseQuery = getCandidateLiveJobFilter();
 
     // 2. Apply $in filters for array-compatible fields
     if (department) {
@@ -533,12 +548,12 @@ exports.getPublicJobs = async (req, res) => {
       }
     }
 
-    // 3. Determine sort
-    let sortObj = { updatedAt: -1 };
-    if (sort === "salary_high") sortObj = { salaryMax: -1, updatedAt: -1 };
-    else if (sort === "salary_low") sortObj = { salaryMax: 1, updatedAt: -1 };
-    else if (sort === "newest") sortObj = { createdAt: -1 };
-    else if (sort === "company_az") sortObj = { "companyId.name": 1, updatedAt: -1 };
+    // 3. Determine sort (prioritize hot vacancies)
+    let sortObj = { isHotVacancy: -1, updatedAt: -1 };
+    if (sort === "salary_high") sortObj = { isHotVacancy: -1, salaryMax: -1, updatedAt: -1 };
+    else if (sort === "salary_low") sortObj = { isHotVacancy: -1, salaryMax: 1, updatedAt: -1 };
+    else if (sort === "newest") sortObj = { isHotVacancy: -1, createdAt: -1 };
+    else if (sort === "company_az") sortObj = { isHotVacancy: -1, "companyId.name": 1, updatedAt: -1 };
 
     // 4. Fetch jobs with MongoDB query
     //    For experience, location, company name, and text search we need
@@ -599,6 +614,14 @@ exports.getPublicJobs = async (req, res) => {
       });
     }
 
+    // Always ensure hot vacancies are placed first at the top
+    filteredJobs.sort((a, b) => {
+      const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
+      const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
+      if (aHot === bHot) return 0;
+      return bHot ? 1 : -1;
+    });
+
     // 7. Build application map for authenticated users (before pagination)
     let applicationMap = new Map();
     if (req.user && filteredJobs.length > 0) {
@@ -632,7 +655,7 @@ exports.getPublicJobs = async (req, res) => {
     }
 
     // 8. Extract available filter options from the full pool
-    const fullPool = await Job.find({ isActive: true, approvalStatus: "APPROVED" })
+    const fullPool = await Job.find(getCandidateLiveJobFilter())
       .limit(300)
       .populate("companyId", "name industry")
       .lean();
@@ -692,11 +715,7 @@ exports.getPublicCompanyDetail = async (req, res) => {
     }
 
     const [jobs, followersCount, reviews] = await Promise.all([
-      Job.find({
-      companyId: company._id,
-      isActive: true,
-      approvalStatus: "APPROVED",
-      }).sort({ createdAt: -1 }),
+      Job.find(getCandidateLiveJobFilter({ companyId: company._id })).sort({ createdAt: -1 }),
       CandidateProfile.countDocuments({ followedCompanyIds: company._id }),
       CompanyReview.find({ companyId: company._id, status: "PUBLISHED" })
         .populate("candidateId", "name")
@@ -982,10 +1001,9 @@ exports.getLandingPageData = async (req, res) => {
 
     const company = qr.companyId;
 
-    const jobs = await Job.find({
+    const jobs = await Job.find(getCandidateLiveJobFilter({
       companyId: company._id,
-      isActive: true,
-    });
+    }));
 
     qr.scans += 1;
     await qr.save();

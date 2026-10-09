@@ -745,6 +745,13 @@
   padding: 1px 6px; /* slightly smaller padding to account for border */
 }
 
+.mjr-job-tag.expired {
+  background: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+  padding: 1px 6px;
+}
+
 /* Internship – purple */
 .mjr-job-tag--internship {
   background: #f5f3ff;

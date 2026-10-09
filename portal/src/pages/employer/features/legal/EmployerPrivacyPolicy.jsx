@@ -1,6 +1,6 @@
 import React from "react";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
-import EmployerFooter from "../../../../components/EmployerFooter";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 
 const sectionStyle = {
   background: "white",

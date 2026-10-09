@@ -452,9 +452,12 @@ const authService = {
     }
   },
 
-  enhanceDescription: async (text, type = 'description') => {
+  enhanceDescription: async (payload, maybeType = 'description') => {
     try {
-      const response = await api.post('/company-panel/ai/enhance-description', { text, type });
+      const body = typeof payload === 'object' && payload !== null
+        ? payload
+        : { text: payload, type: maybeType };
+      const response = await api.post('/company-panel/ai/enhance-description', body);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'AI enhancement failed' };
@@ -467,6 +470,15 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Skill suggestion failed' };
+    }
+  },
+
+  generateScreeningQuestions: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/ai/screening-questions', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to generate screening questions' };
     }
   },
 
@@ -575,6 +587,15 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch employer subscriptions' };
+    }
+  },
+
+  requestSubscriptionInvoice: async (payload) => {
+    try {
+      const response = await api.post('/company-panel/subscriptions/request-invoice', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to request subscription invoice' };
     }
   },
 
@@ -785,9 +806,10 @@ const authService = {
       throw error.response?.data || { message: 'Failed to fetch candidate profile' };
     }
   },
-  getSimilarCandidates: async (id, searchText = '') => {
+  getSimilarCandidates: async (id, options = {}) => {
     try {
-      const response = await api.get(`/candidate/${id}/similar`, { params: { searchText } });
+      const params = typeof options === 'string' ? { searchText: options } : (options || {});
+      const response = await api.get(`/candidate/${id}/similar`, { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch similar candidates' };
@@ -1184,14 +1206,6 @@ const authService = {
     }
   },
 
-  getSimilarCandidates: async (candidateId) => {
-    try {
-      const response = await api.get(`/candidate/${candidateId}/similar`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch similar candidates' };
-    }
-  },
 
   getCompanyUsers: async () => {
     try {
@@ -1235,6 +1249,33 @@ const authService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to change password' };
+    }
+  },
+
+  getEmployerProfile: async () => {
+    try {
+      const response = await api.get('/company-panel/profile');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch company profile' };
+    }
+  },
+
+  updateEmployerProfile: async (data) => {
+    try {
+      const response = await api.patch('/company-panel/profile', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update company profile' };
+    }
+  },
+
+  getEmployerDashboard: async () => {
+    try {
+      const response = await api.get('/company-panel/dashboard');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch employer dashboard' };
     }
   }
 };

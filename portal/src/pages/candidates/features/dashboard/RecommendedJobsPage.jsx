@@ -3,8 +3,8 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../../../AuthContext";
 import { useDashboard } from "../../../../hooks/useCandidateQueries";
 import HourglassLoader from "../../../../components/HourglassLoader";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import RecommendedJobs from "../jobs/RecommendedJobs";
 import { CareerPreferencesSidebar } from "./HomeDashboard";
 import "./RecommendedJobsPage.css";
@@ -72,7 +72,7 @@ export default function RecommendedJobsPage() {
   const { data: dashboardData } = dashboardQuery;
 
   useEffect(() => {
-    if (!dashboardData) return; 
+    if (!dashboardData) return;
     if (dashboardData.recommendedJobs) {
       const mappedJobs = {};
       const sortedKeys = Object.keys(dashboardData.recommendedJobs).sort((a, b) => {

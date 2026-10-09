@@ -12,8 +12,8 @@ import authService from '../../../../services/authService';
 import SkeletonPage from '../../../../components/Skeleton';
 import RateLimitModal from '../../../../components/common/RateLimitModal';
 import { isRateLimitError } from '../../../../utils/errorUtils';
-import LandingFooter from '../../../../components/LandingFooter';
-import CandidateHeader from '../../../../components/common/CandidateHeader';
+import LandingFooter from '../../../../layout/candidate/LandingFooter';
+import CandidateHeader from '../../../../layout/candidate/CandidateHeader';
 
 const QUESTIONS = [
   {
@@ -843,7 +843,7 @@ export default function DailyQuiz() {
 
   return (
     <>
-    <CandidateHeader />
+      <CandidateHeader />
       {phase === 'intro' && <IntroScreen quiz={quiz} ranking={ranking} onStart={() => setPhase('quiz')} />}
       {phase === 'quiz' && (
         <QuizScreen questions={quiz.questions} onFinish={handleFinish} />

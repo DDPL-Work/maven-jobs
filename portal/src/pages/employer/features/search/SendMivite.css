@@ -1103,23 +1103,122 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .sm-card { padding: 20px; }
-  .sm-template-grid { grid-template-columns: 1fr; }
-  .sm-review-grid { grid-template-columns: 1fr; }
-  .sm-recipient-input-area { flex-direction: column; }
-  .sm-steps { gap: 4px; padding: 4px; }
-  .sm-step { padding: 6px 10px; }
-  .sm-step-label { display: none; }
-  .sm-step-line { width: 16px; }
+@media (max-width: 1024px) {
+  .sm-card {
+    padding: 22px 20px;
+  }
+  .sm-layout {
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+  }
+  .sm-sidebar {
+    width: 100%;
+    position: static;
+    max-height: none;
+    border-radius: 14px;
+  }
+  .sm-main {
+    width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+  .sm-template-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .sm-review-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .sm-container { padding: 16px; }
-  .sm-grid { grid-template-columns: 1fr; gap: 16px; }
-  .sm-header { flex-direction: column; gap: 12px; }
+  .sm-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .sm-title {
+    font-size: 1.15rem;
+  }
+  .sm-subtitle {
+    font-size: 0.8rem;
+  }
+  .sm-steps {
+    gap: 2px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: space-between;
+  }
+  .sm-step {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .sm-step-indicator {
+    width: 26px;
+    height: 26px;
+    font-size: 0.72rem;
+  }
+  .sm-step-label {
+    display: none;
+  }
+  .sm-step-line {
+    flex: 1;
+    min-width: 8px;
+    margin: 0 4px;
+  }
+  .sm-card {
+    padding: 16px 14px;
+    border-radius: 14px;
+  }
+  .sm-step-header h3 {
+    font-size: 0.95rem;
+  }
+  .sm-step-desc {
+    font-size: 0.78rem;
+    margin-bottom: 14px;
+  }
+  .sm-template-grid {
+    grid-template-columns: 1fr;
+  }
+  .sm-recipient-input-area {
+    flex-direction: column;
+  }
+  .sm-results-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .sm-candidate-row {
+    padding: 10px 12px;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sm-cand-email {
+    display: none;
+  }
+  .sm-nav-btns {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+  .sm-nav-btns button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 480px) {
-  .sm-card { padding: 16px; }
+  .sm-card {
+    padding: 14px 12px;
+  }
+  .sm-step-indicator {
+    width: 24px;
+    height: 24px;
+    font-size: 0.68rem;
+  }
 }

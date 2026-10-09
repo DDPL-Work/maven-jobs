@@ -104,7 +104,7 @@
 | `/services/basic-and-premium-plans` | `BasicPremiumPlans` | Plan comparison page |
 | `/pro` | `MavenPro` | MavenPro premium subscription page |
 | `/premium` | `Premium` | Premium plans and features |
-| `/leave` | `Leave` | Leave/cancel subscription page |
+| `/candidate/email-templates` | `Leave` | Leave/cancel subscription page |
 | `/expert-assist` | `ExpertAssist` | Expert career assistance (Artist.jsx) |
 | `/talent-pulse` | `Talent` | Talent insights for employers |
 | `/branding` | `Branding` | Employer branding solutions |

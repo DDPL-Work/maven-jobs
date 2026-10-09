@@ -77,6 +77,8 @@ const JOB_MAPPING = {
       companyId:     { type: "keyword" },
       companyName:   { type: "text", fields: { keyword: { type: "keyword" } } },
       companyIndustry:{ type: "keyword" },
+      jobCategory:   { type: "keyword" },
+      isHotVacancy:  { type: "boolean" },
       isActive:      { type: "boolean" },
       approvalStatus:{ type: "keyword" },
       externalLink:  { type: "keyword" },
@@ -126,6 +128,8 @@ const toEsDoc = (job) => {
     companyId:      companyIdStr,
     companyName,
     companyIndustry,
+    jobCategory:    job.jobCategory || "standard",
+    isHotVacancy:   Boolean(job.isHotVacancy || job.jobCategory === "hot"),
     isActive:       Boolean(job.isActive),
     approvalStatus: job.approvalStatus || "PENDING",
     externalLink:   job.externalLink || "",
@@ -334,18 +338,19 @@ async function searchJobs(params = {}) {
     }
   }
 
-  // Sort
+  // Sort (hot vacancies always prioritized first)
+  const hotSort = { isHotVacancy: { order: "desc", unmapped_type: "boolean" } };
   let sortClause;
   if (!search) {
-    // No text query → sort by date only
+    // No text query → hot vacancies first, then date
     sortClause = sort === "newest"
-      ? [{ createdAt: { order: "desc" } }]
-      : [{ updatedAt: { order: "desc" } }];
+      ? [hotSort, { createdAt: { order: "desc" } }]
+      : [hotSort, { updatedAt: { order: "desc" } }];
   } else {
-    // With text query → relevance first, then date
+    // With text query → hot vacancies first, then relevance, then date
     sortClause = sort === "newest"
-      ? [{ createdAt: { order: "desc" } }, "_score"]
-      : ["_score", { updatedAt: { order: "desc" } }];
+      ? [hotSort, { createdAt: { order: "desc" } }, "_score"]
+      : [hotSort, "_score", { updatedAt: { order: "desc" } }];
   }
 
   const from = (Math.max(1, page) - 1) * limit;
@@ -779,7 +784,7 @@ async function searchCandidatesEs(params = {}) {
     returnship, womenHiring, campusHiring, freshers,
     minAge, maxAge, languages, workPermit, passport, visa,
     openToRemote, portfolio, github, linkedIn,
-    page = 1, limit = 10, sort,
+    page = 1, limit = 10, sort, activeIn,
   } = params;
 
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
@@ -945,6 +950,26 @@ async function searchCandidatesEs(params = {}) {
     filter.push({ range: { experience: { lte: 0 } } });
   }
 
+  // 12. Active in
+  if (activeIn) {
+    let days = parseInt(activeIn, 10);
+    if (isNaN(days)) {
+      if (String(activeIn).includes("m")) {
+        days = parseInt(activeIn, 10) * 30;
+      }
+    } else if (String(activeIn).endsWith("m")) {
+      days = days * 30;
+    }
+    if (days && days > 0) {
+      const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      filter.push({
+        range: {
+          updatedAt: { gte: cutoffDate.toISOString() }
+        }
+      });
+    }
+  }
+
   // Assemble bool query
   const boolQuery = {};
   if (must.length) boolQuery.must = must;
@@ -969,10 +994,16 @@ async function searchCandidatesEs(params = {}) {
       sortClause = [{ experience: { order: "asc" } }];
       break;
     case "newest":
-      sortClause = [{ createdAt: { order: "desc", unmapped_type: "date" } }];
+      sortClause = [{ updatedAt: { order: "desc", unmapped_type: "date" } }, { createdAt: { order: "desc", unmapped_type: "date" } }];
       break;
     case "oldest":
       sortClause = [{ createdAt: { order: "asc", unmapped_type: "date" } }];
+      break;
+    case "salary_high":
+      sortClause = [{ expectedSalary: { order: "desc" } }];
+      break;
+    case "salary_low":
+      sortClause = [{ expectedSalary: { order: "asc" } }];
       break;
     case "name":
       sortClause = [{ "name.keyword": { order: "asc", unmapped_type: "keyword" } }];
@@ -981,21 +1012,30 @@ async function searchCandidatesEs(params = {}) {
       sortClause = ["_score", { createdAt: { order: "desc", unmapped_type: "date" } }];
   }
 
-  const searchResponse = await client.search({
-    index,
-    query,
-    sort: sortClause,
-    from,
-    size: currentLimit,
-  });
+  let searchResponse;
+  try {
+    searchResponse = await client.search({
+      index,
+      body: {
+        query,
+        sort: sortClause,
+        from,
+        size: currentLimit,
+      },
+    });
+  } catch (err) {
+    console.warn("[OS:Candidates] OpenSearch query failed, falling back to Mongo:", err.message);
+    return await searchCandidatesMongo(params);
+  }
 
-  const total = typeof searchResponse.hits.total === "number"
-    ? searchResponse.hits.total
-    : (searchResponse.hits.total?.value || 0);
+  const total = typeof searchResponse.body?.hits?.total === "number"
+    ? searchResponse.body.hits.total
+    : (searchResponse.body?.hits?.total?.value ?? (typeof searchResponse.hits?.total === "number" ? searchResponse.hits.total : (searchResponse.hits?.total?.value || 0)));
 
   const totalPages = Math.ceil(total / currentLimit);
 
-  const candidates = (searchResponse.hits.hits || []).map((hit) => {
+  const hits = searchResponse.body?.hits?.hits || searchResponse.hits?.hits || [];
+  const candidates = hits.map((hit) => {
     const s = hit._source;
     const cid = s.candidateId || hit._id;
     const uid = s.userId || s.candidateId || hit._id;
@@ -1055,8 +1095,140 @@ async function searchCandidatesEs(params = {}) {
     candidates,
     total,
     totalPages,
-    took: searchResponse.took,
+    took: searchResponse.took || 0,
   };
+}
+
+async function searchCandidatesMongo(params = {}) {
+  const CandidateProfile = require("../models/CandidateProfile");
+  require("../models/User");
+
+  const {
+    keyword, skills, currentCompany, designation,
+    currentCity, page = 1, limit = 10, sort, activeIn,
+  } = params;
+
+  const currentPage = Math.max(1, parseInt(page, 10) || 1);
+  const currentLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+
+  const query = {};
+  const andClauses = [];
+
+  if (activeIn) {
+    let days = parseInt(activeIn, 10);
+    if (isNaN(days)) {
+      if (String(activeIn).includes("m")) {
+        days = parseInt(activeIn, 10) * 30;
+      }
+    } else if (String(activeIn).endsWith("m")) {
+      days = days * 30;
+    }
+    if (days && days > 0) {
+      const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      andClauses.push({
+        $or: [
+          { updatedAt: { $gte: cutoffDate } },
+          { createdAt: { $gte: cutoffDate } },
+        ],
+      });
+    }
+  }
+
+  if (keyword && String(keyword).trim()) {
+    const kwRegex = new RegExp(String(keyword).trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), "i");
+    andClauses.push({
+      $or: [
+        { currentTitle: kwRegex },
+        { headline: kwRegex },
+        { currentCompany: kwRegex },
+        { skills: kwRegex },
+      ],
+    });
+  }
+
+  if (skills) {
+    const sList = (Array.isArray(skills) ? skills : String(skills).split(","))
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (sList.length > 0) {
+      andClauses.push({ skills: { $in: sList } });
+    }
+  }
+
+  if (designation && String(designation).trim()) {
+    andClauses.push({ currentTitle: new RegExp(String(designation).trim(), "i") });
+  }
+
+  if (currentCity) {
+    const cities = (Array.isArray(currentCity) ? currentCity : String(currentCity).split(","))
+      .map((c) => c.trim())
+      .filter(Boolean);
+    if (cities.length > 0) {
+      andClauses.push({ currentCity: { $in: cities.map((c) => new RegExp(c, "i")) } });
+    }
+  }
+
+  if (andClauses.length > 0) {
+    query.$and = andClauses;
+  }
+
+  let sortOption = { updatedAt: -1, createdAt: -1 };
+  if (sort === "experience_high") sortOption = { totalExperience: -1, experience: -1 };
+  else if (sort === "experience_low") sortOption = { totalExperience: 1, experience: 1 };
+  else if (sort === "salary_high") sortOption = { expectedSalary: -1 };
+  else if (sort === "salary_low") sortOption = { expectedSalary: 1 };
+  else if (sort === "newest") sortOption = { updatedAt: -1, createdAt: -1 };
+
+  const total = await CandidateProfile.countDocuments(query);
+  const totalPages = Math.max(1, Math.ceil(total / currentLimit));
+  const docs = await CandidateProfile.find(query)
+    .populate("userId", "name email avatar phone")
+    .sort(sortOption)
+    .skip((currentPage - 1) * currentLimit)
+    .limit(currentLimit)
+    .lean();
+
+  const candidates = docs.map((p) => {
+    const cid = String(p._id);
+    const uid = String(p.userId?._id || p.userId || p._id);
+    const name = p.userId?.name || p.name || "Candidate";
+    const title = p.currentTitle || p.headline || p.designation || "";
+    return {
+      id: cid,
+      _id: cid,
+      userId: uid,
+      name,
+      fullName: name,
+      email: p.userId?.email || p.email || "",
+      avatar: p.profilePic?.url || (typeof p.profilePic === "string" ? p.profilePic : "") || p.userId?.avatar || "",
+      phone: p.phone || p.userId?.phone || "",
+      headline: p.headline || title || "",
+      summary: p.summary || "",
+      currentTitle: title,
+      designation: title,
+      currentCompany: p.currentCompany || "",
+      recentCompany: p.currentCompany || "",
+      totalExperience: p.totalExperience || (p.experience != null ? `${p.experience} years` : "0"),
+      experience: p.experience || 0,
+      currentCity: p.currentCity || "",
+      location: p.currentCity || "",
+      preferredLocations: p.preferredLocations || [],
+      skills: Array.isArray(p.skills) ? p.skills : [],
+      noticePeriod: p.noticePeriod || "",
+      expectedSalary: p.expectedSalary || 0,
+      education: p.education || "",
+      profilePic: p.profilePic?.url || (typeof p.profilePic === "string" ? p.profilePic : "") || p.userId?.avatar || "",
+      resume: p.resume || "",
+      publicShareId: p.publicShareId || "",
+      profileViews: p.profileViews || 0,
+      recruiterActions: p.recruiterActions || 0,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      _score: 1,
+    };
+  });
+
+  return { candidates, total, totalPages, took: 0 };
 }
 
 async function bulkReindexCandidates() {

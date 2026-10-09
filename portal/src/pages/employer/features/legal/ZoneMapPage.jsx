@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import LandingEmployeeHeader from "../../../../components/employer/LandingEmployeeHeader";
-import EmployerFooter from "../../../../components/EmployerFooter";
+import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import indiaMap from "../../../../../assets/india-zones-map.jpg";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import "./ZoneMapPage.css";
+
 
 const INDIAN_STATES_BY_ZONE = {
   North: [
@@ -47,9 +49,6 @@ const ZONE_CONFIG = {
     border: "#bfdbfe",
     label: "Northern India",
     tagline: "Himalayas, Plains & Capital",
-    toll: "1800 102 2558",
-    contact: "+91 - 9818882211",
-    email: "north@mavenjobs.com",
     illustration: (
       <svg
         viewBox="0 0 120 80"
@@ -92,9 +91,6 @@ const ZONE_CONFIG = {
     border: "#bbf7d0",
     label: "Southern India",
     tagline: "Coasts, Tech Hubs & Greenery",
-    toll: "1800 102 2559",
-    contact: "+91 - 9818882212",
-    email: "south@mavenjobs.com",
     illustration: (
       <svg
         viewBox="0 0 120 80"
@@ -163,9 +159,6 @@ const ZONE_CONFIG = {
     border: "#fed7aa",
     label: "Eastern India",
     tagline: "Tea Gardens, Sunrise & Rivers",
-    toll: "1800 102 2560",
-    contact: "+91 - 9818882213",
-    email: "east@mavenjobs.com",
     illustration: (
       <svg
         viewBox="0 0 120 80"
@@ -220,9 +213,6 @@ const ZONE_CONFIG = {
     border: "#ddd6fe",
     label: "Western India",
     tagline: "Deserts, Coasts & Finance Hub",
-    toll: "1800 102 2561",
-    contact: "+91 - 9818882214",
-    email: "west@mavenjobs.com",
     illustration: (
       <svg
         viewBox="0 0 120 80"
@@ -259,6 +249,7 @@ const ZONE_CONFIG = {
 
 export default function ZoneMapPage() {
   const { hash } = useLocation();
+  const navigate = useNavigate();
   const [activeZone, setActiveZone] = useState(null);
 
   useEffect(() => {
@@ -278,134 +269,99 @@ export default function ZoneMapPage() {
   }, [hash]);
 
   return (
-    <div
-      style={{
-        background: "#f8fafc",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "'DM Sans', -apple-system, sans-serif",
-      }}
-    >
+    <div className="zmp-page-root">
       <LandingEmployeeHeader solid />
 
-      {/* Page Header — matches website navy style */}
-      <div
-        style={{
-          background: "#002366",
-          padding: "80px 5% 52px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              borderRadius: 99,
-              padding: "5px 14px",
-              marginBottom: 18,
-            }}
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#93c5fd"
-              strokeWidth="2.5"
-            >
-              <circle cx="12" cy="10" r="3" />
-              <path d="M12 2C8.13 2 5 5.13 5 10c0 5.25 7 12 7 12s7-6.75 7-12c0-3.87-3.13-7-7-7z" />
-            </svg>
-            <span
-              style={{
-                color: "#93c5fd",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.07em",
-              }}
-            >
-              Sales Territories
-            </span>
+      {/* Page Header */}
+      <div className="zmp-hero">
+        <div className="zmp-hero-container">
+          <div className="zmp-badge-row">
+            <div className="zmp-badge">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#93c5fd"
+                strokeWidth="2.5"
+              >
+                <circle cx="12" cy="10" r="3" />
+                <path d="M12 2C8.13 2 5 5.13 5 10c0 5.25 7 12 7 12s7-6.75 7-12c0-3.87-3.13-7-7-7z" />
+              </svg>
+              <span className="zmp-badge-text">
+                Sales Territories
+              </span>
+            </div>
+
+            <Link to="/employer-help" className="zmp-help-link-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>Employer Help Center</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
           </div>
-          <h1
-            style={{
-              fontSize: "clamp(26px, 3.5vw, 44px)",
-              fontWeight: 900,
-              color: "#fff",
-              margin: "0 0 14px",
-              fontFamily: "'Bricolage Grotesque', sans-serif",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.2,
-            }}
-          >
+
+          <h1 className="zmp-title">
             India Sales Zones
           </h1>
-          <p
-            style={{
-              color: "#94a3b8",
-              fontSize: 16,
-              maxWidth: 520,
-              margin: "0",
-              lineHeight: 1.7,
-            }}
-          >
-            MavenJobs serves all of India through 4 dedicated regional teams.
-            Select a zone below to view its states and get in touch.
+          <p className="zmp-subtitle">
+            MavenJobs serves all of India through 4 dedicated regional zones.
+            Select a zone below to explore states and connect directly with the Employer Help Center.
           </p>
+
+          {/* Quick Zone Filter / Jump Pills */}
+          <div className="zmp-filter-bar" role="tablist" aria-label="Zone filter">
+            <button
+              type="button"
+              className={`zmp-filter-pill ${activeZone === null ? "active" : ""}`}
+              onClick={() => setActiveZone(null)}
+            >
+              All Zones
+            </button>
+            {Object.keys(INDIAN_STATES_BY_ZONE).map((zone) => (
+              <button
+                key={zone}
+                type="button"
+                className={`zmp-filter-pill ${activeZone === zone ? "active" : ""}`}
+                onClick={() => {
+                  setActiveZone(zone);
+                  const el = document.getElementById(zone.toLowerCase());
+                  if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }}
+              >
+                {zone} Zone
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Main Body */}
-      <div
-        style={{
-          flex: 1,
-          maxWidth: 1200,
-          margin: "0 auto",
-          width: "100%",
-          padding: "44px 5% 64px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0,1fr) 430px",
-            gap: 36,
-            alignItems: "start",
-          }}
-        >
+      <div className="zmp-content-wrapper">
+        <div className="zmp-grid-layout">
           {/* Left — Map */}
-          <div style={{ position: "sticky", top: 80 }}>
-            <div
-              style={{
-                background: "white",
-                borderRadius: 16,
-                boxShadow: "0 1px 8px rgba(0,35,102,0.08)",
-                border: "1px solid #e2e8f0",
-                overflow: "hidden",
-              }}
-            >
-              <div style={{ padding: 16 }}>
+          <div className="zmp-map-column">
+            <div className="zmp-map-card">
+              <div className="zmp-map-inner">
                 <img
                   src={indiaMap}
                   alt="India Sales Zones Map — states labeled"
-                  style={{ width: "100%", borderRadius: 10, display: "block" }}
+                  className="zmp-map-img"
+                  loading="lazy"
                 />
-                <p
-                  style={{
-                    fontSize: 11,
-                    color: "#94a3b8",
-                    textAlign: "center",
-                    margin: "10px 0 0",
-                    lineHeight: 1.5,
-                  }}
-                >
+                <p className="zmp-map-caption">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
                   State names are shown directly on the map
                 </p>
               </div>
@@ -413,7 +369,7 @@ export default function ZoneMapPage() {
           </div>
 
           {/* Right — Zone Cards */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="zmp-cards-column">
             {Object.entries(INDIAN_STATES_BY_ZONE).map(([zone, states]) => {
               const cfg = ZONE_CONFIG[zone];
               const isActive = activeZone === zone;
@@ -422,90 +378,39 @@ export default function ZoneMapPage() {
                   key={zone}
                   id={zone.toLowerCase()}
                   onClick={() => setActiveZone(isActive ? null : zone)}
+                  className={`zmp-zone-card ${isActive ? "active" : ""}`}
                   style={{
-                    background: "white",
-                    borderRadius: 14,
-                    border: `1.5px solid ${isActive ? cfg.color : "#e2e8f0"}`,
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    transition: "all 0.22s cubic-bezier(0.16,1,0.3,1)",
-                    boxShadow: isActive
-                      ? `0 6px 28px ${cfg.color}20`
-                      : "0 1px 4px rgba(0,0,0,0.04)",
-                    transform: isActive ? "translateY(-2px)" : "none",
+                    borderColor: isActive ? cfg.color : undefined,
+                    boxShadow: isActive ? `0 6px 24px ${cfg.color}26` : undefined,
                   }}
                 >
                   {/* Card Header */}
-                  <div
-                    style={{ display: "flex", alignItems: "stretch", gap: 0 }}
-                  >
+                  <div className="zmp-card-header">
                     {/* Illustration block */}
                     <div
-                      style={{
-                        width: 110,
-                        flexShrink: 0,
-                        background: cfg.light,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "14px 12px",
-                      }}
+                      className="zmp-illustration-wrapper"
+                      style={{ background: cfg.light }}
                     >
-                      <div style={{ width: 86, height: 58 }}>
+                      <div className="zmp-illustration-box">
                         {cfg.illustration}
                       </div>
                     </div>
                     {/* Title block */}
-                    <div
-                      style={{
-                        flex: 1,
-                        padding: "16px 18px",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 8,
-                        }}
-                      >
+                    <div className="zmp-card-info">
+                      <div className="zmp-card-title-row">
                         <div>
-                          <div
-                            style={{
-                              fontWeight: 800,
-                              fontSize: 16,
-                              color: "#0f172a",
-                              fontFamily: "'Bricolage Grotesque', sans-serif",
-                              lineHeight: 1.2,
-                            }}
-                          >
+                          <div className="zmp-zone-title">
                             {zone} Zone
                           </div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: "#64748b",
-                              marginTop: 3,
-                            }}
-                          >
+                          <div className="zmp-zone-meta">
                             {cfg.label} · {states.length} states
                           </div>
                         </div>
                         <div
+                          className="zmp-chevron-btn"
                           style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: "50%",
                             background: cfg.light,
                             border: `1px solid ${cfg.border}`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
                           }}
                         >
                           <svg
@@ -527,26 +432,15 @@ export default function ZoneMapPage() {
                         </div>
                       </div>
                       {/* State pills — always visible */}
-                      <div
-                        style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: 5,
-                          marginTop: 10,
-                        }}
-                      >
+                      <div className="zmp-states-container">
                         {states.map((s) => (
                           <span
                             key={s}
+                            className="zmp-state-pill"
                             style={{
-                              fontSize: 11,
-                              fontWeight: 600,
                               color: cfg.color,
                               background: cfg.light,
                               border: `1px solid ${cfg.border}`,
-                              borderRadius: 99,
-                              padding: "2px 9px",
-                              whiteSpace: "nowrap",
                             }}
                           >
                             {s}
@@ -556,123 +450,44 @@ export default function ZoneMapPage() {
                     </div>
                   </div>
 
-                  {/* Expanded Contact — only when active */}
+                  {/* Expanded Support Drawer — connects to Employer Help */}
                   {isActive && (
                     <div
+                      className="zmp-help-drawer"
                       style={{
                         borderTop: `1px solid ${cfg.border}`,
                         background: cfg.light,
-                        padding: "14px 20px",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 20,
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: "#94a3b8",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            marginBottom: 3,
-                          }}
-                        >
-                          Toll Free
+                      <div className="zmp-help-drawer-content">
+                        <div className="zmp-help-drawer-text">
+                          <div className="zmp-help-drawer-title" style={{ color: cfg.color }}>
+                            {zone} Zone Support &amp; Hiring Desk
+                          </div>
+                          <div className="zmp-help-drawer-desc">
+                            For dedicated recruiter guidance, state-level assistance, or candidate verification in {cfg.label}, connect directly with the Employer Help Center.
+                          </div>
                         </div>
-                        <a
-                          href={`tel:${cfg.toll.replace(/\s/g, "")}`}
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: "#0f172a",
-                            textDecoration: "none",
-                          }}
+                        <button
+                          type="button"
+                          className="zmp-help-drawer-btn"
+                          style={{ background: cfg.color }}
+                          onClick={() => navigate(`/employer-help?region=${zone}#helplines`)}
                         >
-                          {cfg.toll}
-                        </a>
-                      </div>
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: "#94a3b8",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            marginBottom: 3,
-                          }}
-                        >
-                          Direct Line
-                        </div>
-                        <a
-                          href={`tel:${cfg.contact.replace(/\s/g, "")}`}
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: "#0f172a",
-                            textDecoration: "none",
-                          }}
-                        >
-                          {cfg.contact}
-                        </a>
-                      </div>
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: "#94a3b8",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            marginBottom: 3,
-                          }}
-                        >
-                          Email
-                        </div>
-                        <a
-                          href={`mailto:${cfg.email}`}
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: cfg.color,
-                            textDecoration: "none",
-                          }}
-                        >
-                          {cfg.email}
-                        </a>
-                      </div>
-                      <div style={{ marginLeft: "auto" }}>
-                        <a
-                          href={`mailto:${cfg.email}`}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            background: cfg.color,
-                            color: "white",
-                            borderRadius: 99,
-                            padding: "7px 16px",
-                            fontSize: 12,
-                            fontWeight: 700,
-                            textDecoration: "none",
-                          }}
-                        >
+                          <span>Visit {zone} Help Desk</span>
                           <svg
-                            width="11"
-                            height="11"
+                            width="14"
+                            height="14"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="white"
                             strokeWidth="2.5"
                           >
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
                           </svg>
-                          Contact
-                        </a>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -681,9 +496,35 @@ export default function ZoneMapPage() {
             })}
           </div>
         </div>
+
+        {/* Employer Help Connection Banner */}
+        <div className="zmp-help-banner">
+          <div className="zmp-help-banner-content">
+            <div className="zmp-help-banner-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#002366" strokeWidth="2">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+              </svg>
+            </div>
+            <div className="zmp-help-banner-text">
+              <h3 className="zmp-help-banner-title">Need Dedicated Employer Support?</h3>
+              <p className="zmp-help-banner-desc">
+                Access regional helplines, recruiter documentation, pricing FAQs, and priority escalation on the MavenJobs Employer Help Center.
+              </p>
+            </div>
+          </div>
+          <Link to="/employer-help" className="zmp-help-banner-btn">
+            Open Help Center
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </Link>
+        </div>
       </div>
 
       <EmployerFooter />
     </div>
   );
 }
+

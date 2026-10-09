@@ -3,8 +3,8 @@ import { LuArrowLeft, LuCalendar, LuChevronRight, LuClock, LuDownload, LuLoader 
 import { Link, useLocation, useParams } from "react-router-dom";
 import authService from "../../../../services/authService";
 import SkeletonPage from "../../../../components/Skeleton";
-import LandingFooter from "../../../../components/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader.jsx";
+import LandingFooter from "../../../../layout/candidate/LandingFooter.jsx";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 
 
 const BACK_LINKS = {
@@ -188,85 +188,85 @@ export default function BlogArticle() {
             justifyContent: "space-between",
           }}
         >
-        <div
-          className="breadcrumbs-list"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 13,
-          }}
-        >
-          {breadcrumbs.map((crumb, i) => (
-            <span key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {i > 0 && <LuChevronRight size={12} color="#94a3b8" />}
-              {crumb.path ? (
-                <Link
-                  to={crumb.path}
-                  style={{
-                    color: "#64748b",
-                    textDecoration: "none",
-                    fontWeight: i === breadcrumbs.length - 1 ? 700 : 500,
-                    transition: "color 0.15s",
-                  }}
-                  onMouseEnter={(e) => { if (crumb.path) e.currentTarget.style.color = "#163060"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
-                >
-                  {crumb.label}
-                </Link>
-              ) : (
-              <span
-                className="breadcrumb-current"
-                style={{
-                  color: "#0f172a",
-                  fontWeight: 700,
-                  maxWidth: 480,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  display: "inline-block",
-                  verticalAlign: "bottom",
-                }}
-              >
-                {crumb.label}
+          <div
+            className="breadcrumbs-list"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+            }}
+          >
+            {breadcrumbs.map((crumb, i) => (
+              <span key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {i > 0 && <LuChevronRight size={12} color="#94a3b8" />}
+                {crumb.path ? (
+                  <Link
+                    to={crumb.path}
+                    style={{
+                      color: "#64748b",
+                      textDecoration: "none",
+                      fontWeight: i === breadcrumbs.length - 1 ? 700 : 500,
+                      transition: "color 0.15s",
+                    }}
+                    onMouseEnter={(e) => { if (crumb.path) e.currentTarget.style.color = "#163060"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
+                  >
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <span
+                    className="breadcrumb-current"
+                    style={{
+                      color: "#0f172a",
+                      fontWeight: 700,
+                      maxWidth: 480,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "inline-block",
+                      verticalAlign: "bottom",
+                    }}
+                  >
+                    {crumb.label}
+                  </span>
+                )}
               </span>
-              )}
-            </span>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="download-pdf-btn"
-          onClick={handleDownloadPdf}
-          disabled={pdfLoading}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "1px solid #e2e8f0",
-            backgroundColor: pdfLoading ? "#f1f5f9" : "#ffffff",
-            fontSize: 12,
-            fontWeight: 600,
-            color: pdfLoading ? "#94a3b8" : "#163060",
-            cursor: pdfLoading ? "not-allowed" : "pointer",
-            transition: "all 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            if (!pdfLoading) {
-              e.currentTarget.style.borderColor = "#163060";
-              e.currentTarget.style.backgroundColor = "#eef2ff";
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "#e2e8f0";
-            e.currentTarget.style.backgroundColor = "#ffffff";
-          }}
-        >
-          {pdfLoading ? <LuLoader size={14} className="pdf-spinner" /> : <LuDownload size={14} />}
-          {pdfLoading ? (pdfProgress || "Generating PDF…") : "Download PDF"}
-        </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="download-pdf-btn"
+            onClick={handleDownloadPdf}
+            disabled={pdfLoading}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              backgroundColor: pdfLoading ? "#f1f5f9" : "#ffffff",
+              fontSize: 12,
+              fontWeight: 600,
+              color: pdfLoading ? "#94a3b8" : "#163060",
+              cursor: pdfLoading ? "not-allowed" : "pointer",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              if (!pdfLoading) {
+                e.currentTarget.style.borderColor = "#163060";
+                e.currentTarget.style.backgroundColor = "#eef2ff";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#e2e8f0";
+              e.currentTarget.style.backgroundColor = "#ffffff";
+            }}
+          >
+            {pdfLoading ? <LuLoader size={14} className="pdf-spinner" /> : <LuDownload size={14} />}
+            {pdfLoading ? (pdfProgress || "Generating PDF…") : "Download PDF"}
+          </button>
         </div>
       </div>
 

@@ -44,6 +44,9 @@ exports.createJob = async (req, res) => {
     });
   }
 
+  const liveDurationDays = 30;
+  const liveUntil = new Date(Date.now() + liveDurationDays * 24 * 60 * 60 * 1000);
+
   const job = await Job.create({
     title,
     description,
@@ -52,6 +55,9 @@ exports.createJob = async (req, res) => {
     createdBy: req.user._id,
     approvalStatus:
       req.user.role === "CRM" ? "APPROVED" : "PENDING",
+    liveDurationDays,
+    liveUntil,
+    deadline: liveUntil,
   });
 
   if (job.approvalStatus === "APPROVED") {

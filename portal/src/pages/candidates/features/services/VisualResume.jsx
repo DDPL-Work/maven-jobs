@@ -4,8 +4,8 @@ import {
   FiArrowRight, FiBarChart2, FiCheck, FiChevronRight, FiDroplet,
   FiImage, FiLayers, FiLink, FiPenTool, FiPrinter, FiRefreshCw, FiZap,
 } from "react-icons/fi";
-import LandingHeader from "../../../../components/LandingHeader";
-import LandingFooter from "../../../../components/LandingFooter";
+import LandingHeader from "../../../../layout/candidate/LandingHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import "./VisualResume.css";
 
 const FAQItem = ({ q, a }) => (

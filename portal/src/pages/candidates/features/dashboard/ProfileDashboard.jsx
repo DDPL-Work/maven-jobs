@@ -16,6 +16,7 @@ import {
   FiZap,
   FiCheckCircle,
   FiChevronRight,
+  FiChevronDown,
   FiFileText,
   FiShare2,
   FiPlus,
@@ -53,8 +54,8 @@ import {
 } from "../../../../hooks/useCandidateQueries";
 import HourglassLoader from "../../../../components/HourglassLoader";
 import ProfileSections from "../../../../components/profile/ProfileSections";
-import LandingFooter from "../../../../components/LandingFooter";
-import CandidateHeader from "../../../../components/common/CandidateHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
+import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 import FAQModal, {
   FaqAccordionItem as FaqItem,
 } from "./Components/ProfileDashboard/FAQModal";
@@ -67,6 +68,20 @@ const getCandidateSocketUrl = () =>
     import.meta.env.VITE_API_URL ||
     "http://localhost:5000"
   ).replace(/\/api\/v\d+$/, "");
+
+const QUICK_LINKS = [
+  { id: "resume", label: "Resume" },
+  { id: "resume-headline", label: "Resume headline" },
+  { id: "key-skills", label: "Key skills" },
+  { id: "employment", label: "Employment" },
+  { id: "education", label: "Education" },
+  { id: "it-skills", label: "IT skills" },
+  { id: "projects", label: "Projects" },
+  { id: "profile-summary", label: "Profile summary" },
+  { id: "accomplishments", label: "Accomplishments" },
+  { id: "career-profile", label: "Career profile" },
+  { id: "personal-details", label: "Personal details" },
+];
 
 const PROFILE_COMPLETION_MODAL_THRESHOLD = 75;
 
@@ -132,8 +147,8 @@ export default function ProfileDashboard() {
 
   const [showCompletionModal, setShowCompletionModal] = useState(
     Boolean(user) &&
-      profileCompletion < PROFILE_COMPLETION_MODAL_THRESHOLD &&
-      !wasCompletionModalSeenToday(),
+    profileCompletion < PROFILE_COMPLETION_MODAL_THRESHOLD &&
+    !wasCompletionModalSeenToday(),
   );
   const [showPreview, setShowPreview] = useState(false);
   const [showJobsModal, setShowJobsModal] = useState(false);
@@ -233,9 +248,9 @@ export default function ProfileDashboard() {
   // Production ready unique profile link generation (backend-backed)
   const [publicShareId, setPublicShareId] = useState(
     user?.publicShareId ||
-      user?.profile?.publicShareId ||
-      user?.user?.publicShareId ||
-      "",
+    user?.profile?.publicShareId ||
+    user?.user?.publicShareId ||
+    "",
   );
 
   useEffect(() => {
@@ -286,6 +301,26 @@ export default function ProfileDashboard() {
       }
     }
   }, [publicShareId, user?.name]);
+
+  const [mobileQuickLinksOpen, setMobileQuickLinksOpen] = useState(false);
+  const [activeQuickLink, setActiveQuickLink] = useState("");
+  const quickLinksRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (quickLinksRef.current && !quickLinksRef.current.contains(e.target)) {
+        setMobileQuickLinksOpen(false);
+      }
+    };
+    if (mobileQuickLinksOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      document.addEventListener("touchstart", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [mobileQuickLinksOpen]);
 
   const [recommendedJobs, setRecommendedJobs] = useState({});
   const [candidateProfile, setCandidateProfile] = useState(null);
@@ -753,17 +788,17 @@ export default function ProfileDashboard() {
       current.map((thread, index) =>
         index === activeCandidateConv
           ? normalizeCandidateThread(
-              {
-                ...thread,
-                lastMessageText: outgoing,
-                messages: [
-                  ...(thread.messages || []),
-                  { from: "me", text: outgoing, time: "Just now" },
-                ],
-                unreadCount: 0,
-              },
-              index,
-            )
+            {
+              ...thread,
+              lastMessageText: outgoing,
+              messages: [
+                ...(thread.messages || []),
+                { from: "me", text: outgoing, time: "Just now" },
+              ],
+              unreadCount: 0,
+            },
+            index,
+          )
           : thread,
       ),
     );
@@ -783,7 +818,7 @@ export default function ProfileDashboard() {
 
   const startCandidateCall = async (mode) => {
     if (!CALLS_ENABLED) {
-      alert("Calls are disabled. Chat-only mode is active.");
+      setToastNotification({ color: '#f59e0b', title: 'Calls Disabled', desc: 'Chat-only mode is currently active. Calls are unavailable.' });
       return;
     }
     if (!activeCandidateThread?.id) return;
@@ -824,13 +859,13 @@ export default function ProfileDashboard() {
     } catch (error) {
       setCandidateCallStatus("failed");
       setCandidateCallModal(false);
-      alert(error?.message || "Unable to start the call");
+      setToastNotification({ color: '#ef4444', title: 'Call Failed', desc: error?.message || 'Unable to start the call.' });
     }
   };
 
   const acceptCandidateCall = async () => {
     if (!CALLS_ENABLED) {
-      alert("Calls are disabled. Chat-only mode is active.");
+      setToastNotification({ color: '#f59e0b', title: 'Calls Disabled', desc: 'Chat-only mode is currently active. Calls are unavailable.' });
       return;
     }
     const callType =
@@ -864,7 +899,7 @@ export default function ProfileDashboard() {
         },
       );
     } catch (error) {
-      alert(error?.message || "Unable to accept the call");
+      setToastNotification({ color: '#ef4444', title: 'Call Failed', desc: error?.message || 'Unable to accept the call.' });
     }
   };
 
@@ -1167,7 +1202,7 @@ export default function ProfileDashboard() {
               className="pd-btn-black"
               onClick={async () => {
                 if (!user?.resume?.url) {
-                  alert("No resume uploaded yet.");
+                  setToastNotification({ color: '#f59e0b', title: 'No Resume', desc: 'No resume has been uploaded yet. Please upload your resume first.' });
                   return;
                 }
 
@@ -1245,53 +1280,75 @@ export default function ProfileDashboard() {
               </div>
             </div>
 
-            <div className="pd-card pd-quick-links-card">
-              <h3
-                className="pd-quick-links-title"
-                style={{
-                  padding: "16px 20px 8px",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  color: "#1e293b",
-                  margin: 0,
-                }}
-              >
-                Quick links
-              </h3>
-              {[
-                { id: "resume", label: "Resume" },
-                { id: "resume-headline", label: "Resume headline" },
-                { id: "key-skills", label: "Key skills" },
-                { id: "employment", label: "Employment" },
-                { id: "education", label: "Education" },
-                { id: "it-skills", label: "IT skills" },
-                { id: "projects", label: "Projects" },
-                { id: "profile-summary", label: "Profile summary" },
-                { id: "accomplishments", label: "Accomplishments" },
-                { id: "career-profile", label: "Career profile" },
-                { id: "personal-details", label: "Personal details" },
-              ].map((link) => (
-                <a
-                  key={link.id}
-                  href={`#${link.id}`}
-                  className="pd-sidenav-item"
-                  style={{
-                    fontSize: "13px",
-                    color: "#475569",
-                    padding: "10px 20px",
-                    textDecoration: "none",
-                    display: "block",
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document
-                      .getElementById(link.id)
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
+            <div className="pd-card pd-quick-links-card" ref={quickLinksRef}>
+              {/* Desktop List View */}
+              <div className="pd-quick-links-desktop">
+                <h3 className="pd-quick-links-title">
+                  Quick links
+                </h3>
+                <div className="pd-quick-links-desktop-items">
+                  {QUICK_LINKS.map((link) => (
+                    <a
+                      key={link.id}
+                      href={`#${link.id}`}
+                      className="pd-sidenav-item"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document
+                          .getElementById(link.id)
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                    >
+                      <span>{link.label}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mobile Dropdown View */}
+              <div className="pd-quick-links-mobile">
+                <div
+                  className={`pd-ql-dropdown-trigger ${mobileQuickLinksOpen ? "open" : ""}`}
+                  onClick={() => setMobileQuickLinksOpen((prev) => !prev)}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={mobileQuickLinksOpen}
                 >
-                  <span>{link.label}</span>
-                </a>
-              ))}
+                  <div className="pd-ql-trigger-left">
+                    <span className="pd-ql-badge">Quick links</span>
+                    <span className="pd-ql-selected-text">
+                      {activeQuickLink || "Jump to section"}
+                    </span>
+                  </div>
+                  <FiChevronDown
+                    size={18}
+                    className={`pd-ql-chevron ${mobileQuickLinksOpen ? "open" : ""}`}
+                  />
+                </div>
+
+                {mobileQuickLinksOpen && (
+                  <div className="pd-ql-dropdown-menu">
+                    {QUICK_LINKS.map((link) => (
+                      <button
+                        key={link.id}
+                        type="button"
+                        className={`pd-ql-dropdown-item ${activeQuickLink === link.label ? "active" : ""}`}
+                        onClick={() => {
+                          setActiveQuickLink(link.label);
+                          setMobileQuickLinksOpen(false);
+                          const el = document.getElementById(link.id);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
+                        }}
+                      >
+                        <span>{link.label}</span>
+                        <FiChevronRight size={14} className="pd-ql-item-arrow" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="pd-card pd-perf-card">
@@ -1366,7 +1423,7 @@ export default function ProfileDashboard() {
             </div>
           </div>
           <Link
-            to="/leave"
+            to="/candidate/email-templates"
             style={{
               textDecoration: "none",
               display: "block",
@@ -1569,7 +1626,7 @@ export default function ProfileDashboard() {
                     {CALLS_ENABLED &&
                       activeCandidateThread.activeCall?.state === "RINGING" &&
                       activeCandidateThread.activeCall?.initiatedBy ===
-                        "COMPANY" && (
+                      "COMPANY" && (
                         <div className="pd-incoming-call">
                           <div>
                             <strong>
@@ -1577,7 +1634,7 @@ export default function ProfileDashboard() {
                             </strong>
                             <span>
                               {activeCandidateThread.activeCall.mediaType ===
-                              "VIDEO"
+                                "VIDEO"
                                 ? "Video call"
                                 : "Audio call"}
                             </span>
@@ -1909,13 +1966,13 @@ export default function ProfileDashboard() {
           const appsList = hasApps
             ? appsWithScores
             : [
-                {
-                  companyName: "No recent applications",
-                  jobTitle: "Apply to jobs to see your match scores!",
-                  status: "-",
-                  matchScore: 0,
-                },
-              ];
+              {
+                companyName: "No recent applications",
+                jobTitle: "Apply to jobs to see your match scores!",
+                status: "-",
+                matchScore: 0,
+              },
+            ];
 
           return (
             <div

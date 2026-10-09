@@ -7,7 +7,7 @@ import {
   FiGrid, FiList, FiX, FiChevronDown, FiMapPin, FiBriefcase,
   FiDollarSign, FiUsers, FiTrendingUp, FiEye, FiPlus,
   FiBell, FiAlertCircle, FiTool, FiBarChart2, FiBookmark,
-  FiHome, FiSend, FiTarget, FiZap, FiArrowUpRight,
+  FiHome, FiSend, FiTarget, FiZap, FiArrowUpRight, FiCheck,
 } from 'react-icons/fi';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
@@ -81,6 +81,84 @@ function NormalizeSearch(s) {
 }
 
 const STORAGE_KEY = 'manageSearch_searches';
+
+const SEARCH_TYPE_OPTIONS = [
+  { value: 'all', label: 'All Searches' },
+  { value: 'pinned', label: 'Pinned Searches' },
+  { value: 'saved', label: 'Saved Searches' },
+  { value: 'recent', label: 'Recent (Last 7 Days)' },
+];
+
+const DATE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Time' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'Last 7 Days' },
+  { value: 'month', label: 'Last 30 Days' },
+  { value: 'quarter', label: 'Last 3 Months' },
+];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Status' },
+  { value: 'active', label: 'Active Searches' },
+  { value: 'expired', label: 'Expired Searches' },
+];
+
+const SORT_BY_OPTIONS = [
+  { value: 'newest', label: 'Newest First' },
+  { value: 'oldest', label: 'Oldest First' },
+  { value: 'mostUsed', label: 'Most Used' },
+  { value: 'alpha', label: 'Alphabetical (A-Z)' },
+];
+
+function CustomFilterSelect({ icon: Icon, label, value, options, onChange, activeDropdown, setActiveDropdown, dropdownId }) {
+  const isOpen = activeDropdown === dropdownId;
+  const currentOption = options.find(o => o.value === value) || options[0];
+  const isCustom = value !== 'all' && value !== 'newest';
+
+  return (
+    <div className="ms-dropdown-item">
+      <label className="ms-dropdown-label">
+        <Icon size={13} className="ms-dropdown-label-icon" />
+        <span>{label}</span>
+      </label>
+      <div className="ms-custom-select-wrapper">
+        <button
+          type="button"
+          className={`ms-custom-select-btn ${isCustom ? 'ms-select-active' : ''} ${isOpen ? 'ms-select-open' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveDropdown(isOpen ? null : dropdownId);
+          }}
+        >
+          <span className="ms-custom-select-text">{currentOption.label}</span>
+          <FiChevronDown size={14} className={`ms-select-chevron ${isOpen ? 'rotate' : ''}`} />
+        </button>
+
+        {isOpen && (
+          <div className="ms-custom-select-menu" onClick={(e) => e.stopPropagation()}>
+            {options.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`ms-custom-select-option ${isSelected ? 'active' : ''}`}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setActiveDropdown(null);
+                  }}
+                >
+                  <span className="ms-custom-option-label">{opt.label}</span>
+                  {isSelected && <FiCheck size={14} className="ms-custom-option-check" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function persistToLocal(searches) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(searches)); } catch {}
@@ -277,8 +355,22 @@ export default function ManageSearch() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState(null);
   const [company, setCompany] = useState({});
   const [user, setUser] = useState({});
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdown(null);
+    if (activeDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [activeDropdown]);
   const [loading, setLoading] = useState(true);
   const [searches, setSearches] = useState([]);
   const [drawerSearch, setDrawerSearch] = useState(null);
@@ -349,6 +441,17 @@ export default function ManageSearch() {
   const filteredSearches = useMemo(() => {
     let result = [...searches];
 
+    // Quick text query search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s => {
+        const nameMatch = (s.name || '').toLowerCase().includes(q);
+        const skillsMatch = (s.filters?.skills || []).some(sk => String(sk).toLowerCase().includes(q));
+        const locMatch = (s.filters?.currentCity || []).some(city => String(city).toLowerCase().includes(q));
+        return nameMatch || skillsMatch || locMatch;
+      });
+    }
+
     if (searchType === 'pinned') result = result.filter(s => s.pinned);
     else if (searchType === 'saved') result = result.filter(s => !s.pinned);
     else if (searchType === 'recent') {
@@ -385,21 +488,23 @@ export default function ManageSearch() {
     });
 
     return result;
-  }, [searches, searchType, dateFilter, statusFilter, sortBy]);
+  }, [searches, searchQuery, searchType, dateFilter, statusFilter, sortBy]);
 
   const pinnedSearches = useMemo(() => filteredSearches.filter(s => s.pinned), [filteredSearches]);
   const unpinnedSearches = useMemo(() => filteredSearches.filter(s => !s.pinned), [filteredSearches]);
 
   const activeFilterCount = useMemo(() => {
     let c = 0;
+    if (searchQuery.trim()) c++;
     if (searchType !== 'all') c++;
     if (dateFilter !== 'all') c++;
     if (statusFilter !== 'all') c++;
     if (sortBy !== 'newest') c++;
     return c;
-  }, [searchType, dateFilter, statusFilter, sortBy]);
+  }, [searchQuery, searchType, dateFilter, statusFilter, sortBy]);
 
   const handleResetFilters = useCallback(() => {
+    setSearchQuery('');
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
@@ -514,6 +619,7 @@ export default function ManageSearch() {
   return (
     <>
       <EmployerLayout
+        containerWidth={1240}
         company={company}
         activeTab="resdex"
         onNavigate={(tid) => {
@@ -551,95 +657,109 @@ export default function ManageSearch() {
           </div>
           )}
 
-          <div className="ms-layout">
-            <aside className="ms-sidebar" aria-label="Search filters">
-              <div className="ms-sidebar-header">
-                <h3 className="ms-sidebar-title"><FiSliders size={14} /> Filters</h3>
+          {/* Modern Dropdown Filter Bar */}
+          <div className="ms-filter-card">
+            <div className="ms-filter-card-header">
+              <div className="ms-filter-header-left">
+                <div className="ms-filter-badge-icon">
+                  <FiSliders size={14} />
+                </div>
+                <span className="ms-filter-title-text">Search Filters</span>
                 {activeFilterCount > 0 && (
-                  <button className="ms-sidebar-reset" onClick={handleResetFilters}>Reset</button>
+                  <span className="ms-filter-active-pill">
+                    {activeFilterCount} active
+                  </span>
                 )}
               </div>
-              <div className="ms-sidebar-scroll">
-                <div className="ms-filter-group">
-                  <span className="ms-filter-label">Search Type</span>
-                  <div className="ms-filter-options" role="radiogroup" aria-label="Search type">
-                    {[
-                      { key: 'all', label: 'All Searches' },
-                      { key: 'pinned', label: 'Pinned' },
-                      { key: 'saved', label: 'Saved' },
-                      { key: 'recent', label: 'Recent' },
-                    ].map(opt => (
-                      <button key={opt.key} className={`ms-filter-option ${searchType === opt.key ? 'active' : ''}`}
-                        onClick={() => setSearchTypeFn(opt.key)} role="radio" aria-checked={searchType === opt.key}>
-                        <span className="ms-filter-radio" />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+
+              <div className="ms-filter-header-right">
+                <div className="ms-search-input-box">
+                  <FiSearch size={14} className="ms-search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search saved searches by title, skill, city..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="ms-search-input"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className="ms-search-clear-btn"
+                      onClick={() => setSearchQuery('')}
+                      title="Clear search query"
+                    >
+                      <FiX size={12} />
+                    </button>
+                  )}
                 </div>
 
-                <div className="ms-filter-divider" />
-
-                <div className="ms-filter-group">
-                  <span className="ms-filter-label">Created Date</span>
-                  <div className="ms-filter-options" role="radiogroup" aria-label="Date filter">
-                    {[
-                      { key: 'all', label: 'All Time' },
-                      { key: 'today', label: 'Today' },
-                      { key: 'week', label: 'Last 7 Days' },
-                      { key: 'month', label: 'Last 30 Days' },
-                      { key: 'quarter', label: 'Last 3 Months' },
-                    ].map(opt => (
-                      <button key={opt.key} className={`ms-filter-option ${dateFilter === opt.key ? 'active' : ''}`}
-                        onClick={() => setDateFilterFn(opt.key)} role="radio" aria-checked={dateFilter === opt.key}>
-                        <span className="ms-filter-radio" />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ms-filter-divider" />
-
-                <div className="ms-filter-group">
-                  <span className="ms-filter-label">Status</span>
-                  <div className="ms-filter-options" role="radiogroup" aria-label="Status filter">
-                    {[
-                      { key: 'all', label: 'All Status' },
-                      { key: 'active', label: 'Active' },
-                      { key: 'expired', label: 'Expired' },
-                    ].map(opt => (
-                      <button key={opt.key} className={`ms-filter-option ${statusFilter === opt.key ? 'active' : ''}`}
-                        onClick={() => setStatusFilterFn(opt.key)} role="radio" aria-checked={statusFilter === opt.key}>
-                        <span className="ms-filter-radio" />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ms-filter-divider" />
-
-                <div className="ms-filter-group">
-                  <span className="ms-filter-label">Sort By</span>
-                  <div className="ms-filter-options" role="radiogroup" aria-label="Sort order">
-                    {[
-                      { key: 'newest', label: 'Newest' },
-                      { key: 'oldest', label: 'Oldest' },
-                      { key: 'mostUsed', label: 'Most Used' },
-                      { key: 'alpha', label: 'Alphabetical' },
-                    ].map(opt => (
-                      <button key={opt.key} className={`ms-filter-option ${sortBy === opt.key ? 'active' : ''}`}
-                        onClick={() => setSortByFn(opt.key)} role="radio" aria-checked={sortBy === opt.key}>
-                        <span className="ms-filter-radio" />
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    className="ms-reset-filters-btn"
+                    onClick={handleResetFilters}
+                    title="Reset all filters"
+                  >
+                    <FiX size={13} />
+                    <span>Reset</span>
+                  </button>
+                )}
               </div>
-            </aside>
+            </div>
 
+            <div className="ms-dropdowns-grid">
+              {/* 1. Search Type Dropdown */}
+              <CustomFilterSelect
+                icon={FiBookmark}
+                label="Search Type"
+                value={searchType}
+                options={SEARCH_TYPE_OPTIONS}
+                onChange={setSearchTypeFn}
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                dropdownId="type"
+              />
+
+              {/* 2. Created Date Dropdown */}
+              <CustomFilterSelect
+                icon={FiClock}
+                label="Created Date"
+                value={dateFilter}
+                options={DATE_FILTER_OPTIONS}
+                onChange={setDateFilterFn}
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                dropdownId="date"
+              />
+
+              {/* 3. Status Dropdown */}
+              <CustomFilterSelect
+                icon={FiSliders}
+                label="Status"
+                value={statusFilter}
+                options={STATUS_FILTER_OPTIONS}
+                onChange={setStatusFilterFn}
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                dropdownId="status"
+              />
+
+              {/* 4. Sort By Dropdown */}
+              <CustomFilterSelect
+                icon={FiTrendingUp}
+                label="Sort By"
+                value={sortBy}
+                options={SORT_BY_OPTIONS}
+                onChange={setSortByFn}
+                activeDropdown={activeDropdown}
+                setActiveDropdown={setActiveDropdown}
+                dropdownId="sort"
+              />
+            </div>
+          </div>
+
+          <div className="ms-layout">
             <main className="ms-main">
               <div className="ms-toolbar">
                 <div className="ms-toolbar-left">

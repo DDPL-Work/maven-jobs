@@ -4,18 +4,19 @@ import { FiMail, FiLock, FiX, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/
 import authService from '../../services/authService';
 
 const overlay = {
-  position: 'fixed', inset: 0, zIndex: 9999,
-  background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)',
+  position: 'fixed', inset: 0, zIndex: 999999,
+  background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
 };
 
 const card = {
   background: '#fff', borderRadius: 24, maxWidth: 420, width: '100%',
-  padding: '40px 36px 32px', boxShadow: '0 32px 80px rgba(0,0,0,0.25)',
+  padding: '40px 36px 32px', boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
   position: 'relative',
+  zIndex: 1000000,
 };
 
-export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) {
+export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess, context, zIndex }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,7 +51,7 @@ export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) 
   };
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div style={{ ...overlay, ...(zIndex ? { zIndex } : {}) }} onClick={onClose}>
       <div style={card} onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} style={{
           position: 'absolute', top: 16, right: 16,
@@ -62,7 +63,11 @@ export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) 
         </button>
 
         <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: '#0F172A' }}>Employer Login</h2>
-        <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748B', fontWeight: 500 }}>Sign in to your employer account</p>
+        <p style={{ margin: '0 0 28px', fontSize: 14, color: '#64748B', fontWeight: 500 }}>
+          {context === 'purchase'
+            ? 'Sign in to your employer account to continue your purchase.'
+            : 'Sign in to your employer account'}
+        </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
@@ -115,7 +120,7 @@ export default function EmployerLoginModal({ isOpen, onClose, onLoginSuccess }) 
 
         <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#64748B', fontWeight: 500 }}>
           Don't have an account?{' '}
-          <button type="button" onClick={() => navigate('/employer-login')}
+          <button type="button" onClick={() => { onClose?.(); navigate('/employer-login'); }}
             style={{ background: 'none', border: 'none', color: '#002366', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
             Create one
           </button>
