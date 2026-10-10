@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiArrowRight, FiX, FiLock, FiClock, FiCalendar } from 'react-icons/fi';
 import api from '../../services/api';
@@ -6,8 +6,11 @@ import api from '../../services/api';
 export default function PlanExpiryBanner() {
   const navigate = useNavigate();
   const [expiryData, setExpiryData] = useState(null);
+  const [monitoredEndDate, setMonitoredEndDate] = useState(null);
   const [now, setNow] = useState(Date.now());
   const [dismissed, setDismissed] = useState(false);
+  const autoRefreshedRef = useRef(false);
+  const lastMonitoredEndDateRef = useRef(null);
 
   // Clear any previously persisted session dismiss flag so refresh always shows the banner
   useEffect(() => {
@@ -24,65 +27,135 @@ export default function PlanExpiryBanner() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchStatus = async () => {
-      const userStored = localStorage.getItem('employerUser') || localStorage.getItem('user');
-      if (!userStored || userStored === 'undefined') return;
+  const fetchStatus = async () => {
+    const userStored = localStorage.getItem('employerUser') || localStorage.getItem('user');
+    if (!userStored || userStored === 'undefined') return;
 
-      try {
-        const res = await api.get('/company-panel/commercial/entitlements');
-        if (isMounted && res.data?.data) {
-          const data = res.data.data;
+    try {
+      const res = await api.get('/company-panel/commercial/entitlements');
+      if (res.data?.data) {
+        const data = res.data.data;
 
-          // Always check the plan expiry date directly from the Company model
-          const companyPlan = data.companyPlan;
-          const activePlan = data.activePlan;
-          const expiredPlan = data.expiredPlan;
-          const commercialStatus = data.commercialStatus;
+        // Always check the plan expiry date directly from the Company model
+        const companyPlan = data.companyPlan;
+        const activePlan = data.activePlan;
+        const expiredPlan = data.expiredPlan;
+        const commercialStatus = data.commercialStatus;
 
-          const endDateVal = companyPlan?.endDate || activePlan?.endDate || expiredPlan?.endDate;
-          if (!endDateVal) {
-            setExpiryData(null);
-            return;
-          }
-
-          const targetTime = new Date(endDateVal).getTime();
-          const diffMs = targetTime - Date.now();
-          const totalHoursRemaining = diffMs > 0 ? Math.floor(diffMs / (1000 * 60 * 60)) : 0;
-
-          // Expiry trigger: Within 7 days (168 hours) OR already expired
-          const isExpiringSoon = totalHoursRemaining <= (7 * 24) && diffMs > 0;
-          const isExpired = Boolean(
-            diffMs <= 0 ||
-            commercialStatus === 'EXPIRED_GRACE' ||
-            commercialStatus === 'EXPIRED_LOCKED' ||
-            companyPlan?.isExpired
-          );
-
-          if (isExpiringSoon || isExpired) {
-            setExpiryData({
-              ...data,
-              diffMs,
-              isExpiringSoon,
-              isExpired,
-              planName: companyPlan?.planName || activePlan?.planName || expiredPlan?.planName || 'Recruitment Plan',
-              endDate: endDateVal,
-            });
-          } else {
-            setExpiryData(null);
-          }
+        const endDateVal = companyPlan?.endDate || activePlan?.endDate || expiredPlan?.endDate;
+        setMonitoredEndDate(endDateVal || null);
+        if (endDateVal && endDateVal !== lastMonitoredEndDateRef.current) {
+          lastMonitoredEndDateRef.current = endDateVal;
+          autoRefreshedRef.current = false;
         }
-      } catch (_) {
-        // Silently ignore if unauthenticated or endpoint is unreachable
-      }
-    };
 
+        if (!endDateVal) {
+          setExpiryData(null);
+          return;
+        }
+
+        const targetTime = new Date(endDateVal).getTime();
+        const diffMs = targetTime - Date.now();
+        const totalHoursRemaining = diffMs > 0 ? Math.floor(diffMs / (1000 * 60 * 60)) : 0;
+
+        // Expiry trigger: Within 7 days (168 hours) OR already expired
+        const isExpiringSoon = totalHoursRemaining <= (7 * 24) && diffMs > 0;
+        const isExpired = Boolean(
+          diffMs <= 0 ||
+          commercialStatus === 'EXPIRED_GRACE' ||
+          commercialStatus === 'EXPIRED_LOCKED' ||
+          companyPlan?.isExpired
+        );
+
+        if (isExpiringSoon || isExpired) {
+          setExpiryData({
+            ...data,
+            diffMs,
+            isExpiringSoon,
+            isExpired,
+            planName: companyPlan?.planName || activePlan?.planName || expiredPlan?.planName || 'Recruitment Plan',
+            endDate: endDateVal,
+          });
+        } else {
+          setExpiryData(null);
+        }
+      }
+    } catch (_) {
+      // Silently ignore if unauthenticated or endpoint is unreachable
+    }
+  };
+
+  useEffect(() => {
     fetchStatus();
+
+    const handleExternalChange = () => {
+      fetchStatus();
+    };
+    window.addEventListener('plan-status-changed', handleExternalChange);
+    window.addEventListener('employer-credits-changed', handleExternalChange);
     return () => {
-      isMounted = false;
+      window.removeEventListener('plan-status-changed', handleExternalChange);
+      window.removeEventListener('employer-credits-changed', handleExternalChange);
     };
   }, []);
+
+  // Real-time automatic AJAX trigger:
+  // When current countdown reaches 0 (the exact second current plan ends),
+  // automatically trigger an AJAX call to activate the scheduled plan and refresh all credits in real time!
+  useEffect(() => {
+    const activeTargetDate = monitoredEndDate || expiryData?.endDate;
+    if (!activeTargetDate) return;
+    const target = new Date(activeTargetDate).getTime();
+    if (now >= target && !autoRefreshedRef.current) {
+      autoRefreshedRef.current = true;
+      (async () => {
+        try {
+          const res = await api.get('/company-panel/commercial/entitlements');
+          if (res.data?.data) {
+            const data = res.data.data;
+            // Notify all other components (ManageQuota, Buyonline, Header, etc.)
+            window.dispatchEvent(new CustomEvent('employer-credits-changed', { detail: data }));
+            window.dispatchEvent(new CustomEvent('plan-status-changed', { detail: data }));
+
+            const companyPlan = data.companyPlan;
+            const activePlan = data.activePlan;
+            const expiredPlan = data.expiredPlan;
+            const newEndDate = companyPlan?.endDate || activePlan?.endDate || expiredPlan?.endDate;
+            setMonitoredEndDate(newEndDate || null);
+            if (newEndDate && newEndDate !== lastMonitoredEndDateRef.current) {
+              lastMonitoredEndDateRef.current = newEndDate;
+              autoRefreshedRef.current = false;
+            }
+
+            const newDiff = newEndDate ? new Date(newEndDate).getTime() - Date.now() : 0;
+            const newTotalHours = newDiff > 0 ? Math.floor(newDiff / (1000 * 60 * 60)) : 0;
+            const isExpiringSoon = newTotalHours <= (7 * 24) && newDiff > 0;
+            const isExpired = Boolean(
+              newDiff <= 0 ||
+              data.commercialStatus === 'EXPIRED_GRACE' ||
+              data.commercialStatus === 'EXPIRED_LOCKED'
+            );
+
+            if (isExpiringSoon || isExpired) {
+              setExpiryData({
+                ...data,
+                diffMs: newDiff,
+                isExpiringSoon,
+                isExpired,
+                planName: companyPlan?.planName || activePlan?.planName || expiredPlan?.planName || 'Recruitment Plan',
+                endDate: newEndDate,
+              });
+            } else {
+              // New plan is active and healthy (e.g. valid for 90 days), clear banner automatically!
+              setExpiryData(null);
+            }
+          }
+        } catch (err) {
+          console.warn('[PlanExpiryBanner] Auto-refresh failed:', err?.message);
+        }
+      })();
+    }
+  }, [now, monitoredEndDate, expiryData?.endDate]);
 
   if (!expiryData || dismissed) return null;
 

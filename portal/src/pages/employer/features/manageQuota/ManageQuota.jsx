@@ -45,13 +45,9 @@ export default function ManageQuota() {
     nvite: '',
   });
 
-  useEffect(() => {
-    fetchQuotaData();
-  }, []);
-
-  const fetchQuotaData = async () => {
+  const fetchQuotaData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await authService.getQuotaManagement();
       if (res.success && res.data) {
         setRawServerData(res.data);
@@ -61,11 +57,59 @@ export default function ManageQuota() {
         setServicesData(Array.isArray(res.data.services) ? res.data.services : []);
       }
     } catch (error) {
-      showToast(error.message || 'Failed to load quota configuration');
+      if (!silent) showToast(error.message || 'Failed to load quota configuration');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchQuotaData();
+
+    const handleExternalChange = () => {
+      fetchQuotaData(true);
+    };
+
+    window.addEventListener('employer-credits-changed', handleExternalChange);
+    window.addEventListener('plan-status-changed', handleExternalChange);
+    return () => {
+      window.removeEventListener('employer-credits-changed', handleExternalChange);
+      window.removeEventListener('plan-status-changed', handleExternalChange);
+    };
+  }, []);
+
+  // Automatic real-time AJAX trigger on plan expiration
+  const planExpirationHandledRef = useRef(null);
+  useEffect(() => {
+    if (!planData?.endDate) return;
+    const endMs = new Date(planData.endDate).getTime();
+    const diffMs = endMs - Date.now();
+
+    if (diffMs <= 0) {
+      // If plan is already past end date, do one verification check if not already performed
+      if (planExpirationHandledRef.current !== planData.endDate) {
+        planExpirationHandledRef.current = planData.endDate;
+        const timer = setTimeout(() => {
+          fetchQuotaData(true);
+          window.dispatchEvent(new CustomEvent('employer-credits-changed'));
+          window.dispatchEvent(new CustomEvent('plan-status-changed'));
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+      return;
+    }
+
+    // Set precise timer to auto-refresh credits via AJAX the exact moment plan expires
+    if (diffMs <= 24 * 60 * 60 * 1000) {
+      const timer = setTimeout(() => {
+        fetchQuotaData(true);
+        window.dispatchEvent(new CustomEvent('employer-credits-changed'));
+        window.dispatchEvent(new CustomEvent('plan-status-changed'));
+      }, diffMs + 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [planData?.endDate]);
 
   const saveBtnRef = useRef(null);
 
@@ -411,6 +455,57 @@ export default function ManageQuota() {
             </div>
           </div>
         )}
+
+        {/* Scheduled Upcoming Plan Alert Banner */}
+        {/* {rawServerData?.scheduledPlan && (
+          <div style={{
+            background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+            border: "1px solid #fde68a",
+            borderRadius: "14px",
+            padding: "16px 20px",
+            marginBottom: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "12px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "10px",
+                backgroundColor: "#fef08a",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#854d0e",
+                fontWeight: 700,
+              }}>
+                <FiCalendar size={20} />
+              </div>
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: "#854d0e" }}>
+                  Upcoming Plan Scheduled: {rawServerData.scheduledPlan.planName}
+                </div>
+                <div style={{ fontSize: "12px", color: "#a16207", marginTop: "2px" }}>
+                  Scheduled to start on <strong>{formatDate(rawServerData.scheduledPlan.startDate)}</strong> after your current plan ends. Your current plan and credits remain fully active until then.
+                </div>
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: "#fef9c3",
+              border: "1px solid #fef08a",
+              padding: "6px 14px",
+              borderRadius: "20px",
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "#854d0e",
+            }}>
+              Starts {formatDate(rawServerData.scheduledPlan.startDate)}
+            </div>
+          </div>
+        )} */}
 
         {/* Top Summary Stat Cards */}
         <div className="mq-stats-grid">
@@ -892,7 +987,7 @@ export default function ManageQuota() {
             {/* Usage Footnote */}
             <div className="mq-usage-footnote">
               <FiInfo size={13} color="#94a3b8" />
-              <span>*Credits shown above are for current/active subscription only</span>
+              <span>*Credits and consumption shown above reflect the active subscription cycle only. Past plan usage history is preserved and viewable in Usage Reports.</span>
             </div>
           </div>
         </div>

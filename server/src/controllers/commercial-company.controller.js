@@ -68,7 +68,7 @@ exports.getProductsCatalog = asyncHandler(async (req, res) => {
 exports.createCommercialOrder = asyncHandler(async (req, res) => {
   const companyId = req.company?._id || req.user?.companyId;
   const userId = req.user?._id;
-  const { amount, label, planId, versionId, offerId, productId, quantity, validity, planType } = req.body;
+  const { amount, label, planId, versionId, offerId, productId, quantity, validity, planType, isUpgrade, isRenewal } = req.body;
 
   if (!amount || amount <= 0) {
     return res.status(400).json({ success: false, message: "Invalid purchase amount" });
@@ -146,7 +146,7 @@ exports.createCommercialOrder = asyncHandler(async (req, res) => {
     planType: resolvedPlanType,
     durationDays: Number(validity || 90),
     status: "CREATED",
-    metadata: { planId, versionId, offerId, productId, quantity, label, validity, rzpOrder },
+    metadata: { planId, versionId, offerId, productId, quantity, label, validity, rzpOrder, isUpgrade, isRenewal },
   });
 
   res.json({
@@ -169,6 +169,7 @@ exports.confirmCommercialPayment = asyncHandler(async (req, res) => {
   const {
     razorpayOrderId, razorpayPaymentId, razorpaySignature,
     planId, versionId, offerId, productId, quantity,
+    isUpgrade, isRenewal,
   } = req.body;
 
   if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
@@ -203,6 +204,8 @@ exports.confirmCommercialPayment = asyncHandler(async (req, res) => {
       paymentMethod: "ONLINE",
       transactionId: razorpayPaymentId,
       actor: req.user,
+      isUpgrade: tx?.metadata?.isUpgrade ?? isUpgrade,
+      isRenewal: tx?.metadata?.isRenewal ?? isRenewal,
     });
   } else {
     result = await PurchaseService.purchaseProductOffer({
@@ -224,7 +227,7 @@ exports.confirmCommercialPayment = asyncHandler(async (req, res) => {
 exports.purchasePlan = asyncHandler(async (req, res) => {
   const companyId = req.company?._id || req.user?.companyId;
   const userId = req.user?._id;
-  const { planId, versionId, paymentMethod, transactionId } = req.body;
+  const { planId, versionId, paymentMethod, transactionId, isUpgrade, isRenewal } = req.body;
 
   if (!planId) {
     return res.status(400).json({ success: false, message: "planId is required" });
@@ -238,6 +241,8 @@ exports.purchasePlan = asyncHandler(async (req, res) => {
     paymentMethod: paymentMethod || "ONLINE",
     transactionId,
     actor: req.user,
+    isUpgrade,
+    isRenewal,
   });
 
   res.status(201).json(result);
@@ -352,6 +357,24 @@ exports.renewPlan = asyncHandler(async (req, res) => {
   });
 
   res.json(result);
+});
+
+// 8.1 Classify Plan Transition (Preview whether purchase is Upgrade, Downgrade, or Same-Level Extension)
+exports.classifyTransition = asyncHandler(async (req, res) => {
+  const companyId = req.company?._id || req.user?.companyId;
+  const { planId, versionId } = req.query;
+
+  if (!planId) {
+    return res.status(400).json({ success: false, message: "planId query parameter is required" });
+  }
+
+  const result = await PurchaseService.classifyTransition({
+    companyId,
+    planId,
+    versionId,
+  });
+
+  res.json({ success: true, data: result });
 });
 
 // 9. Company Credit Ledger

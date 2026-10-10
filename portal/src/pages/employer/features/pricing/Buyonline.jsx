@@ -490,6 +490,17 @@ export default function Buyonline() {
   useEffect(() => {
     loadCommercialData();
     window.scrollTo(0, 0);
+
+    const handleExternalChange = () => {
+      loadCommercialData();
+    };
+
+    window.addEventListener('employer-credits-changed', handleExternalChange);
+    window.addEventListener('plan-status-changed', handleExternalChange);
+    return () => {
+      window.removeEventListener('employer-credits-changed', handleExternalChange);
+      window.removeEventListener('plan-status-changed', handleExternalChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -749,11 +760,20 @@ export default function Buyonline() {
     // ── FREE plan path: skip Razorpay entirely ───────────────────────────────
     if (total === 0) {
       try {
+        const isPlanExpired = Boolean(
+          companyEntitlements?.companyPlan?.isExpired ||
+          companyEntitlements?.commercialStatus === "EXPIRED_GRACE" ||
+          companyEntitlements?.commercialStatus === "EXPIRED_LOCKED" ||
+          Boolean(companyEntitlements?.expiredPlan) ||
+          (companyEntitlements?.companyPlan?.endDate && new Date(companyEntitlements.companyPlan.endDate) < new Date())
+        );
+        const isRenew = searchParams.get("renew") === "true";
         const purchaseRes = await commercialService.purchasePlan({
           planId: selectedItemForPurchase._id,
           versionId: ver._id,
           paymentMethod: "FREE",
           transactionId: `FREE-${Date.now()}`,
+          isRenewal: Boolean(isRenew || isPlanExpired),
         });
         setPurchaseSuccessData({ item: selectedItemForPurchase, isPlan: true, details: purchaseRes });
         setIsPurchaseModalOpen(false);
@@ -774,6 +794,16 @@ export default function Buyonline() {
         ? (selectedItemForPurchase.planType || "SMB")
         : "CUSTOM";
 
+      const isPlanExpired = Boolean(
+        companyEntitlements?.companyPlan?.isExpired ||
+        companyEntitlements?.commercialStatus === "EXPIRED_GRACE" ||
+        companyEntitlements?.commercialStatus === "EXPIRED_LOCKED" ||
+        Boolean(companyEntitlements?.expiredPlan) ||
+        (companyEntitlements?.companyPlan?.endDate && new Date(companyEntitlements.companyPlan.endDate) < new Date())
+      );
+      const isRenew = searchParams.get("renew") === "true";
+      const isRenewalFlag = Boolean(isRenew || isPlanExpired);
+
       // Step 1 — Create a real Razorpay order on the server
       const orderData = await commercialService.createOrder({
         amount: total, // server multiplies by 100 for paise
@@ -781,6 +811,7 @@ export default function Buyonline() {
         planId: isPlan ? selectedItemForPurchase._id : undefined,
         versionId: isPlan ? ver._id : undefined,
         planType: resolvedCompanyPlanType,
+        isRenewal: isRenewalFlag,
         offerId: (!isPlan && !isDirectProduct) ? selectedItemForPurchase._id : undefined,
         productId: isDirectProduct ? selectedItemForPurchase._id : undefined,
         quantity: selectedItemForPurchase.quantity || 1,
@@ -817,6 +848,7 @@ export default function Buyonline() {
               planId:      isPlan ? selectedItemForPurchase._id : undefined,
               versionId:   isPlan ? ver._id : undefined,
               planType:    resolvedCompanyPlanType,
+              isRenewal:   isRenewalFlag,
               offerId:     (!isPlan && !isDirectProduct) ? selectedItemForPurchase._id : undefined,
               productId:   isDirectProduct ? selectedItemForPurchase._id : undefined,
               quantity:    selectedItemForPurchase.quantity || 1,
@@ -3396,11 +3428,74 @@ export default function Buyonline() {
                         Validity & Expiry Policy:
                       </div>
                       <div style={{ marginTop: "4px", fontSize: "11.5px", color: "#475569", lineHeight: 1.5 }}>
-                        {selectedItemForPurchase.itemType === "PLAN" ? (
-                          <>
-                            <strong>{selectedItemForPurchase.activeVersion?.validity || 90} Days:</strong> Synchronized validity across all bundled products. Unused credits expire when the plan ends.
-                          </>
-                        ) : (selectedItemForPurchase.category === "AI" || selectedItemForPurchase.code?.includes("AI")) ? (
+                        {selectedItemForPurchase.itemType === "PLAN" ? (() => {
+                          const getTierRank = (p) => {
+                            if (!p) return 0;
+                            const str = String(p.planType || p.code || p.name || p || "").toUpperCase();
+                            if (str.includes("ENTERPRISE")) return 3;
+                            if (str.includes("CORPORATE")) return 2;
+                            if (str.includes("SMB")) return 1;
+                            if (str.includes("FREE")) return 0;
+                            return 1;
+                          };
+                          const hasActivePlanSub = Boolean(
+                            companyEntitlements?.companyPlan &&
+                            !companyEntitlements.companyPlan.isExpired &&
+                            companyEntitlements.activePlan
+                          );
+                          const curRank = hasActivePlanSub ? getTierRank(companyEntitlements.companyPlan) : 0;
+                          const newRank = getTierRank(selectedItemForPurchase);
+                          const isFree = newRank === 0;
+
+                          if (hasActivePlanSub && curRank > 0) {
+                            if (newRank < curRank) {
+                              const planEndFormatted = new Date(companyEntitlements.companyPlan.endDate).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              });
+                              return (
+                                <div style={{ color: "#854d0e", backgroundColor: "#fef9c3", padding: "8px 10px", borderRadius: "8px", border: "1px solid #fef08a" }}>
+                                  <div style={{ fontWeight: 700, color: "#b45309", marginBottom: "3px" }}>
+                                    📅 Scheduled Plan Downgrade Notice:
+                                  </div>
+                                  Your new <strong>{selectedItemForPurchase.name}</strong> will start on <strong>{planEndFormatted}</strong> after your current <strong>{companyEntitlements.companyPlan.planName}</strong> ends. Your current plan's features, limits, and credits remain fully active until then.
+                                </div>
+                              );
+                            }
+                            if (newRank === curRank) {
+                              return (
+                                <div style={{ color: "#065f46", backgroundColor: "#ecfdf5", padding: "8px 10px", borderRadius: "8px", border: "1px solid #a7f3d0" }}>
+                                  <div style={{ fontWeight: 700, color: "#047857", marginBottom: "3px" }}>
+                                    🔄 Same-Level Renewal & Validity Extension:
+                                  </div>
+                                  Starts immediately! All unused credits from your current plan will be merged with your new plan credits, and their validity will be extended to match the new <strong>{selectedItemForPurchase.activeVersion?.validity || 90}-day</strong> plan duration.
+                                </div>
+                              );
+                            }
+                            if (newRank > curRank) {
+                              const oldEndFormatted = new Date(companyEntitlements.companyPlan.endDate).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              });
+                              return (
+                                <div style={{ color: "#4338ca", backgroundColor: "#eef2ff", padding: "8px 10px", borderRadius: "8px", border: "1px solid #c7d2fe" }}>
+                                  <div style={{ fontWeight: 700, color: "#3730a3", marginBottom: "3px" }}>
+                                    ⚡ Immediate Account Upgrade:
+                                  </div>
+                                  Your account upgrades immediately to <strong>{selectedItemForPurchase.name}</strong>! All credits stack together. Unused credits from your previous plan will be used first (FIFO) and expire on <strong>{oldEndFormatted}</strong>, while your new credits remain valid for <strong>{selectedItemForPurchase.activeVersion?.validity || 90} days</strong>.
+                                </div>
+                              );
+                            }
+                          }
+
+                          return (
+                            <>
+                              <strong>{selectedItemForPurchase.activeVersion?.validity || 90} Days:</strong> Synchronized validity across all bundled products. Unused credits expire when the plan ends.
+                            </>
+                          );
+                        })() : (selectedItemForPurchase.category === "AI" || selectedItemForPurchase.code?.includes("AI")) ? (
                           <>
                             <strong>30 Days Monthly Cycle:</strong> Shared company AI credits valid for current monthly cycle. Unused credits expire at the end of the monthly period.
                           </>
@@ -3582,8 +3677,22 @@ export default function Buyonline() {
               </div>
               <div className="bo-success-row">
                 <span style={{ color: "#94a3b8" }}>Status:</span>
-                <span style={{ fontWeight: 700, color: "#059669" }}>Active</span>
+                <span style={{ fontWeight: 700, color: (purchaseSuccessData.details?.isScheduled || purchaseSuccessData.details?.transitionType === "DOWNGRADE") ? "#b45309" : "#059669" }}>
+                  {(purchaseSuccessData.details?.isScheduled || purchaseSuccessData.details?.transitionType === "DOWNGRADE") ? "SCHEDULED" : "Active"}
+                </span>
               </div>
+              {(purchaseSuccessData.details?.isScheduled || purchaseSuccessData.details?.transitionType === "DOWNGRADE") && (purchaseSuccessData.details?.scheduledStartDate || purchaseSuccessData.details?.subscription?.startDate) && (
+                <div className="bo-success-row">
+                  <span style={{ color: "#94a3b8" }}>Scheduled Start:</span>
+                  <span style={{ fontWeight: 700, color: "#b45309" }}>
+                    {new Date(purchaseSuccessData.details.scheduledStartDate || purchaseSuccessData.details.subscription.startDate).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })} (After current plan ends)
+                  </span>
+                </div>
+              )}
               {(() => {
                 const expiryDateVal =
                   purchaseSuccessData.details?.expiryDate ||

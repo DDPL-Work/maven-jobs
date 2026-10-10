@@ -21,6 +21,7 @@ router.use(resolveCompanyContext);
 router.get("/entitlements", controller.getEntitlements);
 router.get("/credits", controller.getEntitlements);
 router.get("/ledger", controller.getCompanyLedger);
+router.get("/classify-transition", controller.classifyTransition);
 
 // AI Credits & Usage
 router.get("/ai/quota", controller.getAiQuota);

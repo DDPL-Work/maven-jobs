@@ -228,7 +228,11 @@ export default function EmployerHeader({
   useEffect(() => {
     const handler = () => refreshCredits();
     window.addEventListener("employer-credits-changed", handler);
-    return () => window.removeEventListener("employer-credits-changed", handler);
+    window.addEventListener("plan-status-changed", handler);
+    return () => {
+      window.removeEventListener("employer-credits-changed", handler);
+      window.removeEventListener("plan-status-changed", handler);
+    };
   }, [refreshCredits]);
 
   const loadNotifications = useCallback(async () => {

@@ -144,6 +144,14 @@ const resolveClientUserAndCompany = async (userId) => {
     throw createHttpError(404, "Company not found");
   }
 
+  // Check and activate any due SCHEDULED subscriptions in real time
+  try {
+    const PurchaseService = require("../services/commercial/purchase.service");
+    await PurchaseService.activateScheduledSubscriptions(company._id);
+    const refreshed = await Company.findById(company._id);
+    if (refreshed) company = refreshed;
+  } catch (_) {}
+
   // Ensure company has commercial planSnapshot and services loaded
   if (!company.planSnapshot || !company.planSnapshot.services || company.planSnapshot.services.length === 0) {
     try {
@@ -388,6 +396,13 @@ const formatPackageChangeRequestForCompany = (request, company) =>
   });
 
 const syncCompanyPackageContext = async (company) => {
+  try {
+    const PurchaseService = require("../services/commercial/purchase.service");
+    await PurchaseService.activateScheduledSubscriptions(company._id);
+    const refreshed = await Company.findById(company._id);
+    if (refreshed) company = refreshed;
+  } catch (_) {}
+
   const { packageCatalog, packageLimitMap } = await loadPackageCatalog();
 
   const appliedResult = await applyDueApprovedPackageChangesForCompany(company, packageLimitMap);
@@ -2981,6 +2996,14 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
   const Company = require("../models/Company");
   const PaymentTransaction = require("../models/PaymentTransaction");
 
+  // Activate any due scheduled subscriptions in real time
+  if (companyId) {
+    try {
+      const PurchaseService = require("../services/commercial/purchase.service");
+      await PurchaseService.activateScheduledSubscriptions(companyId);
+    } catch (_) {}
+  }
+
   const company = companyId
     ? await Company.findById(companyId)
         .populate("createdByCRM", "fullName email phone role profileImageUrl territory")
@@ -3046,6 +3069,7 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
 
   if (commercialSubs && commercialSubs.length > 0) {
     commercialSubs.forEach((sub) => {
+      const isScheduled = sub.status === "SCHEDULED";
       const isStillActive = sub.status === "ACTIVE" && new Date(sub.endDate) > new Date();
       const planName = sub.commercialSnapshot?.planName || sub.planName || "MavenJobs Plan";
       const resolvedPlanType =
@@ -3054,6 +3078,7 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
         (sub.commercialSnapshot?.pricePaid === 0 ? "FREE" : "SMB");
       const payment = paymentByOrderId.get(String(sub.orderId));
       const displayTxId = payment?.gatewayPaymentId || (sub.orderId ? `MJ-ORD-${String(sub.orderId).slice(-6).toUpperCase()}` : `SUB-${String(sub._id).slice(-8).toUpperCase()}`);
+      const resolvedStatus = isScheduled ? "SCHEDULED" : (isStillActive ? "ACTIVE" : (sub.status || "EXPIRED"));
 
       subscriptions.push({
         id: String(sub._id),
@@ -3063,7 +3088,11 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
         date: formatDate(sub.startDate),
         amountPaid: sub.commercialSnapshot?.pricePaid || 0,
         amountFormatted: (sub.commercialSnapshot?.pricePaid || 0) > 0 ? `₹ ${Number(sub.commercialSnapshot.pricePaid).toLocaleString("en-IN")}` : "Free Plan",
-        status: isStillActive ? "ACTIVE" : (sub.status || "EXPIRED"),
+        status: resolvedStatus,
+        isScheduled,
+        scheduledStartDate: isScheduled ? formatDate(sub.startDate) : null,
+        startDateIso: sub.startDate,
+        endDateIso: sub.endDate,
         products: (sub.entitlementSnapshot && sub.entitlementSnapshot.length > 0)
           ? sub.entitlementSnapshot.map((item, idx) => {
               let pName = item.productName || item.productCode;
@@ -3077,7 +3106,7 @@ exports.getSubscriptions = asyncHandler(async (req, res) => {
                 id: `prod-ent-${sub._id}-${idx}`,
                 name: `${pName} (${item.quantity} ${item.unit || "Units"})`,
                 validity: `From ${formatDate(sub.startDate)} to ${formatDate(item.expiryDate || sub.endDate)}`,
-                status: isStillActive ? "ACTIVE" : "EXPIRED",
+                status: isScheduled ? "SCHEDULED" : (isStillActive ? "ACTIVE" : "EXPIRED"),
               };
             })
           : [
@@ -3377,11 +3406,11 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   const pkg = company.planSnapshot ? null : await Package.findOne({ name: company.packageType || "STANDARD" });
   
   const credit = await Credit.findOne({ companyId: company._id }).lean();
-  let actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
+  let actualFullCvTotal = company.planSnapshot ? 0 : Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
   let fullNviteTotal = company.planSnapshot ? 0 : (company.nviteLimit || pkg?.nviteLimit || 0);
 
   if (company.planSnapshot && Array.isArray(company.planSnapshot.services)) {
-    actualFullCvTotal = credit?.lifetimePurchased || 0;
+    actualFullCvTotal = 0;
     fullNviteTotal = 0;
     for (const s of company.planSnapshot.services) {
       const code = String(s.productCode || "").toUpperCase();
@@ -3406,11 +3435,19 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
   startOfWeek.setHours(0,0,0,0);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const currentPlanStartDate = company.planSnapshot?.startDate ? new Date(company.planSnapshot.startDate) : null;
+
   let dateFilter = {};
   if (allocationPolicy === "weekly") {
-    dateFilter = { createdAt: { $gte: startOfWeek } };
+    const filterStart = currentPlanStartDate ? new Date(Math.max(startOfWeek.getTime(), currentPlanStartDate.getTime())) : startOfWeek;
+    dateFilter = { createdAt: { $gte: filterStart } };
   } else if (allocationPolicy === "monthly") {
-    dateFilter = { createdAt: { $gte: startOfMonth } };
+    const filterStart = currentPlanStartDate ? new Date(Math.max(startOfMonth.getTime(), currentPlanStartDate.getTime())) : startOfMonth;
+    dateFilter = { createdAt: { $gte: filterStart } };
+  } else {
+    if (currentPlanStartDate) {
+      dateFilter = { createdAt: { $gte: currentPlanStartDate } };
+    }
   }
 
   // CV Access
@@ -3459,12 +3496,13 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
     nviteUsedByYou = nviteYouAgg[0]?.sum || 0;
   }
 
-  // Job Postings by category
+  // Job Postings by category scoped to current plan
+  const jobDateFilter = currentPlanStartDate ? { createdAt: { $gte: currentPlanStartDate } } : {};
   const [smbActiveCount, hotActiveCount, internshipActiveCount, standardActiveCount] = await Promise.all([
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" }),
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot" }),
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship" }),
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management", ...jobDateFilter }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot", ...jobDateFilter }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship", ...jobDateFilter }),
+    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] }, ...jobDateFilter }),
   ]);
 
   let smbUsedByYou = 0;
@@ -3474,10 +3512,10 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
 
   if (isRecruiter) {
     const [smbYou, hotYou, internYou, stdYou] = await Promise.all([
-      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "management" }),
-      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "hot" }),
-      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "internship" }),
-      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "management", ...jobDateFilter }),
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "hot", ...jobDateFilter }),
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: "internship", ...jobDateFilter }),
+      Job.countDocuments({ companyId: company._id, createdByClient: req.user._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] }, ...jobDateFilter }),
     ]);
     smbUsedByYou = smbYou;
     hotUsedByYou = hotYou;
@@ -3738,8 +3776,18 @@ exports.getQuotaUsage = asyncHandler(async (req, res) => {
 });
 
 exports.getQuotaManagement = asyncHandler(async (req, res) => {
-  const { company } = await resolveClientUserAndCompany(req.user._id);
+  const { company: initialCompany } = await resolveClientUserAndCompany(req.user._id);
   const now = new Date();
+
+  // Real-time synchronization of scheduled activations & live entitlements to ensure zero stale credits
+  try {
+    const PurchaseService = require("../services/commercial/purchase.service");
+    await PurchaseService.activateScheduledSubscriptions(initialCompany._id);
+    await PurchaseService.syncCompanyPlanSnapshotWithActiveEntitlements(initialCompany._id);
+  } catch (_) {}
+
+  const freshCompany = await Company.findById(initialCompany._id);
+  const company = freshCompany || initialCompany;
 
   const Credit = require("../models/Credit");
   const PaidResume = require("../models/PaidResume");
@@ -3748,27 +3796,24 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
   const Job = require("../models/Job");
   const AiUsageLog = require("../models/AiUsageLog");
 
-  // Only query legacy package if company has NO planSnapshot
-  const pkg = company.planSnapshot ? null : await Package.findOne({ name: company.packageType || "STANDARD" });
-  
-  const credit = await Credit.findOne({ companyId: company._id }).lean();
-  let actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
-  const actualFullCvUsed = await PaidResume.countDocuments({ companyId: company._id });
-
-  let fullNviteTotal = pkg?.nviteLimit || 0;
-  const nviteAllAgg = await Nvite.aggregate([
-    { $match: { companyId: company._id } },
-    { $group: { _id: null, sum: { $sum: "$totalCount" } } }
-  ]);
-  const fullNviteUsed = nviteAllAgg[0]?.sum || 0;
-
   // Commercial Plan Snapshot & Services
   const planSnapshot = company.planSnapshot || null;
   const planServices = Array.isArray(planSnapshot?.services) ? planSnapshot.services : [];
 
+  const currentPlanStartDate = planSnapshot?.startDate ? new Date(planSnapshot.startDate) : null;
+  const currentPlanFilter = currentPlanStartDate ? { createdAt: { $gte: currentPlanStartDate } } : {};
+
+  const companyPlanEndDate = planSnapshot?.endDate || company.packageExpiresAt;
+  const isPlanExpired = Boolean(
+    (companyPlanEndDate && new Date(companyPlanEndDate) < now) ||
+    company.commercialStatus === "EXPIRED_GRACE" ||
+    company.commercialStatus === "EXPIRED_LOCKED"
+  );
+
+  let actualFullCvTotal = 0;
+  let fullNviteTotal = 0;
+
   if (planSnapshot) {
-    actualFullCvTotal = 0;
-    fullNviteTotal = 0;
     for (const s of planServices) {
       const code = String(s.productCode || "").toUpperCase();
       const cat = String(s.category || "").toUpperCase();
@@ -3783,9 +3828,40 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
         fullNviteTotal += (s.quantity || 0);
       }
     }
+  } else {
+    const pkg = await Package.findOne({ name: company.packageType || "STANDARD" });
+    const credit = await Credit.findOne({ companyId: company._id }).lean();
+    actualFullCvTotal = Math.max(pkg?.cvAccessLimit || 0, credit?.lifetimePurchased || 0);
+    fullNviteTotal = pkg?.nviteLimit || 0;
+  }
+
+  // Count usage strictly for current plan cycle — old plan usage never bleeds into new plan
+  const actualFullCvUsed = isPlanExpired
+    ? 0
+    : await PaidResume.countDocuments({ companyId: company._id, ...currentPlanFilter });
+
+  const nviteAllAgg = isPlanExpired
+    ? []
+    : await Nvite.aggregate([
+        { $match: { companyId: company._id, ...currentPlanFilter } },
+        { $group: { _id: null, sum: { $sum: "$totalCount" } } }
+      ]);
+  const fullNviteUsed = nviteAllAgg[0]?.sum || 0;
+
+  if (isPlanExpired) {
+    actualFullCvTotal = 0;
+    fullNviteTotal = 0;
   }
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay();
+  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+  startOfWeek.setDate(diff);
+  startOfWeek.setHours(0,0,0,0);
+
+  const monthlyStart = currentPlanStartDate ? new Date(Math.max(startOfMonth.getTime(), currentPlanStartDate.getTime())) : startOfMonth;
+  const weeklyStart = currentPlanStartDate ? new Date(Math.max(startOfWeek.getTime(), currentPlanStartDate.getTime())) : startOfWeek;
 
   const CompanySubUser = require("../models/CompanySubUser");
 
@@ -3814,12 +3890,12 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
     activeResdexSeats,
     activeJobBoosterSeats
   ] = await Promise.all([
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management" }),
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot" }),
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship" }),
-    Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] } }),
+    isPlanExpired ? 0 : Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "management", ...currentPlanFilter }),
+    isPlanExpired ? 0 : Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "hot", ...currentPlanFilter }),
+    isPlanExpired ? 0 : Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: "internship", ...currentPlanFilter }),
+    isPlanExpired ? 0 : Job.countDocuments({ companyId: company._id, isActive: true, jobCategory: { $nin: ["management", "hot", "internship"] }, ...currentPlanFilter }),
     AiUsageLog.aggregate([
-      { $match: { companyId: company._id, status: "SUCCESS", createdAt: { $gte: startOfMonth } } },
+      { $match: { companyId: company._id, status: "SUCCESS", createdAt: { $gte: monthlyStart } } },
       { $group: { _id: null, sum: { $sum: "$creditsUsed" } } }
     ]),
     CompanySubUser.countDocuments({ companyId: company._id, "permissions.jobPosting": true }),
@@ -3832,8 +3908,8 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
     const code = String(s.productCode || "").toUpperCase();
     const cat = String(s.category || "").toUpperCase();
     const unitStr = String(s.unit || "").toLowerCase();
-    const total = Number(s.quantity || 0);
-    let used = Number(s.usedQuantity || 0);
+    const total = isPlanExpired ? 0 : Number(s.quantity || 0);
+    let used = isPlanExpired ? 0 : Number(s.usedQuantity || 0);
 
     const isSeat = code.includes("SEAT") || cat === "USER_SEATS" || unitStr.includes("seat");
     const isJobPostingSeat = isSeat && (code === "JOB_POSTING_SEAT" || code.includes("JOB"));
@@ -3845,7 +3921,9 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
     const isResdex = !isSeat && (code.includes("CV") || code.includes("RESDEX") || cat === "RESUME_SEARCH");
     const isNvite = !isSeat && (code.includes("NVITE") || code.includes("MIVITE") || cat === "MIVITES");
 
-    if (isJobPostingSeat) {
+    if (isPlanExpired) {
+      used = 0;
+    } else if (isJobPostingSeat) {
       used = activeJobPostingSeats;
     } else if (isResdexSeat) {
       used = activeResdexSeats;
@@ -3867,17 +3945,17 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
       used = Math.max(used, fullNviteUsed);
     }
 
-    const remaining = Math.max(0, total - used);
-    const percentUsed = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+    const remaining = isPlanExpired ? 0 : Math.max(0, total - used);
+    const percentUsed = (!isPlanExpired && total > 0) ? Math.min(100, Math.round((used / total) * 100)) : 0;
 
-    let serviceValidity = s.validity;
+    let serviceValidity = isPlanExpired ? 0 : s.validity;
     let serviceValidityUnit = s.validityUnit || "DAYS";
 
-    if (planSnapshot && planSnapshot.validity && (isJob || isResdex || isNvite || isSeat)) {
+    if (!isPlanExpired && planSnapshot && planSnapshot.validity && (isJob || isResdex || isNvite || isSeat)) {
       // Allocated on full cycle of plan days
       serviceValidity = planSnapshot.validity;
       serviceValidityUnit = planSnapshot.validityUnit || "DAYS";
-    } else if (isAi) {
+    } else if (!isPlanExpired && isAi) {
       // Monthly cycle - no carry forward
       serviceValidity = 30;
       serviceValidityUnit = "DAYS";
@@ -3955,23 +4033,17 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
       }
     }
   } catch (_) {}
-  
-  const startOfWeek = new Date(now);
-  const day = startOfWeek.getDay();
-  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-  startOfWeek.setDate(diff);
-  startOfWeek.setHours(0,0,0,0);
 
-  const monthlyCvUsed = await PaidResume.countDocuments({ companyId: company._id, createdAt: { $gte: startOfMonth } });
-  const monthlyNviteAgg = await Nvite.aggregate([
-    { $match: { companyId: company._id, createdAt: { $gte: startOfMonth } } },
+  const monthlyCvUsed = isPlanExpired ? 0 : await PaidResume.countDocuments({ companyId: company._id, createdAt: { $gte: monthlyStart } });
+  const monthlyNviteAgg = isPlanExpired ? [] : await Nvite.aggregate([
+    { $match: { companyId: company._id, createdAt: { $gte: monthlyStart } } },
     { $group: { _id: null, sum: { $sum: "$totalCount" } } }
   ]);
   const monthlyNviteUsed = monthlyNviteAgg[0]?.sum || 0;
 
-  const weeklyCvUsed = await PaidResume.countDocuments({ companyId: company._id, createdAt: { $gte: startOfWeek } });
-  const weeklyNviteAgg = await Nvite.aggregate([
-    { $match: { companyId: company._id, createdAt: { $gte: startOfWeek } } },
+  const weeklyCvUsed = isPlanExpired ? 0 : await PaidResume.countDocuments({ companyId: company._id, createdAt: { $gte: weeklyStart } });
+  const weeklyNviteAgg = isPlanExpired ? [] : await Nvite.aggregate([
+    { $match: { companyId: company._id, createdAt: { $gte: weeklyStart } } },
     { $group: { _id: null, sum: { $sum: "$totalCount" } } }
   ]);
   const weeklyNviteUsed = weeklyNviteAgg[0]?.sum || 0;
@@ -3995,6 +4067,7 @@ exports.getQuotaManagement = asyncHandler(async (req, res) => {
         nvite: { total: fullNviteTotal, used: fullNviteUsed },
       },
       plan: planSnapshot,
+      scheduledPlan: company.scheduledPlan || null,
       services: enrichedServices,
       company: {
         id: company._id,

@@ -48,6 +48,8 @@ const creditLedgerSchema = new mongoose.Schema(
         "EXPIRED",
         "PLAN_RENEWAL",
         "PLAN_UPGRADE",
+        "PLAN_DOWNGRADE",
+        "RENEWAL_EXTENSION_ROLLOVER",
       ],
       index: true,
     },

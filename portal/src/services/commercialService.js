@@ -69,6 +69,18 @@ const commercialService = {
     return res.data;
   },
 
+  classifyTransition: async ({ planId, versionId }) => {
+    try {
+      const res = await api.get("/company-panel/commercial/classify-transition", {
+        params: { planId, versionId },
+      });
+      return res.data?.data || null;
+    } catch (err) {
+      console.warn("[commercialService] classifyTransition error:", err);
+      return null;
+    }
+  },
+
   submitSalesInquiry: async (payload) => {
     const res = await api.post("/company-panel/commercial/contact-sales", payload);
     return res.data;
