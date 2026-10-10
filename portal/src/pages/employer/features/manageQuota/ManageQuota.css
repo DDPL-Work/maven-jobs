@@ -1030,3 +1030,388 @@
   margin: 2px 4px 2px 0;
 }
 
+/* ==========================================================================
+   RESPONSIVE DESIGN BREAKPOINTS FOR ALL SCREENS & TABLES
+   ========================================================================== */
+
+/* Tablet & Intermediate Screens (<= 1024px) */
+@media (max-width: 1024px) {
+  .mq-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mq-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+/* Tablets (<= 768px) */
+@media (max-width: 768px) {
+  .mq-container {
+    padding: 16px 14px 40px;
+  }
+
+  .mq-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin: 14px 0 18px;
+  }
+
+  .mq-title {
+    font-size: 22px;
+  }
+
+  .mq-subtitle {
+    font-size: 13px;
+  }
+
+  .mq-header-actions {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+  }
+
+  .mq-header-actions .mq-btn-outline {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 12px;
+    font-size: 12.5px;
+  }
+
+  .mq-plan-banner {
+    padding: 18px 20px;
+    border-radius: 14px;
+    gap: 14px;
+  }
+
+  .mq-plan-banner-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .mq-plan-banner-chips {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mq-card {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+
+  .mq-services-card {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+
+  .mq-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  /* Table Horizontal Scrolling with Smooth Inertia on Tablets */
+  .mq-table-wrapper {
+    border-radius: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mq-table {
+    min-width: 580px;
+  }
+
+  .mq-services-table {
+    min-width: 680px;
+  }
+
+  .mq-allocation-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .mq-btn-save-settings {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mq-footer-tip {
+    text-align: center;
+  }
+}
+
+/* Mobile Screens (<= 640px): Responsive Table Transformation */
+@media (max-width: 640px) {
+  .mq-container {
+    padding: 12px 10px 36px;
+  }
+
+  .mq-title {
+    font-size: 20px;
+  }
+
+  .mq-subtitle {
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .mq-stat-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .mq-stat-value {
+    font-size: 22px;
+  }
+
+  .mq-plan-banner-name {
+    font-size: 18px;
+    flex-wrap: wrap;
+  }
+
+  .mq-plan-banner-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mq-plan-banner-sub {
+    font-size: 12px;
+  }
+
+  .mq-plan-chip {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .mq-plan-banner-footer {
+    font-size: 11.5px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* --- Quota Allocation Table: Mobile Card Adaptation --- */
+  .mq-table-wrapper {
+    overflow-x: visible;
+    border: none;
+    background: transparent;
+  }
+
+  .mq-table {
+    min-width: 0 !important;
+    display: block;
+    width: 100%;
+  }
+
+  .mq-table thead {
+    display: none; /* Hide tabular header on small mobile screens */
+  }
+
+  .mq-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .mq-table .mq-tr {
+    display: block;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 14px 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .mq-table .mq-td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #f1f5f9;
+    text-align: right !important;
+    font-size: 13px;
+  }
+
+  .mq-table .mq-td:last-child {
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+
+  .mq-table .mq-td[data-label="Resource"] {
+    display: block;
+    border-bottom: 1px solid #e2e8f0;
+    padding-top: 0;
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+    text-align: left !important;
+  }
+
+  .mq-table .mq-td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+    margin-right: 12px;
+    text-align: left;
+  }
+
+  .mq-table .mq-td[data-label="Resource"]::before {
+    display: none;
+  }
+
+  .mq-metric-title-cell {
+    gap: 10px;
+  }
+
+  .mq-metric-name {
+    font-size: 14px;
+  }
+
+  .mq-metric-helper {
+    font-size: 11.5px;
+    line-height: 1.35;
+  }
+
+  .mq-inline-input {
+    width: 95px;
+    font-size: 13px;
+    padding: 4px 6px;
+  }
+
+  /* --- Resdex Usage Breakdown Table on Mobile --- */
+  .mq-usage-card .mq-table-wrapper {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    overflow-x: auto;
+  }
+
+  .mq-usage-table {
+    width: 100%;
+    min-width: 280px;
+  }
+
+  .mq-th-usage, .mq-usage-td {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  /* --- Services & Entitlements Table: Mobile Card Adaptation --- */
+  .mq-services-section .mq-table-wrapper {
+    overflow-x: visible;
+    border: none;
+    background: transparent;
+  }
+
+  .mq-services-table {
+    min-width: 0 !important;
+    display: block;
+    width: 100%;
+  }
+
+  .mq-services-table thead {
+    display: none; /* Hide header rows in mobile card view */
+  }
+
+  .mq-services-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .mq-services-tr {
+    display: block;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 14px 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .mq-services-td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #f1f5f9;
+    text-align: right !important;
+    font-size: 13px;
+  }
+
+  .mq-services-td:last-child {
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+
+  .mq-services-td[data-label="Product & SKU"] {
+    display: block;
+    border-bottom: 1px solid #e2e8f0;
+    padding-top: 0;
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+    text-align: left !important;
+  }
+
+  .mq-services-td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 11.5px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+    margin-right: 12px;
+    text-align: left;
+  }
+
+  .mq-services-td[data-label="Product & SKU"]::before {
+    display: none;
+  }
+
+  .mq-mini-progress {
+    width: 75px;
+    display: inline-block;
+    margin-left: 8px;
+    vertical-align: middle;
+    margin-top: 0;
+  }
+}
+
+/* Small Handheld & Fold Devices (<= 380px) */
+@media (max-width: 380px) {
+  .mq-container {
+    padding: 10px 8px 30px;
+  }
+
+  .mq-title {
+    font-size: 19px;
+  }
+
+  .mq-card {
+    padding: 14px 12px;
+  }
+
+  .mq-header-actions {
+    flex-direction: column;
+  }
+
+  .mq-header-actions .mq-btn-outline {
+    width: 100%;
+  }
+
+  .mq-stat-value {
+    font-size: 20px;
+  }
+
+  .mq-stat-total {
+    font-size: 11.5px;
+  }
+}
+
+

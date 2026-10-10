@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiArrowRight, FiX, FiLock, FiClock, FiCalendar } from 'react-icons/fi';
 import api from '../../services/api';
+import './PlanExpiryBanner.css';
 
 export default function PlanExpiryBanner() {
   const navigate = useNavigate();
@@ -247,74 +248,43 @@ export default function PlanExpiryBanner() {
 
   const theme = isYellow ? yellowTheme : redTheme;
 
+  const cssVars = {
+    '--peb-gradient': theme.gradient,
+    '--peb-border': theme.border,
+    '--peb-text': theme.text,
+    '--peb-shadow': theme.shadow,
+    '--peb-pill-bg': theme.pillBg,
+    '--peb-pill-border': theme.pillBorder,
+    '--peb-pill-text': theme.pillText,
+    '--peb-dot-bg': theme.dotBg,
+    '--peb-badge-bg': theme.badgeBg,
+    '--peb-badge-border': theme.badgeBorder,
+    '--peb-badge-text': theme.badgeText,
+    '--peb-badge-highlight': theme.badgeHighlight,
+    '--peb-btn-bg': theme.btnBg,
+    '--peb-btn-hover': theme.btnHover,
+    '--peb-btn-shadow': theme.btnShadow,
+    '--peb-cancel-border': theme.cancelBorder,
+    '--peb-cancel-color': theme.cancelColor,
+    '--peb-cancel-hover-bg': theme.cancelHoverBg,
+  };
+
   return (
-    <div
-      style={{
-        width: '100%',
-        background: theme.gradient,
-        borderBottom: `1px solid ${theme.border}`,
-        color: theme.text,
-        fontSize: '13px',
-        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-        boxSizing: 'border-box',
-        zIndex: 250,
-        position: 'relative',
-        boxShadow: theme.shadow,
-        transition: 'all 0.2s ease',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          padding: '7px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          flexWrap: 'wrap',
-          minHeight: '42px',
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* Left Side: Live Status Dot, Plan Name & Exact Expiry Date */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          {/* Status Badge with Live Pulsing Dot */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '3px 9px',
-              borderRadius: '16px',
-              backgroundColor: theme.pillBg,
-              border: `1px solid ${theme.pillBorder}`,
-              color: theme.pillText,
-              fontWeight: 700,
-              fontSize: '11px',
-              letterSpacing: '0.4px',
-              textTransform: 'uppercase',
-              flexShrink: 0,
-            }}
-          >
-            {/* <span
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: theme.dotBg,
-                display: 'inline-block',
-                boxShadow: `0 0 0 2px ${theme.pillBg}`,
-              }}
-            /> */}
+    <div className="peb-wrapper" style={cssVars}>
+      <div className="peb-container">
+        {/* Left Side: Status Badge, Live Indicator & Description Message */}
+        <div className="peb-left">
+          <div className="peb-status-badge">
+            <span className="peb-status-dot" />
             <span>{isYellow ? 'Expiring Soon' : isLocked ? 'Access Locked' : 'Plan Expired'}</span>
           </div>
 
-          {/* Description Text with Exact Expiry Date */}
-          <div style={{ fontSize: '13px', lineHeight: 1.4, color: theme.text }}>
+          <div className="peb-message">
             {isYellow ? (
               <span>
                 Your <strong>{expiryData.planName}</strong> validity expires on{' '}
-                <strong>{formattedDate}{formattedTime ? ` at ${formattedTime}` : ''}</strong>.
+                <strong>{formattedDate}</strong>
+                {formattedTime && <span className="peb-time-detail">{` at ${formattedTime}`}</span>}.
               </span>
             ) : isLocked ? (
               <span>
@@ -322,146 +292,58 @@ export default function PlanExpiryBanner() {
               </span>
             ) : (
               <span>
-                Your <strong>{expiryData.planName}</strong> has expired. Read-only grace window active (<strong>{graceDaysRemaining} days remaining</strong>).
+                Your <strong>{expiryData.planName}</strong> has expired. Read-only grace active (<strong>{graceDaysRemaining}d remaining</strong>).
               </span>
             )}
           </div>
         </div>
 
         {/* Right Side: Live Digital Countdown + Action Button + Dismiss Button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <div className="peb-right">
           {/* Live Ticking Countdown Pill */}
           {isYellow && (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                backgroundColor: '#FFFFFF',
-                border: `1px solid ${theme.badgeBorder}`,
-                borderRadius: '6px',
-                padding: '3px 8px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                fontFamily: "'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace",
-                fontSize: '12px',
-                fontWeight: 700,
-                color: theme.text,
-              }}
-              title="Live Countdown Timer"
-            >
-              <span
-                style={{
-                  fontFamily: "'Inter', sans-serif",
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: theme.badgeHighlight,
-                  marginRight: '4px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <FiClock size={12} style={{ color: theme.badgeHighlight }} />
-                <span>Ends in:</span>
+            <div className="peb-countdown" title="Live Countdown Timer">
+              <span className="peb-countdown-label">
+                <FiClock size={11} style={{ color: 'var(--peb-badge-highlight)' }} />
+                <span className="peb-countdown-text">Ends in:</span>
               </span>
-              <span style={{ padding: '2px 5px', borderRadius: '4px', background: '#FEF3C7', color: '#92400E' }}>
-                {pad(cdDays)}d
-              </span>
-              <span style={{ color: theme.badgeHighlight, fontWeight: 700, opacity: 0.7 }}>:</span>
-              <span style={{ padding: '2px 5px', borderRadius: '4px', background: '#FEF3C7', color: '#92400E' }}>
-                {pad(cdHours)}h
-              </span>
-              <span style={{ color: theme.badgeHighlight, fontWeight: 700, opacity: 0.7 }}>:</span>
-              <span style={{ padding: '2px 5px', borderRadius: '4px', background: '#FEF3C7', color: '#92400E' }}>
-                {pad(cdMinutes)}m
-              </span>
-              <span style={{ color: theme.badgeHighlight, fontWeight: 700, opacity: 0.7 }}>:</span>
-              <span style={{ padding: '2px 5px', borderRadius: '4px', background: '#FEF3C7', color: '#B45309' }}>
-                {pad(cdSeconds)}s
-              </span>
+              <span className="peb-countdown-unit">{pad(cdDays)}d</span>
+              <span className="peb-countdown-sep">:</span>
+              <span className="peb-countdown-unit">{pad(cdHours)}h</span>
+              <span className="peb-countdown-sep">:</span>
+              <span className="peb-countdown-unit">{pad(cdMinutes)}m</span>
+              <span className="peb-countdown-sep">:</span>
+              <span className="peb-countdown-unit">{pad(cdSeconds)}s</span>
             </div>
           )}
 
           {/* For Expired State: Show exact expiration date */}
           {isExpired && formattedDate && (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                backgroundColor: '#FFFFFF',
-                border: `1px solid ${theme.badgeBorder}`,
-                padding: '3px 8px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 500,
-                color: theme.badgeText,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-              }}
-            >
-              <FiCalendar size={12} style={{ color: theme.badgeHighlight }} />
+            <div className="peb-expired-date">
+              <FiCalendar size={11} style={{ color: 'var(--peb-badge-highlight)' }} />
               <span>Expired on:</span>
               <strong>{formattedDate}{formattedTime ? ` • ${formattedTime}` : ''}</strong>
             </div>
           )}
 
-          <button
-            onClick={() => navigate('/buy-online?renew=true')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: theme.btnBg,
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '6px 14px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: theme.btnShadow,
-              transition: 'all 0.15s ease',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme.btnHover;
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme.btnBg;
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <span>Renew Plan</span>
-            <FiArrowRight size={13} />
-          </button>
+          <div className="peb-right-actions">
+            <button
+              onClick={() => navigate('/buy-online?renew=true')}
+              className="peb-renew-btn"
+            >
+              <span>Renew Plan</span>
+              <FiArrowRight size={12} />
+            </button>
 
-          <button
-            onClick={handleDismiss}
-            title="Dismiss notice"
-            aria-label="Dismiss banner"
-            style={{
-              background: 'transparent',
-              border: `1px solid ${theme.cancelBorder}`,
-              cursor: 'pointer',
-              color: theme.cancelColor,
-              width: '26px',
-              height: '26px',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme.cancelHoverBg;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            <FiX size={15} />
-          </button>
+            <button
+              onClick={handleDismiss}
+              title="Dismiss notice"
+              aria-label="Dismiss banner"
+              className="peb-dismiss-btn"
+            >
+              <FiX size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

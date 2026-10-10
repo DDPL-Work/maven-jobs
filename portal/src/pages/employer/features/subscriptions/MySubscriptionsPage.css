@@ -573,7 +573,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Responsive Breakpoints (Tablet & Mobile)
+   Responsive Breakpoints (Desktop, Tablet & Mobile)
    ══════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
   .msp-container {
@@ -590,7 +590,7 @@
 
 @media (max-width: 768px) {
   .msp-container {
-    padding: 12px 12px 40px;
+    padding: 12px 14px 40px;
   }
   .msp-header-wrapper {
     margin-bottom: 16px;
@@ -603,18 +603,21 @@
   }
   .msp-tabs-bar {
     margin-bottom: 18px;
+    gap: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Card Header: Stacks cleanly without awkward wrapping */
   .msp-card-header {
-    padding: 16px;
+    padding: 16px 14px;
     flex-direction: column;
     align-items: stretch;
-    gap: 14px;
+    gap: 12px;
   }
   .msp-meta-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
     width: 100%;
   }
   .msp-card-actions {
@@ -626,26 +629,39 @@
     border-top: 1px dashed #e2e8f0;
   }
   .msp-invoice-btn {
-    padding: 4px 0;
+    padding: 6px 10px;
+    background-color: #eff6ff;
+    border-radius: 6px;
+    font-size: 12.5px;
   }
 
   /* Product details in accordion */
   .msp-accordion-body {
-    padding: 0 16px 16px 16px;
+    padding: 0 14px 16px 14px;
   }
   .msp-product-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     padding: 10px 12px;
   }
+  .msp-product-name {
+    font-size: 13px;
+  }
+  .msp-product-validity {
+    font-size: 11px;
+  }
   .msp-status-badge {
-    align-self: flex-start;
+    align-self: center;
+    padding: 3px 8px;
+    font-size: 10px;
   }
 
   /* Sidebar sales card */
   .msp-sales-card {
     padding: 18px 16px;
+    border-radius: 14px;
   }
 
   /* Toast floating responsive */
@@ -658,25 +674,49 @@
   }
 }
 
+@media (max-width: 520px) {
+  .msp-meta-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .msp-meta-item:last-child {
+    grid-column: span 2;
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px dashed #f1f5f9;
+  }
+}
+
 @media (max-width: 480px) {
   .msp-container {
-    padding: 8px 8px 30px;
+    padding: 10px 10px 32px;
   }
   .msp-page-title {
     font-size: 20px;
   }
-  .msp-meta-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
   .msp-meta-label {
-    font-size: 10.5px;
+    font-size: 10px;
   }
   .msp-meta-value {
-    font-size: 14px;
+    font-size: 13.5px;
   }
   .msp-meta-val-tx {
-    font-size: 15px;
+    font-size: 14.5px;
+  }
+  .msp-plan-type-pill {
+    padding: 2px 7px;
+    font-size: 11.5px;
+  }
+  .msp-product-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .msp-status-badge {
+    align-self: flex-start;
   }
   .msp-state-card {
     padding: 28px 16px;
@@ -687,5 +727,23 @@
     left: 10px;
     font-size: 12px;
     padding: 10px 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .msp-container {
+    padding: 8px 6px 24px;
+  }
+  .msp-page-title {
+    font-size: 18px;
+  }
+  .msp-card-header {
+    padding: 12px 10px;
+  }
+  .msp-accordion-body {
+    padding: 0 10px 14px 10px;
+  }
+  .msp-sales-card {
+    padding: 14px 12px;
   }
 }

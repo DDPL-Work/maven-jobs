@@ -1,0 +1,364 @@
+/* PlanExpiryBanner.css - Fully Responsive & Ultra-Compact Plan Expiry Notification */
+
+.peb-wrapper {
+  width: 100%;
+  background: var(--peb-gradient);
+  border-bottom: 1px solid var(--peb-border);
+  color: var(--peb-text);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
+  z-index: 250;
+  position: relative;
+  box-shadow: var(--peb-shadow);
+  transition: background 0.25s ease, border-color 0.25s ease;
+  overflow: hidden;
+}
+
+.peb-container {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 6px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  box-sizing: border-box;
+}
+
+/* Left Section: Status Badge + Description Message */
+.peb-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.peb-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2.5px 8px;
+  border-radius: 20px;
+  background-color: var(--peb-pill-bg);
+  border: 1px solid var(--peb-pill-border);
+  color: var(--peb-pill-text);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.peb-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--peb-dot-bg);
+  display: inline-block;
+  box-shadow: 0 0 0 2px var(--peb-pill-bg);
+  flex-shrink: 0;
+  animation: peb-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes peb-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+}
+
+.peb-message {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--peb-text);
+  min-width: 0;
+}
+
+.peb-message strong {
+  font-weight: 600;
+}
+
+/* Right Section: Live Countdown + Action Button + Dismiss Button */
+.peb-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Live Countdown Pill */
+.peb-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background-color: #ffffff;
+  border: 1px solid var(--peb-badge-border);
+  border-radius: 6px;
+  padding: 2.5px 7px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--peb-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.peb-countdown-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--peb-badge-highlight);
+  margin-right: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+}
+
+.peb-countdown-unit {
+  padding: 1.5px 4.5px;
+  border-radius: 3px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+}
+
+.peb-countdown-sep {
+  color: var(--peb-badge-highlight);
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+/* Expired Date Badge */
+.peb-expired-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4.5px;
+  background-color: #ffffff;
+  border: 1px solid var(--peb-badge-border);
+  padding: 2.5px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--peb-badge-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Renew Button */
+.peb-renew-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--peb-btn-bg);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--peb-btn-shadow);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.25;
+}
+
+.peb-renew-btn:hover {
+  background-color: var(--peb-btn-hover);
+  transform: translateY(-1px);
+}
+
+.peb-renew-btn:active {
+  transform: translateY(0);
+}
+
+/* Dismiss Close Button */
+.peb-dismiss-btn {
+  background: transparent;
+  border: 1px solid var(--peb-cancel-border);
+  cursor: pointer;
+  color: var(--peb-cancel-color);
+  width: 25px;
+  height: 25px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.peb-dismiss-btn:hover {
+  background-color: var(--peb-cancel-hover-bg);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   RESPONSIVE MEDIA QUERIES - Compact, Adaptive, Screen-Tailored
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Tablet & Smaller Laptops: <= 992px */
+@media (max-width: 992px) {
+  .peb-container {
+    padding: 5px 14px;
+    gap: 10px;
+  }
+
+  .peb-message {
+    font-size: 12px;
+  }
+
+  .peb-countdown-text {
+    display: none; /* Keeps clock icon, hides 'Ends in:' word to prevent clutter */
+  }
+}
+
+/* Tablets (Portrait) & Large Mobile: <= 768px */
+@media (max-width: 768px) {
+  .peb-container {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 5px 12px;
+    gap: 5px;
+    min-height: auto;
+  }
+
+  .peb-left {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .peb-status-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .peb-message {
+    font-size: 11.5px;
+    line-height: 1.3;
+    flex: 1 1 auto;
+  }
+
+  .peb-right {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .peb-right-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .peb-renew-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .peb-countdown {
+    padding: 2px 5px;
+    font-size: 11px;
+    gap: 2px;
+  }
+
+  .peb-countdown-unit {
+    padding: 1px 3.5px;
+    font-size: 10.5px;
+  }
+
+  .peb-expired-date {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .peb-dismiss-btn {
+    width: 23px;
+    height: 23px;
+  }
+}
+
+/* Small Mobile Screens: <= 480px */
+@media (max-width: 480px) {
+  .peb-container {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .peb-left {
+    gap: 5px;
+  }
+
+  .peb-status-badge {
+    font-size: 9.5px;
+    padding: 1.5px 5px;
+    letter-spacing: 0.2px;
+  }
+
+  .peb-status-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .peb-message {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .peb-time-detail {
+    display: none; /* Hide exact HH:MM on tiny screens to avoid 3rd line wrap */
+  }
+
+  .peb-countdown {
+    padding: 1.5px 4px;
+    font-size: 10px;
+    gap: 1.5px;
+  }
+
+  .peb-countdown-unit {
+    padding: 1px 2.5px;
+    font-size: 10px;
+  }
+
+  .peb-renew-btn {
+    padding: 3.5px 8px;
+    font-size: 10.5px;
+    gap: 3.5px;
+  }
+
+  .peb-expired-date {
+    font-size: 10px;
+    padding: 1.5px 4.5px;
+  }
+
+  .peb-dismiss-btn {
+    width: 21px;
+    height: 21px;
+  }
+}
+
+/* Ultra Small / Fold Devices: <= 360px */
+@media (max-width: 360px) {
+  .peb-countdown-unit:last-child,
+  .peb-countdown-sep:last-of-type {
+    display: none; /* Hide seconds on ultra-narrow screens to keep countdown on 1 row */
+  }
+}
