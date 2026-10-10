@@ -1,0 +1,647 @@
+/* ==========================================================================
+   Company Profile Page Styles — MavenJobs Theme
+   Fully Responsive for Desktop, Tablet, and Mobile
+   ========================================================================== */
+
+.cpp-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 24px 60px;
+  box-sizing: border-box;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #0f172a;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   State Wrappers (Loading & Error)
+   ───────────────────────────────────────────────────────────── */
+.cpp-state-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 60px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #64748b;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+}
+
+.cpp-error-card {
+  background: #fff5f5;
+  border-radius: 16px;
+  border: 1px solid #fed7d7;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #c53030;
+  text-align: center;
+}
+
+.cpp-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid #e2e8f0;
+  border-top-color: #002366;
+  animation: cppSpin 0.8s linear infinite;
+}
+
+@keyframes cppSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Success Banner
+   ───────────────────────────────────────────────────────────── */
+.cpp-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  padding: 12px 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  animation: cppFadeIn 0.2s ease;
+  word-break: break-word;
+}
+
+@keyframes cppFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Common Card Styling
+   ───────────────────────────────────────────────────────────── */
+.cpp-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 28px 32px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+  margin-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.cpp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 12px;
+}
+
+.cpp-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cpp-card-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.cpp-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cpp-edit-btn:hover {
+  background: #dbeafe;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Header Title Card
+   ───────────────────────────────────────────────────────────── */
+.cpp-header-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 28px 32px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+  margin-bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+.cpp-header-left {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cpp-header-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2563eb;
+  margin-bottom: 8px;
+}
+
+.cpp-header-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #002366;
+  font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.cpp-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.cpp-kyc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cpp-kyc-badge.approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.cpp-kyc-badge.pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.cpp-meta-text {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cpp-header-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.cpp-logo-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  border: 1.5px solid #c7d2fe;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cpp-logo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cpp-logo-initials {
+  font-size: 24px;
+  font-weight: 800;
+  color: #002366;
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+
+.cpp-logo-cam-btn {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #002366;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+  cursor: pointer;
+}
+
+.cpp-logo-cam-btn:hover {
+  transform: scale(1.08);
+}
+
+.cpp-logo-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Profile Row (Responsive Field Display)
+   ───────────────────────────────────────────────────────────── */
+.cpp-profile-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 6px 0;
+}
+
+.cpp-profile-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  text-align: right;
+  user-select: none;
+}
+
+.cpp-profile-value {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.cpp-profile-rows-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Plan & Services Entitlements Section
+   ───────────────────────────────────────────────────────────── */
+.cpp-plan-header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: #002366;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 35, 102, 0.15);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cpp-plan-header-action:hover {
+  background: #001a4d;
+  box-shadow: 0 4px 12px rgba(0, 35, 102, 0.25);
+}
+
+.cpp-plan-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+}
+
+.cpp-services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.cpp-service-box {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #ffffff;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.cpp-service-box:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Modals
+   ───────────────────────────────────────────────────────────── */
+.cpp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.cpp-modal-content {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  padding: 28px 28px 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+  animation: cppModalScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cppModalScale {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cpp-modal-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.cpp-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MEDIA QUERIES (RESPONSIVE BREAKPOINTS)
+   ───────────────────────────────────────────────────────────── */
+
+/* Tablet (max-width: 768px) */
+@media (max-width: 768px) {
+  .cpp-container {
+    padding: 16px 16px 48px;
+  }
+
+  .cpp-card,
+  .cpp-header-card {
+    padding: 20px 20px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+  }
+
+  .cpp-header-card {
+    gap: 16px;
+  }
+
+  .cpp-header-title {
+    font-size: 22px;
+  }
+
+  .cpp-profile-row {
+    grid-template-columns: 160px 1fr;
+    gap: 12px;
+  }
+}
+
+/* Mobile & Small Tablets (max-width: 640px) */
+@media (max-width: 640px) {
+  .cpp-header-card {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 18px 16px;
+  }
+
+  .cpp-header-left {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .cpp-header-title {
+    font-size: 22px;
+  }
+
+  .cpp-header-meta {
+    gap: 8px 10px;
+    margin-top: 10px;
+  }
+
+  .cpp-header-logo-section {
+    width: 100%;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+  }
+
+  .cpp-logo-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+
+  .cpp-logo-initials {
+    font-size: 20px;
+  }
+
+  /* ProfileRow collapses to vertical stack for maximum mobile readability */
+  .cpp-profile-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f8fafc;
+  }
+
+  .cpp-profile-row:last-child {
+    border-bottom: none;
+  }
+
+  .cpp-profile-label {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .cpp-profile-value {
+    font-size: 14px;
+    width: 100%;
+  }
+
+  /* Plan header card header stacks cleanly on mobile */
+  .cpp-card-header-plan {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .cpp-plan-header-action {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .cpp-modal-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Small Phones (max-width: 480px) */
+@media (max-width: 480px) {
+  .cpp-container {
+    padding: 12px 10px 40px;
+  }
+
+  .cpp-card,
+  .cpp-header-card {
+    padding: 16px 14px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+  }
+
+  .cpp-header-card {
+    gap: 14px;
+  }
+
+  .cpp-header-title {
+    font-size: 20px;
+  }
+
+  .cpp-header-logo-section {
+    padding: 10px 12px;
+    gap: 12px;
+  }
+
+  .cpp-logo-box {
+    width: 58px;
+    height: 58px;
+  }
+
+  .cpp-plan-meta-grid {
+    grid-template-columns: 1fr;
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .cpp-services-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cpp-modal-overlay {
+    padding: 12px;
+  }
+
+  .cpp-modal-content {
+    padding: 20px 16px 18px;
+    border-radius: 16px;
+    max-height: calc(100vh - 24px);
+  }
+
+  .cpp-modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .cpp-modal-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Extra Small (max-width: 360px) */
+@media (max-width: 360px) {
+  .cpp-container {
+    padding: 8px 6px 32px;
+  }
+
+  .cpp-card,
+  .cpp-header-card {
+    padding: 14px 10px;
+  }
+
+  .cpp-header-meta {
+    gap: 6px;
+  }
+
+  .cpp-header-logo-section {
+    padding: 8px 10px;
+    gap: 10px;
+  }
+
+  .cpp-logo-box {
+    width: 50px;
+    height: 50px;
+  }
+}

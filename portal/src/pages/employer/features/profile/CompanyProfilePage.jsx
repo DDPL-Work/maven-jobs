@@ -8,6 +8,7 @@ import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import EmployerBreadcrumb from '../../../../components/employer/EmployerBreadcrumb';
 import { useEmployerAuth } from '../../../../hooks/useEmployerAuth';
 import authService from '../../../../services/authService';
+import './CompanyProfilePage.css';
 
 export default function CompanyProfilePage() {
   const { session } = useEmployerAuth();
@@ -260,38 +261,15 @@ export default function CompanyProfilePage() {
   if (loading) {
     return (
       <EmployerLayout activeTab="company-profile">
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '40px 20px', textAlign: 'center' }}>
+        <div className="cpp-container">
           <EmployerBreadcrumb items={[
             { label: 'Employer Dashboard', path: '/employer-dashboard' },
             { label: 'Company Profile' },
           ]} />
-          <div style={{
-            background: '#ffffff',
-            borderRadius: 16,
-            border: '1px solid #e2e8f0',
-            padding: '70px 32px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 16,
-            color: '#64748b',
-          }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              border: '3px solid #e2e8f0',
-              borderTopColor: '#002366',
-              animation: 'spinProfile 0.8s linear infinite',
-            }} />
+          <div className="cpp-state-card">
+            <div className="cpp-spinner" />
             <span style={{ fontSize: 14.5, fontWeight: 600 }}>Fetching company details from database...</span>
           </div>
-          <style>{`
-            @keyframes spinProfile {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
         </div>
       </EmployerLayout>
     );
@@ -300,24 +278,12 @@ export default function CompanyProfilePage() {
   if (error || !profile) {
     return (
       <EmployerLayout activeTab="company-profile">
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '40px 20px' }}>
+        <div className="cpp-container">
           <EmployerBreadcrumb items={[
             { label: 'Employer Dashboard', path: '/employer-dashboard' },
             { label: 'Company Profile' },
           ]} />
-          <div style={{
-            background: '#fff5f5',
-            borderRadius: 16,
-            border: '1px solid #fed7d7',
-            padding: '40px 32px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 14,
-            color: '#c53030',
-            textAlign: 'center',
-          }}>
+          <div className="cpp-error-card">
             <FiAlertCircle size={32} />
             <span style={{ fontSize: 16, fontWeight: 700 }}>{error || 'Unable to load company profile'}</span>
             <button
@@ -352,7 +318,7 @@ export default function CompanyProfilePage() {
 
   return (
     <EmployerLayout activeTab="company-profile">
-      <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+      <div className="cpp-container">
         {/* Breadcrumb */}
         <EmployerBreadcrumb items={[
           { label: 'Employer Dashboard', path: '/employer-dashboard' },
@@ -361,121 +327,45 @@ export default function CompanyProfilePage() {
 
         {/* Success Banner */}
         {saveSuccess && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            color: '#065f46',
-            padding: '12px 18px',
-            borderRadius: 12,
-            marginBottom: 20,
-            fontSize: 14,
-            fontWeight: 600,
-            animation: 'fadeIn 0.2s ease',
-          }}>
+          <div className="cpp-success-banner">
             <FiCheck size={18} color="#059669" />
             <span>{saveSuccess}</span>
           </div>
         )}
 
         {/* Header Title Card */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
-          padding: '28px 32px',
-          boxShadow: '0 2px 10px rgba(15,23,42,0.03)',
-          marginBottom: 24,
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 20,
-        }}>
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 12.5,
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: '#2563eb',
-              marginBottom: 8,
-            }}>
+        <div className="cpp-header-card">
+          <div className="cpp-header-left">
+            <div className="cpp-header-tag">
               <FiBriefcase size={14} />
               Company Profile
             </div>
-            <h1 style={{
-              margin: 0,
-              fontSize: 26,
-              fontWeight: 800,
-              color: '#002366',
-              fontFamily: "'Bricolage Grotesque', 'DM Sans', sans-serif",
-              letterSpacing: '-0.02em',
-              lineHeight: 1.25,
-            }}>
+            <h1 className="cpp-header-title">
               {profile.companyName || 'Company Profile'}
             </h1>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: 12,
-              marginTop: 10,
-            }}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                background: isKycApproved ? '#dcfce7' : '#fef3c7',
-                color: isKycApproved ? '#15803d' : '#b45309',
-                padding: '4px 10px',
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 700,
-              }}>
+            <div className="cpp-header-meta">
+              <span className={`cpp-kyc-badge ${isKycApproved ? 'approved' : 'pending'}`}>
                 <FiCheckCircle size={12} /> {isKycApproved ? 'KYC Verified' : (profile.kycStatus || 'Pending Verification')}
               </span>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+              <span className="cpp-meta-text">
                 Client ID: {profile.clientId || '—'}
               </span>
-              <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+              <span className="cpp-meta-text">
                 • {profile.country || 'India'}
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="cpp-header-logo-section">
             <div style={{ position: 'relative' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 76,
-                height: 76,
-                borderRadius: 16,
-                background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)',
-                border: '1.5px solid #c7d2fe',
-                boxShadow: '0 4px 12px rgba(99,102,241,0.08)',
-                overflow: 'hidden',
-              }}>
+              <div className="cpp-logo-box">
                 {profile.logoUrl ? (
                   <img
                     src={profile.logoUrl}
                     alt={profile.companyName || 'Company'}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (
-                  <span style={{
-                    fontSize: 24,
-                    fontWeight: 800,
-                    color: '#002366',
-                    fontFamily: "'Bricolage Grotesque', sans-serif",
-                  }}>
+                  <span className="cpp-logo-initials">
                     {(profile.companyName || 'CO').slice(0, 2).toUpperCase()}
                   </span>
                 )}
@@ -489,30 +379,16 @@ export default function CompanyProfilePage() {
               />
               <button
                 type="button"
+                className="cpp-logo-cam-btn"
                 disabled={uploadingLogo}
                 onClick={() => logoInputRef.current?.click()}
                 title="Upload or Change Logo"
-                style={{
-                  position: 'absolute',
-                  bottom: -4,
-                  right: -4,
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  background: '#002366',
-                  color: '#ffffff',
-                  border: '2px solid #ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: uploadingLogo ? 'wait' : 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                }}
+                style={{ cursor: uploadingLogo ? 'wait' : 'pointer' }}
               >
                 <FiCamera size={13} />
               </button>
             </div>
-            <div>
+            <div className="cpp-logo-meta">
               <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
                 Company Logo
               </div>
@@ -553,59 +429,24 @@ export default function CompanyProfilePage() {
         </div>
 
         {/* 1. Account Details Card */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
-          padding: '28px 32px',
-          boxShadow: '0 2px 10px rgba(15,23,42,0.03)',
-          marginBottom: 24,
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 20,
-            paddingBottom: 14,
-            borderBottom: '1px solid #f1f5f9',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="cpp-card">
+          <div className="cpp-card-header">
+            <div className="cpp-card-title-group">
               <FiUser size={20} color="#002366" />
-              <h2 style={{
-                margin: 0,
-                fontSize: 18,
-                fontWeight: 800,
-                color: '#0f172a',
-                letterSpacing: '-0.01em',
-              }}>
+              <h2 className="cpp-card-title">
                 Account Details
               </h2>
             </div>
             <button
               onClick={handleOpenAccountModal}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                borderRadius: 8,
-                border: '1px solid #bfdbfe',
-                background: '#eff6ff',
-                color: '#2563eb',
-                fontSize: 13.5,
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#dbeafe'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#eff6ff'}
+              className="cpp-edit-btn"
             >
               <FiEdit2 size={13} />
               Edit
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="cpp-profile-rows-list">
             <ProfileRow label="Username" value={profile.username} />
             <ProfileRow label="Email for Communication" value={profile.communicationEmail} />
             <ProfileRow label="Mobile Number" value={profile.mobileNumber} />
@@ -613,59 +454,24 @@ export default function CompanyProfilePage() {
         </div>
 
         {/* 2. Company Details Card */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
-          padding: '28px 32px',
-          boxShadow: '0 2px 10px rgba(15,23,42,0.03)',
-          marginBottom: 24,
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 20,
-            paddingBottom: 14,
-            borderBottom: '1px solid #f1f5f9',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="cpp-card">
+          <div className="cpp-card-header">
+            <div className="cpp-card-title-group">
               <FiBriefcase size={20} color="#002366" />
-              <h2 style={{
-                margin: 0,
-                fontSize: 18,
-                fontWeight: 800,
-                color: '#0f172a',
-                letterSpacing: '-0.01em',
-              }}>
+              <h2 className="cpp-card-title">
                 Company Details
               </h2>
             </div>
             <button
               onClick={handleOpenCompanyModal}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                borderRadius: 8,
-                border: '1px solid #bfdbfe',
-                background: '#eff6ff',
-                color: '#2563eb',
-                fontSize: 13.5,
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#dbeafe'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#eff6ff'}
+              className="cpp-edit-btn"
             >
               <FiEdit2 size={13} />
               Edit
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="cpp-profile-rows-list">
             <ProfileRow label="Company Type" value={profile.companyType} />
             <ProfileRow label="Industry Type" value={profile.industryType} />
             <ProfileRow label="Contact Person" value={profile.contactPerson} />
@@ -679,7 +485,7 @@ export default function CompanyProfilePage() {
                     href={profile.websiteUrl.startsWith('http') ? profile.websiteUrl : `https://${profile.websiteUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: '#2563eb', textDecoration: 'none' }}
+                    style={{ color: '#2563eb', textDecoration: 'none', wordBreak: 'break-all' }}
                     onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                     onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                   >
@@ -694,7 +500,7 @@ export default function CompanyProfilePage() {
               label="Job Live Duration"
               value={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 800, color: '#059669', fontSize: 13.5 }}>
                       {profile.jobLiveDurationDays || 30} Days Live
                     </span>
@@ -710,7 +516,7 @@ export default function CompanyProfilePage() {
                       Candidate Portal Visibility
                     </span>
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                  <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.4 }}>
                     Hot Vacancy: {profile.jobLiveDurations?.hotVacancy || profile.jobLiveDurationDays || 30}d • SMB Job: {profile.jobLiveDurations?.smb || profile.jobLiveDurationDays || 30}d • Internship: {profile.jobLiveDurations?.internship || profile.jobLiveDurationDays || 30}d • Standard: {profile.jobLiveDurations?.standard || profile.jobLiveDurationDays || 30}d
                   </div>
                 </div>
@@ -723,64 +529,24 @@ export default function CompanyProfilePage() {
         </div>
 
         {/* 3. KYC Details Card */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
-          padding: '28px 32px',
-          boxShadow: '0 2px 10px rgba(15,23,42,0.03)',
-          marginBottom: 32,
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 20,
-            paddingBottom: 14,
-            borderBottom: '1px solid #f1f5f9',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="cpp-card" style={{ marginBottom: 32 }}>
+          <div className="cpp-card-header">
+            <div className="cpp-card-title-group">
               <FiShield size={20} color="#002366" />
-              <h2 style={{
-                margin: 0,
-                fontSize: 18,
-                fontWeight: 800,
-                color: '#0f172a',
-                letterSpacing: '-0.01em',
-              }}>
+              <h2 className="cpp-card-title">
                 KYC Details
               </h2>
             </div>
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              background: isKycApproved ? '#dcfce7' : '#fef3c7',
-              color: isKycApproved ? '#15803d' : '#b45309',
-              padding: '4px 12px',
-              borderRadius: 6,
-              fontSize: 12.5,
-              fontWeight: 800,
-              letterSpacing: '0.04em',
-            }}>
+            <span className={`cpp-kyc-badge ${isKycApproved ? 'approved' : 'pending'}`}>
               <FiCheckCircle size={13} /> {profile.kycStatus || 'PENDING'}
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="cpp-profile-rows-list">
             <ProfileRow
               label="KYC Status"
               value={
-                <span style={{
-                  display: 'inline-block',
-                  background: isKycApproved ? '#dcfce7' : '#fef3c7',
-                  color: isKycApproved ? '#15803d' : '#b45309',
-                  padding: '3px 10px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 800,
-                  letterSpacing: '0.04em',
-                }}>
+                <span className={`cpp-kyc-badge ${isKycApproved ? 'approved' : 'pending'}`}>
                   {profile.kycStatus || 'PENDING'}
                 </span>
               }
@@ -797,34 +563,12 @@ export default function CompanyProfilePage() {
         </div>
 
         {/* 4. Plan Entitlements & Services Card */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
-          padding: '28px 32px',
-          boxShadow: '0 2px 10px rgba(15,23,42,0.03)',
-          marginBottom: 32,
-        }}>
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            marginBottom: 20,
-            paddingBottom: 14,
-            borderBottom: '1px solid #f1f5f9',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="cpp-card" style={{ marginBottom: 32 }}>
+          <div className="cpp-card-header cpp-card-header-plan">
+            <div className="cpp-card-title-group">
               <FiLayers size={20} color="#002366" />
               <div>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: 18,
-                  fontWeight: 800,
-                  color: '#0f172a',
-                  letterSpacing: '-0.01em',
-                }}>
+                <h2 className="cpp-card-title">
                   Current Plan & Service Entitlements
                 </h2>
                 <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b' }}>
@@ -834,19 +578,7 @@ export default function CompanyProfilePage() {
             </div>
             <a
               href="/employer-dashboard/pricing"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '8px 16px',
-                borderRadius: 10,
-                background: '#002366',
-                color: '#ffffff',
-                fontSize: 13,
-                fontWeight: 700,
-                textDecoration: 'none',
-                boxShadow: '0 2px 8px rgba(0,35,102,0.15)',
-              }}
+              className="cpp-plan-header-action"
             >
               <span>Upgrade Plan & Add Services</span>
               <FiArrowRight size={14} />
@@ -854,15 +586,9 @@ export default function CompanyProfilePage() {
           </div>
 
           {/* Plan Meta Header */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 16,
+          <div className="cpp-plan-meta-grid" style={{
             background: isPaidPlan ? 'linear-gradient(135deg, #f0fdf4, #e0f2fe)' : '#f8fafc',
             border: isPaidPlan ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
-            borderRadius: 12,
-            padding: '16px 20px',
-            marginBottom: 20,
           }}>
             <div>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
@@ -915,14 +641,9 @@ export default function CompanyProfilePage() {
           </div>
 
           {/* Services & Feature Breakdown Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+          <div className="cpp-services-grid">
             {/* Job Posting Service */}
-            <div style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: 12,
-              padding: '16px 18px',
-              background: '#ffffff',
-            }}>
+            <div className="cpp-service-box">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Job Postings</span>
                 <span style={{ fontSize: 11, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 6 }}>
@@ -946,12 +667,7 @@ export default function CompanyProfilePage() {
             </div>
 
             {/* AI Credits Service */}
-            <div style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: 12,
-              padding: '16px 18px',
-              background: '#ffffff',
-            }}>
+            <div className="cpp-service-box">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>AI Operations</span>
                 <span style={{ fontSize: 11, fontWeight: 700, background: '#faf5ff', color: '#7e22ce', padding: '2px 8px', borderRadius: 6 }}>
@@ -975,12 +691,7 @@ export default function CompanyProfilePage() {
             </div>
 
             {/* Max CV Access Service */}
-            <div style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: 12,
-              padding: '16px 18px',
-              background: '#ffffff',
-            }}>
+            <div className="cpp-service-box">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Max CV Access</span>
                 <span style={{ fontSize: 11, fontWeight: 700, background: '#f0fdf4', color: '#15803d', padding: '2px 8px', borderRadius: 6 }}>
@@ -1000,12 +711,7 @@ export default function CompanyProfilePage() {
             </div>
 
             {/* Candidate Outreach Service */}
-            <div style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: 12,
-              padding: '16px 18px',
-              background: '#ffffff',
-            }}>
+            <div className="cpp-service-box">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Max NVite Credits</span>
                 <span style={{ fontSize: 11, fontWeight: 700, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 6 }}>
@@ -1029,21 +735,8 @@ export default function CompanyProfilePage() {
 
       {/* Edit Account Details Modal */}
       {editAccountModal && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 99999,
-          background: 'rgba(15,23,42,0.5)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 20,
-        }} onClick={() => !savingAccount && setEditAccountModal(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            background: '#ffffff',
-            borderRadius: 20,
-            maxWidth: 480,
-            width: '100%',
-            padding: '28px 28px 24px',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.2)',
-          }}>
+        <div className="cpp-modal-overlay" onClick={() => !savingAccount && setEditAccountModal(false)}>
+          <div className="cpp-modal-content" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#002366' }}>Edit Account Details</h3>
               <button
@@ -1099,7 +792,7 @@ export default function CompanyProfilePage() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <div className="cpp-modal-actions">
                 <button
                   type="button"
                   disabled={savingAccount}
@@ -1130,23 +823,8 @@ export default function CompanyProfilePage() {
 
       {/* Edit Company Details Modal */}
       {editCompanyModal && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 99999,
-          background: 'rgba(15,23,42,0.5)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 20,
-        }} onClick={() => !savingCompany && setEditCompanyModal(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            background: '#ffffff',
-            borderRadius: 20,
-            maxWidth: 540,
-            width: '100%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            padding: '28px 28px 24px',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.2)',
-          }}>
+        <div className="cpp-modal-overlay" onClick={() => !savingCompany && setEditCompanyModal(false)}>
+          <div className="cpp-modal-content" style={{ maxWidth: 540, maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#002366' }}>Edit Company Details</h3>
               <button
@@ -1168,7 +846,7 @@ export default function CompanyProfilePage() {
             )}
 
             <form onSubmit={handleSaveCompany}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div className="cpp-modal-grid-2">
                 <div>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>Company Type</label>
                   <input
@@ -1189,7 +867,7 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div className="cpp-modal-grid-2">
                 <div>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>Contact Person</label>
                   <input
@@ -1247,7 +925,7 @@ export default function CompanyProfilePage() {
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div className="cpp-modal-grid-2">
                 <div>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>Phone Number 1</label>
                   <input
@@ -1268,17 +946,7 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
 
-              {/* <div style={{ marginBottom: 22 }}>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>TAN Number</label>
-                <input
-                  type="text"
-                  value={companyForm.tanNumber}
-                  onChange={(e) => setCompanyForm({ ...companyForm, tanNumber: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: 13.5, boxSizing: 'border-box' }}
-                />
-              </div> */}
-
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <div className="cpp-modal-actions">
                 <button
                   type="button"
                   disabled={savingCompany}
@@ -1313,28 +981,11 @@ export default function CompanyProfilePage() {
 function ProfileRow({ label, value }) {
   const displayVal = value !== null && value !== undefined && value !== '' ? value : '—';
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'minmax(200px, 260px) 1fr',
-      gap: 16,
-      alignItems: 'baseline',
-      padding: '4px 0',
-    }}>
-      <div style={{
-        fontSize: 14,
-        fontWeight: 500,
-        color: '#64748b',
-        textAlign: 'right',
-        userSelect: 'none',
-      }}>
+    <div className="cpp-profile-row">
+      <div className="cpp-profile-label">
         {label}:
       </div>
-      <div style={{
-        fontSize: 14.5,
-        fontWeight: 600,
-        color: '#0f172a',
-        wordBreak: 'break-word',
-      }}>
+      <div className="cpp-profile-value">
         {displayVal}
       </div>
     </div>

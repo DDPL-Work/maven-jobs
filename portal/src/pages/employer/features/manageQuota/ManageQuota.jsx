@@ -731,7 +731,7 @@ export default function ManageQuota() {
                 <tbody>
                   {/* Row 1: Max CV Access */}
                   <tr className="mq-tr">
-                    <td className="mq-td font-medium">
+                    <td className="mq-td font-medium" data-label="Resource">
                       <div className="mq-metric-title-cell">
                         <div className="mq-metric-icon-small cv">
                           <FiLayers size={14} color="#002366" />
@@ -752,7 +752,7 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Total (Editable only in weekly & monthly and if credits > 0) */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label="Total" style={{ textAlign: 'right' }}>
                       {allocationPolicy !== 'full' && (policyAllocations.full?.cvAccess?.total || 0) > 0 && editDrafts.cvAccess !== null ? (
                         <div className="mq-inline-edit-box">
                           <input
@@ -804,7 +804,7 @@ export default function ManageQuota() {
 
                   {/* Row 2: Max NVite Credits */}
                   <tr className="mq-tr">
-                    <td className="mq-td font-medium">
+                    <td className="mq-td font-medium" data-label="Resource">
                       <div className="mq-metric-title-cell">
                         <div className="mq-metric-icon-small nvite">
                           <FiSend size={14} color="#0284c7" />
@@ -825,7 +825,7 @@ export default function ManageQuota() {
                     </td>
 
                     {/* Total (Editable only in weekly & monthly and if credits > 0) */}
-                    <td className="mq-td" style={{ textAlign: 'right' }}>
+                    <td className="mq-td" data-label="Total" style={{ textAlign: 'right' }}>
                       {allocationPolicy !== 'full' && (policyAllocations.full?.nvite?.total || 0) > 0 && editDrafts.nvite !== null ? (
                         <div className="mq-inline-edit-box">
                           <input
@@ -1031,7 +1031,7 @@ export default function ManageQuota() {
 
                       return (
                         <tr key={service._id || service.productCode} className="mq-services-tr">
-                          <td className="mq-services-td">
+                          <td className="mq-services-td" data-label="Product & SKU">
                             <div className="mq-prod-name">
                               <span>{formatServiceProductName(service)}</span>
                               {isSeat && (
@@ -1083,24 +1083,24 @@ export default function ManageQuota() {
                               </div>
                             )}
                           </td>
-                          <td className="mq-services-td">
+                          <td className="mq-services-td" data-label="Entitlement Quota">
                             <strong style={{ color: '#0f172a', fontSize: 13.5 }}>
                               {(service.total || 0).toLocaleString()} {service.total === 1 ? service.unit : (service.unit?.endsWith('s') ? service.unit : `${service.unit}s`)}
                             </strong>
                           </td>
-                          <td className="mq-services-td">
+                          <td className="mq-services-td" data-label="Utilization">
                             <span style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>{percent}%</span>
                             <div className="mq-mini-progress">
                               <div className="mq-mini-fill" style={{ width: `${percent}%` }} />
                             </div>
                           </td>
-                          <td className="mq-services-td" style={{ textAlign: 'right', color: '#64748b' }}>
+                          <td className="mq-services-td" data-label="Used" style={{ textAlign: 'right', color: '#64748b' }}>
                             <span className="mq-num-used">{(service.used || 0).toLocaleString()}</span>
                             {isSeat && (
                               <div style={{ fontSize: 11, color: '#64748b' }}>assigned</div>
                             )}
                           </td>
-                          <td className="mq-services-td" style={{ textAlign: 'right' }}>
+                          <td className="mq-services-td" data-label="Remaining Balance" style={{ textAlign: 'right' }}>
                             <span className="mq-num-balance" style={{ color: service.remaining > 0 ? '#047857' : '#dc2626' }}>
                               {(service.remaining || 0).toLocaleString()}
                             </span>
@@ -1108,7 +1108,7 @@ export default function ManageQuota() {
                               <div style={{ fontSize: 11, color: service.remaining > 0 ? '#047857' : '#dc2626' }}>available</div>
                             )}
                           </td>
-                          <td className="mq-services-td">
+                          <td className="mq-services-td" data-label="Validity">
                             {(() => {
                               if (isAi) {
                                 return (

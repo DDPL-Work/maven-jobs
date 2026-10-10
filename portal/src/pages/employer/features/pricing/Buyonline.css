@@ -2518,3 +2518,545 @@
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 35, 102, 0.25);
 }
+
+/* ==========================================================================
+   RESPONSIVE DESIGN SYSTEM — ALL DEVICES & PREMIUM MOBILE EXPERIENCE
+   ========================================================================== */
+
+/* Intermediate Tablets (<= 1024px) */
+@media (max-width: 1024px) {
+  .bo-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .bo-card {
+    padding: 24px 22px;
+    border-radius: 20px;
+  }
+}
+
+/* Tablets & Small Landscape (<= 768px) */
+@media (max-width: 768px) {
+  .bo-page-container {
+    padding: 20px 14px 48px;
+  }
+
+  .bo-hero-section {
+    margin-bottom: 28px;
+  }
+
+  .bo-hero-title {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .bo-hero-desc {
+    font-size: 14px;
+    margin-top: 10px;
+  }
+
+  .bo-category-nav {
+    margin-bottom: 24px;
+    gap: 6px;
+    padding-bottom: 8px;
+  }
+
+  .bo-cat-tab {
+    padding: 8px 16px;
+    font-size: 12.5px;
+  }
+
+  .bo-section {
+    margin-bottom: 40px;
+  }
+
+  .bo-section-header {
+    margin-bottom: 20px;
+  }
+
+  .bo-section-title {
+    font-size: 22px;
+  }
+
+  .bo-section-subtitle {
+    font-size: 13px;
+  }
+
+  .bo-grid-3,
+  .bo-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .bo-card {
+    padding: 20px 18px;
+    border-radius: 18px;
+  }
+
+  .bo-card:hover {
+    transform: none; /* Avoid jumping on touch scrolls */
+  }
+
+  /* Comparison Table on Tablets */
+  .bo-table-card {
+    padding: 20px 16px;
+    border-radius: 18px;
+    margin-bottom: 40px;
+  }
+
+  .bo-table-scroll {
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+  }
+
+  .bo-table th,
+  .bo-table td {
+    padding: 12px 10px;
+    font-size: 12px;
+  }
+
+  /* Modals on Tablets */
+  .bo-modal-box {
+    padding: 20px 18px;
+    border-radius: 18px;
+    margin: 12px;
+  }
+
+  .bo-plan-details-modal {
+    margin: 12px;
+    border-radius: 18px;
+  }
+
+  .bo-plan-details-header {
+    padding: 18px 20px;
+  }
+
+  .bo-plan-details-price-strip {
+    padding: 14px 20px;
+  }
+
+  .bo-plan-details-body {
+    padding: 16px 20px;
+  }
+
+  .bo-plan-details-footer {
+    padding: 14px 20px;
+  }
+}
+
+/* Mobile Devices (<= 640px) — Premium Compact Card Layout */
+@media (max-width: 640px) {
+  .bo-page-container {
+    padding: 14px 10px 40px;
+  }
+
+  .bo-hero-section {
+    margin-bottom: 22px;
+  }
+
+  .bo-hero-badge {
+    padding: 4px 12px;
+    font-size: 10.5px;
+    margin-bottom: 10px;
+  }
+
+  .bo-hero-title {
+    font-size: 22px;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+  }
+
+  .bo-hero-desc {
+    font-size: 13px;
+    line-height: 1.45;
+    margin-top: 8px;
+  }
+
+  /* Compact Category Navigation Bar */
+  .bo-category-nav {
+    margin-bottom: 20px;
+    gap: 6px;
+    padding-bottom: 6px;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bo-cat-tab {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .bo-section {
+    margin-bottom: 32px;
+  }
+
+  .bo-section-header {
+    margin-bottom: 16px;
+    text-align: left;
+    padding: 0 4px;
+  }
+
+  .bo-section-title {
+    font-size: 19px;
+  }
+
+  .bo-section-subtitle {
+    font-size: 12.5px;
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+
+  /* --- Premium Compact Cards for Mobile --- */
+  .bo-card {
+    padding: 16px 14px;
+    border-radius: 16px;
+    border-width: 1.5px;
+    gap: 0;
+    box-shadow: 0 2px 8px rgba(0, 35, 102, 0.04);
+  }
+
+  .bo-card-top-row {
+    margin-bottom: 8px;
+  }
+
+  .bo-card-sku-tag {
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  .bo-card-validity-tag {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .bo-card-ribbon {
+    top: -10px;
+    right: 14px;
+    font-size: 9px;
+    padding: 3px 10px;
+  }
+
+  .bo-card-title {
+    font-size: 18px;
+    line-height: 1.25;
+    margin-top: 2px;
+  }
+
+  .bo-card-subtitle {
+    font-size: 12px;
+    margin-top: 2px;
+    line-height: 1.35;
+  }
+
+  /* Streamline card description to avoid excessive height */
+  .bo-card-desc {
+    font-size: 11.5px;
+    line-height: 1.4;
+    min-height: auto;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Price Block: Compact, clean single row */
+  .bo-price-block {
+    margin-top: 10px;
+    margin-bottom: 12px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .bo-price-val {
+    font-size: 24px;
+  }
+
+  .bo-price-tax-note {
+    font-size: 10.5px;
+    margin-top: 2px;
+  }
+
+  /* Streamline features list on mobile — show essential items, hide excess clutter */
+  .bo-features-container {
+    margin-top: 6px;
+    margin-bottom: 14px;
+    gap: 7px;
+  }
+
+  .bo-feature-item {
+    font-size: 12px;
+    line-height: 1.35;
+    gap: 7px;
+  }
+
+  /* On mobile cards, keep the primary top 3 features clearly visible and compact */
+  .bo-feature-item:nth-child(n+5) {
+    display: none; /* Keep mobile card height ultra-compact; full details available via View Details button */
+  }
+
+  .bo-check-icon,
+  .bo-sparkle-icon {
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
+  }
+
+  /* Stepper Counter in Cards: Tightened for mobile */
+  .bo-stepper-container {
+    padding: 10px 12px;
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+
+  .bo-stepper-header {
+    margin-bottom: 8px;
+  }
+
+  .bo-stepper-label {
+    font-size: 10.5px;
+  }
+
+  .bo-stepper-subtotal-val {
+    font-size: 17px;
+  }
+
+  .bo-stepper-subtotal-label {
+    font-size: 10px;
+  }
+
+  .bo-stepper-controls {
+    gap: 8px;
+  }
+
+  .bo-stepper-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+
+  .bo-stepper-display {
+    height: 36px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+
+  .bo-stepper-input {
+    width: 44px;
+    font-size: 15px;
+  }
+
+  /* Action Buttons: Ergonomic touch-friendly */
+  .bo-card-actions-stack {
+    gap: 8px !important;
+  }
+
+  .bo-btn-buy,
+  .bo-btn-contact,
+  .bo-btn-view-details {
+    padding: 10px 16px;
+    font-size: 13px;
+    border-radius: 12px;
+    min-height: 42px;
+  }
+
+  .bo-btn-view-details {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  /* Enterprise Banner on Mobile */
+  .bo-enterprise-banner {
+    padding: 22px 18px;
+    border-radius: 20px;
+    margin-bottom: 36px;
+  }
+
+  .bo-enterprise-title {
+    font-size: 20px;
+    margin-top: 10px;
+  }
+
+  .bo-enterprise-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin-top: 8px;
+  }
+
+  .bo-enterprise-grid {
+    margin-top: 16px;
+    margin-bottom: 18px;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .bo-enterprise-actions {
+    margin-top: 20px;
+  }
+
+  .bo-btn-white {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 18px;
+    font-size: 13px;
+  }
+
+  /* --- Plan Comparison Table on Mobile: Beautiful Horizontal Scroll with Sticky First Column --- */
+  .bo-table-card {
+    padding: 16px 12px;
+    border-radius: 16px;
+    margin-bottom: 32px;
+    background: #ffffff;
+  }
+
+  .bo-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.02);
+  }
+
+  .bo-table {
+    min-width: 620px;
+    font-size: 12px;
+  }
+
+  .bo-table th {
+    padding: 12px 10px;
+    font-size: 12px;
+    background-color: #f8fafc;
+  }
+
+  .bo-table td {
+    padding: 11px 10px;
+  }
+
+  .bo-table-section-row td {
+    padding: 9px 10px;
+    font-size: 10.5px;
+    background-color: #eff6ff;
+    color: #002366;
+  }
+
+  /* FAQ Accordion on Mobile */
+  .bo-faq-container {
+    margin-bottom: 40px;
+  }
+
+  .bo-faq-btn {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+
+  .bo-faq-answer {
+    padding: 0 16px 14px 16px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* Checkout & Full Details Modals on Mobile */
+  .bo-modal-backdrop {
+    padding: 8px;
+    align-items: flex-end; /* Sheet appearance on phone */
+  }
+
+  .bo-modal-box {
+    padding: 18px 16px;
+    border-radius: 20px 20px 14px 14px;
+    max-height: 94vh;
+    overflow-y: auto;
+  }
+
+  .bo-modal-title {
+    font-size: 18px;
+  }
+
+  .bo-purchase-grid {
+    gap: 14px;
+  }
+
+  .bo-plan-details-modal {
+    border-radius: 20px 20px 14px 14px;
+    max-height: 94vh;
+  }
+
+  .bo-plan-details-header {
+    padding: 16px 16px;
+  }
+
+  .bo-plan-details-title {
+    font-size: 18px;
+  }
+
+  .bo-plan-details-price-strip {
+    padding: 12px 16px;
+  }
+
+  .bo-plan-strip-price-val {
+    font-size: 22px;
+  }
+
+  .bo-plan-details-body {
+    padding: 14px 14px;
+    max-height: 52vh;
+  }
+
+  .bo-plan-details-footer {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .bo-plan-details-footer-btns {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
+  .bo-plan-details-footer-btns button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Very Small Mobile / Fold Devices (<= 360px) */
+@media (max-width: 360px) {
+  .bo-hero-title {
+    font-size: 20px;
+  }
+
+  .bo-card {
+    padding: 14px 12px;
+  }
+
+  .bo-price-val {
+    font-size: 22px;
+  }
+
+  .bo-stepper-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .bo-stepper-display {
+    height: 32px;
+    font-size: 13px;
+  }
+
+  .bo-btn-buy,
+  .bo-btn-contact {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+}
+
