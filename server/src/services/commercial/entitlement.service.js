@@ -9,15 +9,20 @@ class EntitlementService {
   static async getCompanyEntitlements(companyId) {
     const now = new Date();
 
+    // Real-time check and activation for any due SCHEDULED subscriptions (Downgrade activation)
+    try {
+      const PurchaseService = require("./purchase.service");
+      await PurchaseService.activateScheduledSubscriptions(companyId);
+    } catch (_) {}
+
     try {
       const AiCreditService = require("./ai-credit.service");
       await AiCreditService.ensureMonthlyAllowance(companyId);
     } catch (_) {}
 
-    // Real-time check and activation for any due SCHEDULED subscriptions (Downgrade activation)
     try {
       const PurchaseService = require("./purchase.service");
-      await PurchaseService.activateScheduledSubscriptions(companyId);
+      await PurchaseService.syncCompanyPlanSnapshotWithActiveEntitlements(companyId);
     } catch (_) {}
 
     // Fetch active subscriptions

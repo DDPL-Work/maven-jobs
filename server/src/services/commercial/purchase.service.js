@@ -307,7 +307,19 @@ class PurchaseService {
       String(currentCompany?.planSnapshot?.planName || "").toUpperCase().includes("FREE") ||
       Number(currentActiveSub?.commercialSnapshot?.pricePaid || 0) === 0;
 
-    // If current plan is expired, there is no active subscription, OR transitioning from a free tier grant:
+    // Deterministic hierarchy check:
+    // If current plan is active and new plan tier is higher, it is an UPGRADE
+    if (!isCurrentPlanExpired && currentActiveSub && newRank > currentRank) {
+      return {
+        transitionType: "UPGRADE",
+        reason: `New plan (${newPlan.name}, tier ${newRank}) is higher than current plan (tier ${currentRank}). Starts immediately; credits stack with dual independent expiry dates.`,
+        isImmediate: true,
+        currentRank,
+        newRank,
+      };
+    }
+
+    // If current plan is expired, there is no active subscription, OR transitioning from a free tier grant without an upgrade:
     if (isCurrentPlanExpired || !currentActiveSub || isCurrentPlanFree) {
       return {
         transitionType: "FRESH_START",
@@ -506,6 +518,19 @@ class PurchaseService {
                 ? catalogProd.features
                 : (DEFAULT_PRODUCT_FEATURES[code] || []));
 
+        let itemValidityDays;
+        let itemExpiry;
+
+        if (isAiCredit) {
+          const sDate = new Date(scheduledStartDate);
+          const endOfMonth = new Date(sDate.getFullYear(), sDate.getMonth() + 1, 0, 23, 59, 59, 999);
+          itemExpiry = new Date(Math.min(endOfMonth.getTime(), scheduledEndDate.getTime()));
+          itemValidityDays = Math.max(1, Math.ceil((itemExpiry - sDate) / (1000 * 60 * 60 * 24)));
+        } else {
+          itemValidityDays = validityDays;
+          itemExpiry = scheduledEndDate;
+        }
+
         return {
           productId: item.productId,
           productCode: item.productCode,
@@ -514,9 +539,9 @@ class PurchaseService {
           basePlanQuantity: item.quantity,
           rolledOverQuantity: 0,
           unit: item.unit,
-          validityDays: isAiCredit ? 30 : validityDays,
+          validityDays: itemValidityDays,
           features: resolvedFeatures,
-          expiryDate: scheduledEndDate,
+          expiryDate: itemExpiry,
         };
       });
 
@@ -891,22 +916,9 @@ class PurchaseService {
       }
 
       // 2. Dual-batch architecture:
-      // Old non-AI active entitlements RETAIN THEIR ORIGINAL EXPIRY DATE!
-      // AI credit entitlement from old plan is superseded so the higher tier monthly quota takes over.
-      await Entitlement.updateMany(
-        {
-          companyId,
-          productCode: "AI_CREDIT",
-          status: "ACTIVE",
-          ...(currentActiveSub ? { subscriptionId: currentActiveSub._id } : {}),
-        },
-        {
-          $set: {
-            status: "SUPERSEDED",
-            remainingQuantity: 0,
-          },
-        }
-      );
+      // All existing active entitlements (including AI credits and seats) from previous lower plan
+      // RETAIN THEIR ORIGINAL EXPIRY DATE and remaining balance with ZERO vanishing!
+      // New plan credits will be added on top, with FIFO (earliest expiry first) consumption.
 
       // 3. Gather old remaining quantities for display stacking in company profile
       const oldActiveEntitlements = await Entitlement.find({
@@ -920,12 +932,11 @@ class PurchaseService {
       const oldRemainingMap = {};
       for (const ent of oldActiveEntitlements) {
         const code = String(ent.productCode || "").toUpperCase();
-        if (code !== "AI_CREDIT" && !code.includes("AI")) {
-          oldRemainingMap[code] = (oldRemainingMap[code] || 0) + ent.remainingQuantity;
-        }
+        oldRemainingMap[code] = (oldRemainingMap[code] || 0) + ent.remainingQuantity;
       }
 
-      // 4. Build Entitlement Snapshot for new Corporate subscription (pure new credits)
+      // 4. Build Entitlement Snapshot for new upgraded subscription (pure new credits)
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const productIds = (planVersion.items || []).map((i) => i.productId).filter(Boolean);
       const catalogProds = await Product.find({ _id: { $in: productIds } }).lean();
       const catalogProductMap = new Map(catalogProds.map((p) => [String(p._id), p]));
@@ -954,12 +965,22 @@ class PurchaseService {
         }
 
         const catalogProd = catalogProductMap.get(String(item.productId));
-        const resolvedFeatures =
+        let resolvedFeatures =
           item.features && item.features.length > 0
-            ? item.features
+            ? [...item.features]
             : (catalogProd?.features && catalogProd.features.length > 0
-                ? catalogProd.features
-                : (DEFAULT_PRODUCT_FEATURES[code] || []));
+                ? [...catalogProd.features]
+                : [...(DEFAULT_PRODUCT_FEATURES[code] || [])]);
+
+        if (isAiCredit) {
+          if (!resolvedFeatures.some((f) => f.key === `monthlyAllocation_${currentMonthKey}`)) {
+            resolvedFeatures.unshift({
+              key: `monthlyAllocation_${currentMonthKey}`,
+              name: `Monthly Allocation (${currentMonthKey})`,
+              enabled: true,
+            });
+          }
+        }
 
         return {
           productId: item.productId,
@@ -1079,6 +1100,7 @@ class PurchaseService {
         now,
         isPlanUpgrade: true,
         stackedOldCreditsMap: oldRemainingMap,
+        oldActiveEntitlements,
       });
 
       this.sendOrderConfirmationNotification({
@@ -1360,6 +1382,7 @@ class PurchaseService {
     now,
     isPlanUpgrade = false,
     stackedOldCreditsMap = {},
+    oldActiveEntitlements = [],
   }) {
     const servicesSnapshot = entitlementSnapshot.map((snap) => {
       const code = String(snap.productCode || "").toUpperCase();
@@ -1382,6 +1405,30 @@ class PurchaseService {
         features: snap.features || [],
       };
     });
+
+    // On upgrade: if old plan had active services not present in the new plan, retain them in snapshot until old plan expires
+    if (isPlanUpgrade && Array.isArray(oldActiveEntitlements)) {
+      for (const oldEnt of oldActiveEntitlements) {
+        const codeUpper = String(oldEnt.productCode || "").toUpperCase();
+        const alreadyInSnapshot = servicesSnapshot.some((s) => String(s.productCode || "").toUpperCase() === codeUpper);
+        if (!alreadyInSnapshot && oldEnt.remainingQuantity > 0) {
+          servicesSnapshot.push({
+            productId: oldEnt.productId,
+            productCode: oldEnt.productCode,
+            productName: oldEnt.productName,
+            category: "",
+            productType: "",
+            quantity: oldEnt.remainingQuantity,
+            basePlanQuantity: oldEnt.allocatedQuantity || oldEnt.remainingQuantity,
+            usedQuantity: 0,
+            unit: oldEnt.unit || "Job",
+            validity: Math.max(1, Math.ceil((new Date(oldEnt.expiryDate) - now) / (1000 * 60 * 60 * 24))),
+            validityUnit: "DAYS",
+            features: oldEnt.features || [],
+          });
+        }
+      }
+    }
 
     // Retain active standalone / booster add-on credits
     const activeAddons = await Entitlement.find({
@@ -1469,12 +1516,131 @@ class PurchaseService {
 
   /**
    * Synchronize Company.planSnapshot.services remaining counts with active Entitlements in real-time
+   * Handles:
+   * 1. Real-time expiry of past-due UPGRADED subscriptions (forfeiting unused old plan credits)
+   * 2. Real-time expiry of individual past-due entitlements
+   * 3. Removal of expired old plan services from company.planSnapshot.services
+   * 4. Accurate subtraction of expired old plan credits, keeping only new plan data
    */
   static async syncCompanyPlanSnapshotWithActiveEntitlements(companyId) {
     const now = new Date();
     const company = await Company.findById(companyId);
     if (!company || !company.planSnapshot || !Array.isArray(company.planSnapshot.services)) return;
 
+    // 1. Expire any UPGRADED subscriptions whose endDate has arrived
+    const expiredUpgradedSubs = await Subscription.find({
+      companyId,
+      status: "UPGRADED",
+      endDate: { $lt: now },
+    });
+
+    for (const oldSub of expiredUpgradedSubs) {
+      oldSub.status = "EXPIRED";
+      await oldSub.save();
+
+      const oldEnts = await Entitlement.find({
+        companyId,
+        subscriptionId: oldSub._id,
+        status: "ACTIVE",
+      });
+
+      for (const ent of oldEnts) {
+        const forfeitedQty = ent.remainingQuantity || 0;
+        ent.status = "EXPIRED";
+        ent.remainingQuantity = 0;
+        await ent.save();
+
+        if (forfeitedQty > 0) {
+          try {
+            await CreditLedgerService.recordEntry({
+              companyId,
+              subscriptionId: oldSub._id,
+              entitlementId: ent._id,
+              productId: ent.productId,
+              productCode: ent.productCode,
+              transactionType: "EXPIRED",
+              quantity: -forfeitedQty,
+              balanceAfter: 0,
+              referenceType: "OldPlanExpiry",
+              referenceId: String(oldSub._id),
+              expiryDate: oldSub.endDate,
+              notes: `Unused credits from upgraded plan forfeited upon old plan expiry (${oldSub.endDate.toISOString().slice(0, 10)})`,
+              createdBy: { id: "system", role: "REALTIME" },
+            });
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 2. Real-time sweep for any other past-due active entitlements
+    const pastEnts = await Entitlement.find({
+      companyId,
+      status: "ACTIVE",
+      expiryDate: { $lt: now },
+    });
+    for (const ent of pastEnts) {
+      const forfeitedQty = ent.remainingQuantity || 0;
+      ent.status = "EXPIRED";
+      ent.remainingQuantity = 0;
+      await ent.save();
+
+      if (forfeitedQty > 0) {
+        try {
+          await CreditLedgerService.recordEntry({
+            companyId,
+            subscriptionId: ent.subscriptionId || null,
+            entitlementId: ent._id,
+            productId: ent.productId,
+            productCode: ent.productCode,
+            transactionType: "EXPIRED",
+            quantity: -forfeitedQty,
+            balanceAfter: 0,
+            referenceType: "RealtimeExpiry",
+            referenceId: String(ent._id),
+            expiryDate: ent.expiryDate,
+            notes: `Credits expired upon entitlement end date`,
+            createdBy: { id: "system", role: "REALTIME" },
+          });
+        } catch (_) {}
+      }
+    }
+
+    // 3. Deduplicate any duplicate active AI_CREDIT entitlements under the same active plan subscription
+    const activePlan = await Subscription.findOne({
+      companyId,
+      subscriptionType: "PLAN",
+      status: "ACTIVE",
+      endDate: { $gte: now },
+    });
+
+    if (activePlan) {
+      const activeAiEnts = await Entitlement.find({
+        companyId,
+        subscriptionId: activePlan._id,
+        productCode: "AI_CREDIT",
+        status: "ACTIVE",
+        expiryDate: { $gte: now },
+      }).sort({ createdAt: -1 });
+
+      if (activeAiEnts.length > 1) {
+        // Keep the newest/most specific one, expire duplicate(s)
+        const [keepEnt, ...dupes] = activeAiEnts;
+        for (const dupe of dupes) {
+          dupe.status = "EXPIRED";
+          dupe.remainingQuantity = 0;
+          await dupe.save();
+        }
+
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const monthlyExpiry = new Date(Math.min(endOfMonth.getTime(), new Date(activePlan.endDate).getTime()));
+        if (new Date(keepEnt.expiryDate) > monthlyExpiry) {
+          keepEnt.expiryDate = monthlyExpiry;
+          await keepEnt.save();
+        }
+      }
+    }
+
+    // 4. Fetch live remaining credits from all active entitlements
     const activeEnts = await Entitlement.find({
       companyId,
       status: "ACTIVE",
@@ -1489,6 +1655,53 @@ class PurchaseService {
     }
 
     let modified = false;
+
+    // 5. Clean up services: remove services of expired old plan when old plan has expired, keeping new plan data
+    if (activePlan && Array.isArray(activePlan.entitlementSnapshot)) {
+      const validProductCodes = new Set(
+        activePlan.entitlementSnapshot.map((s) => String(s.productCode || "").toUpperCase())
+      );
+
+      const stillActiveUpgradedSubs = await Subscription.find({
+        companyId,
+        status: "UPGRADED",
+        endDate: { $gte: now },
+      });
+      for (const uSub of stillActiveUpgradedSubs) {
+        if (Array.isArray(uSub.entitlementSnapshot)) {
+          for (const s of uSub.entitlementSnapshot) {
+            validProductCodes.add(String(s.productCode || "").toUpperCase());
+          }
+        }
+      }
+
+      const activeAddonSubs = await Subscription.find({
+        companyId,
+        subscriptionType: { $in: ["STANDALONE", "ADD_ON"] },
+        status: "ACTIVE",
+        endDate: { $gte: now },
+      });
+      for (const aSub of activeAddonSubs) {
+        if (Array.isArray(aSub.entitlementSnapshot)) {
+          for (const s of aSub.entitlementSnapshot) {
+            validProductCodes.add(String(s.productCode || "").toUpperCase());
+          }
+        }
+      }
+
+      const prevLen = company.planSnapshot.services.length;
+      company.planSnapshot.services = company.planSnapshot.services.filter((s) => {
+        const code = String(s.productCode || "").toUpperCase();
+        const hasLiveCredits = (activeTotalsByCode.get(code) || 0) > 0;
+        return validProductCodes.has(code) || hasLiveCredits;
+      });
+
+      if (company.planSnapshot.services.length !== prevLen) {
+        modified = true;
+      }
+    }
+
+    // 6. Synchronize quantity to match live remaining available credits
     for (const s of company.planSnapshot.services) {
       const code = String(s.productCode || "").toUpperCase();
       const liveAvailable = activeTotalsByCode.get(code) || 0;
@@ -1497,6 +1710,25 @@ class PurchaseService {
         s.quantity = liveAvailable + (s.usedQuantity || 0);
         modified = true;
       }
+    }
+
+    // 7. Keep company jobLimit and nviteLimit in sync
+    const totalJobLimit = company.planSnapshot.services.reduce((sum, s) => {
+      const sCode = String(s.productCode || "").toUpperCase();
+      if (sCode.includes("JOB") || sCode.includes("VACANCY")) {
+        return sum + (s.quantity || 0);
+      }
+      return sum;
+    }, 0);
+    const miviteService = company.planSnapshot.services.find(s => String(s.productCode).toUpperCase() === "MIVITE");
+
+    if (company.jobLimit !== totalJobLimit) {
+      company.jobLimit = totalJobLimit;
+      modified = true;
+    }
+    if (miviteService && company.nviteLimit !== miviteService.quantity) {
+      company.nviteLimit = miviteService.quantity;
+      modified = true;
     }
 
     if (modified) {
@@ -1650,8 +1882,42 @@ class PurchaseService {
       }
 
       if (Array.isArray(snapItems)) {
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
         for (const item of snapItems) {
-          const entExpiry = item.expiryDate && new Date(item.expiryDate) > now ? item.expiryDate : sub.endDate;
+          const code = String(item.productCode || "").toUpperCase();
+          const isAiCredit = code === "AI_CREDIT" || code.includes("AI");
+
+          let entExpiry;
+          let entFeatures = Array.isArray(item.features) ? [...item.features] : [];
+
+          if (isAiCredit) {
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+            entExpiry = new Date(Math.min(endOfMonth.getTime(), sub.endDate.getTime()));
+            if (!entFeatures.some((f) => f.key === `monthlyAllocation_${currentMonthKey}`)) {
+              entFeatures.unshift({
+                key: `monthlyAllocation_${currentMonthKey}`,
+                name: `Monthly Allocation (${currentMonthKey})`,
+                enabled: true,
+              });
+            }
+          } else {
+            entExpiry = item.expiryDate && new Date(item.expiryDate) > now ? item.expiryDate : sub.endDate;
+          }
+
+          // Idempotency: avoid creating duplicate entitlement if already created for this subscription and productCode
+          const existingEnt = await Entitlement.findOne({
+            companyId: sub.companyId,
+            subscriptionId: sub._id,
+            productCode: item.productCode,
+            status: "ACTIVE",
+            expiryDate: { $gte: now },
+          });
+
+          if (existingEnt) {
+            continue;
+          }
+
           const ent = await Entitlement.create({
             companyId: sub.companyId,
             subscriptionId: sub._id,
@@ -1662,7 +1928,7 @@ class PurchaseService {
             consumedQuantity: 0,
             remainingQuantity: item.quantity,
             unit: item.unit || "Job",
-            features: item.features || [],
+            features: entFeatures,
             startDate: sub.startDate,
             expiryDate: entExpiry,
             status: "ACTIVE",

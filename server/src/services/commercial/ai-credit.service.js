@@ -54,6 +54,14 @@ class AiCreditService {
    */
   static async ensureMonthlyAllowance(companyId) {
     if (!companyId) return null;
+
+    // Real-time check and activation for any due SCHEDULED subscriptions (Downgrade activation)
+    // so activePlan reflects the current activated plan
+    try {
+      const PurchaseService = require("./purchase.service");
+      await PurchaseService.activateScheduledSubscriptions(companyId);
+    } catch (_) {}
+
     const now = new Date();
     const { start, end } = this.getMonthRange();
 
@@ -139,6 +147,26 @@ class AiCreditService {
       { $set: { status: "EXPIRED" } }
     );
 
+    // Deduplicate any duplicate active AI entitlements under the active plan subscription
+    if (activePlan) {
+      const activePlanAiEnts = await Entitlement.find({
+        companyId,
+        subscriptionId: activePlan._id,
+        productCode: "AI_CREDIT",
+        status: "ACTIVE",
+        expiryDate: { $gte: now },
+      }).sort({ createdAt: -1 });
+
+      if (activePlanAiEnts.length > 1) {
+        const [keepEnt, ...dupes] = activePlanAiEnts;
+        for (const dupe of dupes) {
+          dupe.status = "EXPIRED";
+          dupe.remainingQuantity = 0;
+          await dupe.save();
+        }
+      }
+    }
+
     // 2. Check if active AI entitlement already exists for current calendar month
     const existingMonthEnt = await Entitlement.findOne({
       companyId,
@@ -148,7 +176,7 @@ class AiCreditService {
       $or: [
         { "features.key": `monthlyAllocation_${currentMonthKey}` },
         { "features.key": "freeMonthlyAllocation", startDate: { $gte: start } },
-        ...(activePlan ? [{ subscriptionId: activePlan._id, startDate: { $gte: start, $lte: end } }] : []),
+        ...(activePlan ? [{ subscriptionId: activePlan._id }] : []),
       ],
     });
 
@@ -298,7 +326,7 @@ class AiCreditService {
 
     // Combined totals: Ground truth available credits comes strictly from active non-expired entitlements in the current cycle
     const totalAvailable = entAvailable;
-    const totalAllocated = Math.max(entAllocated, snapAllocated);
+    const totalAllocated = entAllocated > 0 ? entAllocated : snapAllocated;
     const totalConsumed = Math.max(0, totalAllocated - totalAvailable);
 
     // Keep company.planSnapshot.services in sync so other controllers/profile queries see identical stacked balance
