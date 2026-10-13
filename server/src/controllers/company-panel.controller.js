@@ -49,6 +49,7 @@ const RegistrationOTP = require("../models/RegistrationOTP");
 const { buildOTPHtml } = require("../email/templates/layouts");
 const CompanySubUser = require("../models/CompanySubUser");
 const UserLoginLog = require("../models/UserLoginLog");
+const { shouldShowCompanyLogo } = require("../utils/job-branding.utils");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -1273,6 +1274,13 @@ exports.createJob = asyncHandler(async (req, res) => {
   const internshipDuration = toTrimmedString(req.body.internshipDuration);
   const internshipStartDate = toTrimmedString(req.body.internshipStartDate);
 
+  const rawPayCycle = toTrimmedString(req.body.payCycle) || (jobCategory === "internship" ? "Per Month" : "Per Annum");
+  const rawSalaryDuration = toTrimmedString(req.body.salaryDuration);
+  const salaryDuration = rawSalaryDuration
+    ? (rawSalaryDuration.toLowerCase().includes("month") ? "monthly" : rawSalaryDuration.toLowerCase().includes("hour") ? "hourly" : "annually")
+    : (rawPayCycle.toLowerCase().includes("month") ? "monthly" : rawPayCycle.toLowerCase().includes("hour") ? "hourly" : "annually");
+  const payCycle = rawPayCycle.toLowerCase().includes("month") ? "Per Month" : rawPayCycle.toLowerCase().includes("hour") ? "Per Hour" : "Per Annum";
+
   // Resolve live duration days configured for this product (SMB Job, Hot Vacancy, Internship)
   // Priority:
   // 1. Explicit request payload liveDurationDays
@@ -1307,6 +1315,11 @@ exports.createJob = asyncHandler(async (req, res) => {
   }
   const liveUntil = new Date(Date.now() + liveDurationDays * 24 * 60 * 60 * 1000);
 
+  const showCompanyLogo = shouldShowCompanyLogo(
+    { jobCategory, isHotVacancy: jobCategory === "hot" },
+    company
+  );
+
   const job = await Job.create({
     companyId: company._id,
     title,
@@ -1315,6 +1328,7 @@ exports.createJob = asyncHandler(async (req, res) => {
     jobType: toTrimmedString(req.body.jobType),
     jobCategory,
     isHotVacancy: jobCategory === "hot",
+    showCompanyLogo,
     workplaceType: toTrimmedString(req.body.workplaceType),
     location: locationStr || toTrimmedString(req.body.location),
     cities:
@@ -1328,6 +1342,8 @@ exports.createJob = asyncHandler(async (req, res) => {
     experience: toTrimmedString(req.body.experience),
     salaryMin: toSafeNumber(req.body.salaryMin, stipend !== undefined ? stipend : 0),
     salaryMax: toSafeNumber(req.body.salaryMax, stipend !== undefined ? stipend : 0),
+    salaryDuration,
+    payCycle,
     stipend: stipend !== undefined ? stipend : undefined,
     internshipDuration,
     internshipStartDate,
@@ -1497,9 +1513,17 @@ exports.updateJob = asyncHandler(async (req, res) => {
   if (req.body.jobCategory !== undefined) {
     job.jobCategory = toTrimmedString(req.body.jobCategory);
     job.isHotVacancy = job.jobCategory === "hot";
+    job.showCompanyLogo = shouldShowCompanyLogo(job, company);
   }
   if (req.body.salaryMin !== undefined) job.salaryMin = toSafeNumber(req.body.salaryMin, 0);
   if (req.body.salaryMax !== undefined) job.salaryMax = toSafeNumber(req.body.salaryMax, 0);
+  if (req.body.salaryDuration !== undefined || req.body.payCycle !== undefined) {
+    const rawCycle = toTrimmedString(req.body.payCycle || req.body.salaryDuration);
+    if (rawCycle) {
+      job.salaryDuration = rawCycle.toLowerCase().includes("month") ? "monthly" : rawCycle.toLowerCase().includes("hour") ? "hourly" : "annually";
+      job.payCycle = rawCycle.toLowerCase().includes("month") ? "Per Month" : rawCycle.toLowerCase().includes("hour") ? "Per Hour" : "Per Annum";
+    }
+  }
   if (req.body.stipend !== undefined) job.stipend = toSafeNumber(req.body.stipend, 0);
   if (req.body.internshipDuration !== undefined) job.internshipDuration = toTrimmedString(req.body.internshipDuration);
   if (req.body.internshipStartDate !== undefined) job.internshipStartDate = toTrimmedString(req.body.internshipStartDate);

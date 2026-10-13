@@ -88,13 +88,13 @@ export default function CommercialDashboardPage() {
             to="/admin/commercial/products"
             className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
           >
-            <LuPlus className="h-3.5 w-3.5" /> + New Product
+            <LuPlus className="h-3.5 w-3.5" />  New Product
           </Link>
           <Link
             to="/admin/commercial/plans"
             className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
           >
-            <LuPlus className="h-3.5 w-3.5" /> + Build Plan
+            <LuPlus className="h-3.5 w-3.5" />  Build Plan
           </Link>
         </div>
       </div>

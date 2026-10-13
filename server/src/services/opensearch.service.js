@@ -73,6 +73,8 @@ const JOB_MAPPING = {
       experienceMin: { type: "integer" },
       salaryMin:     { type: "integer" },
       salaryMax:     { type: "integer" },
+      salaryDuration:{ type: "keyword" },
+      payCycle:      { type: "keyword" },
       skills:        { type: "keyword" },
       companyId:     { type: "keyword" },
       companyName:   { type: "text", fields: { keyword: { type: "keyword" } } },
@@ -124,12 +126,15 @@ const toEsDoc = (job) => {
     experienceMin:  extractExpMin(job.experience),
     salaryMin:      Number(job.salaryMin || 0),
     salaryMax:      Number(job.salaryMax || 0),
+    salaryDuration: job.salaryDuration || (String(job.payCycle || "").toLowerCase().includes("month") ? "monthly" : "annually"),
+    payCycle:       job.payCycle || (job.salaryDuration === "monthly" ? "Per Month" : "Per Annum"),
     skills:         Array.isArray(job.skills) ? job.skills : [],
     companyId:      companyIdStr,
     companyName,
     companyIndustry,
     jobCategory:    job.jobCategory || "standard",
     isHotVacancy:   Boolean(job.isHotVacancy || job.jobCategory === "hot"),
+    showCompanyLogo: Boolean(job.showCompanyLogo !== undefined ? job.showCompanyLogo : (job.isHotVacancy || job.jobCategory === "hot")),
     isActive:       Boolean(job.isActive),
     approvalStatus: job.approvalStatus || "PENDING",
     externalLink:   job.externalLink || "",
@@ -338,19 +343,26 @@ async function searchJobs(params = {}) {
     }
   }
 
-  // Sort (hot vacancies always prioritized first)
+  // Sort (hot vacancies always prioritized first, then posting time and date)
   const hotSort = { isHotVacancy: { order: "desc", unmapped_type: "boolean" } };
   let sortClause;
-  if (!search) {
+  if (sort === "top_paid") {
+    sortClause = [
+      hotSort,
+      { salaryMax: { order: "desc", unmapped_type: "long" } },
+      { salaryMin: { order: "desc", unmapped_type: "long" } },
+      { createdAt: { order: "desc" } },
+    ];
+  } else if (!search) {
     // No text query → hot vacancies first, then date
     sortClause = sort === "newest"
-      ? [hotSort, { createdAt: { order: "desc" } }]
-      : [hotSort, { updatedAt: { order: "desc" } }];
+      ? [hotSort, { createdAt: { order: "desc" } }, { updatedAt: { order: "desc" } }]
+      : [hotSort, { createdAt: { order: "desc" } }, { updatedAt: { order: "desc" } }];
   } else {
-    // With text query → hot vacancies first, then relevance, then date
+    // With text query → hot vacancies first, then date & relevance
     sortClause = sort === "newest"
       ? [hotSort, { createdAt: { order: "desc" } }, "_score"]
-      : [hotSort, "_score", { updatedAt: { order: "desc" } }];
+      : [hotSort, "_score", { createdAt: { order: "desc" } }, { updatedAt: { order: "desc" } }];
   }
 
   const from = (Math.max(1, page) - 1) * limit;

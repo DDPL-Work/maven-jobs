@@ -14,7 +14,7 @@ export default function useCompanyFilters() {
       else result[key] = [];
     }
     if (searchParams.get('sort')) result.sort = searchParams.get('sort');
-    if (searchParams.get('page')) result.page = searchParams.get('page');
+    if (searchParams.get('page')) result.page = Math.max(1, parseInt(searchParams.get('page'), 10) || 1);
     if (searchParams.get('q')) result.q = searchParams.get('q');
     return result;
   }, [searchParams]);
@@ -30,6 +30,10 @@ export default function useCompanyFilters() {
           else next.delete(key);
         } else if (key === 'sort' && value === 'popular') {
           next.delete('sort');
+        } else if (key === 'page') {
+          const p = Math.max(1, parseInt(value, 10) || 1);
+          if (p > 1) next.set('page', String(p));
+          else next.delete('page');
         } else {
           next.set(key, String(value));
         }

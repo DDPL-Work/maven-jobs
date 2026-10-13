@@ -151,10 +151,34 @@ export default function JobDetailsPage() {
             "Enterprise Partner";
           const minSal = j.salaryMin || 0;
           const maxSal = j.salaryMax || 0;
-          const salStr =
-            minSal && maxSal
-              ? `${(minSal / 100000).toFixed(0)}–${(maxSal / 100000).toFixed(0)} Lakhs PA`
-              : j.salary || "Negotiable";
+          const dur = String(j.salaryDuration || j.payCycle || "").toLowerCase();
+          const isMonthly = dur.includes("month");
+          const isHourly = dur.includes("hour");
+
+          let salStr;
+          if (minSal && maxSal) {
+            if (isMonthly) {
+              salStr = `₹${minSal.toLocaleString("en-IN")}–₹${maxSal.toLocaleString("en-IN")} / month`;
+            } else if (isHourly) {
+              salStr = `₹${minSal.toLocaleString("en-IN")}–₹${maxSal.toLocaleString("en-IN")} / hr`;
+            } else {
+              const minL = minSal >= 1000 ? (minSal / 100000).toFixed(0) : minSal;
+              const maxL = maxSal >= 1000 ? (maxSal / 100000).toFixed(0) : maxSal;
+              salStr = `${minL}–${maxL} Lakhs PA`;
+            }
+          } else if (minSal || maxSal) {
+            const val = minSal || maxSal;
+            if (isMonthly) {
+              salStr = `₹${val.toLocaleString("en-IN")} / month`;
+            } else if (isHourly) {
+              salStr = `₹${val.toLocaleString("en-IN")} / hr`;
+            } else {
+              const lVal = val >= 1000 ? (val / 100000).toFixed(0) : val;
+              salStr = `${lVal} Lakhs PA`;
+            }
+          } else {
+            salStr = j.salary || "Negotiable";
+          }
           const posted = j.createdAt
             ? postedDaysAgo(j.createdAt)
             : j.posted || "Recently";
@@ -163,7 +187,8 @@ export default function JobDetailsPage() {
             id: j._id || j.id,
             companyId,
             companyName: j.companyName || company,
-            companyLogoUrl: (Boolean(j.isHotVacancy || j.jobCategory === "hot")) ? (j.companyLogoUrl || "") : "",
+            companyLogoUrl: (j.showCompanyLogo !== undefined ? Boolean(j.showCompanyLogo) : Boolean(j.companyLogoUrl)) ? (j.companyLogoUrl || "") : "",
+            showCompanyLogo: j.showCompanyLogo !== undefined ? Boolean(j.showCompanyLogo) : Boolean(j.companyLogoUrl),
             title,
             company,
             rating: j.companyRating || (4.0 + Math.random() * 0.8).toFixed(1),
@@ -171,6 +196,10 @@ export default function JobDetailsPage() {
               j.companyReviewCount || Math.floor(Math.random() * 800) + 50,
             exp: j.experience || j.exp || "Not specified",
             salary: salStr,
+            salaryMin: minSal,
+            salaryMax: maxSal,
+            salaryDuration: j.salaryDuration || (isMonthly ? "monthly" : "annually"),
+            payCycle: j.payCycle || (isMonthly ? "Per Month" : "Per Annum"),
             location: j.location || "Not specified",
             posted,
             desc: j.description || j.summary || "No description provided.",
@@ -245,7 +274,8 @@ export default function JobDetailsPage() {
                 company:
                   sj.companyId?.name || sj.companyName || sj.company || company,
                 companyLogoUrl:
-                  (Boolean(sj.isHotVacancy || sj.jobCategory === "hot")) ? (sj.companyLogoUrl || sj.companyId?.logoUrl || "") : "",
+                  (sj.showCompanyLogo !== undefined ? Boolean(sj.showCompanyLogo) : Boolean(sj.companyLogoUrl || sj.companyId?.logoUrl)) ? (sj.companyLogoUrl || sj.companyId?.logoUrl || "") : "",
+                showCompanyLogo: sj.showCompanyLogo !== undefined ? Boolean(sj.showCompanyLogo) : Boolean(sj.companyLogoUrl || sj.companyId?.logoUrl),
                 companyCoverUrl:
                   sj.companyCoverUrl || sj.companyId?.coverImageUrl || "",
                 rating:

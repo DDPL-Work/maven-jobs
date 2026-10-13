@@ -1375,19 +1375,16 @@ export default function ProfileDashboard() {
                   <span className="pd-perf-label">Job matches</span>
                 </div>
               </div>
-              <div
+              <Link
+                to="/pro"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="pd-boost-banner"
-                onClick={() => navigate("/pro")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") navigate("/pro");
-                }}
-                role="button"
-                tabIndex={0}
               >
                 <FiZap size={14} />
                 <span>Get 3x profile boost</span>
                 <FiChevronRight size={13} className="pd-boost-arrow" />
-              </div>
+              </Link>
             </div>
           </div>
         </aside>

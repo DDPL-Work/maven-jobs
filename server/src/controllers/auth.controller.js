@@ -521,6 +521,10 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
     userAgent: req.get("User-Agent") || "",
   });
 
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+
   return res.status(200).json({
     success: true,
     message: "OTP sent successfully.",
@@ -592,6 +596,10 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
   if (!user.isActive || user.accessStatus === "RESTRICTED") {
     throw createHttpError(403, "This account has been restricted. Please contact support.");
   }
+
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
 
   return sendAuthResponse(req, res, { user, source: "USER" });
 });

@@ -4,6 +4,7 @@ import QuestionRenderer from "./QuestionRenderer";
 import "./ApplicationModal.css";
 
 const getCompanyLogo = (job) => {
+  if (job?.showCompanyLogo === false) return "";
   return job?.companyLogoUrl || job?.company?.logoUrl || "";
 };
 

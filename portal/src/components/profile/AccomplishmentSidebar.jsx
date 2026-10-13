@@ -1,10 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiGlobe, FiLink, FiCode } from 'react-icons/fi';
+import { 
+  FaLinkedin, FaGithub, FaStackOverflow, FaMedium, FaKaggle, 
+  FaBehance, FaDribbble, FaYoutube 
+} from 'react-icons/fa';
+import { SiLeetcode, SiHackerrank, SiX } from 'react-icons/si';
 import './AccomplishmentSidebar.css';
 import CustomSelect from '../common/CustomSelect';
 
+export const SOCIAL_PLATFORMS = [
+  'LinkedIn',
+  'GitHub',
+  'Twitter / X',
+  'Portfolio / Website',
+  'LeetCode',
+  'HackerRank',
+  'Stack Overflow',
+  'Medium',
+  'Kaggle',
+  'Behance',
+  'Dribbble',
+  'CodeChef',
+  'YouTube',
+  'Other'
+];
+
+export const getSocialIcon = (profileName, size = 16) => {
+  const p = (profileName || '').toLowerCase();
+  if (p.includes('linkedin')) return <FaLinkedin size={size} color="#0A66C2" />;
+  if (p.includes('github')) return <FaGithub size={size} color="#24292F" />;
+  if (p.includes('twitter') || p.includes(' x') || p === 'x') return <SiX size={size} color="#0F1419" />;
+  if (p.includes('leetcode')) return <SiLeetcode size={size} color="#FFA116" />;
+  if (p.includes('hackerrank')) return <SiHackerrank size={size} color="#00EA64" />;
+  if (p.includes('stack')) return <FaStackOverflow size={size} color="#F58025" />;
+  if (p.includes('medium')) return <FaMedium size={size} color="#000000" />;
+  if (p.includes('kaggle')) return <FaKaggle size={size} color="#20BEFF" />;
+  if (p.includes('behance')) return <FaBehance size={size} color="#1769FF" />;
+  if (p.includes('dribbble')) return <FaDribbble size={size} color="#EA4C89" />;
+  if (p.includes('youtube')) return <FaYoutube size={size} color="#FF0000" />;
+  if (p.includes('codechef') || p.includes('code')) return <FiCode size={size} color="#5B4638" />;
+  if (p.includes('portfolio') || p.includes('website')) return <FiGlobe size={size} color="#2563EB" />;
+  return <FiLink size={size} color="#64748B" />;
+};
+
+export const getUrlPlaceholder = (profile) => {
+  switch (profile) {
+    case 'LinkedIn': return 'https://linkedin.com/in/username';
+    case 'GitHub': return 'https://github.com/username';
+    case 'Twitter / X': return 'https://x.com/username';
+    case 'LeetCode': return 'https://leetcode.com/u/username';
+    case 'HackerRank': return 'https://hackerrank.com/username';
+    case 'Stack Overflow': return 'https://stackoverflow.com/users/...';
+    case 'Medium': return 'https://medium.com/@username';
+    case 'Kaggle': return 'https://kaggle.com/username';
+    case 'Behance': return 'https://behance.net/username';
+    case 'Dribbble': return 'https://dribbble.com/username';
+    case 'CodeChef': return 'https://codechef.com/users/username';
+    case 'YouTube': return 'https://youtube.com/@channel';
+    case 'Portfolio / Website': return 'https://yourportfolio.com';
+    default: return 'https://...';
+  }
+};
+
 const emptyForms = {
-  onlineProfiles: { profile: 'LinkedIn', url: '', description: '' },
+  onlineProfiles: { profile: '', url: '', description: '' },
   workSamples: { title: '', url: '', durationFromMonth: '', durationFromYear: '', durationToMonth: '', durationToYear: '', isCurrent: false, description: '' },
   whitePapers: { title: '', url: '', publishedMonth: '', publishedYear: '', description: '' },
   presentations: { title: '', url: '', description: '' },
@@ -28,7 +87,11 @@ const AccomplishmentSidebar = ({ isOpen, category, typeKey, initialData, onClose
   };
 
   const handleSave = () => {
-    onSave(formData);
+    let toSave = { ...formData };
+    if (typeKey === 'onlineProfiles' && formData.profile === 'Other' && formData.customName?.trim()) {
+      toSave.profile = formData.customName.trim();
+    }
+    onSave(toSave);
   };
 
   const renderMonths = () => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m => <option key={m} value={m}>{m}</option>);
@@ -44,20 +107,67 @@ const AccomplishmentSidebar = ({ isOpen, category, typeKey, initialData, onClose
           <>
             <div className="acc-field">
               <label className="acc-label">Social profile</label>
-              <CustomSelect 
-                value={formData.profile} 
-                onChange={(e) => handleChange('profile', e.target.value)}
-                placeholder="Select profile"
-                options={['LinkedIn', 'GitHub', 'Portfolio', 'Other'].map(p => ({ label: p, value: p }))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {SOCIAL_PLATFORMS.map(p => {
+                  const isSelected = formData.profile === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => handleChange('profile', p)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        border: isSelected ? '1.5px solid var(--blue, #2563EB)' : '1px solid #E2E8F0',
+                        backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                        color: isSelected ? 'var(--blue, #2563EB)' : '#334155',
+                        fontWeight: isSelected ? 600 : 500,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {getSocialIcon(p, 14)}
+                      <span>{p}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {formData.profile === 'Other' && (
+              <div className="acc-field">
+                <label className="acc-label">Profile / Platform name</label>
+                <input 
+                  className="acc-input" 
+                  placeholder="e.g. Dev.to, Substack, Codepen" 
+                  value={formData.customName || ''} 
+                  onChange={(e) => handleChange('customName', e.target.value)} 
+                />
+              </div>
+            )}
+            <div className="acc-field">
+              <label className="acc-label">URL</label>
+              <input 
+                className="acc-input" 
+                placeholder={getUrlPlaceholder(formData.profile)} 
+                value={formData.url || ''} 
+                onChange={(e) => handleChange('url', e.target.value)} 
               />
             </div>
             <div className="acc-field">
-              <label className="acc-label">URL</label>
-              <input className="acc-input" placeholder="Enter URL" value={formData.url} onChange={(e) => handleChange('url', e.target.value)} />
-            </div>
-            <div className="acc-field">
-              <label className="acc-label">Description</label>
-              <textarea className="acc-textarea" rows={4} placeholder="Description" value={formData.description} onChange={(e) => handleChange('description', e.target.value)} />
+              <label className="acc-label">Description (optional)</label>
+              <textarea 
+                className="acc-textarea" 
+                rows={4} 
+                placeholder="Description" 
+                value={formData.description || ''} 
+                onChange={(e) => handleChange('description', e.target.value)} 
+              />
             </div>
           </>
         );

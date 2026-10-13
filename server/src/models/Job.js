@@ -23,6 +23,10 @@ const jobSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    showCompanyLogo: {
+      type: Boolean,
+      default: undefined,
+    },
     workplaceType: String,
 
     location: String,
@@ -31,6 +35,16 @@ const jobSchema = new mongoose.Schema(
 
     salaryMin: { type: Number, min: 0 },
     salaryMax: { type: Number, min: 0 },
+    salaryDuration: {
+      type: String,
+      default: "annually",
+      trim: true,
+    },
+    payCycle: {
+      type: String,
+      default: "Per Annum",
+      trim: true,
+    },
     stipend: { type: Number, min: 0 },
     internshipDuration: { type: String, default: "" },
     internshipStartDate: { type: String, default: "" },

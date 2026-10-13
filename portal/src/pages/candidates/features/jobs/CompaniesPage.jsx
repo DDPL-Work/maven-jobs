@@ -4,12 +4,11 @@ import { gsap } from 'gsap';
 import {
   FiSearch, FiMapPin, FiBriefcase, FiChevronDown, FiChevronRight, FiChevronLeft,
   FiFilter, FiCheckCircle, FiX, FiAward,
-  FiZap, FiGlobe, FiLayers, FiBox, FiTrendingUp
+  FiZap, FiGlobe, FiLayers, FiBox
 } from 'react-icons/fi';
 import { useAuth } from '../../../../AuthContext';
 import { useCandidateCompanies, useCompanyStats, useCompanyFilterOptions } from '../../../../hooks/useCandidateQueries';
 import useCompanyFilters from '../../../../hooks/useCompanyFilters';
-import { useProfileAnalysis } from '../../../../hooks/useProfileAnalysis';
 import LandingHeader from '../../../../layout/candidate/LandingHeader';
 import LandingFooter from '../../../../layout/candidate/LandingFooter';
 import SkeletonPage from '../../../../components/Skeleton';
@@ -18,13 +17,6 @@ import './CompaniesPage.css';
 
 const COMPANIES_PER_PAGE = 6;
 
-const categoryConfig = [
-  { id: 'MNCs', icon: <FiGlobe />, accent: '#1E5EFF', industryMatch: 'MNC' },
-  { id: 'Internet', icon: <FiZap />, accent: '#7C3AED', industryMatch: 'Internet|IT|Software' },
-  { id: 'Manufacturing', icon: <FiLayers />, accent: '#0DBF7B', industryMatch: 'Manufacturing' },
-  { id: 'Fortune 500', icon: <FiAward />, accent: '#F59E0B', industryMatch: null, packageMatch: 'ELITE' },
-  { id: 'Product', icon: <FiBox />, accent: '#EF4444', industryMatch: 'Product' },
-];
 
 const COMPANY_FILTER_CATEGORIES = [
   { id: 'industry', label: 'Industry' },
@@ -60,36 +52,18 @@ export default function CompaniesPage() {
 
   const { filters, mergeParams, toggleFilter, clearAll, hasActiveFilters } = useCompanyFilters();
 
-  const currentPage = filters.page || 1;
+  const currentPage = Number(filters.page) || 1;
   const sortBy = filters.sort || 'popular';
 
-  const apiParams = useMemo(() => {
-    const params = { page: currentPage, limit: COMPANIES_PER_PAGE };
+  const statsParams = useMemo(() => {
+    const params = {};
     if (filters.q) params.q = filters.q;
-    if (filters.industry?.length) params.industry = filters.industry.join(';');
-    if (filters.location?.length) params.location = filters.location.join(';');
-    if (filters.companyType?.length) params.companyType = filters.companyType.join(';');
-    if (sortBy !== 'popular') params.sort = sortBy;
-    if (activeCategory !== 'All') {
-      const cfg = categoryConfig.find(c => c.id === activeCategory);
-      if (cfg) {
-        if (cfg.industryMatch) {
-          params.industry = params.industry ? `${params.industry}|${cfg.industryMatch}` : cfg.industryMatch;
-        }
-        if (cfg.packageMatch) params.packageType = cfg.packageMatch;
-      }
-    }
+    if (filters.location?.length) params.location = filters.location.join(',');
     return params;
-  }, [filters, currentPage, sortBy, activeCategory]);
+  }, [filters.q, filters.location]);
 
-  const { data: companiesData, isLoading: loading } = useCandidateCompanies(apiParams, true);
-  const { data: stats = {} } = useCompanyStats(apiParams, true);
+  const { data: stats = {} } = useCompanyStats(statsParams, true);
   const { data: rawFilterOptions = {} } = useCompanyFilterOptions(true);
-  const { data: profileAnalysis, isLoading: analysisLoading } = useProfileAnalysis(user?.id, Boolean(user));
-
-  const companies = companiesData?.companies || [];
-  const totalCompanies = companiesData?.total || 0;
-  const totalPages = companiesData?.totalPages || 1;
 
   const filterOptions = useMemo(() => ({
     industries: rawFilterOptions.industries || [],
@@ -97,20 +71,90 @@ export default function CompaniesPage() {
     companyTypes: rawFilterOptions.companyTypes || [],
   }), [rawFilterOptions]);
 
-  const categories = useMemo(() => categoryConfig.map(cfg => ({
-    ...cfg,
-    count: `${stats[cfg.id.toLowerCase()] || 0} Companies`,
-  })), [stats]);
+  const categories = useMemo(() => {
+    if (Array.isArray(stats?.categories) && stats.categories.length > 0) {
+      return stats.categories;
+    }
+    if (Array.isArray(rawFilterOptions?.industries) && rawFilterOptions.industries.length > 0) {
+      return rawFilterOptions.industries.map(ind => ({
+        id: ind,
+        label: ind,
+        count: stats?.[ind.toLowerCase()] ?? 0,
+        industryMatch: ind,
+      }));
+    }
+    const fallback = [];
+    if (stats?.manufacturing > 0) fallback.push({ id: 'Manufacturing', label: 'Manufacturing', count: stats.manufacturing, industryMatch: 'Manufacturing' });
+    if (stats?.internet > 0) fallback.push({ id: 'Internet', label: 'Internet', count: stats.internet, industryMatch: 'Internet|IT|Software' });
+    if (stats?.mncs > 0) fallback.push({ id: 'MNCs', label: 'MNCs', count: stats.mncs, industryMatch: 'MNC' });
+    if (stats?.product > 0) fallback.push({ id: 'Product', label: 'Product', count: stats.product, industryMatch: 'Product' });
+    if (stats?.fortune500 > 0) fallback.push({ id: 'Fortune 500', label: 'Fortune 500', count: stats.fortune500, packageMatch: 'ELITE' });
+    return fallback;
+  }, [stats, rawFilterOptions]);
 
-  const marqueeCategories = useMemo(() =>
-    categories.map(c => `${c.id} (${c.count})`),
-    [categories]);
+  const apiParams = useMemo(() => {
+    const params = { page: currentPage, limit: COMPANIES_PER_PAGE };
+    if (filters.q) params.q = filters.q;
 
+    // Combine any sidebar industry filters with active category tab
+    const indList = [...(filters.industry || [])];
+    if (activeCategory && activeCategory !== 'All') {
+      const selectedCat = categories.find(c => c.id === activeCategory);
+      if (selectedCat) {
+        if (selectedCat.industryMatch && !indList.includes(selectedCat.industryMatch)) {
+          indList.push(selectedCat.industryMatch);
+        }
+        if (selectedCat.packageMatch) {
+          params.packageType = selectedCat.packageMatch;
+        }
+      } else if (!indList.includes(activeCategory)) {
+        indList.push(activeCategory);
+      }
+    }
+    if (indList.length > 0) {
+      params.industry = indList.join(',');
+    }
 
-  const handleMarqueeCategoryClick = useCallback((label) => {
-    const cat = categories.find(c => label.startsWith(c.id));
-    if (cat) setActiveCategory(prev => prev === cat.id ? 'All' : cat.id);
-  }, [categories]);
+    if (filters.location?.length) params.location = filters.location.join(',');
+    if (filters.companyType?.length) params.companyType = filters.companyType.join(',');
+    if (sortBy !== 'popular') params.sort = sortBy;
+    return params;
+  }, [filters, currentPage, sortBy, activeCategory, categories]);
+
+  const { data: companiesData, isLoading: loading, isFetching } = useCandidateCompanies(apiParams, true);
+
+  const companies = companiesData?.companies || [];
+  const totalCompanies = companiesData?.total || 0;
+  const totalPages = companiesData?.totalPages || 1;
+
+  const allCategoryTabs = useMemo(() => {
+    const totalCount = stats?.total ?? totalCompanies;
+    const seen = new Set(['all']);
+    const sanitizedCategories = (categories || []).filter(c => {
+      if (!c || !c.id) return false;
+      const key = String(c.id).trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return [
+      {
+        id: 'All',
+        label: 'All Companies',
+        count: totalCount,
+        isAll: true,
+      },
+      ...sanitizedCategories,
+    ];
+  }, [categories, stats?.total, totalCompanies]);
+
+  const handleCategoryTabClick = useCallback((catId) => {
+    setActiveCategory(prev => (prev === catId ? 'All' : catId));
+    if (currentPage > 1) {
+      mergeParams({ page: null });
+    }
+  }, [currentPage, mergeParams]);
 
   useEffect(() => {
     if (routeFilter) {
@@ -124,10 +168,11 @@ export default function CompaniesPage() {
   }, [mergeParams]);
 
   const handlePageChange = useCallback((page) => {
-    if (page === '...' || page < 1 || page > totalPages) return;
+    const pageNum = Number(page);
+    if (isNaN(pageNum) || pageNum < 1 || pageNum > totalPages || pageNum === currentPage) return;
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    mergeParams({ page: String(page) });
-  }, [totalPages, mergeParams]);
+    mergeParams({ page: pageNum <= 1 ? null : String(pageNum) });
+  }, [totalPages, currentPage, mergeParams]);
 
   const handleCategoryClick = useCallback((catId) => {
     setActiveCategory(prev => prev === catId ? 'All' : catId);
@@ -179,16 +224,18 @@ export default function CompaniesPage() {
 
   const buildPagination = useCallback(() => {
     const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    const cur = Number(currentPage) || 1;
+    const total = Number(totalPages) || 1;
+    if (total <= 5) {
+      for (let i = 1; i <= total; i++) pages.push(i);
     } else {
       pages.push(1);
-      if (currentPage > 3) pages.push('...');
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
+      if (cur > 3) pages.push('...');
+      const start = Math.max(2, cur - 1);
+      const end = Math.min(total - 1, cur + 1);
       for (let i = start; i <= end; i++) pages.push(i);
-      if (currentPage < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
+      if (cur < total - 2) pages.push('...');
+      pages.push(total);
     }
     return pages;
   }, [totalPages, currentPage]);
@@ -254,15 +301,19 @@ export default function CompaniesPage() {
             </button>
 
             <div className="cp-cat-track" id="cp-cat-track">
-              {marqueeCategories.map((cat, idx) => (
-                <button
-                  key={idx}
-                  className="cp-top-category-chip"
-                  onClick={() => handleMarqueeCategoryClick(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
+              {allCategoryTabs.map((cat) => {
+                const isActive = activeCategory === cat.id;
+                const countLabel = `${cat.count} ${cat.count === 1 ? 'Company' : 'Companies'}`;
+                return (
+                  <button
+                    key={cat.id}
+                    className={`cp-top-category-chip${isActive ? ' active' : ''}`}
+                    onClick={() => handleCategoryTabClick(cat.id)}
+                  >
+                    {cat.label} ({countLabel})
+                  </button>
+                );
+              })}
             </div>
 
             <button
@@ -409,31 +460,6 @@ export default function CompaniesPage() {
               </div>
             </div>
 
-            {user && profileAnalysis && !analysisLoading && (
-              <div className="cp-analysis-banner">
-                <div className="cp-analysis-banner-top">
-                  <div className="cp-analysis-banner-left">
-                    <FiTrendingUp size={16} />
-                    <span>AI Profile Analysis</span>
-                  </div>
-                  <div className="cp-analysis-score">
-                    <span className="cp-analysis-score-value">{profileAnalysis.overallScore}</span>
-                    <span className="cp-analysis-score-label">Match Score</span>
-                  </div>
-                </div>
-                <p className="cp-analysis-summary">{profileAnalysis.summary}</p>
-                {(profileAnalysis.suggestedRoles?.length > 0 || profileAnalysis.suggestedIndustries?.length > 0) && (
-                  <div className="cp-analysis-tags">
-                    {profileAnalysis.suggestedRoles?.slice(0, 3).map(r => (
-                      <span key={r} className="cp-analysis-tag">{r}</span>
-                    ))}
-                    {profileAnalysis.suggestedIndustries?.slice(0, 2).map(ind => (
-                      <span key={ind} className="cp-analysis-tag cp-analysis-tag--industry">{ind}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
             {loading ? (
               <SkeletonPage variant="grid" />
@@ -447,7 +473,9 @@ export default function CompaniesPage() {
                 )}
               </div>
             ) : (
-              <CompanyGrid companies={companies} userId={user?.id} />
+              <div style={{ opacity: isFetching ? 0.65 : 1, transition: 'opacity 0.15s ease' }}>
+                <CompanyGrid companies={companies} userId={user?.id} />
+              </div>
             )}
 
             {totalPages > 1 && !loading && (

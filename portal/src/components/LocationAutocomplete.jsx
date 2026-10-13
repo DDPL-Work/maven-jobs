@@ -33,7 +33,7 @@ function getInputPosition(inputEl) {
 }
 
 export default function LocationAutocomplete({
-  value = "",
+  value,
   onChange,
   onSelect,
   placeholder = "City, state or remote",
@@ -70,8 +70,8 @@ export default function LocationAutocomplete({
   const maxH = isMobile ? DROPDOWN_MAX_HEIGHT_MOBILE : DROPDOWN_MAX_HEIGHT;
 
   useEffect(() => {
-    if (value && value !== query) {
-      setQuery(value);
+    if (value !== undefined && value !== query) {
+      setQuery(value || "");
     }
   }, [value]);
 

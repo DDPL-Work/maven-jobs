@@ -1375,6 +1375,7 @@
   font-size: 0.8rem;
   font-weight: 700;
   color: #065F46;
+  text-decoration: none;
   cursor: pointer;
   transition: all 0.2s;
 }

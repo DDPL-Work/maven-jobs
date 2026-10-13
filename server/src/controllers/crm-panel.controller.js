@@ -20,6 +20,7 @@ const EventBus = require("../events/EventBus");
 const { EVENTS } = require("../events/events");
 const cloudinary = require("../config/cloudinary");
 const { generateCompanyQRPDF } = require("../services/pdf.service");
+const { shouldShowCompanyLogo } = require("../utils/job-branding.utils");
 const {
   DEFAULT_PACKAGE_CATALOG,
   loadPackageCatalog,
@@ -1168,6 +1169,18 @@ exports.createJob = asyncHandler(async (req, res) => {
   const parsedStipend = stipend !== undefined ? Number(stipend || 0) : undefined;
   const liveDurationDays = 30;
   const liveUntil = new Date(Date.now() + liveDurationDays * 24 * 60 * 60 * 1000);
+  const resolvedCategory = (req.body.jobCategory && ["standard", "management", "hot", "internship"].includes(req.body.jobCategory)) ? req.body.jobCategory : "standard";
+  const showCompanyLogo = shouldShowCompanyLogo(
+    { jobCategory: resolvedCategory, isHotVacancy: resolvedCategory === "hot" },
+    company
+  );
+
+  const rawPayCycle = String(req.body.payCycle || "").trim() || (resolvedCategory === "internship" ? "Per Month" : "Per Annum");
+  const rawSalaryDuration = String(req.body.salaryDuration || "").trim();
+  const salaryDuration = rawSalaryDuration
+    ? (rawSalaryDuration.toLowerCase().includes("month") ? "monthly" : rawSalaryDuration.toLowerCase().includes("hour") ? "hourly" : "annually")
+    : (rawPayCycle.toLowerCase().includes("month") ? "monthly" : rawPayCycle.toLowerCase().includes("hour") ? "hourly" : "annually");
+  const payCycle = rawPayCycle.toLowerCase().includes("month") ? "Per Month" : rawPayCycle.toLowerCase().includes("hour") ? "Per Hour" : "Per Annum";
 
   const job = await Job.create({
     companyId: company._id,
@@ -1175,13 +1188,16 @@ exports.createJob = asyncHandler(async (req, res) => {
     summary: summary.trim(),
     department: department.trim(),
     jobType: jobType.trim(),
-    jobCategory: (req.body.jobCategory && ["standard", "management", "hot", "internship"].includes(req.body.jobCategory)) ? req.body.jobCategory : "standard",
-    isHotVacancy: req.body.jobCategory === "hot",
+    jobCategory: resolvedCategory,
+    isHotVacancy: resolvedCategory === "hot",
+    showCompanyLogo,
     workplaceType: workplaceType.trim(),
     location: location.trim(),
     experience: experience.trim(),
     salaryMin: Number(salaryMin || (parsedStipend !== undefined ? parsedStipend : 0)),
     salaryMax: Number(salaryMax || (parsedStipend !== undefined ? parsedStipend : 0)),
+    salaryDuration,
+    payCycle,
     stipend: parsedStipend,
     internshipDuration: String(internshipDuration || "").trim(),
     internshipStartDate: String(internshipStartDate || "").trim(),
@@ -1252,6 +1268,13 @@ exports.updateJob = asyncHandler(async (req, res) => {
   job.experience = req.body.experience?.trim() ?? job.experience;
   job.salaryMin = Number(req.body.salaryMin ?? job.salaryMin ?? 0);
   job.salaryMax = Number(req.body.salaryMax ?? job.salaryMax ?? 0);
+  if (req.body.salaryDuration !== undefined || req.body.payCycle !== undefined) {
+    const rawCycle = String(req.body.payCycle || req.body.salaryDuration || "").trim();
+    if (rawCycle) {
+      job.salaryDuration = rawCycle.toLowerCase().includes("month") ? "monthly" : rawCycle.toLowerCase().includes("hour") ? "hourly" : "annually";
+      job.payCycle = rawCycle.toLowerCase().includes("month") ? "Per Month" : rawCycle.toLowerCase().includes("hour") ? "Per Hour" : "Per Annum";
+    }
+  }
   job.skills = req.body.skills ?? job.skills;
   job.deadline = req.body.deadline ?? job.deadline;
   job.description = req.body.description?.trim() ?? job.description;

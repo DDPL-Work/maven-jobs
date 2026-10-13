@@ -347,6 +347,19 @@
   box-shadow: 0 2px 10px rgba(20, 63, 134, 0.12);
 }
 
+.cp-top-category-chip.active {
+  background: var(--brand-blue, #143f86);
+  border-color: var(--brand-blue, #143f86);
+  color: #ffffff;
+  box-shadow: 0 3px 12px rgba(20, 63, 134, 0.25);
+}
+
+.cp-top-category-chip.active:hover {
+  background: #0f326e;
+  border-color: #0f326e;
+  color: #ffffff;
+}
+
 /* ── Layout ── */
 .cp-layout {
   display: flex;

@@ -1,6 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { FiEdit2, FiTrash2, FiLink, FiFileText } from 'react-icons/fi';
-import AccomplishmentSidebar from './AccomplishmentSidebar';
+import { FiEdit2, FiTrash2, FiLink, FiFileText, FiExternalLink } from 'react-icons/fi';
+import AccomplishmentSidebar, { getSocialIcon, SOCIAL_PLATFORMS } from './AccomplishmentSidebar';
+
+const SUGGESTED_PLATFORMS = [
+  'LinkedIn',
+  'GitHub',
+  'Twitter / X',
+  'LeetCode',
+  'Portfolio / Website',
+  'HackerRank',
+  'Stack Overflow',
+  'Medium',
+  'Kaggle',
+  'Behance',
+  'Dribbble',
+  'YouTube'
+];
 
 const AccomplishmentsSection = React.memo(({ user, onSave }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -32,9 +47,9 @@ const AccomplishmentsSection = React.memo(({ user, onSave }) => {
     return parsed;
   }, [user?.accomplishments]);
 
-  const handleAdd = (typeKey, categoryLabel) => {
+  const handleAdd = (typeKey, categoryLabel, defaultProfile = null) => {
     setActiveType({ key: typeKey, label: categoryLabel });
-    setEditingItem(null);
+    setEditingItem(defaultProfile ? { profile: defaultProfile, url: '', description: '' } : null);
     setEditingIndex(null);
     setSidebarOpen(true);
   };
@@ -72,6 +87,12 @@ const AccomplishmentsSection = React.memo(({ user, onSave }) => {
 
   const renderSection = (title, description, typeKey, renderItem) => {
     const items = data[typeKey] || [];
+    const isOnlineProfiles = typeKey === 'onlineProfiles';
+    const addedNames = new Set((items || []).map(i => (i.profile || '').trim().toLowerCase()));
+    const availableSuggestions = isOnlineProfiles 
+      ? SUGGESTED_PLATFORMS.filter(p => !addedNames.has(p.toLowerCase()))
+      : [];
+
     return (
       <div style={{ padding: '24px', borderBottom: '1px solid var(--slate-3)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -81,12 +102,51 @@ const AccomplishmentsSection = React.memo(({ user, onSave }) => {
           </div>
           <button onClick={() => handleAdd(typeKey, title)} style={{ background: 'none', border: 'none', color: 'var(--blue)', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>Add</button>
         </div>
+
+        {isOnlineProfiles && availableSuggestions.length > 0 && (
+          <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quick Add:</span>
+            {availableSuggestions.slice(0, 7).map(platform => (
+              <button
+                key={platform}
+                type="button"
+                onClick={() => handleAdd('onlineProfiles', 'Online profile', platform)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: '0.8rem',
+                  color: 'var(--navy)',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center' }}>{getSocialIcon(platform, 13)}</span>
+                <span>+ {platform}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {items.length > 0 && (
           <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {items.map((item, idx) => (
-              <div key={item.id || idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div key={item.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>{renderItem(item)}</div>
-                <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginLeft: '16px', marginTop: '4px' }}>
                   <button onClick={() => handleEdit(typeKey, title, idx, item)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }}><FiEdit2 size={14} /></button>
                   <button onClick={() => handleDelete(typeKey, idx)} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer' }}><FiTrash2 size={14} /></button>
                 </div>
@@ -106,11 +166,29 @@ const AccomplishmentsSection = React.memo(({ user, onSave }) => {
           <p style={{ fontSize: '0.85rem', color: 'var(--text-3)', margin: '8px 0 0 0' }}>Showcase your credentials by adding relevant certifications, work samples, online profiles, etc.</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {renderSection('Online profile', 'Add link to online professional profiles (e.g. LinkedIn, etc.)', 'onlineProfiles', (item) => (
-            <div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--navy)' }}>{item.profile}</div>
-              <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: 'var(--blue)', display: 'block', wordBreak: 'break-all', marginTop: 2 }}>{item.url}</a>
-              {item.description && <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginTop: '8px' }}>{item.description}</p>}
+          {renderSection('Online profile', 'Add link to online professional profiles (e.g. LinkedIn, GitHub, LeetCode, Twitter/X, Portfolio, etc.)', 'onlineProfiles', (item) => (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{
+                width: 38,
+                height: 38,
+                borderRadius: '10px',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                marginTop: 2
+              }}>
+                {getSocialIcon(item.profile, 18)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--navy)' }}>{item.profile}</div>
+                <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: 'var(--blue)', display: 'inline-flex', alignItems: 'center', gap: 4, wordBreak: 'break-all', marginTop: 2, textDecoration: 'none' }}>
+                  {item.url} <FiExternalLink size={12} />
+                </a>
+                {item.description && <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginTop: '6px', marginBottom: 0 }}>{item.description}</p>}
+              </div>
             </div>
           ))}
 

@@ -42,6 +42,7 @@ const aiService = require("../services/ai/AIService");
 const OpenAIService = require("../services/openai/OpenAIService");
 const { scoreJob } = require("../recommendations/engine/scoringEngine");
 const { getCandidateLiveJobFilter, isJobLiveForCandidate } = require("../utils/job-live.utils");
+const { shouldShowCompanyLogo } = require("../utils/job-branding.utils");
 
 const createHttpError = (statusCode, message) => {
   const error = new Error(message);
@@ -695,11 +696,15 @@ const formatJob = (
     qual = parsed.qualifications;
   }
 
+  const showLogo = shouldShowCompanyLogo(job, job.companyId);
+  const visibleLogoUrl = showLogo ? (job.companyId?.logoUrl || "") : "";
+
   return {
     id: String(job._id),
     companyId: String(job.companyId?._id || job.companyId || ""),
     companyName: job.companyId?.name || "Unknown company",
-    companyLogoUrl: job.companyId?.logoUrl || "",
+    companyLogoUrl: visibleLogoUrl,
+    showCompanyLogo: showLogo,
     companyCoverUrl: job.companyId?.coverImageUrl || "",
     companyRating: companyRating?.avgRating || null,
     companyReviewCount: companyRating?.reviewCount || 0,
@@ -946,7 +951,7 @@ const getRecommendedJobs = async (profile, candidateId) => {
   // Always fetch all active jobs to populate categories (hot vacancies first)
   const allJobs = await Job.find(getCandidateLiveJobFilter())
     .sort({ isHotVacancy: -1, updatedAt: -1 })
-    .populate("companyId", "name logoUrl");
+    .populate("companyId", "name logoUrl planSnapshot");
 
   const applicationMap = await buildApplicationMap(
     candidateId,
@@ -1055,7 +1060,7 @@ const buildSimilarJobs = async (job, candidateId) => {
   )
     .sort({ isHotVacancy: -1, updatedAt: -1 })
     .limit(5)
-    .populate("companyId", "name logoUrl coverImageUrl");
+    .populate("companyId", "name logoUrl coverImageUrl planSnapshot");
 
   const applicationMap = candidateId
     ? await buildApplicationMap(
@@ -1426,7 +1431,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     Job.find({ isActive: true, approvalStatus: "APPROVED" })
       .sort({ isHotVacancy: -1, createdAt: -1 })
       .limit(10)
-      .populate("companyId", "name logoUrl"),
+      .populate("companyId", "name logoUrl planSnapshot"),
     CandidateQuizResult.findOne({ candidateId: req.user._id, quizKey }),
     calculateCandidateXp(req.user._id),
     followedIds.length > 0
@@ -1437,7 +1442,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
         })
           .sort({ isHotVacancy: -1, createdAt: -1 })
           .limit(20)
-          .populate("companyId", "name industry logoUrl")
+          .populate("companyId", "name industry logoUrl planSnapshot")
       : Promise.resolve([]),
     followedIds.length > 0
       ? Company.find({ _id: { $in: followedIds } })
@@ -1838,7 +1843,7 @@ exports.getJobSuggestions = asyncHandler(async (req, res) => {
 exports.getJobDetail = asyncHandler(async (req, res) => {
   const [job, profile] = await Promise.all([
     Job.findById(req.params.id)
-      .populate("companyId", "name industry location logoUrl coverImageUrl")
+      .populate("companyId", "name industry location logoUrl coverImageUrl planSnapshot")
       .lean(),
     req.user ? ensureCandidateProfile(req.user) : Promise.resolve(null),
   ]);
@@ -2136,7 +2141,7 @@ exports.getSavedJobs = asyncHandler(async (req, res) => {
   }
 
   const jobs = await Job.find({ _id: { $in: savedJobIds } })
-    .populate("companyId", "name logoUrl industry city website")
+    .populate("companyId", "name logoUrl industry city website planSnapshot")
     .sort({ postedAt: -1 })
     .lean();
 
@@ -3081,18 +3086,55 @@ exports.getCompanyFilterOptions = asyncHandler(async (req, res) => {
 
 exports.getCompanyStats = asyncHandler(async (req, res) => {
   const { q = "", location = "" } = req.query;
-  const baseFilter = { status: "ACTIVE" };
+  const andConditions = [{ status: "ACTIVE" }];
 
   if (q) {
-    baseFilter.$or = [
-      { name: { $regex: q, $options: "i" } },
-      { industry: { $regex: q, $options: "i" } },
-      { tagline: { $regex: q, $options: "i" } },
-    ];
+    andConditions.push({
+      $or: [
+        { name: { $regex: q, $options: "i" } },
+        { industry: { $regex: q, $options: "i" } },
+        { tagline: { $regex: q, $options: "i" } },
+      ],
+    });
   }
 
-  const [mncs, internet, manufacturing, fortune500, product] =
+  if (location) {
+    const locs = String(location)
+      .split(/[,;]/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (locs.length > 0) {
+      const locPatterns = locs.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const locRegex = new RegExp(locPatterns.join("|"), "i");
+      andConditions.push({
+        $or: [
+          { "location.city": locRegex },
+          { headquarters: locRegex },
+        ],
+      });
+    }
+  }
+
+  const baseFilter = andConditions.length === 1 ? andConditions[0] : { $and: andConditions };
+
+  const [industryAgg, total, mncs, internet, manufacturing, fortune500, product] =
     await Promise.all([
+      Company.aggregate([
+        {
+          $match: {
+            ...baseFilter,
+            industry: { $exists: true, $ne: "", $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: { $trim: { input: "$industry" } },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1, _id: 1 } },
+      ]),
+      Company.countDocuments(baseFilter),
       Company.countDocuments({
         ...baseFilter,
         industry: { $regex: "MNC|Corporate", $options: "i" },
@@ -3112,9 +3154,72 @@ exports.getCompanyStats = asyncHandler(async (req, res) => {
       }),
     ]);
 
+  // Build dynamic categories list from active database records
+  const categories = [];
+  const seen = new Set(["all"]);
+
+  industryAgg.forEach((item) => {
+    if (item._id && item.count > 0) {
+      const key = String(item._id).trim();
+      const lower = key.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        categories.push({
+          id: key,
+          label: key,
+          count: item.count,
+          industryMatch: key,
+        });
+      }
+    }
+  });
+
+  // If special categories have companies and are not already in dynamic list, include them
+  if (mncs > 0 && !seen.has("mncs") && !seen.has("mnc")) {
+    categories.push({
+      id: "MNCs",
+      label: "MNCs",
+      count: mncs,
+      industryMatch: "MNC|Corporate",
+    });
+  }
+  if (fortune500 > 0 && !seen.has("fortune 500")) {
+    categories.push({
+      id: "Fortune 500",
+      label: "Fortune 500",
+      count: fortune500,
+      packageMatch: "ELITE",
+    });
+  }
+  if (product > 0 && !seen.has("product")) {
+    categories.push({
+      id: "Product",
+      label: "Product",
+      count: product,
+      industryMatch: "Product",
+    });
+  }
+
+  // Fallback if no specific industries were parsed
+  if (categories.length === 0) {
+    if (manufacturing > 0) categories.push({ id: "Manufacturing", label: "Manufacturing", count: manufacturing, industryMatch: "Manufacturing" });
+    if (internet > 0) categories.push({ id: "Internet", label: "Internet", count: internet, industryMatch: "Internet|IT|Software" });
+    if (mncs > 0) categories.push({ id: "MNCs", label: "MNCs", count: mncs, industryMatch: "MNC|Corporate" });
+    if (product > 0) categories.push({ id: "Product", label: "Product", count: product, industryMatch: "Product" });
+    if (fortune500 > 0) categories.push({ id: "Fortune 500", label: "Fortune 500", count: fortune500, packageMatch: "ELITE" });
+  }
+
   res.status(200).json({
     success: true,
-    data: { mncs, internet, manufacturing, fortune500, product },
+    data: {
+      total,
+      categories,
+      mncs,
+      internet,
+      manufacturing,
+      fortune500,
+      product,
+    },
   });
 });
 
@@ -3144,15 +3249,26 @@ exports.getCompanies = asyncHandler(async (req, res) => {
     });
   }
 
-  // Industry filter (from category pills)
+  // Industry filter (from category tabs or sidebar filters)
   if (industry && industry !== "All") {
-    andConditions.push({ industry: { $regex: industry, $options: "i" } });
+    const inds = String(industry)
+      .split(/[,;]/)
+      .map((i) => i.trim())
+      .filter(Boolean);
+    if (inds.length > 0) {
+      const indPatterns = inds.map((i) =>
+        i.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      );
+      andConditions.push({
+        industry: { $regex: indPatterns.join("|"), $options: "i" },
+      });
+    }
   }
 
   // Company Type filter (Corporate, Foreign MNC, Startup, Indian MNC)
   if (companyType) {
     const types = String(companyType)
-      .split(",")
+      .split(/[,;]/)
       .map((t) => t.trim())
       .filter(Boolean);
     if (types.length > 0) {
@@ -3172,12 +3288,20 @@ exports.getCompanies = asyncHandler(async (req, res) => {
 
   // Location filter
   if (location) {
-    andConditions.push({
-      $or: [
-        { "location.city": { $regex: location, $options: "i" } },
-        { headquarters: { $regex: location, $options: "i" } },
-      ],
-    });
+    const locs = String(location)
+      .split(/[,;]/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (locs.length > 0) {
+      const locPatterns = locs.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const locRegex = new RegExp(locPatterns.join("|"), "i");
+      andConditions.push({
+        $or: [
+          { "location.city": locRegex },
+          { headquarters: locRegex },
+        ],
+      });
+    }
   }
 
   if (andConditions.length === 1) {
@@ -3192,40 +3316,43 @@ exports.getCompanies = asyncHandler(async (req, res) => {
 
   const skip = (Number(page) - 1) * Number(limit);
   const [companies, total] = await Promise.all([
-    Company.find(filter).sort(sortQuery).skip(skip).limit(Number(limit)),
+    Company.find(filter)
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(Number(limit))
+      .lean(),
     Company.countDocuments(filter),
   ]);
 
   const companyIds = companies.map((c) => c._id);
 
-  const reviewAggs = companyIds.length
-    ? await CompanyReview.aggregate([
-      { $match: { companyId: { $in: companyIds } } },
-      {
-        $group: {
-          _id: "$companyId",
-          avgRating: { $avg: "$rating" },
-          reviewCount: { $sum: 1 },
-        },
-      },
-    ]).exec()
-    : [];
+  const [reviewAggs, followersAggs, userProfile] = await Promise.all([
+    companyIds.length
+      ? CompanyReview.aggregate([
+          { $match: { companyId: { $in: companyIds }, status: "PUBLISHED" } },
+          {
+            $group: {
+              _id: "$companyId",
+              avgRating: { $avg: "$rating" },
+              reviewCount: { $sum: 1 },
+            },
+          },
+        ]).exec()
+      : Promise.resolve([]),
+    companyIds.length
+      ? CandidateProfile.aggregate([
+          { $match: { followedCompanyIds: { $in: companyIds } } },
+          { $unwind: "$followedCompanyIds" },
+          { $match: { followedCompanyIds: { $in: companyIds } } },
+          { $group: { _id: "$followedCompanyIds", count: { $sum: 1 } } },
+        ]).exec()
+      : Promise.resolve([]),
+    req.user ? ensureCandidateProfile(req.user) : Promise.resolve(null),
+  ]);
 
-  const followersAggs = companyIds.length
-    ? await CandidateProfile.aggregate([
-      { $unwind: "$followedCompanyIds" },
-      { $match: { followedCompanyIds: { $in: companyIds } } },
-      { $group: { _id: "$followedCompanyIds", count: { $sum: 1 } } },
-    ]).exec()
-    : [];
-
-  let followedSet = new Set();
-  if (req.user) {
-    const profile = await ensureCandidateProfile(req.user);
-    followedSet = new Set(
-      (profile?.followedCompanyIds || []).map((id) => String(id)),
-    );
-  }
+  const followedSet = new Set(
+    (userProfile?.followedCompanyIds || []).map((id) => String(id)),
+  );
 
   const reviewMap = new Map(reviewAggs.map((r) => [String(r._id), r]));
   const followersMap = new Map(
@@ -3781,19 +3908,44 @@ exports.analyzeResume = asyncHandler(async (req, res) => {
 });
 
 exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const profile = await CandidateProfile.findOne({ userId });
-  if (!profile) {
-    return res
-      .status(404)
-      .json({
-        success: false,
-        message: "Profile not found. Complete your profile first.",
-      });
+  const userId = req.user?._id || req.user?.id;
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required.",
+    });
   }
 
-  const userName = req.user.name || "Candidate";
+  const profile = await CandidateProfile.findOne({ userId }).lean();
+  if (!profile) {
+    return res.status(404).json({
+      success: false,
+      message: "Profile not found. Complete your profile first.",
+    });
+  }
 
+  const defaultAnalysis = {
+    overallScore: Math.min(95, Math.max(50, ((profile.skills || []).length * 8) + (profile.currentTitle ? 20 : 10) + (profile.summary ? 15 : 0))),
+    strengths: [
+      (profile.skills && profile.skills.length > 0)
+        ? `Strong skill proficiencies in ${profile.skills.slice(0, 3).join(", ")}`
+        : "Profile active with foundational career history",
+      profile.currentTitle ? `Relevant background as ${profile.currentTitle}` : "Versatile career profile ready for matching",
+    ],
+    weaknesses: ["Adding more quantified project achievements will increase profile visibility"],
+    suggestedRoles: (profile.preferredRoles && profile.preferredRoles.length > 0)
+      ? profile.preferredRoles.slice(0, 3)
+      : ["Software Engineer", "Full Stack Developer", "Frontend Developer"],
+    suggestedIndustries: ["IT Services", "Product Based", "Startups"],
+    careerStage: profile.totalExperience ? (Number(profile.totalExperience) > 5 ? "senior" : "mid") : "mid",
+    skillGaps: [],
+    topCompaniesFit: ["IT", "E-commerce", "Technology"],
+    profileCompleteness: Math.min(100, Math.max(40, ((profile.skills || []).length * 8) + (profile.currentTitle ? 25 : 10) + (profile.summary ? 25 : 0))),
+    atsReadiness: 75,
+    summary: profile.summary || "Your profile shows solid foundational information. Adding more quantifiable achievements and detailed work experience would significantly improve your career prospects.",
+  };
+
+  const userName = req.user.name || "Candidate";
   const profileSummary = [
     `Name: ${userName}`,
     `Current Title: ${profile.currentTitle || "Not set"}`,
@@ -3807,64 +3959,10 @@ exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
     `Current City: ${profile.currentCity || "Not set"}`,
     `Notice Period: ${profile.noticePeriod || "Not set"}`,
     `Expected Salary: ${profile.expectedSalary || "Not set"}`,
-    `LinkedIn: ${profile.linkedInUrl || "Not set"}`,
-    `Portfolio: ${profile.portfolioUrl || "Not set"}`,
     `Summary: ${profile.summary || "Not set"}`,
   ].join("\n");
 
-  let resumeText = "";
-  if (profile.resume && profile.resume.url) {
-    try {
-      const pdfText = await new Promise((resolve, reject) => {
-        https.get(profile.resume.url, (res) => {
-          if (res.statusCode !== 200) return resolve("");
-          const chunks = [];
-          res.on("data", (c) => chunks.push(c));
-          res.on("end", async () => {
-            const buffer = Buffer.concat(chunks);
-            try {
-              const pdfParse = require("pdf-parse");
-              const data = await pdfParse(buffer);
-              resolve(data.text || "");
-            } catch {
-              resolve("");
-            }
-          });
-          res.on("error", () => resolve(""));
-        });
-      });
-      resumeText = pdfText.trim();
-      if (resumeText.length < 80) {
-        const visionText = await OpenAIService.extractPdfTextViaOpenAI(
-          Buffer.from(
-            await new Promise((resolve, reject) => {
-              https.get(profile.resume.url, (res) => {
-                const chunks = [];
-                res.on("data", (c) => chunks.push(c));
-                res.on("end", () => resolve(Buffer.concat(chunks)));
-                res.on("error", reject);
-              });
-            }),
-          ),
-          profile.resume.fileName || "resume.pdf",
-        );
-        if (visionText && visionText.length > 80) resumeText = visionText;
-      }
-    } catch {
-      resumeText = "";
-    }
-  } else {
-    const workEx = profile.workExperiences || "[]";
-    const edu = profile.educations || "[]";
-    const projects = profile.projects || "[]";
-    resumeText = [
-      `Work Experiences: ${workEx}`,
-      `Education: ${edu}`,
-      `Projects: ${projects}`,
-    ].join("\n");
-  }
-
-  const systemPrompt = `You are an expert career analyst and AI recruiter. Analyze the candidate's profile and resume comprehensively and return a JSON object (NO markdown, NO code fences, ONLY raw JSON) with these fields:
+  const systemPrompt = `You are an expert career analyst and AI recruiter. Analyze the candidate's profile and return a JSON object (NO markdown, NO code fences, ONLY raw JSON) with these fields:
 {
   "overallScore": 0-100,
   "strengths": ["..."],
@@ -3879,17 +3977,23 @@ exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
   "summary": "..."
 }`;
 
-  const userPrompt = `Analyze this candidate's profile and resume:\n\n=== PROFILE ===\n${profileSummary}\n\n=== RESUME ===\n${resumeText || "(No resume available)"}`;
+  const userPrompt = `Analyze this candidate's profile:\n\n=== PROFILE ===\n${profileSummary}`;
 
   try {
     const model = process.env.OPENAI_CHAT_MODEL || "gpt-5-mini";
-    const response = await OpenAIService.createChatCompletion({
+    const aiPromise = OpenAIService.createChatCompletion({
       model,
       systemPrompt,
       userPrompt,
-      maxOutputTokens: 2000,
+      maxOutputTokens: 1500,
     });
 
+    // Enforce 6-second timeout so the HTTP connection never resets or hangs
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("AI analysis timed out")), 6000),
+    );
+
+    const response = await Promise.race([aiPromise, timeoutPromise]);
     const rawText =
       response?.output_text ||
       response?.output?.[0]?.content?.[0]?.text ||
@@ -3899,62 +4003,46 @@ exports.analyzeProfileWithAI = asyncHandler(async (req, res) => {
       .replace(/```json\s*/gi, "")
       .replace(/```\s*/g, "")
       .trim();
-    const parsed = JSON.parse(cleaned);
 
-    res.json({
-      success: true,
-      data: {
-        overallScore: Math.round(
-          Math.max(0, Math.min(100, parsed.overallScore || 0)),
-        ),
-        strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
-        weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
-        suggestedRoles: Array.isArray(parsed.suggestedRoles)
-          ? parsed.suggestedRoles
-          : [],
-        suggestedIndustries: Array.isArray(parsed.suggestedIndustries)
-          ? parsed.suggestedIndustries
-          : [],
-        careerStage: parsed.careerStage || parsed.careerMatch || "mid",
-        skillGaps: Array.isArray(parsed.skillGaps) ? parsed.skillGaps : [],
-        topCompaniesFit: Array.isArray(
-          parsed.topCompaniesFit || parsed.topMatchFit,
-        )
-          ? parsed.topCompaniesFit || parsed.topMatchFit
-          : [],
-        profileCompleteness: Math.round(
-          Math.max(0, Math.min(100, parsed.profileCompleteness || 0)),
-        ),
-        atsReadiness: Math.round(
-          Math.max(0, Math.min(100, parsed.atsReadiness || 0)),
-        ),
-        summary: parsed.summary || "",
-      },
-    });
+    if (cleaned) {
+      const parsed = JSON.parse(cleaned);
+      return res.json({
+        success: true,
+        data: {
+          overallScore: Math.round(
+            Math.max(0, Math.min(100, parsed.overallScore || defaultAnalysis.overallScore)),
+          ),
+          strengths: Array.isArray(parsed.strengths) && parsed.strengths.length > 0 ? parsed.strengths : defaultAnalysis.strengths,
+          weaknesses: Array.isArray(parsed.weaknesses) && parsed.weaknesses.length > 0 ? parsed.weaknesses : defaultAnalysis.weaknesses,
+          suggestedRoles: Array.isArray(parsed.suggestedRoles) && parsed.suggestedRoles.length > 0
+            ? parsed.suggestedRoles
+            : defaultAnalysis.suggestedRoles,
+          suggestedIndustries: Array.isArray(parsed.suggestedIndustries) && parsed.suggestedIndustries.length > 0
+            ? parsed.suggestedIndustries
+            : defaultAnalysis.suggestedIndustries,
+          careerStage: parsed.careerStage || defaultAnalysis.careerStage,
+          skillGaps: Array.isArray(parsed.skillGaps) ? parsed.skillGaps : [],
+          topCompaniesFit: Array.isArray(parsed.topCompaniesFit) && parsed.topCompaniesFit.length > 0
+            ? parsed.topCompaniesFit
+            : defaultAnalysis.topCompaniesFit,
+          profileCompleteness: Math.round(
+            Math.max(0, Math.min(100, parsed.profileCompleteness || defaultAnalysis.profileCompleteness)),
+          ),
+          atsReadiness: Math.round(
+            Math.max(0, Math.min(100, parsed.atsReadiness || defaultAnalysis.atsReadiness)),
+          ),
+          summary: parsed.summary || defaultAnalysis.summary,
+        },
+      });
+    }
   } catch (err) {
-    console.error("[analyzeProfileWithAI] error:", err.message);
-    res.json({
-      success: true,
-      data: {
-        overallScore: 65,
-        strengths: ["Profile exists with skills and experience"],
-        weaknesses: ["Consider adding more detail to your profile"],
-        suggestedRoles: [
-          "Software Engineer",
-          "Full Stack Developer",
-          "Frontend Developer",
-        ],
-        suggestedIndustries: ["IT Services", "Product Based", "Startups"],
-        careerStage: "mid",
-        skillGaps: [],
-        topCompaniesFit: ["IT", "E-commerce", "Healthcare Technology"],
-        profileCompleteness: 60,
-        atsReadiness: 70,
-        summary:
-          "Your profile shows solid foundational information. Adding more quantifiable achievements and detailed work experience would significantly improve your career prospects.",
-      },
-    });
+    console.warn("[analyzeProfileWithAI] fallback used:", err.message);
   }
+
+  return res.json({
+    success: true,
+    data: defaultAnalysis,
+  });
 });
 
 exports.suggestSkillsAutocomplete = asyncHandler(async (req, res) => {
@@ -4412,76 +4500,50 @@ exports.sendMobileOtp = asyncHandler(async (req, res) => {
     );
   }
 
+  // Clear any residual Redis cache keys for this phone
   const redis = cacheService.getClient();
-  let sessionId;
-
   if (redis) {
-    const rateLimitKey = `rate_limit:otp:${phone}`;
-    const currentCount = await redis.incr(rateLimitKey);
-    if (currentCount === 1) {
-      await redis.expire(rateLimitKey, 600); // 10 minutes
-    }
-
-    if (currentCount > MOBILE_OTP_RATE_LIMIT) {
-      throw createHttpError(
-        429,
-        "Too many OTP requests. Please wait a few minutes and try again.",
-      );
-    }
-
-    try {
-      sessionId = await smsService.sendOTP(phone);
-    } catch (smsErr) {
-      await redis.decr(rateLimitKey);
-      throw createHttpError(503, "Failed to send OTP. Please try again later.");
-    }
-
-    const otpKey = `otp:${phone}`;
-    const otpData = {
-      phone,
-      userId: user._id,
-      sessionId,
-      attempts: 0,
-    };
-    await redis.setex(
-      otpKey,
-      MOBILE_OTP_EXPIRY_MINUTES * 60,
-      JSON.stringify(otpData),
-    );
-  } else {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    const recentCount = await LoginOTP.countDocuments({
-      phone,
-      createdAt: { $gte: tenMinutesAgo },
-    });
-
-    if (recentCount >= MOBILE_OTP_RATE_LIMIT) {
-      throw createHttpError(
-        429,
-        "Too many OTP requests. Please wait a few minutes and try again.",
-      );
-    }
-
-    await LoginOTP.updateMany({ phone, used: false }, { $set: { used: true } });
-
-    try {
-      sessionId = await smsService.sendOTP(phone);
-    } catch (smsErr) {
-      throw createHttpError(503, "Failed to send OTP. Please try again later.");
-    }
-
-    const expiresAt = new Date(
-      Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000,
-    );
-    await LoginOTP.create({
-      phone,
-      userId: user._id,
-      sessionId,
-      expiresAt,
-      ipAddress: req.ip || req.connection?.remoteAddress || "",
-      userAgent: req.get("User-Agent") || "",
-    });
+    await redis.del(`otp:${phone}`).catch(() => {});
+    await redis.del(`rate_limit:otp:${phone}`).catch(() => {});
   }
+
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const recentCount = await LoginOTP.countDocuments({
+    phone,
+    createdAt: { $gte: tenMinutesAgo },
+  });
+
+  if (recentCount >= MOBILE_OTP_RATE_LIMIT) {
+    throw createHttpError(
+      429,
+      "Too many OTP requests. Please wait a few minutes and try again.",
+    );
+  }
+
+  await LoginOTP.updateMany({ phone, used: false }, { $set: { used: true } });
+
+  let sessionId;
+  try {
+    sessionId = await smsService.sendOTP(phone);
+  } catch (smsErr) {
+    throw createHttpError(503, "Failed to send OTP. Please try again later.");
+  }
+
+  const expiresAt = new Date(
+    Date.now() + MOBILE_OTP_EXPIRY_MINUTES * 60 * 1000,
+  );
+  await LoginOTP.create({
+    phone,
+    userId: user._id,
+    sessionId,
+    expiresAt,
+    ipAddress: req.ip || req.connection?.remoteAddress || "",
+    userAgent: req.get("User-Agent") || "",
+  });
+
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
 
   return res.status(200).json({
     success: true,
@@ -4504,32 +4566,25 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
     throw createHttpError(400, "Please enter a valid 6-digit OTP.");
   }
 
+  // Clear any residual Redis cache keys
   const redis = cacheService.getClient();
-  let otpDoc;
-  let isRedis = false;
-  let otpKey = `otp:${phone}`;
-
   if (redis) {
-    const rawData = await redis.get(otpKey);
-    if (rawData) {
-      otpDoc = JSON.parse(rawData);
-      isRedis = true;
-    }
+    await redis.del(`otp:${phone}`).catch(() => {});
   }
 
+  const otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({
+    createdAt: -1,
+  });
+
   if (!otpDoc) {
-    otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({
-      createdAt: -1,
-    });
-    if (!otpDoc) {
-      throw createHttpError(
-        400,
-        "No active OTP found. Please request a new OTP.",
-      );
-    }
-    if (new Date() > otpDoc.expiresAt) {
-      throw createHttpError(400, "OTP has expired. Please request a new one.");
-    }
+    throw createHttpError(
+      400,
+      "No active OTP found. Please request a new OTP.",
+    );
+  }
+
+  if (new Date() > otpDoc.expiresAt) {
+    throw createHttpError(400, "OTP has expired. Please request a new one.");
   }
 
   if (otpDoc.attempts >= MOBILE_OTP_MAX_ATTEMPTS) {
@@ -4543,14 +4598,7 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
 
   if (!isValid) {
     otpDoc.attempts += 1;
-    if (isRedis) {
-      const ttl = await redis.ttl(otpKey);
-      if (ttl > 0) {
-        await redis.setex(otpKey, ttl, JSON.stringify(otpDoc));
-      }
-    } else {
-      await otpDoc.save();
-    }
+    await otpDoc.save();
 
     const remaining = MOBILE_OTP_MAX_ATTEMPTS - otpDoc.attempts;
     if (remaining <= 0) {
@@ -4565,12 +4613,12 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
     );
   }
 
-  if (isRedis) {
-    await redis.del(otpKey);
-  } else {
-    otpDoc.used = true;
-    await otpDoc.save();
-  }
+  otpDoc.used = true;
+  await otpDoc.save();
+
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
 
   const user = await User.findById(otpDoc.userId);
   if (!user) {

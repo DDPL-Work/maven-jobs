@@ -93,12 +93,29 @@ router.patch(
   candidateController.toggleSavedJob,
 );
 router.get("/companies/filter-options", candidateController.getCompanyFilterOptions);
-router.get("/companies/stats", candidateController.getCompanyStats);
+router.get(
+  "/companies/stats",
+  cacheRoute({
+    key: (req) => {
+      const q = new URLSearchParams(
+        Object.entries(req.query).map(([k, v]) => [k, String(v)]),
+      );
+      return `cache:candidate:companies:stats:${q.toString() || "all"}`;
+    },
+    ttl: 600,
+  }),
+  candidateController.getCompanyStats,
+);
 router.get(
   "/companies",
   cacheRoute({
-    key: (req) => `cache:candidate:companies:${req.user?._id || 'anon'}:${JSON.stringify(req.query)}`,
-    ttl: 600,
+    key: (req) => {
+      const q = new URLSearchParams(
+        Object.entries(req.query).map(([k, v]) => [k, String(v)]),
+      );
+      return `cache:candidate:companies:${req.user?._id || 'anon'}:${q.toString() || "all"}`;
+    },
+    ttl: 300,
   }),
   candidateController.getCompanies,
 );
