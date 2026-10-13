@@ -664,6 +664,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
   const maxAllowedCities = isHot ? hotMaxCities : 1;
   
   const [selectedPerks, setSelectedPerks] = useState(data.perks || []);
+  const [multiCityInput, setMultiCityInput] = useState("");
 
   const toggleType = (t) => {
     const next = selectedTypes.includes(t)
@@ -767,8 +768,10 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
             {enablesMultiCities ? (
               <div>
                 <LocationAutocomplete
-                  value={""}
-                  onChange={(val) => {
+                  value={multiCityInput}
+                  onChange={setMultiCityInput}
+                  onSelect={(item) => {
+                    const val = item?.label || item?.city;
                     if (!val) return;
                     const existing = Array.isArray(data.cities)
                       ? [...data.cities]
@@ -778,6 +781,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
                       const next = [...existing, val];
                       setData((p) => ({ ...p, cities: next, location: next.join(", ") }));
                     }
+                    setMultiCityInput("");
                   }}
                   placeholder={
                     (data.cities || []).length >= hotMaxCities
@@ -834,7 +838,7 @@ function StepJobDetails({ data, setData, onAiEnhance, aiLoading, aiCredits, onUp
             ) : (
               <div>
                 <LocationAutocomplete
-                  value={data.location || companyCity || ""}
+                  value={data.location !== undefined ? data.location : (companyCity || "")}
                   onChange={(val) =>
                     setData((p) => ({ ...p, location: val, cities: val ? [val] : [] }))
                   }
@@ -2752,7 +2756,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             setCompanyCity(usageData.companyCity);
             setFormData((p) => ({
               ...p,
-              location: p.location || usageData.companyCity,
+              location: p.location !== undefined ? p.location : usageData.companyCity,
               cities: p.cities && p.cities.length > 0 ? p.cities : [usageData.companyCity],
             }));
           }
@@ -2939,7 +2943,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
           setCompanyCity(sCity);
           setFormData((p) => ({
             ...p,
-            location: p.location || sCity,
+            location: p.location !== undefined ? p.location : sCity,
             cities: p.cities && p.cities.length > 0 ? p.cities : [sCity],
           }));
         }
@@ -2957,7 +2961,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             setCompanyCity(cCity);
             setFormData((p) => ({
               ...p,
-              location: p.location || cCity,
+              location: p.location !== undefined ? p.location : cCity,
               cities: p.cities && p.cities.length > 0 ? p.cities : [cCity],
             }));
           }
@@ -3379,6 +3383,12 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
         experience,
         salaryMin,
         salaryMax,
+        salaryDuration: String(formData.payCycle || (isInternship ? "Per Month" : "Per Annum")).toLowerCase().includes("month")
+          ? "monthly"
+          : String(formData.payCycle || "").toLowerCase().includes("hour")
+            ? "hourly"
+            : "annually",
+        payCycle: formData.payCycle || (isInternship ? "Per Month" : "Per Annum"),
         stipend,
         internshipDuration: isInternship ? (formData.internshipDuration || "") : undefined,
         internshipStartDate: isInternship ? (formData.internshipStartDate || "") : undefined,

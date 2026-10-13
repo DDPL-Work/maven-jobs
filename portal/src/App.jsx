@@ -106,6 +106,66 @@ import ResumeQualityScore from "./pages/candidates/features/services/ResumeQuali
 import ResumeSamples from "./pages/candidates/features/services/ResumeSamples";
 import JobLetterSamples from "./pages/candidates/features/services/JobLetterSamples";
 
+const isRecruiterOrEmployerRoute = (pathname) => {
+  if (!pathname) return false;
+  const path = pathname.split("?")[0].replace(/\/+$/, "").toLowerCase() || "/";
+
+  const exactEmployerRoutes = new Set([
+    "/download/recruiter-app",
+    "/buy-online",
+    "/portal/buy-online",
+    "/expert-assist",
+    "/employer-help",
+    "/talent-pulse",
+    "/branding",
+    "/job-posting",
+    "/resume-database",
+    "/hiring-automation",
+    "/employer/site-map",
+    "/post-job",
+    "/employer-draft-jobs",
+    "/company-profile",
+    "/my-subscriptions",
+    "/simcv",
+    "/resdex-requirements",
+    "/product-settings",
+    "/reports-job-posting",
+    "/report/resdex",
+    "/reports-resdex",
+    "/maven-jobs/employer-terms",
+    "/maven-jobs/employer-privacy",
+    "/maven-jobs/employer-grievance",
+  ]);
+
+  if (exactEmployerRoutes.has(path)) return true;
+
+  return (
+    path.startsWith("/employer") ||
+    path.startsWith("/employers") ||
+    path.startsWith("/recruit") ||
+    path.startsWith("/portal/buy-online") ||
+    path.startsWith("/learning-center") ||
+    path.startsWith("/review/") ||
+    path.startsWith("/manage-folders") ||
+    path.startsWith("/resume-search") ||
+    path.startsWith("/manage-search") ||
+    path.startsWith("/product-settings/") ||
+    path.startsWith("/candidates/")
+  );
+};
+
+const isRecruiterOrEmployerUser = (user) => {
+  try {
+    const employerUser = localStorage.getItem("employerUser");
+    if (employerUser && employerUser !== "undefined" && employerUser !== "null") {
+      return true;
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return ["CLIENT", "RECRUITER", "ADMIN"].includes(user?.role);
+};
+
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user && !localStorage.getItem("user")) {
@@ -121,12 +181,20 @@ function AppContent() {
   const location = useLocation();
   const { user } = useAuth();
 
+  const isRecruiterSide = isRecruiterOrEmployerRoute(location.pathname) || isRecruiterOrEmployerUser(user);
+
+  useEffect(() => {
+    if (isRecruiterSide && showQuizPopup) {
+      setShowQuizPopup(false);
+    }
+  }, [isRecruiterSide, showQuizPopup]);
+
   useEffect(() => {
     const isLoggedIn = user || localStorage.getItem("user");
     const alreadyShown = sessionStorage.getItem("dailyQuizShown");
     const isPublicSharePage = location.pathname.startsWith("/mj/");
 
-    if (isLoggedIn && !alreadyShown && !isPublicSharePage) {
+    if (isLoggedIn && !alreadyShown && !isPublicSharePage && !isRecruiterSide) {
       let cancelled = false;
       const timer = setTimeout(async () => {
         try {
@@ -147,7 +215,7 @@ function AppContent() {
         clearTimeout(timer);
       };
     }
-  }, [user, location.pathname]);
+  }, [user, location.pathname, isRecruiterSide]);
 
   // Redirect to /dashboard after login/register
   useEffect(() => {
@@ -321,17 +389,19 @@ function AppContent() {
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
 
-      <DailyQuizNotification
-        isOpen={showQuizPopup}
-        duration={10}
-        onClose={() => setShowQuizPopup(false)}
-        onTakeQuiz={() => navigate("/daily-quiz")}
-        quizTitle={quizNotification?.title || "Your Daily Quiz is Ready!"}
-        quizSubtitle={quizNotification?.subtitle || "Sharpen your skills with today's challenge and earn XP."}
-        questionCount={quizNotification?.questionCount || 5}
-        xpReward={quizNotification?.xpReward || 100}
-        quizDurationSeconds={quizNotification?.durationSeconds || 75}
-      />
+      {!isRecruiterSide && (
+        <DailyQuizNotification
+          isOpen={showQuizPopup}
+          duration={10}
+          onClose={() => setShowQuizPopup(false)}
+          onTakeQuiz={() => navigate("/daily-quiz")}
+          quizTitle={quizNotification?.title || "Your Daily Quiz is Ready!"}
+          quizSubtitle={quizNotification?.subtitle || "Sharpen your skills with today's challenge and earn XP."}
+          questionCount={quizNotification?.questionCount || 5}
+          xpReward={quizNotification?.xpReward || 100}
+          quizDurationSeconds={quizNotification?.durationSeconds || 75}
+        />
+      )}
       {!location.pathname.startsWith("/mj/") && location.pathname !== "/blog-article" && location.pathname !== "/resume-builder" && location.pathname !== "/recruit/client-registration-form" && <Premium3D />}
     </>
   );

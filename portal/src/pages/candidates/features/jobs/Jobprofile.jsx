@@ -40,6 +40,7 @@ import SkeletonPage from "../../../../components/Skeleton";
 import LandingHeader from "../../../../layout/candidate/LandingHeader";
 import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import ReviewModal from "../../../../components/ReviewModal";
+import "./Jobprofile.css";
 
 const PERK_MAP = {
   "Health Insurance": { icon: FiShield, color: "#10b981", bg: "#ECFDF5" },
@@ -315,112 +316,33 @@ const Jobprofile = () => {
         paddingTop: 72,
       }}
     >
-      <style>{`
-        @media (max-width: 768px) {
-          .jp-root { padding-top: 64px !important; }
-          .jp-container { padding: 16px 16px 60px !important; }
-          .jp-profile-info { padding: 0 20px 24px !important; }
-          .jp-profile-logo { width: 80px !important; height: 80px !important; top: -40px !important; border-radius: 16px !important; }
-          .jp-profile-logo > div { font-size: 2rem !important; border-radius: 12px !important; }
-          .jp-action-btns { justify-content: flex-end !important; margin-top: 0 !important; padding-top: 10px !important; margin-left: 90px !important; flex-wrap: wrap; }
-          .jp-action-btns > * { flex: 1 !important; justify-content: center !important; text-align: center !important; }
-          .jp-main-grid { grid-template-columns: 1fr !important; }
-          .jp-benefits-grid { grid-template-columns: 1fr !important; }
-          .jp-job-meta { grid-template-columns: repeat(2, 1fr) !important; }
-          .jp-job-meta > div { min-width: 0; }
-          .jp-highlights-grid { grid-template-columns: 1fr !important; }
-          .jp-info-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
-          .jp-sidebar { position: static !important; }
-          .jp-job-actions { flex-direction: row !important; width: 100%; margin-top: 16px; }
-          .jp-job-actions > button:last-child { flex: 1; justify-content: center; }
-        }
-      `}</style>
-
       {/* ─── Navbar ─────────────────────────────────────── */}
       <LandingHeader />
 
-      <div
-        className="jp-container"
-        style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 80px" }}
-      >
+      <div className="jp-container">
         {/* ─── Profile Card ─────────────────────────────── */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 24,
-            border: "1px solid #E2E8F0",
-            overflow: "hidden",
-            marginBottom: 28,
-            boxShadow: "0 4px 24px rgba(10,22,40,0.07)",
-          }}
-        >
+        <div className="jp-profile-card">
           {/* Cover */}
-          <div
-            style={{
-              height: 220,
-              position: "relative",
-              overflow: "hidden",
-              background: "#CBD5E1",
-            }}
-          >
+          <div className="jp-cover-wrap">
             <img
               src={company.coverImage}
               alt="Cover"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              className="jp-cover-img"
             />
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(to bottom, rgba(0,35,102,0.15) 0%, rgba(0,35,102,0.55) 100%)",
-              }}
-            />
+            <div className="jp-cover-overlay" />
             <button
               onClick={() => navigate(-1)}
-              style={{
-                position: "absolute",
-                top: 20,
-                left: 20,
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "rgba(255,255,255,0.18)",
-                backdropFilter: "blur(8px)",
-                border: "1.5px solid rgba(255,255,255,0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                cursor: "pointer",
-              }}
+              className="jp-cover-back-btn"
+              aria-label="Go back"
             >
               <FiArrowLeft size={18} />
             </button>
             {/* Tags on cover */}
-            <div
-              style={{
-                position: "absolute",
-                top: 20,
-                right: 20,
-                display: "flex",
-                gap: 8,
-              }}
-            >
+            <div className="jp-cover-tags">
               {company.tags.map((tag) => (
                 <span
                   key={tag}
-                  style={{
-                    background: "rgba(255,255,255,0.18)",
-                    backdropFilter: "blur(8px)",
-                    border: "1px solid rgba(255,255,255,0.3)",
-                    color: "white",
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    padding: "4px 10px",
-                    borderRadius: 20,
-                    letterSpacing: "0.04em",
-                  }}
+                  className="jp-cover-tag"
                 >
                   {tag}
                 </span>
@@ -429,53 +351,18 @@ const Jobprofile = () => {
           </div>
 
           {/* Logo + Info Row */}
-          <div
-            className="jp-profile-info"
-            style={{ padding: "0 36px 32px", position: "relative" }}
-          >
+          <div className="jp-profile-info">
             {/* Logo */}
-            <div
-              className="jp-profile-logo"
-              style={{
-                position: "absolute",
-                top: -52,
-                width: 104,
-                height: 104,
-                background: "white",
-                borderRadius: 22,
-                border: "4px solid white",
-                boxShadow: "0 8px 32px rgba(0,35,102,0.18)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-              }}
-            >
+            <div className="jp-profile-logo">
               <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: 18,
-                  background: company.bg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "'Sora', sans-serif",
-                  fontWeight: 900,
-                  fontSize: "2.6rem",
-                  color: "white",
-                  letterSpacing: "-0.04em",
-                }}
+                className="jp-profile-logo-inner"
+                style={{ background: company.bg }}
               >
                 {isLogoUrl ? (
                   <img
                     src={company.logo}
                     alt={company.name}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    className="jp-profile-logo-img"
                   />
                 ) : (
                   company.logo
@@ -484,35 +371,18 @@ const Jobprofile = () => {
             </div>
 
             {/* Action Buttons */}
-            <div
-              className="jp-action-btns"
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 10,
-                paddingTop: 16,
-                marginBottom: 24,
-              }}
-            >
+            <div className="jp-action-btns">
               <button
                 onClick={handleFollowToggle}
                 disabled={followLoading || !user}
+                className="jp-follow-btn"
                 style={{
-                  padding: "9px 22px",
-                  borderRadius: 11,
                   background: isFollowing ? "#E8FBF3" : "#002366",
                   color: isFollowing ? "#0DBF7B" : "white",
                   border: isFollowing
                     ? "1.5px solid #0DBF7B"
                     : "1.5px solid #002366",
-                  fontWeight: 800,
-                  fontSize: "0.85rem",
                   cursor: followLoading ? "wait" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  fontFamily: "'Sora', sans-serif",
-                  transition: "all 0.18s",
                   opacity: followLoading ? 0.7 : 1,
                 }}
               >
@@ -529,21 +399,7 @@ const Jobprofile = () => {
                   href={company.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    padding: "9px 22px",
-                    borderRadius: 11,
-                    border: "1.5px solid #E2E8F0",
-                    background: "white",
-                    color: "#334155",
-                    fontWeight: 800,
-                    fontSize: "0.85rem",
-                    textDecoration: "none",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                    fontFamily: "'Sora', sans-serif",
-                    transition: "all 0.18s",
-                  }}
+                  className="jp-website-link"
                 >
                   <FiGlobe size={15} /> Website <FiExternalLink size={13} />
                 </a>
@@ -551,62 +407,21 @@ const Jobprofile = () => {
             </div>
 
             {/* Company Name & Meta */}
-            <div style={{ marginTop: 8 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 4,
-                }}
-              >
-                <h1
-                  style={{
-                    fontFamily: "'Sora', sans-serif",
-                    fontSize: "1.9rem",
-                    fontWeight: 800,
-                    color: "#0A1628",
-                    letterSpacing: "-0.04em",
-                  }}
-                >
+            <div className="jp-header-text">
+              <div className="jp-name-row">
+                <h1 className="jp-company-title">
                   {company.name}
                 </h1>
-                <span
-                  style={{
-                    background: "#E8FBF3",
-                    color: "#0DBF7B",
-                    fontSize: "0.7rem",
-                    fontWeight: 800,
-                    padding: "4px 10px",
-                    borderRadius: 7,
-                    border: "1px solid #0DBF7B",
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                  }}
-                >
+                <span className="jp-hiring-badge">
                   Actively Hiring
                 </span>
               </div>
-              <p
-                style={{
-                  fontSize: "0.95rem",
-                  fontWeight: 600,
-                  color: "#64748B",
-                  marginBottom: 16,
-                }}
-              >
+              <p className="jp-company-subtitle">
                 {company.fullName} · {company.industry}
               </p>
 
               {/* Meta Pills */}
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  marginBottom: 24,
-                }}
-              >
+              <div className="jp-meta-pills">
                 {[
                   { icon: <FiMapPin size={13} />, text: company.location },
                   {
@@ -625,37 +440,13 @@ const Jobprofile = () => {
                 ].map((m, i) => (
                   <div
                     key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: m.highlight ? "#EEF4FF" : "#F8FAFC",
-                      border: `1px solid ${m.highlight ? "#CCDAFF" : "#E2E8F0"}`,
-                      color: m.highlight ? "#1E5EFF" : "#64748B",
-                      padding: "5px 12px",
-                      borderRadius: 8,
-                      fontSize: "0.8rem",
-                      fontWeight: 700,
-                    }}
+                    className={`jp-meta-pill${m.highlight ? " jp-meta-pill--highlight" : ""}`}
                   >
                     {m.icon} {m.text}
                   </div>
                 ))}
                 {/* Rating pill */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    background: "#FFFBEB",
-                    border: "1px solid #FDE68A",
-                    color: "#92400E",
-                    padding: "5px 12px",
-                    borderRadius: 8,
-                    fontSize: "0.8rem",
-                    fontWeight: 800,
-                  }}
-                >
+                <div className="jp-meta-pill jp-meta-pill--rating">
                   <FaStar size={11} color="#F59E0B" />
                   {company.rating} · {company.reviews} reviews
                 </div>
@@ -663,53 +454,16 @@ const Jobprofile = () => {
             </div>
 
             {/* Tabs */}
-            <div
-              style={{
-                display: "flex",
-                gap: 4,
-                borderTop: "1px solid #F1F5F9",
-                paddingTop: 0,
-                marginTop: 4,
-                overflowX: "auto",
-                scrollbarWidth: "none",
-              }}
-            >
+            <div className="jp-tabs-bar">
               {["Overview", "About", "Jobs"].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  style={{
-                    padding: "16px 20px 14px",
-                    background: "none",
-                    border: "none",
-                    fontFamily: "'Sora', sans-serif",
-                    fontSize: "0.875rem",
-                    fontWeight: 800,
-                    color: activeTab === tab ? "#002366" : "#94A3B8",
-                    cursor: "pointer",
-                    position: "relative",
-                    borderBottom:
-                      activeTab === tab
-                        ? "2.5px solid #002366"
-                        : "2.5px solid transparent",
-                    transition: "all 0.18s",
-                    marginBottom: -1,
-                    letterSpacing: "-0.01em",
-                  }}
+                  className={`jp-tab-btn${activeTab === tab ? " active" : ""}`}
                 >
                   {tab}
                   {tab === "Jobs" && (
-                    <span
-                      style={{
-                        marginLeft: 6,
-                        background: "#002366",
-                        color: "white",
-                        fontSize: "0.62rem",
-                        fontWeight: 800,
-                        padding: "1px 6px",
-                        borderRadius: 20,
-                      }}
-                    >
+                    <span className="jp-tab-badge">
                       {company.jobs.length}
                     </span>
                   )}
@@ -720,30 +474,14 @@ const Jobprofile = () => {
         </div>
 
         {/* ─── Main Grid ──────────────────────────────────── */}
-        <div
-          className="jp-main-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 308px",
-            gap: 24,
-            alignItems: "start",
-          }}
-        >
+        <div className="jp-main-grid">
           {/* Left Column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="jp-left-col">
             {/* ── OVERVIEW TAB ── */}
             {activeTab === "Overview" && (
               <>
                 {/* About */}
-                <div
-                  style={{
-                    background: "white",
-                    borderRadius: 20,
-                    border: "1px solid #E2E8F0",
-                    padding: "28px 32px",
-                    boxShadow: "0 2px 12px rgba(10,22,40,0.05)",
-                  }}
-                >
+                <div className="jp-card">
                   <div
                     style={{
                       display: "flex",
@@ -820,15 +558,7 @@ const Jobprofile = () => {
                 </div>
 
                 {/* Benefits */}
-                <div
-                  style={{
-                    background: "white",
-                    borderRadius: 20,
-                    border: "1px solid #E2E8F0",
-                    padding: "28px 32px",
-                    boxShadow: "0 2px 12px rgba(10,22,40,0.05)",
-                  }}
-                >
+                <div className="jp-card">
                   <h3
                     style={{
                       fontFamily: "'Sora', sans-serif",
@@ -840,41 +570,9 @@ const Jobprofile = () => {
                   >
                     Employee Benefits
                   </h3>
-                  <div
-                    className="jp-benefits-grid"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(3, 1fr)",
-                      gap: 16,
-                    }}
-                  >
+                  <div className="jp-benefits-grid">
                     {company.benefits.map((ben) => (
-                      <div
-                        key={ben.name}
-                        style={{
-                          background: "#F8FAFC",
-                          border: "1px solid #E2E8F0",
-                          borderRadius: 16,
-                          padding: "24px 16px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          textAlign: "center",
-                          transition: "all 0.22s",
-                          cursor: "default",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow =
-                            "0 8px 24px rgba(10,22,40,0.1)";
-                          e.currentTarget.style.transform = "translateY(-4px)";
-                          e.currentTarget.style.borderColor = "#CCDAFF";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none";
-                          e.currentTarget.style.transform = "none";
-                          e.currentTarget.style.borderColor = "#E2E8F0";
-                        }}
-                      >
+                      <div key={ben.name} className="jp-benefit-card">
                         <div
                           style={{
                             width: 52,
@@ -906,15 +604,7 @@ const Jobprofile = () => {
                 </div>
 
                 {/* Departments */}
-                <div
-                  style={{
-                    background: "white",
-                    borderRadius: 20,
-                    border: "1px solid #E2E8F0",
-                    padding: "28px 32px",
-                    boxShadow: "0 2px 12px rgba(10,22,40,0.05)",
-                  }}
-                >
+                <div className="jp-card">
                   <h3
                     style={{
                       fontFamily: "'Sora', sans-serif",
@@ -936,25 +626,7 @@ const Jobprofile = () => {
                     {company.departments.map((dept, i) => (
                       <div
                         key={i}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "14px 18px",
-                          borderRadius: 12,
-                          background: "#F8FAFC",
-                          border: "1px solid #E2E8F0",
-                          cursor: "pointer",
-                          transition: "all 0.18s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = "#CCDAFF";
-                          e.currentTarget.style.background = "#EEF4FF";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = "#E2E8F0";
-                          e.currentTarget.style.background = "#F8FAFC";
-                        }}
+                        className="jp-dept-item"
                         onClick={() => setActiveTab("Jobs")}
                       >
                         <div
@@ -1014,20 +686,14 @@ const Jobprofile = () => {
             {/* ── JOBS TAB ── */}
             {activeTab === "Jobs" && (
               <>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 4,
-                  }}
-                >
+                <div className="jp-jobs-header">
                   <h3
                     style={{
                       fontFamily: "'Sora', sans-serif",
                       fontWeight: 800,
                       fontSize: "1.05rem",
                       color: "#0A1628",
+                      margin: 0,
                     }}
                   >
                     Active Openings
@@ -1045,7 +711,7 @@ const Jobprofile = () => {
                       {company.jobs.length}
                     </span>
                   </h3>
-                  <div style={{ position: "relative" }}>
+                  <div className="jp-jobs-search-wrap">
                     <FiSearch
                       size={13}
                       style={{
@@ -1062,24 +728,7 @@ const Jobprofile = () => {
                       placeholder="Search Jobs..."
                       value={jobSearch}
                       onChange={(e) => setJobSearch(e.target.value)}
-                      style={{
-                        padding: "8px 14px 8px 34px",
-                        borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
-                        background: "white",
-                        fontSize: "0.78rem",
-                        fontWeight: 700,
-                        color: "#334155",
-                        outline: "none",
-                        width: 200,
-                        transition: "border-color 0.18s",
-                      }}
-                      onFocus={(e) =>
-                        (e.currentTarget.style.borderColor = "#1E5EFF")
-                      }
-                      onBlur={(e) =>
-                        (e.currentTarget.style.borderColor = "#E2E8F0")
-                      }
+                      className="jp-jobs-search-input"
                     />
                   </div>
                 </div>
@@ -1094,34 +743,10 @@ const Jobprofile = () => {
                   .map((job) => (
                     <div
                       key={job.id}
-                      style={{
-                        background: "white",
-                        borderRadius: 20,
-                        border: "1px solid #E2E8F0",
-                        padding: "24px 28px",
-                        boxShadow: "0 2px 12px rgba(10,22,40,0.05)",
-                        transition: "all 0.22s",
-                        cursor: "default",
-                        position: "relative",
-                        overflow: "hidden",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.boxShadow =
-                          "0 12px 36px rgba(10,22,40,0.11)";
-                        e.currentTarget.style.borderColor = "#CCDAFF";
-                        e.currentTarget.style.transform = "translateY(-3px)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.boxShadow =
-                          "0 2px 12px rgba(10,22,40,0.05)";
-                        e.currentTarget.style.borderColor = "#E2E8F0";
-                        e.currentTarget.style.transform = "none";
-                      }}
+                      className="jp-job-card"
                     >
                       {/* Top row */}
-                      <div
-                        style={{ display: "flex", gap: 16, marginBottom: 18 }}
-                      >
+                      <div className="jp-job-top">
                         <div
                           style={{
                             width: 52,
@@ -1153,7 +778,7 @@ const Jobprofile = () => {
                             company.logo
                           )}
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <h4
                             style={{
                               fontFamily: "'Sora', sans-serif",
@@ -1162,6 +787,7 @@ const Jobprofile = () => {
                               color: "#0A1628",
                               marginBottom: 5,
                               letterSpacing: "-0.02em",
+                              wordBreak: "break-word",
                             }}
                           >
                             {job.title}
@@ -1214,15 +840,7 @@ const Jobprofile = () => {
                       </div>
 
                       {/* Meta row */}
-                      <div
-                        className="jp-job-meta"
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(4,1fr)",
-                          gap: 10,
-                          marginBottom: 18,
-                        }}
-                      >
+                      <div className="jp-job-meta">
                         {[
                           { icon: <FiBriefcase size={13} />, text: job.exp },
                           { icon: <FaRupeeSign size={11} />, text: job.salary },
@@ -1231,29 +849,12 @@ const Jobprofile = () => {
                         ].map((m, i) => (
                           <div
                             key={i}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                              background: "#F8FAFC",
-                              borderRadius: 9,
-                              padding: "7px 10px",
-                              fontSize: "0.78rem",
-                              fontWeight: 700,
-                              color: "#475569",
-                              border: "1px solid #F1F5F9",
-                            }}
+                            className="jp-job-meta-item"
                           >
                             <span style={{ color: "#94A3B8", flexShrink: 0 }}>
                               {m.icon}
                             </span>
-                            <span
-                              style={{
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                            <span className="jp-job-meta-text">
                               {m.text}
                             </span>
                           </div>
@@ -1292,17 +893,7 @@ const Jobprofile = () => {
                       </div>
 
                       {/* Tags + Actions */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          paddingTop: 16,
-                          borderTop: "1px solid #F1F5F9",
-                          flexWrap: "wrap",
-                        }}
-                      >
+                      <div className="jp-job-tags-actions">
                         <div
                           style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
                         >
@@ -1396,15 +987,7 @@ const Jobprofile = () => {
             {/* ── ABOUT TAB ── */}
             {activeTab === "About" && (
               <>
-                <div
-                  style={{
-                    background: "white",
-                    borderRadius: 20,
-                    border: "1px solid #E2E8F0",
-                    padding: "28px 32px",
-                    boxShadow: "0 2px 12px rgba(10,22,40,0.05)",
-                  }}
-                >
+                <div className="jp-card">
                   <h3
                     style={{
                       fontFamily: "'Sora', sans-serif",
@@ -1489,14 +1072,7 @@ const Jobprofile = () => {
                 </div>
 
                 {/* Highlights */}
-                <div
-                  className="jp-highlights-grid"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 16,
-                  }}
-                >
+                <div className="jp-highlights-grid">
                   {[
                     {
                       icon: <FiGlobe size={20} />,
@@ -1582,15 +1158,7 @@ const Jobprofile = () => {
                 </div>
 
                 {/* Company Info Table */}
-                <div
-                  style={{
-                    background: "white",
-                    borderRadius: 20,
-                    border: "1px solid #E2E8F0",
-                    padding: "28px 32px",
-                    boxShadow: "0 2px 12px rgba(10,22,40,0.05)",
-                  }}
-                >
+                <div className="jp-card">
                   <h3
                     style={{
                       fontFamily: "'Sora', sans-serif",
@@ -1602,14 +1170,7 @@ const Jobprofile = () => {
                   >
                     Company Information
                   </h3>
-                  <div
-                    className="jp-info-grid"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "0 40px",
-                    }}
-                  >
+                  <div className="jp-info-grid">
                     {[
                       { label: "Company Type", value: company.type },
                       { label: "Founded", value: company.founded },
@@ -1687,15 +1248,7 @@ const Jobprofile = () => {
             }}
           >
             {/* Rating Widget */}
-            <div
-              style={{
-                background: "white",
-                borderRadius: 20,
-                border: "1px solid #E2E8F0",
-                padding: "24px",
-                boxShadow: "0 2px 12px rgba(10,22,40,0.05)",
-              }}
-            >
+            <div className="jp-card">
               <h3
                 style={{
                   fontFamily: "'Sora', sans-serif",

@@ -582,6 +582,7 @@
   transition: all 0.2s;
 }
 .jlp-sort-btn:hover { background: #f1f5f9; border-color: var(--brand-blue); }
+.jlp-sort-btn.open { border-color: var(--brand-blue); background: #f8fafc; }
 
 .jlp-sort-dropdown {
   position: absolute;
@@ -593,9 +594,13 @@
   box-shadow: 0 10px 30px rgba(0,0,0,0.1);
   padding: 8px;
   z-index: 10;
-  min-width: 130px;
+  min-width: 140px;
 }
-.jlp-sort-dropdown div {
+.jlp-sort-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 14px;
   font-size: 0.85rem;
   font-weight: 600;
@@ -604,9 +609,35 @@
   cursor: pointer;
   transition: all 0.2s;
 }
-.jlp-sort-dropdown div:hover {
+.jlp-sort-option:hover {
+  background: #f1f5f9;
+  color: var(--brand-blue);
+}
+.jlp-sort-option.active {
+  background: #eef2ff;
+  color: var(--brand-blue);
+  font-weight: 700;
+}
+
+.jlp-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.jlp-radio.checked {
+  border-color: var(--brand-blue);
+}
+.jlp-radio-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   background: var(--brand-blue);
-  color: #fff;
 }
 
 /* Job Card */

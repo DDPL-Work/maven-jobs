@@ -1,0 +1,908 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Job Profile (Company Detail) Responsive Stylesheet
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Container & Global Resets ── */
+.jp-root {
+  min-height: 100vh;
+  background: #eef2f9;
+  font-family: 'DM Sans', sans-serif;
+  color: #0a1628;
+  padding-top: 72px;
+  overflow-x: hidden;
+}
+
+.jp-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+  box-sizing: border-box;
+}
+
+/* ── Profile Top Card ── */
+.jp-profile-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 28px;
+  box-shadow: 0 4px 24px rgba(10, 22, 40, 0.07);
+}
+
+.jp-cover-wrap {
+  height: 220px;
+  position: relative;
+  overflow: hidden;
+  background: #cbd5e1;
+}
+
+.jp-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.jp-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 35, 102, 0.15) 0%, rgba(0, 35, 102, 0.55) 100%);
+}
+
+.jp-cover-back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  z-index: 2;
+}
+
+.jp-cover-back-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateX(-2px);
+}
+
+.jp-cover-tags {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: calc(100% - 80px);
+  z-index: 2;
+}
+
+.jp-cover-tag {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ── Profile Info Header ── */
+.jp-profile-info {
+  padding: 0 36px 32px;
+  position: relative;
+}
+
+.jp-profile-logo {
+  position: absolute;
+  top: -52px;
+  left: 36px;
+  width: 104px;
+  height: 104px;
+  background: #ffffff;
+  border-radius: 22px;
+  border: 4px solid #ffffff;
+  box-shadow: 0 8px 32px rgba(0, 35, 102, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 3;
+}
+
+.jp-profile-logo-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 900;
+  font-size: 2.6rem;
+  color: #ffffff;
+  letter-spacing: -0.04em;
+  overflow: hidden;
+}
+
+.jp-profile-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jp-action-btns {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding-top: 16px;
+  margin-bottom: 24px;
+}
+
+.jp-follow-btn {
+  padding: 9px 22px;
+  border-radius: 11px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: 'Sora', sans-serif;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.jp-website-link {
+  padding: 9px 22px;
+  border-radius: 11px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: 'Sora', sans-serif;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.jp-website-link:hover {
+  border-color: #1e5eff;
+  color: #1e5eff;
+  background: #f8fafc;
+}
+
+/* ── Title & Meta ── */
+.jp-header-text {
+  margin-top: 8px;
+}
+
+.jp-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.jp-company-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #0a1628;
+  letter-spacing: -0.04em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.jp-hiring-badge {
+  background: #e8fbf3;
+  color: #0dbf7b;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid #0dbf7b;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.jp-company-subtitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0 0 16px 0;
+  line-height: 1.4;
+}
+
+.jp-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.jp-meta-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.jp-meta-pill--highlight {
+  background: #eef4ff;
+  border-color: #ccdaff;
+  color: #1e5eff;
+}
+
+.jp-meta-pill--rating {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+  font-weight: 800;
+}
+
+/* ── Tabs Bar ── */
+.jp-tabs-bar {
+  display: flex;
+  gap: 4px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0;
+  margin-top: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.jp-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.jp-tab-btn {
+  padding: 16px 20px 14px;
+  background: none;
+  border: none;
+  font-family: 'Sora', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #94a3b8;
+  cursor: pointer;
+  position: relative;
+  border-bottom: 2.5px solid transparent;
+  transition: all 0.18s ease;
+  margin-bottom: -1px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.jp-tab-btn.active {
+  color: #002366;
+  border-bottom-color: #002366;
+}
+
+.jp-tab-badge {
+  margin-left: 6px;
+  background: #002366;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 20px;
+}
+
+/* ── Main Layout Grid ── */
+.jp-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 308px;
+  gap: 24px;
+  align-items: start;
+}
+
+.jp-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.jp-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 88px;
+  min-width: 0;
+}
+
+/* ── Content Cards ── */
+.jp-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 28px 32px;
+  box-shadow: 0 2px 12px rgba(10, 22, 40, 0.05);
+}
+
+.jp-card-title {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #0a1628;
+  margin: 0;
+}
+
+/* ── Benefits Grid ── */
+.jp-benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.jp-benefit-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.22s ease;
+  cursor: default;
+}
+
+.jp-benefit-card:hover {
+  box-shadow: 0 8px 24px rgba(10, 22, 40, 0.1);
+  transform: translateY(-4px);
+  border-color: #ccdaff;
+}
+
+/* ── Departments ── */
+.jp-dept-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  gap: 12px;
+}
+
+.jp-dept-item:hover {
+  border-color: #ccdaff;
+  background: #eef4ff;
+}
+
+/* ── Jobs Tab ── */
+.jp-jobs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.jp-jobs-search-wrap {
+  position: relative;
+  min-width: 200px;
+}
+
+.jp-jobs-search-input {
+  padding: 8px 14px 8px 34px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  outline: none;
+  width: 200px;
+  transition: border-color 0.18s ease;
+  box-sizing: border-box;
+}
+
+.jp-jobs-search-input:focus {
+  border-color: #1e5eff;
+}
+
+.jp-job-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 24px 28px;
+  box-shadow: 0 2px 12px rgba(10, 22, 40, 0.05);
+  transition: all 0.22s ease;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+
+.jp-job-card:hover {
+  box-shadow: 0 12px 36px rgba(10, 22, 40, 0.11);
+  border-color: #ccdaff;
+  transform: translateY(-3px);
+}
+
+.jp-job-top {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.jp-job-meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.jp-job-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  border: 1px solid #f1f5f9;
+  min-width: 0;
+}
+
+.jp-job-meta-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jp-job-tags-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.jp-job-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── About Tab ── */
+.jp-highlights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.jp-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 40px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Medium Desktops & Tablets Landscape (992px to 1024px) ── */
+@media (max-width: 1024px) {
+  .jp-main-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .jp-sidebar {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+}
+
+/* ── Tablets Portrait (769px to 991px) ── */
+@media (max-width: 991px) {
+  .jp-container {
+    padding: 24px 20px 60px;
+  }
+
+  .jp-profile-info {
+    padding: 0 28px 28px;
+  }
+
+  .jp-benefits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .jp-job-meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Mobile Landscape & Tablets Small (max-width: 768px) ── */
+@media (max-width: 768px) {
+  .jp-root {
+    padding-top: 64px;
+  }
+
+  .jp-container {
+    padding: 16px 16px 50px;
+  }
+
+  .jp-profile-card {
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+
+  .jp-cover-wrap {
+    height: 180px;
+  }
+
+  .jp-cover-back-btn {
+    top: 14px;
+    left: 14px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .jp-cover-tags {
+    top: 14px;
+    right: 14px;
+    gap: 6px;
+  }
+
+  .jp-cover-tag {
+    font-size: 0.64rem;
+    padding: 3px 8px;
+  }
+
+  .jp-profile-info {
+    padding: 56px 20px 24px !important;
+    position: relative;
+  }
+
+  .jp-profile-logo {
+    width: 80px;
+    height: 80px;
+    top: -40px;
+    left: 20px;
+    border-radius: 18px;
+    border: 3.5px solid #ffffff;
+    z-index: 3;
+  }
+
+  .jp-profile-logo-inner {
+    font-size: 2rem;
+    border-radius: 14px;
+  }
+
+  /* Action buttons placed cleanly in their own full-width row below the logo */
+  .jp-action-btns {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    margin-bottom: 18px !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: stretch !important;
+    gap: 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .jp-follow-btn,
+  .jp-website-link {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 10px 14px !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+  }
+
+  .jp-company-title {
+    font-size: 1.55rem;
+  }
+
+  .jp-company-subtitle {
+    font-size: 0.88rem;
+    margin-bottom: 14px;
+  }
+
+  .jp-meta-pills {
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .jp-meta-pill {
+    padding: 4px 10px;
+    font-size: 0.76rem;
+  }
+
+  .jp-tabs-bar {
+    margin-top: 0;
+  }
+
+  .jp-tab-btn {
+    padding: 13px 16px 11px;
+    font-size: 0.82rem;
+  }
+
+  .jp-card {
+    padding: 22px 20px;
+    border-radius: 18px;
+  }
+
+  .jp-benefits-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .jp-benefit-card {
+    padding: 18px 12px;
+    border-radius: 14px;
+  }
+
+  .jp-highlights-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .jp-info-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .jp-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .jp-jobs-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .jp-jobs-search-wrap,
+  .jp-jobs-search-input {
+    width: 100%;
+  }
+
+  .jp-job-card {
+    padding: 20px 18px;
+    border-radius: 18px;
+  }
+
+  .jp-job-meta {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .jp-job-tags-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .jp-job-actions {
+    width: 100%;
+    display: flex;
+  }
+
+  .jp-job-actions > button:last-child {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ── Small Mobile Devices (max-width: 520px) ── */
+@media (max-width: 520px) {
+  .jp-container {
+    padding: 12px 12px 40px;
+  }
+
+  .jp-cover-wrap {
+    height: 150px;
+  }
+
+  .jp-profile-info {
+    padding: 48px 14px 20px !important;
+  }
+
+  .jp-profile-logo {
+    width: 72px;
+    height: 72px;
+    top: -36px;
+    left: 14px;
+    border-radius: 16px;
+  }
+
+  .jp-profile-logo-inner {
+    font-size: 1.8rem;
+    border-radius: 12px;
+  }
+
+  /* Stack buttons below logo smoothly */
+  .jp-action-btns {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    margin-bottom: 16px !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: stretch !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  .jp-follow-btn,
+  .jp-website-link {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 9px 12px !important;
+    font-size: 0.8rem !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+  }
+
+  .jp-company-title {
+    font-size: 1.35rem;
+  }
+
+  .jp-hiring-badge {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+  }
+
+  .jp-company-subtitle {
+    font-size: 0.82rem;
+  }
+
+  .jp-meta-pill {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+
+  .jp-tab-btn {
+    padding: 11px 12px 9px;
+    font-size: 0.8rem;
+  }
+
+  .jp-card {
+    padding: 18px 14px;
+    border-radius: 16px;
+  }
+
+  .jp-benefits-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .jp-benefit-card {
+    padding: 14px 10px;
+    border-radius: 12px;
+  }
+
+  .jp-benefit-card > div:first-child {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 11px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .jp-benefit-card span {
+    font-size: 0.72rem !important;
+  }
+
+  .jp-job-card {
+    padding: 16px 14px;
+    border-radius: 16px;
+  }
+
+  .jp-job-top {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .jp-job-top > div:first-child {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 11px !important;
+    font-size: 1.15rem !important;
+  }
+
+  .jp-job-meta {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .jp-job-meta-item {
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
+
+  .jp-dept-item {
+    padding: 12px 14px;
+  }
+
+  .jp-dept-item span {
+    font-size: 0.82rem !important;
+  }
+}
+
+/* ── Ultra Narrow Mobiles (max-width: 360px) ── */
+@media (max-width: 360px) {
+  .jp-profile-info {
+    padding: 44px 12px 18px !important;
+  }
+
+  .jp-job-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .jp-benefits-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .jp-action-btns {
+    gap: 6px;
+  }
+
+  .jp-follow-btn,
+  .jp-website-link {
+    padding: 8px 8px;
+    font-size: 0.74rem;
+    gap: 4px;
+  }
+
+  .jp-name-row {
+    gap: 6px;
+  }
+
+  .jp-company-title {
+    font-size: 1.2rem;
+  }
+}

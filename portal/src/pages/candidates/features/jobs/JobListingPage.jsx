@@ -50,6 +50,12 @@ const FILTER_CATEGORIES = [
   { id: "type", label: "Company Type" },
 ];
 
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Relevance" },
+  { value: "newest", label: "Recent" },
+  { value: "top_paid", label: "Top Paid" },
+];
+
 const fromFilterSlug = (value = "") =>
   String(value || "")
     .replace(/-/g, " ")
@@ -79,11 +85,33 @@ const appendUnique = (items, value) => {
     : [...items, normalized];
 };
 
+const checkFilterMatch = (urlKey, opt, selectedList) => {
+  if (!selectedList || selectedList.length === 0) return false;
+  const O = String(opt || "").toLowerCase();
+  return selectedList.some((s) => {
+    const S = String(s || "").toLowerCase();
+    if (O === S || O.includes(S) || S.includes(O)) return true;
+    if (urlKey === "location" || urlKey === "loc") {
+      if ((S.includes("bangalore") || S.includes("bengaluru")) && (O.includes("bangalore") || O.includes("bengaluru"))) return true;
+      if ((S.includes("delhi") || S.includes("noida") || S.includes("gurgaon")) && (O.includes("delhi") || O.includes("noida") || O.includes("gurgaon"))) return true;
+      if ((S.includes("mumbai") || S.includes("bombay")) && (O.includes("mumbai") || O.includes("bombay"))) return true;
+      if ((S.includes("hyderabad") || S.includes("secunderabad")) && (O.includes("hyderabad") || O.includes("secunderabad"))) return true;
+      if ((S.includes("chennai") || S.includes("madras")) && (O.includes("chennai") || O.includes("madras"))) return true;
+    }
+    if (urlKey === "workMode" || urlKey === "mode") {
+      if ((S.includes("on site") || S.includes("office") || S.includes("onsite")) && (O.includes("on site") || O.includes("office") || O.includes("onsite"))) return true;
+      if ((S.includes("remote") || S.includes("home") || S.includes("wfh")) && (O.includes("remote") || O.includes("home") || O.includes("wfh"))) return true;
+    }
+    return false;
+  });
+};
+
 export default function JobListingPage() {
   const navigate = useNavigate();
   const { filter: routeFilter = "" } = useParams();
   const [scrolled, setScrolled] = useState(false);
   const [showSort, setShowSort] = useState(false);
+  const sortRef = useRef(null);
   const [backendJobs, setBackendJobs] = useState([]);
   const [backendCompanies, setBackendCompanies] = useState([]);
   const [savedJobs, setSavedJobs] = useState({});
@@ -169,10 +197,10 @@ export default function JobListingPage() {
       }
     }
     if (filters.salary) params.salary = filters.salary;
-    if (sortBy === "newest") params.sort = sortBy;
+    if (sortBy) params.sort = sortBy;
     params.page = currentPage;
     params.limit = JOBS_PER_PAGE;
-    if (routeFilter && !keyword) params.filter = routeFilter;
+    if (routeFilter) params.filter = routeFilter;
     return params;
   }, [keyword, filters, sortBy, currentPage, routeFilter, JOBS_PER_PAGE]);
 
@@ -189,6 +217,21 @@ export default function JobListingPage() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sortRef.current && !sortRef.current.contains(e.target)) {
+        setShowSort(false);
+      }
+    };
+    if (showSort) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSort]);
 
   // Populate companies — extract from jobs (preserves recency order), merge profile data from landing API
   useEffect(() => {
@@ -293,22 +336,48 @@ export default function JobListingPage() {
       const profile = profileMap[company.toLowerCase().trim()] || {};
       const minSal = j.salaryMin || 0;
       const maxSal = j.salaryMax || 0;
-      const salStr =
-        minSal && maxSal
-          ? `${(minSal / 100000).toFixed(0)}–${(maxSal / 100000).toFixed(0)} Lakhs PA`
-          : j.salary || "18–28 Lakhs PA";
+      const dur = String(j.salaryDuration || j.payCycle || "").toLowerCase();
+      const isMonthly = dur.includes("month");
+      const isHourly = dur.includes("hour");
+
+      let salStr;
+      if (minSal && maxSal) {
+        if (isMonthly) {
+          salStr = `₹${minSal.toLocaleString("en-IN")}–₹${maxSal.toLocaleString("en-IN")} / month`;
+        } else if (isHourly) {
+          salStr = `₹${minSal.toLocaleString("en-IN")}–₹${maxSal.toLocaleString("en-IN")} / hr`;
+        } else {
+          const minL = minSal >= 1000 ? (minSal / 100000).toFixed(0) : minSal;
+          const maxL = maxSal >= 1000 ? (maxSal / 100000).toFixed(0) : maxSal;
+          salStr = `${minL}–${maxL} Lakhs PA`;
+        }
+      } else if (minSal || maxSal) {
+        const val = minSal || maxSal;
+        if (isMonthly) {
+          salStr = `₹${val.toLocaleString("en-IN")} / month`;
+        } else if (isHourly) {
+          salStr = `₹${val.toLocaleString("en-IN")} / hr`;
+        } else {
+          const lVal = val >= 1000 ? (val / 100000).toFixed(0) : val;
+          salStr = `${lVal} Lakhs PA`;
+        }
+      } else {
+        salStr = j.salary || "18–28 Lakhs PA";
+      }
+
+      const annualMin = isMonthly ? minSal * 12 : minSal;
       const salCat =
-        minSal >= 5000000
+        annualMin >= 5000000
           ? "50+ Lakhs"
-          : minSal >= 2500000
+          : annualMin >= 2500000
             ? "25+ Lakhs"
-            : minSal >= 1500000
+            : annualMin >= 1500000
               ? "15+ Lakhs"
-              : minSal >= 1000000
+              : annualMin >= 1000000
                 ? "10–15 Lakhs"
-                : minSal >= 600000
+                : annualMin >= 600000
                   ? "6–10 Lakhs"
-                  : minSal >= 300000
+                  : annualMin >= 300000
                     ? "3–6 Lakhs"
                     : "0–3 Lakhs";
 
@@ -354,6 +423,8 @@ export default function JobListingPage() {
         salary: salStr,
         salaryMin: j.salaryMin || 0,
         salaryMax: j.salaryMax || 0,
+        salaryDuration: j.salaryDuration || (isMonthly ? "monthly" : "annually"),
+        payCycle: j.payCycle || (isMonthly ? "Per Month" : "Per Annum"),
         location: j.location || "Bengaluru",
         posted: formatRelativeTime(j.updatedAt || j.createdAt) || "Recently",
         desc: j.description || j.desc || "No description provided.",
@@ -362,7 +433,10 @@ export default function JobListingPage() {
             ? [...stackTags, ...skills]
             : ["Full-Time", j.department || "Engineering"],
         logo: j.companyLogo || company[0],
-        logoUrl: (Boolean(j.isHotVacancy || j.jobCategory === "hot")) ? (companyLogoUrl || profile.logoUrl || "") : "",
+        logoUrl: (j.showCompanyLogo !== undefined ? Boolean(j.showCompanyLogo) : Boolean(companyLogoUrl))
+          ? (companyLogoUrl || profile.logoUrl || "")
+          : "",
+        showCompanyLogo: j.showCompanyLogo !== undefined ? Boolean(j.showCompanyLogo) : Boolean(companyLogoUrl),
         coverUrl: j.companyCoverUrl || companyObj.coverImageUrl || "",
         logoColor: profile.color || "#002366",
         featured: i < 3,
@@ -377,21 +451,25 @@ export default function JobListingPage() {
         loc: j.location || "Bengaluru",
         salaryRange: salCat,
         type: companyObj.type || companyObj.industry || "Corporate",
-        date: new Date(j.createdAt || Date.now()).getTime(),
+        date: new Date(j.createdAt || j.updatedAt || Date.now()).getTime(),
         externalLink: j.externalLink || "",
         jobCategory: j.jobCategory || "standard",
         isHotVacancy: Boolean(j.isHotVacancy || j.jobCategory === "hot"),
       };
     });
 
-    if (sortBy === "relevance" && user) {
+    if (sortBy === "relevance") {
       formatted.forEach((job, idx) => {
-        job._score = computeRelevanceScore(job, rawJobs[idx], user);
+        job._score = user
+          ? computeRelevanceScore(job, rawJobs[idx], user)
+          : (rawJobs[idx]?._score ?? job.rating ?? 0);
       });
-      formatted.sort((a, b) => b._score - a._score);
     } else if (sortBy === "top_paid") {
       formatted.forEach((job) => {
         let eff = job.salaryMax || job.salaryMin || 0;
+        if (job.salaryDuration === "monthly" || String(job.payCycle || "").toLowerCase().includes("month")) {
+          eff = eff * 12;
+        }
         if (eff === 0) {
           const m = String(job.salary || "").match(/[\d,.]+/g);
           if (m)
@@ -400,17 +478,30 @@ export default function JobListingPage() {
         }
         job._effSal = eff;
       });
-      formatted.sort((a, b) => b._effSal - a._effSal);
-    } else if (sortBy === "newest") {
-      formatted.sort((a, b) => b.date - a.date);
     }
 
-    // Always keep hot vacancies pinned to the top of the candidate listing
+    // Always keep hot vacancies pinned to the top of the candidate listing,
+    // while sorting within each group according to the chosen sortBy filter.
     formatted.sort((a, b) => {
       const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
       const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
-      if (aHot === bHot) return 0;
-      return bHot ? 1 : -1;
+
+      // Hot vacancies always on top
+      if (aHot !== bHot) {
+        return aHot ? -1 : 1;
+      }
+
+      // Within hot vacancies or within non-hot vacancies, sort by selected criteria:
+      if (sortBy === "top_paid") {
+        const salDiff = (b._effSal || 0) - (a._effSal || 0);
+        if (salDiff !== 0) return salDiff;
+      } else if (sortBy === "relevance" && b._score !== undefined && a._score !== undefined) {
+        const scoreDiff = (b._score || 0) - (a._score || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+      }
+
+      // Default order: posting time and date (newest first)
+      return (b.date || 0) - (a.date || 0);
     });
 
     setBackendJobs({ jobs: formatted, total, totalPages });
@@ -822,6 +913,7 @@ export default function JobListingPage() {
 
   // Popular filter chips for the mobile filter bar (Naukri-style)
   const mobilePopularChips = [
+    { section: "jlp-filter-mobile-sort", label: "Sort By" },
     { section: "jlp-filter-mobile-dept", label: "Department" },
     { section: "jlp-filter-mobile-mode", label: "Work Mode" },
     { section: "jlp-filter-mobile-salaryRange", label: "Salary" },
@@ -829,6 +921,7 @@ export default function JobListingPage() {
     { section: "jlp-filter-mobile-experience", label: "Experience" },
   ];
   const chipCounts = {
+    "jlp-filter-mobile-sort": sortBy !== "relevance" ? 1 : 0,
     "jlp-filter-mobile-dept": (filters.department || []).length,
     "jlp-filter-mobile-mode": (filters.workMode || []).length,
     "jlp-filter-mobile-salaryRange": filters.salary
@@ -1006,6 +1099,37 @@ export default function JobListingPage() {
               </div>
             </div>
 
+            {/* Sort By Filter */}
+            <div
+              className="jlp-filter-group"
+              id="jlp-filter-mobile-sort"
+            >
+              <div className="jlp-filter-group-label">Sort By</div>
+              <div className="jlp-filter-options">
+                {SORT_OPTIONS.map((opt) => {
+                  const isChecked = sortBy === opt.value;
+                  return (
+                    <div
+                      key={opt.value}
+                      className="jlp-filter-option"
+                      onClick={() => handleSortChange(opt.value)}
+                    >
+                      <div
+                        className={`jlp-radio${isChecked ? " checked" : ""}`}
+                      >
+                        {isChecked && <div className="jlp-radio-inner" />}
+                      </div>
+                      <span
+                        className={`jlp-option-label${isChecked ? " active" : ""}`}
+                      >
+                        {opt.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Experience — multi-select ranges */}
             <div
               className="jlp-filter-group"
@@ -1055,15 +1179,7 @@ export default function JobListingPage() {
                       const isAll = opt === "All" || opt === "All Domain";
                       const isChecked = isAll
                         ? selected.length === 0
-                        : selected.some(s => {
-                          const S = s.toLowerCase();
-                          const O = opt.toLowerCase();
-                          if (O === S) return true;
-                          if (urlKey === "location" && O.includes(S)) return true;
-                          if (urlKey === "jobType" && O.includes(S)) return true;
-                          if (urlKey === "department" && O.includes(S)) return true;
-                          return false;
-                        });
+                        : checkFilterMatch(urlKey, opt, selected);
                       return (
                         <div
                           key={opt}
@@ -1129,29 +1245,33 @@ export default function JobListingPage() {
             </div>
             <div className="jlp-sort-row">
               <span className="jlp-sort-label">Sort by:</span>
-              <div className="jlp-sort-wrapper">
+              <div className="jlp-sort-wrapper" ref={sortRef}>
                 <button
-                  className="jlp-sort-btn"
+                  className={`jlp-sort-btn${showSort ? " open" : ""}`}
                   onClick={() => setShowSort(!showSort)}
+                  aria-expanded={showSort}
                 >
-                  {sortBy === "relevance"
-                    ? "Relevance"
-                    : sortBy === "newest"
-                      ? "Recent"
-                      : sortBy === "top_paid"
-                        ? "Top Paid"
-                        : "Relevance"}{" "}
-                  <FiChevronDown size={14} />
+                  {SORT_OPTIONS.find((o) => o.value === sortBy)?.label || "Relevance"}{" "}
+                  <FiChevronDown
+                    size={14}
+                    style={{
+                      transform: showSort ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 0.2s ease",
+                    }}
+                  />
                 </button>
                 {showSort && (
                   <div className="jlp-sort-dropdown">
-                    <div onClick={() => handleSortChange("relevance")}>
-                      Relevance
-                    </div>
-                    <div onClick={() => handleSortChange("newest")}>Recent</div>
-                    <div onClick={() => handleSortChange("top_paid")}>
-                      Top Paid
-                    </div>
+                    {SORT_OPTIONS.map((opt) => (
+                      <div
+                        key={opt.value}
+                        className={`jlp-sort-option${sortBy === opt.value ? " active" : ""}`}
+                        onClick={() => handleSortChange(opt.value)}
+                      >
+                        <span>{opt.label}</span>
+                        {sortBy === opt.value && <FiCheck size={14} />}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1164,7 +1284,7 @@ export default function JobListingPage() {
             jobs.map((job) => (
               <div
                 key={job.id}
-                className={`jlp-job-card${job.isHotVacancy ? " hot-vacancy" : job.featured ? " featured" : ""}`}
+                className={`jlp-job-card${job.featured ? " featured" : ""}`}
               >
                 {job.coverUrl ? (
                   <div
@@ -1172,22 +1292,11 @@ export default function JobListingPage() {
                     style={{ backgroundImage: `url(${job.coverUrl})` }}
                   />
                 ) : null}
-                {job.isHotVacancy ? (
-                  <div
-                    className="jlp-featured-badge"
-                    style={{
-                      background: "linear-gradient(135deg, #ef4444, #f97316)",
-                      color: "#fff",
-                      boxShadow: "0 2px 8px rgba(239, 68, 68, 0.35)",
-                    }}
-                  >
-                    🔥 Hot Vacancy
-                  </div>
-                ) : job.featured && (
+                {/* {job.featured && (
                   <div className="jlp-featured-badge">
                     <FaStar size={12} className="inline mr-1" /> Featured
                   </div>
-                )}
+                )} */}
 
                 <div className="jlp-card-top">
                   <div
@@ -1671,15 +1780,7 @@ export default function JobListingPage() {
                         const isAll = opt === "All" || opt === "All Domain";
                         const isChecked = isAll
                           ? (draftFilters[activeModal] || []).length === 0
-                          : [...selectedSet].some(s => {
-                            const S = s.toLowerCase();
-                            const O = opt.toLowerCase();
-                            if (O === S) return true;
-                            if (activeModal === "loc" && O.includes(S)) return true;
-                            if (activeModal === "type" && O.includes(S)) return true;
-                            if (activeModal === "dept" && O.includes(S)) return true;
-                            return false;
-                          });
+                          : checkFilterMatch(activeModal, opt, [...selectedSet]);
                         return (
                           <div
                             key={opt}

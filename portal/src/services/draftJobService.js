@@ -89,6 +89,7 @@ export function autoSaveDraft(formData, existingDraftId) {
     stipend: formData.stipend || '',
     internshipDuration: formData.internshipDuration || '',
     internshipStartDate: formData.internshipStartDate || '',
+    salaryDuration: formData.salaryDuration || (String(formData.payCycle || '').toLowerCase().includes('month') ? 'monthly' : 'annually'),
     payCycle: formData.payCycle || 'Per Annum',
     hideSalary: formData.hideSalary || false,
     roleDescription: formData.roleDescription || '',

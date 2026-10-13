@@ -206,11 +206,11 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
               <div className="bdm-field">
                 <label>Details of project <span>*</span></label>
                 <div style={{ border: '1px solid var(--slate-3)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--slate-3)', background: '#F8FAFC' }}>
+                  {/* <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--slate-3)', background: '#F8FAFC' }}>
                     <button style={{ background: 'white', border: '1px solid #E2E8F0', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', fontWeight: 600, color: '#D97706', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                       👑 Write with AI
                     </button>
-                  </div>
+                  </div> */}
                   <textarea value={f.description} onChange={e => setF(p => ({ ...p, description: e.target.value }))} placeholder="Enter your project details..." rows={5} style={{ width: '100%', border: 'none', padding: '12px', outline: 'none', resize: 'vertical' }} />
                 </div>
                 <p style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-4)', marginTop: '4px' }}>{f.description?.length || 0}/1000</p>
@@ -281,12 +281,6 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
                   </div>
 
                   <div className="bdm-field">
-                    <label>Skills used</label>
-                    <input value={f.skillsUsedText} onChange={e => setF(p => ({ ...p, skillsUsedText: e.target.value }))} placeholder="Enter skills used" />
-                    <p style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-4)', marginTop: '4px' }}>{500 - (f.skillsUsedText?.length || 0)} character(s) left</p>
-                  </div>
-
-                  <div className="bdm-field">
                     <label>Link (optional)</label>
                     <input value={f.link} onChange={e => setF(p => ({ ...p, link: e.target.value }))} placeholder="https://github.com/..." />
                   </div>
@@ -307,31 +301,6 @@ const ProjectCard = React.memo(({ project, palette, onEdit, onDelete, editing, o
                     </div>
                   </div>
 
-                  <div className="bdm-field">
-                    <label>Media (screenshots)</label>
-                    <div className="ps-project-media-grid" style={{ marginTop: 8 }}>
-                      {f.media.map((m, i) => (
-                        <div key={m.publicId || i} className="ps-project-media-thumb">
-                          <img src={m.url} alt="" />
-                          <button className="ps-project-media-remove" onClick={() => handleRemoveMedia(i)}><FiXCircle size={16} /></button>
-                        </div>
-                      ))}
-                      <label className={`ps-project-media-add ${uploading ? 'ps-project-media-uploading' : ''}`}>
-                        {uploading ? (
-                          <div className="ps-project-media-upload-progress">
-                            <FiLoader size={20} className="ps-spin" />
-                            <span>{uploadProgress}%</span>
-                          </div>
-                        ) : (
-                          <>
-                            <FiImage size={20} />
-                            <span>Add Image</span>
-                          </>
-                        )}
-                        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} disabled={uploading} onChange={e => { const file = e.target.files?.[0]; if (file) { handleUpload(file); e.target.value = ''; } }} />
-                      </label>
-                    </div>
-                  </div>
                 </>
               )}
             </div>

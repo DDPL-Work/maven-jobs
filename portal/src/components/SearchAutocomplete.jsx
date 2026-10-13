@@ -67,7 +67,7 @@ export default function SearchAutocomplete() {
     const trimmed = query.trim();
     if (!trimmed) return;
     setIsOpen(false);
-    navigate(`/jobs?search=${encodeURIComponent(trimmed)}`);
+    navigate(`/jobs?q=${encodeURIComponent(trimmed)}`);
   };
 
   const handleSelect = (job) => {

@@ -311,10 +311,13 @@ export default function CompanyProfilePage() {
 
   const planCode = String(profile?.planSnapshot?.planCode || profile?.plan || '').toUpperCase();
   const isPaidPlan = Boolean(planCode && !planCode.includes('FREE'));
-  const hasHotVacancy = (profile?.services || []).some(
-    (s) => String(s.productCode).toUpperCase() === 'HOT_VACANCY' || String(s.productCode).toUpperCase().includes('HOT')
-  );
-  const hasLogoDisplayFeature = hasHotVacancy || isPaidPlan;
+  const allServices = profile?.services || profile?.planSnapshot?.services || [];
+  const hasLogoDisplayFeature = allServices.some((s) => {
+    const isJobPosting = String(s.category || '').toUpperCase() === 'JOB_POSTING' || String(s.productCode || '').toUpperCase().includes('HOT') || String(s.productCode || '').toUpperCase().includes('JOB');
+    if (!isJobPosting) return false;
+    const features = Array.isArray(s.features) ? s.features : [];
+    return features.some((f) => (f.key === 'companyLogo' || /company\s*logo/i.test(f.key) || /company\s*logo/i.test(f.name)) && f.enabled === true);
+  }) || allServices.some((s) => String(s.productCode || '').toUpperCase().includes('HOT'));
 
   return (
     <EmployerLayout activeTab="company-profile">
@@ -421,8 +424,8 @@ export default function CompanyProfilePage() {
                 color: hasLogoDisplayFeature ? '#059669' : '#d97706',
               }}>
                 {hasLogoDisplayFeature
-                  ? '✓ Active branding on Hot Vacancies'
-                  : 'ⓘ Saved (Shown on Hot Vacancy)'}
+                  ? '✓ Active branding on eligible Job Postings'
+                  : 'ⓘ Saved (Shown on branded Job Postings)'}
               </div>
             </div>
           </div>

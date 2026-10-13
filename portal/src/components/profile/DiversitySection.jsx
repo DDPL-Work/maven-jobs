@@ -31,7 +31,7 @@ const DiversitySection = React.memo(({ user, onEdit, onSave }) => {
 
   return (
     <div className="ps-card" style={{ position: 'relative' }}>
-      <span style={{ position: 'absolute', top: '-12px', right: '16px', background: '#F3E8FF', color: '#7E22CE', fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: '4px' }}>New</span>
+      {/* <span style={{ position: 'absolute', top: '-12px', right: '16px', background: '#F3E8FF', color: '#7E22CE', fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: '4px' }}>New</span> */}
       
       <div className="ps-card-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

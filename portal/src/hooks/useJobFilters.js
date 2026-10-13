@@ -64,7 +64,7 @@ export function useJobFilters() {
         result.sort = value;
       } else if (key === 'salary') {
         result[key] = value;
-      } else if (key === 'q') {
+      } else if (key === 'q' || key === 'search') {
         result.q = value;
       }
     }
@@ -102,9 +102,14 @@ export function useJobFilters() {
         } else if (key === 'sort') {
           if (value && value !== 'relevance') next.set('sort', value);
           else next.delete('sort');
-        } else if (key === 'q') {
-          if (value) next.set('q', value);
-          else next.delete('q');
+        } else if (key === 'q' || key === 'search') {
+          if (value) {
+            next.set('q', value);
+            next.delete('search');
+          } else {
+            next.delete('q');
+            next.delete('search');
+          }
         }
       }
       return next;
@@ -136,6 +141,7 @@ export function useJobFilters() {
     const slug = kw ? toSlug(kw) : '';
     const params = new URLSearchParams(searchParams);
     params.delete('q');
+    params.delete('search');
     const qs = params.toString();
     navigate(`${slug ? `/jobs/${slug}` : '/jobs'}${qs ? `?${qs}` : ''}`, { replace: true });
   }, [navigate, searchParams]);

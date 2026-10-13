@@ -9,6 +9,7 @@ const CompanyReview = require("../models/CompanyReview");
 const { esAvailable } = require("../config/opensearch");
 const esService = require("../services/opensearch.service");
 const { getCandidateLiveJobFilter } = require("../utils/job-live.utils");
+const { shouldShowCompanyLogo } = require("../utils/job-branding.utils");
 
 const formatCompactCount = (value = 0) => {
   const count = Number(value || 0);
@@ -113,13 +114,65 @@ const makeFlexibleRegex = (value) => {
   return new RegExp(`^${pattern}$`, "i");
 };
 
-const jobMatchesSearch = (job, search = "") => {
-  const terms = normalizeSearch(search)
-    .split(/[\s,]+/)
-    .map((term) => term.trim())
-    .filter(Boolean);
+const CITY_ALIASES = {
+  bangalore: ["bangalore", "bengaluru"],
+  bengaluru: ["bangalore", "bengaluru"],
+  delhi: ["delhi", "new delhi", "delhi ncr", "noida", "gurgaon", "gurugram"],
+  "new delhi": ["delhi", "new delhi", "delhi ncr", "noida", "gurgaon", "gurugram"],
+  "delhi ncr": ["delhi", "new delhi", "delhi ncr", "noida", "gurgaon", "gurugram"],
+  noida: ["noida", "delhi", "delhi ncr"],
+  gurgaon: ["gurgaon", "gurugram", "delhi ncr", "delhi"],
+  gurugram: ["gurgaon", "gurugram", "delhi ncr", "delhi"],
+  mumbai: ["mumbai", "bombay", "navi mumbai"],
+  "navi mumbai": ["mumbai", "bombay", "navi mumbai"],
+  bombay: ["mumbai", "bombay", "navi mumbai"],
+  chennai: ["chennai", "madras"],
+  madras: ["chennai", "madras"],
+  kolkata: ["kolkata", "calcutta"],
+  calcutta: ["kolkata", "calcutta"],
+  hyderabad: ["hyderabad", "secunderabad"],
+  pune: ["pune", "pcmc"],
+};
 
-  if (!terms.length) return true;
+const SEARCH_ALIASES = {
+  "it jobs": ["it", "information technology", "software", "developer", "engineer", "tech", "web", "frontend", "backend", "full stack", "fullstack", "programming", "react", "node", "java", "python"],
+  "it": ["it", "information technology", "software", "developer", "engineer", "tech", "web", "frontend", "backend", "full stack", "fullstack", "programming", "react", "node", "java", "python"],
+  "sales jobs": ["sales", "business development", "bde", "account manager", "inside sales", "lead generation", "sales executive", "telecaller", "relationship manager"],
+  "sales": ["sales", "business development", "bde", "account manager", "inside sales", "lead generation", "sales executive", "telecaller", "relationship manager"],
+  "marketing jobs": ["marketing", "digital marketing", "seo", "content", "brand", "social media", "growth", "performance marketing", "sem", "copywriter"],
+  "marketing": ["marketing", "digital marketing", "seo", "content", "brand", "social media", "growth", "performance marketing", "sem", "copywriter"],
+  "data science jobs": ["data science", "data scientist", "data analyst", "machine learning", "ai", "python", "analytics", "deep learning", "nlp", "business analyst"],
+  "data science": ["data science", "data scientist", "data analyst", "machine learning", "ai", "python", "analytics", "deep learning", "nlp", "business analyst"],
+  "hr jobs": ["hr", "human resources", "recruiter", "talent acquisition", "people ops", "hiring", "talent", "payroll"],
+  "hr": ["hr", "human resources", "recruiter", "talent acquisition", "people ops", "hiring", "talent", "payroll"],
+  "engineering jobs": ["engineering", "engineer", "developer", "software", "tech", "architect", "qa", "devops", "mechanical", "civil", "electrical"],
+  "engineering": ["engineering", "engineer", "developer", "software", "tech", "architect", "qa", "devops", "mechanical", "civil", "electrical"],
+  "walk in jobs": ["walk in", "walk-in", "walkin"],
+  "walk in": ["walk in", "walk-in", "walkin"],
+  "walk-in": ["walk in", "walk-in", "walkin"],
+  "mnc jobs": ["mnc", "multinational", "corporate", "global", "enterprise"],
+  "mnc": ["mnc", "multinational", "corporate", "global", "enterprise"],
+  "fresher jobs": ["fresher", "entry level", "trainee", "intern", "0-1", "junior", "graduate"],
+  "remote jobs": ["remote", "work from home", "wfh"],
+  "part time jobs": ["part time", "part-time"],
+};
+
+const NOISE_WORDS = new Set(["jobs", "job", "opening", "openings", "role", "roles", "hiring", "in", "at", "for", "with", "and", "the"]);
+
+const matchTermOrAlias = (term, haystack) => {
+  if (!term || !haystack) return false;
+  const t = String(term).toLowerCase().trim();
+  if (!t) return false;
+  if (t.length <= 3) {
+    const escaped = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(haystack);
+  }
+  return haystack.includes(t);
+};
+
+const jobMatchesSearch = (job, search = "") => {
+  const rawSearch = normalizeSearch(search);
+  if (!rawSearch) return true;
 
   const skills = (Array.isArray(job.skills) ? job.skills : []).map((skill) => String(skill || "").toLowerCase());
   const stackAliases = [];
@@ -145,32 +198,90 @@ const jobMatchesSearch = (job, search = "") => {
     stackAliases.push("mean", "mean stack");
   }
 
+  const city = String(job.location || "").toLowerCase().trim();
+  const cityAliases = [];
+  for (const [k, v] of Object.entries(CITY_ALIASES)) {
+    if (city.includes(k)) cityAliases.push(...v);
+  }
+
+  const citiesStr = Array.isArray(job.cities) ? job.cities.join(" ") : "";
+  const compCity = job.companyId?.location?.city || "";
+  const compRegion = job.companyId?.location?.region || "";
+
   const haystack = [
     job.title,
     job.department,
+    job.summary,
+    job.description,
     job.location,
+    citiesStr,
+    compCity,
+    compRegion,
     job.experience,
+    job.jobType,
+    job.workplaceType,
     job.companyId?.name,
     job.companyId?.industry,
+    job.companyId?.type,
+    job.companyId?.packageType,
     ...(Array.isArray(job.skills) ? job.skills : []),
     ...stackAliases,
+    ...cityAliases,
   ]
+    .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
-  return terms.every((term) => haystack.includes(term));
+  // 1. Direct alias list match (for category tabs like "IT jobs", "Sales jobs", etc.)
+  if (SEARCH_ALIASES[rawSearch]) {
+    return SEARCH_ALIASES[rawSearch].some((alias) => matchTermOrAlias(alias, haystack));
+  }
+
+  // 2. Tokenize and filter out generic noise words like "jobs"
+  const allTerms = rawSearch.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean);
+  const meaningfulTerms = allTerms.filter((t) => !NOISE_WORDS.has(t));
+  const termsToMatch = meaningfulTerms.length > 0 ? meaningfulTerms : allTerms;
+
+  if (termsToMatch.length === 0) return true;
+
+  // Direct phrase match
+  if (haystack.includes(termsToMatch.join(" "))) return true;
+
+  // Check alias list for the cleaned phrase (e.g. "it" after removing "jobs")
+  const cleanedPhrase = termsToMatch.join(" ");
+  if (SEARCH_ALIASES[cleanedPhrase]) {
+    return SEARCH_ALIASES[cleanedPhrase].some((alias) => matchTermOrAlias(alias, haystack));
+  }
+
+  // Term-level matching: check if terms or their city aliases match
+  const matchedTerms = termsToMatch.filter((term) => {
+    if (CITY_ALIASES[term]) {
+      return CITY_ALIASES[term].some((alias) => matchTermOrAlias(alias, haystack));
+    }
+    return matchTermOrAlias(term, haystack);
+  });
+
+  return matchedTerms.length >= Math.min(termsToMatch.length, termsToMatch.length > 2 ? 2 : 1);
 };
 
 const jobMatchesLocation = (job, location = "") => {
   const normalizedLocation = normalizeSearch(location);
   if (!normalizedLocation) return true;
 
-  const haystack = [job.location, job.workplaceType]
+  const citiesStr = Array.isArray(job.cities) ? job.cities.join(" ") : "";
+  const compCity = job.companyId?.location?.city || "";
+  const compRegion = job.companyId?.location?.region || "";
+
+  const haystack = [job.location, citiesStr, job.workplaceType, compCity, compRegion]
+    .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
   const terms = normalizedLocation.split(/[\s,]+/).filter(Boolean);
-  return terms.every((term) => haystack.includes(term));
+  return terms.some((term) => {
+    const aliases = CITY_ALIASES[term] || [term];
+    return aliases.some((alias) => matchTermOrAlias(alias, haystack));
+  });
 };
 
 const jobMatchesExperience = (job, experience = "") => {
@@ -185,57 +296,51 @@ const jobMatchesFilter = (job, filter = "") => {
   const normalizedFilter = normalizeSearch(filter).replace(/-/g, " ");
   if (!normalizedFilter) return true;
 
-  const aliases = {
-    "it jobs": "it",
-    "sales jobs": "sales",
-    "marketing jobs": "marketing",
-    "data science jobs": "data science",
-    "hr jobs": "hr",
-    "engineering jobs": "engineering",
-    "fresher jobs": "fresher",
-    "mnc jobs": "mnc",
-    "remote jobs": "remote",
-    "work from home": "remote",
-    "walk in jobs": "walk in",
-    "part time jobs": "part time",
-  };
-  const term = aliases[normalizedFilter] || normalizedFilter.replace(/\s+jobs?$/i, "");
+  if (SEARCH_ALIASES[normalizedFilter]) {
+    const haystack = [
+      job.title,
+      job.department,
+      job.summary,
+      job.description,
+      job.location,
+      job.experience,
+      job.jobType,
+      job.workplaceType,
+      job.companyId?.name,
+      job.companyId?.industry,
+      job.companyId?.type,
+      ...(Array.isArray(job.skills) ? job.skills : []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return SEARCH_ALIASES[normalizedFilter].some((alias) => haystack.includes(alias));
+  }
 
-  const haystack = [
-    job.title,
-    job.department,
-    job.location,
-    job.experience,
-    job.jobType,
-    job.workplaceType,
-    job.companyId?.name,
-    job.companyId?.industry,
-    job.companyId?.packageType,
-    ...(Array.isArray(job.skills) ? job.skills : []),
-  ].join(" ").toLowerCase();
-
-  return haystack.includes(term);
+  return jobMatchesSearch(job, normalizedFilter);
 };
 
 const formatPublicJob = (job, reviewMap = new Map()) => {
   const companyId = String(job.companyId?._id || job.companyId || "");
   const r = reviewMap.get(companyId) || {};
-  const isHot = Boolean(job.isHotVacancy || job.jobCategory === "hot");
-  const visibleLogoUrl = isHot ? (job.companyId?.logoUrl || "") : "";
+  const showLogo = shouldShowCompanyLogo(job, job.companyId);
+  const visibleLogoUrl = showLogo ? (job.companyId?.logoUrl || "") : "";
   return {
     id: String(job._id),
     companyId,
     companyName: job.companyId?.name || "Unknown company",
     companyLogoUrl: visibleLogoUrl,
+    showCompanyLogo: showLogo,
     companyCoverUrl: job.companyId?.coverImageUrl || "",
     company: job.companyId
       ? {
         id: String(job.companyId._id),
         name: job.companyId.name,
         industry: job.companyId.industry || "",
-        type: job.companyId.packageType || "",
+        type: job.companyId.type || job.companyId.packageType || "",
         location: job.companyId.location || {},
         logoUrl: visibleLogoUrl,
+        showCompanyLogo: showLogo,
         coverImageUrl: job.companyId.coverImageUrl || "",
       }
       : null,
@@ -247,6 +352,8 @@ const formatPublicJob = (job, reviewMap = new Map()) => {
     experience: job.experience || "",
     salaryMin: Number(job.salaryMin || 0),
     salaryMax: Number(job.salaryMax || 0),
+    salaryDuration: job.salaryDuration || (String(job.payCycle || "").toLowerCase().includes("month") ? "monthly" : "annually"),
+    payCycle: job.payCycle || (job.salaryDuration === "monthly" ? "Per Month" : "Per Annum"),
     summary: job.summary || "",
     description: job.description || "",
     responsibilities: job.responsibilities || "",
@@ -332,12 +439,21 @@ async function esGetPublicJobs(req, res) {
     filteredHits = esHits.filter((j) => !applicationMap.has(j.id));
   }
 
-  // Ensure hot vacancies are placed first at the top
+  // Ensure hot vacancies are placed first at the top, respecting sort order
   filteredHits.sort((a, b) => {
     const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
     const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
-    if (aHot === bHot) return 0;
-    return bHot ? 1 : -1;
+    if (aHot !== bHot) return aHot ? -1 : 1;
+
+    if (sort === "top_paid") {
+      const aSal = Number(a.salaryMax || a.salaryMin || 0);
+      const bSal = Number(b.salaryMax || b.salaryMin || 0);
+      if (bSal !== aSal) return bSal - aSal;
+    }
+
+    const aTime = new Date(a.createdAt || a.updatedAt || 0).getTime();
+    const bTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
+    return bTime - aTime;
   });
 
   // Fetch review data for paginated jobs
@@ -403,6 +519,8 @@ async function esGetPublicJobs(req, res) {
       experience: j.experience || "",
       salaryMin: Number(j.salaryMin || 0),
       salaryMax: Number(j.salaryMax || 0),
+      salaryDuration: j.salaryDuration || (String(j.payCycle || "").toLowerCase().includes("month") ? "monthly" : "annually"),
+      payCycle: j.payCycle || (j.salaryDuration === "monthly" ? "Per Month" : "Per Annum"),
       summary: j.summary || "",
       description: j.description || "",
       externalLink: j.externalLink || "",
@@ -426,16 +544,19 @@ async function esGetPublicJobs(req, res) {
     if (uniqueCompanyIds.length > 0) {
       const companies = await Company.find(
         { _id: { $in: uniqueCompanyIds } },
-        { logoUrl: 1, coverImageUrl: 1 }
+        { logoUrl: 1, coverImageUrl: 1, planSnapshot: 1 }
       ).lean();
       const companyLogoMap = new Map(companies.map((c) => [String(c._id), c]));
       formattedJobs.forEach((j) => {
         const c = companyLogoMap.get(j.companyId);
         if (c) {
-          j.companyLogoUrl = c.logoUrl || "";
+          const showLogo = shouldShowCompanyLogo(j, c);
+          j.showCompanyLogo = showLogo;
+          j.companyLogoUrl = showLogo ? (c.logoUrl || "") : "";
           j.companyCoverUrl = c.coverImageUrl || "";
           if (j.company) {
-            j.company.logoUrl = c.logoUrl || "";
+            j.company.logoUrl = showLogo ? (c.logoUrl || "") : "";
+            j.company.showCompanyLogo = showLogo;
             j.company.coverImageUrl = c.coverImageUrl || "";
           }
         }
@@ -488,10 +609,11 @@ exports.getPublicJobs = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
 
-    // 1. Build base MongoDB query
-    const baseQuery = getCandidateLiveJobFilter();
+    // 1. Build base MongoDB query using andClauses to prevent overwriting live filter $or
+    const liveFilter = getCandidateLiveJobFilter();
+    const andClauses = [liveFilter];
 
-    // 2. Apply $in filters for array-compatible fields
+    // 2. Department filter
     if (department) {
       const depts = parseArrayParam(department)
         .map(d => d.trim())
@@ -512,30 +634,117 @@ exports.getPublicJobs = async (req, res) => {
           return { department: { $regex: new RegExp(`^${escaped}$`, 'i') } };
         });
         if (conditions.length === 1) {
-          Object.assign(baseQuery, conditions[0]);
+          andClauses.push(conditions[0]);
         } else {
-          baseQuery.$or = conditions;
+          andClauses.push({ $or: conditions });
         }
       }
     }
+
+    // Work mode filter (support On Site / Office, Remote / WFH, Hybrid)
     if (workMode) {
       const modes = parseArrayParam(workMode);
       if (modes.length > 0) {
-        baseQuery.workplaceType = { $in: modes.map((m) => makeFlexibleRegex(m)) };
-      }
-    }
-    if (jobType) {
-      const types = parseArrayParam(jobType);
-      if (types.length > 0) {
-        baseQuery.jobType = { $in: types.map((t) => makeFlexibleRegex(t)) };
+        const modeConditions = modes.map((m) => {
+          const lm = m.toLowerCase().replace(/[\s_-]+/g, " ");
+          if (lm.includes("on site") || lm.includes("office") || lm.includes("onsite")) {
+            return { workplaceType: { $regex: /(on[\s_-]*site|office|in[\s_-]*office)/i } };
+          }
+          if (lm.includes("remote") || lm.includes("home") || lm.includes("wfh")) {
+            return { workplaceType: { $regex: /(remote|home|wfh)/i } };
+          }
+          if (lm.includes("hybrid")) {
+            return { workplaceType: { $regex: /hybrid/i } };
+          }
+          return { workplaceType: makeFlexibleRegex(m) };
+        });
+        if (modeConditions.length === 1) {
+          andClauses.push(modeConditions[0]);
+        } else {
+          andClauses.push({ $or: modeConditions });
+        }
       }
     }
 
-    // Skills $in (case-insensitive via regex)
+    // Job type filter (support MNC via company type/industry as well as regular job types)
+    if (jobType) {
+      const types = parseArrayParam(jobType);
+      if (types.length > 0) {
+        const isMnc = types.some((t) => t.toLowerCase() === "mnc");
+        const regularTypes = types.filter((t) => t.toLowerCase() !== "mnc");
+        const typeConditions = [];
+
+        if (regularTypes.length > 0) {
+          typeConditions.push({
+            jobType: { $in: regularTypes.map((t) => makeFlexibleRegex(t)) },
+          });
+        }
+
+        if (isMnc) {
+          try {
+            const mncCompanies = await Company.find({
+              $or: [
+                { type: /mnc|corporate|enterprise|multinational/i },
+                { industry: /mnc/i },
+                { name: /\bmnc\b/i },
+              ],
+            }).select("_id").lean();
+            const mncIds = mncCompanies.map((c) => c._id);
+            typeConditions.push({
+              $or: [
+                { companyId: { $in: mncIds } },
+                { title: /\b(mnc|corporate|enterprise|multinational)\b/i },
+                { summary: /\b(mnc|corporate|enterprise|multinational)\b/i },
+                { description: /\b(mnc|corporate|enterprise|multinational)\b/i },
+              ],
+            });
+          } catch (_) {
+            typeConditions.push({
+              $or: [
+                { title: /\b(mnc|corporate|enterprise|multinational)\b/i },
+                { summary: /\b(mnc|corporate|enterprise|multinational)\b/i },
+                { description: /\b(mnc|corporate|enterprise|multinational)\b/i },
+              ],
+            });
+          }
+        }
+
+        if (typeConditions.length === 1) {
+          andClauses.push(typeConditions[0]);
+        } else if (typeConditions.length > 1) {
+          andClauses.push({ $or: typeConditions });
+        }
+      }
+    }
+
+    // Location filter with city aliases (e.g. Bangalore matches Bengaluru)
+    if (location) {
+      const locs = parseArrayParam(location, ";");
+      if (locs.length > 0) {
+        const locRegexes = [];
+        locs.forEach((loc) => {
+          const norm = loc.toLowerCase().trim();
+          const aliases = CITY_ALIASES[norm] || [norm];
+          aliases.forEach((a) => {
+            const escaped = a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            locRegexes.push(new RegExp(escaped, "i"));
+          });
+        });
+        andClauses.push({
+          $or: [
+            { location: { $in: locRegexes } },
+            { cities: { $in: locRegexes } },
+            { workplaceType: { $in: locRegexes } },
+          ],
+        });
+      }
+    }
+
+    // Skills filter
     if (skills) {
       const skillList = parseArrayParam(skills);
       if (skillList.length > 0) {
-        baseQuery.skills = { $in: skillList.map((s) => new RegExp(s, "i")) };
+        andClauses.push({ skills: { $in: skillList.map((s) => new RegExp(s, "i")) } });
       }
     }
 
@@ -543,10 +752,63 @@ exports.getPublicJobs = async (req, res) => {
     if (salary) {
       const sr = parseRange(salary);
       if (sr) {
-        if (sr.min) baseQuery.salaryMax = { $gte: sr.min };
-        if (sr.max) baseQuery.salaryMin = { $lte: sr.max };
+        const salConditions = {};
+        if (sr.min) salConditions.salaryMax = { $gte: sr.min };
+        if (sr.max) salConditions.salaryMin = { $lte: sr.max };
+        andClauses.push(salConditions);
       }
     }
+
+    // Search query filter (broad database matching for text search / category tabs)
+    const effectiveSearch = search || filter;
+    if (effectiveSearch) {
+      const rawSearch = normalizeSearch(effectiveSearch);
+      const allTerms = rawSearch.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean);
+      const meaningfulTerms = allTerms.filter((t) => !NOISE_WORDS.has(t));
+      const termsToMatch = meaningfulTerms.length > 0 ? meaningfulTerms : allTerms;
+      const cleanedPhrase = termsToMatch.join(" ");
+
+      const aliasList = SEARCH_ALIASES[rawSearch] || SEARCH_ALIASES[cleanedPhrase] || termsToMatch;
+      const searchRegexes = [];
+      aliasList.forEach((a) => {
+        const term = a.trim();
+        if (!term) return;
+        if (term.length <= 3) {
+          const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          searchRegexes.push(new RegExp(`\\b${escaped}\\b`, "i"));
+        } else {
+          const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          searchRegexes.push(new RegExp(escaped, "i"));
+        }
+      });
+
+      if (searchRegexes.length > 0) {
+        let matchingCompanyIds = [];
+        try {
+          const matchedCompanies = await Company.find({
+            $or: [
+              { name: { $in: searchRegexes } },
+              { industry: { $in: searchRegexes } },
+              { type: { $in: searchRegexes } },
+            ],
+          }).select("_id").lean();
+          matchingCompanyIds = matchedCompanies.map((c) => c._id);
+        } catch (_) {}
+
+        andClauses.push({
+          $or: [
+            { title: { $in: searchRegexes } },
+            { department: { $in: searchRegexes } },
+            { skills: { $in: searchRegexes } },
+            { summary: { $in: searchRegexes } },
+            { description: { $in: searchRegexes } },
+            ...(matchingCompanyIds.length > 0 ? [{ companyId: { $in: matchingCompanyIds } }] : []),
+          ],
+        });
+      }
+    }
+
+    const baseQuery = andClauses.length === 1 ? andClauses[0] : { $and: andClauses };
 
     // 3. Determine sort (prioritize hot vacancies)
     let sortObj = { isHotVacancy: -1, updatedAt: -1 };
@@ -556,15 +818,10 @@ exports.getPublicJobs = async (req, res) => {
     else if (sort === "company_az") sortObj = { isHotVacancy: -1, "companyId.name": 1, updatedAt: -1 };
 
     // 4. Fetch jobs with MongoDB query
-    //    For experience, location, company name, and text search we need
-    //    populated data or regex — use a two-phase approach:
-    //    Phase A: apply all Mongo-compatible filters + paginate
-    //    Phase B: apply text/experience/location/company filters in-memory
-
     const phaseAJobs = await Job.find(baseQuery)
       .sort(sortObj)
-      .limit(300)
-      .populate("companyId", "name industry packageType location logoUrl coverImageUrl");
+      .limit(500)
+      .populate("companyId", "name industry packageType location logoUrl coverImageUrl planSnapshot type");
 
     // 5. In-memory filtering for text search, location, experience, company name
     let filteredJobs = phaseAJobs;
@@ -614,12 +871,14 @@ exports.getPublicJobs = async (req, res) => {
       });
     }
 
-    // Always ensure hot vacancies are placed first at the top
+    // Always ensure hot vacancies are placed first at the top, ordered by posting time and date
     filteredJobs.sort((a, b) => {
       const aHot = Boolean(a.isHotVacancy || a.jobCategory === "hot");
       const bHot = Boolean(b.isHotVacancy || b.jobCategory === "hot");
-      if (aHot === bHot) return 0;
-      return bHot ? 1 : -1;
+      if (aHot !== bHot) return aHot ? -1 : 1;
+      const aTime = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const bTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      return bTime - aTime;
     });
 
     // 7. Build application map for authenticated users (before pagination)
@@ -656,8 +915,8 @@ exports.getPublicJobs = async (req, res) => {
 
     // 8. Extract available filter options from the full pool
     const fullPool = await Job.find(getCandidateLiveJobFilter())
-      .limit(300)
-      .populate("companyId", "name industry")
+      .limit(500)
+      .populate("companyId", "name industry type")
       .lean();
 
     const dedupeFilters = (arr) => {
