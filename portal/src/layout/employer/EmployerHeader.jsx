@@ -5,10 +5,11 @@ import {
   FiChevronDown, FiChevronUp, FiSearch, FiGrid, FiSend, FiLogOut,
   FiBarChart2, FiUsers, FiStar, FiFolder, FiFileText,
   FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck, FiBookOpen, FiMessageCircle,
-  FiEye, FiEyeOff
+  FiEye, FiEyeOff, FiClock, FiCalendar, FiTrash2, FiUser, FiExternalLink
 } from 'react-icons/fi';
 import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
+import notAllowedImg from '../../../assets/notAllowed.png';
 import authService from '../../services/authService';
 import FeedbackModal from '../../components/employer/FeedbackModal';
 import PlanExpiryBanner from '../../components/employer/PlanExpiryBanner';
@@ -21,6 +22,14 @@ const C = {
   dm: "'DM Sans',sans-serif",
   fd: "'Bricolage Grotesque',sans-serif",
 };
+
+const DEFAULT_RECENT_SEARCHES = [
+  "React Developer",
+  "Full Stack Developer",
+  "Node.js Developer",
+  "UI/UX Designer",
+  "Product Manager",
+];
 
 export default function EmployerHeader({
   company = {},
@@ -68,10 +77,58 @@ export default function EmployerHeader({
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [employerNotifications, setEmployerNotifications] = useState([]);
   const [notificationsError, setNotificationsError] = useState("");
+  const [notifActiveTab, setNotifActiveTab] = useState("activity"); // "activity" | "reminders"
+  const [reminders, setReminders] = useState([]);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+  const [remindersError, setRemindersError] = useState("");
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const profileBtnRef = useRef(null);
   const profileSidebarRef = useRef(null);
   const dropdownRefs = useRef({});
+  const searchHeaderRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [showRecentDropdown, setShowRecentDropdown] = useState(false);
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("resdex_recent_searches") || "[]");
+      if (Array.isArray(stored) && stored.length > 0) {
+        const combined = Array.from(new Set([...stored, ...DEFAULT_RECENT_SEARCHES])).filter(Boolean);
+        return combined.slice(0, 5);
+      }
+    } catch {}
+    return DEFAULT_RECENT_SEARCHES;
+  });
+
+  const saveRecentSearch = useCallback((term) => {
+    if (!term || !term.trim()) return;
+    const clean = term.trim();
+    setRecentSearches((prev) => {
+      const updated = [clean, ...prev.filter((s) => s.toLowerCase() !== clean.toLowerCase())].slice(0, 5);
+      try {
+        localStorage.setItem("resdex_recent_searches", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  }, []);
+
+  const handleSelectRecentSearch = useCallback((term) => {
+    if (!term) return;
+    setSearchKeyword(term);
+    saveRecentSearch(term);
+    window.open(`/resume-search?keyword=${encodeURIComponent(term)}`, '_blank');
+    setIsSearchExpanded(false);
+    setShowRecentDropdown(false);
+  }, [saveRecentSearch]);
+
+  const [searchKeyword, setSearchKeyword] = useState(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get("keyword") || sp.get("query") || "";
+    } catch {
+      return "";
+    }
+  });
   const userStored = localStorage.getItem("employerUser");
   const isEmployerLoggedIn = !!userStored && userStored !== "undefined";
 
@@ -84,6 +141,47 @@ export default function EmployerHeader({
   });
   const [dashboardCompany, setDashboardCompany] = useState(null);
   const [dashboardUser, setDashboardUser] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    authService.getResdexRecentSearches()
+      .then((res) => {
+        if (!active || !res?.success || !Array.isArray(res.data)) return;
+        const apiNames = res.data.map(item => item?.name).filter(Boolean);
+        if (apiNames.length > 0) {
+          setRecentSearches((prev) => {
+            const combined = Array.from(new Set([...prev, ...apiNames, ...DEFAULT_RECENT_SEARCHES])).filter(Boolean);
+            const sliced = combined.slice(0, 5);
+            try {
+              localStorage.setItem("resdex_recent_searches", JSON.stringify(sliced));
+            } catch {}
+            return sliced;
+          });
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search);
+    const kw = sp.get("keyword") || sp.get("query") || location.state?.savedFilters?.keyword || "";
+    if (kw) {
+      setSearchKeyword(kw);
+    }
+  }, [location.search, location.state]);
+
+  useEffect(() => {
+    if (isSearchExpanded) {
+      setShowRecentDropdown(true);
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setShowRecentDropdown(false);
+    }
+  }, [isSearchExpanded]);
 
   useEffect(() => {
     if (!isEmployerLoggedIn) return;
@@ -262,16 +360,92 @@ export default function EmployerHeader({
     }
   }, [showNotifications, isEmployerLoggedIn, loadNotifications]);
 
+  const loadReminders = useCallback(async () => {
+    if (!isEmployerLoggedIn) return;
+    try {
+      setRemindersLoading(true);
+      setRemindersError("");
+      const res = await authService.getCandidateReminders();
+      const list = res?.data || [];
+      const currentUid = sessionUser?._id || sessionUser?.id || sessionUser?.userId || user?._id || user?.id || '';
+      // Strict user isolation & client-side deduplication
+      const seen = new Set();
+      const filtered = [];
+      for (const r of list) {
+        if (currentUid) {
+          const rUid = r.userId?._id || r.userId?.id || r.userId;
+          if (rUid && String(rUid) !== String(currentUid)) continue;
+        }
+        const cId = String(r.candidateId?._id || r.candidateId?.id || r.candidateId || "");
+        const dKey = r.date ? new Date(r.date).toISOString().slice(0, 16) : "";
+        const dedupeKey = cId && dKey ? `${cId}_${dKey}` : String(r._id || r.id);
+        if (!seen.has(dedupeKey)) {
+          seen.add(dedupeKey);
+          filtered.push(r);
+        }
+      }
+      setReminders(filtered);
+    } catch (err) {
+      setRemindersError((err?.message || "Failed to load reminders").toString());
+    } finally {
+      setRemindersLoading(false);
+    }
+  }, [isEmployerLoggedIn, sessionUser, user]);
+
+  useEffect(() => {
+    if (isEmployerLoggedIn && (showNotifications || notifActiveTab === "reminders")) {
+      loadReminders();
+    }
+  }, [showNotifications, notifActiveTab, isEmployerLoggedIn, loadReminders]);
+
+  useEffect(() => {
+    const handler = () => loadReminders();
+    window.addEventListener("employer-reminders-changed", handler);
+    return () => window.removeEventListener("employer-reminders-changed", handler);
+  }, [loadReminders]);
+
+  const handleDeleteReminder = useCallback(async (id, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await authService.deleteCandidateReminder(id);
+      setReminders(prev => prev.filter(r => String(r._id || r.id) !== String(id)));
+    } catch {}
+  }, []);
+
+  const formatReminderDate = useCallback((dStr) => {
+    if (!dStr) return "";
+    try {
+      const d = new Date(dStr);
+      if (isNaN(d.getTime())) return dStr;
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      const isTomorrow = d.toDateString() === tomorrow.toDateString();
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (isToday) return `Today at ${timeStr}`;
+      if (isTomorrow) return `Tomorrow at ${timeStr}`;
+      return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
+    } catch {
+      return dStr;
+    }
+  }, []);
+
   const unreadNotificationsCount = employerNotifications.filter(
     (n) => String(n?.status || "").toUpperCase() !== "READ"
   ).length;
 
   useEffect(() => {
-    if (!showProfileSidebar && !openDropdown && !showNotifications && !mobileMenuOpen) return;
+    if (!showProfileSidebar && !openDropdown && !showNotifications && !mobileMenuOpen && !isSearchExpanded) return;
     const handler = (e) => {
       if (openDropdown) {
         const dd = dropdownRefs.current[openDropdown];
         if (dd && !dd.contains(e.target)) setOpenDropdown(null);
+      }
+      if (isSearchExpanded) {
+        if (searchHeaderRef.current && !searchHeaderRef.current.contains(e.target)) {
+          setIsSearchExpanded(false);
+        }
       }
       if (e.key === 'Escape') {
         setShowProfileSidebar(false);
@@ -279,6 +453,7 @@ export default function EmployerHeader({
         setMobileMenuOpen(false);
         setOpenDropdown(null);
         setShowChangePassword(false);
+        setIsSearchExpanded(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -287,7 +462,7 @@ export default function EmployerHeader({
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("keydown", handler);
     };
-  }, [showProfileSidebar, openDropdown, showNotifications, mobileMenuOpen]);
+  }, [showProfileSidebar, openDropdown, showNotifications, mobileMenuOpen, isSearchExpanded]);
 
   useEffect(() => {
     if (showProfileSidebar || showNotifications || mobileMenuOpen) {
@@ -302,6 +477,19 @@ export default function EmployerHeader({
       window.dispatchEvent(new CustomEvent("employer-sidebar-toggle", { detail: { open: false } }));
     };
   }, [showProfileSidebar, showNotifications, mobileMenuOpen]);
+
+  const handleSearchSubmit = useCallback((e) => {
+    if (e) e.preventDefault();
+    const query = searchKeyword.trim();
+    if (!query) {
+      searchInputRef.current?.focus();
+      return;
+    }
+    saveRecentSearch(query);
+    window.open(`/resume-search?keyword=${encodeURIComponent(query)}`, '_blank');
+    setIsSearchExpanded(false);
+    setShowRecentDropdown(false);
+  }, [searchKeyword, saveRecentSearch]);
 
   const handleNavClick = useCallback((tabId) => {
     if (onNavigate) {
@@ -426,12 +614,15 @@ export default function EmployerHeader({
 
   return (
     <>
-      <header style={{
-        position: "sticky", top: 0, zIndex: 200, background: "#fff",
-        borderBottom: `1px solid ${C.s200}`,
-        boxShadow: scrolled ? "0 4px 24px rgba(0,35,102,.08)" : "none",
-        transition: "box-shadow .25s"
-      }}>
+      <header
+        ref={searchHeaderRef}
+        style={{
+          position: "sticky", top: 0, zIndex: 200, background: "#fff",
+          borderBottom: `1px solid ${C.s200}`,
+          boxShadow: scrolled || isSearchExpanded ? "0 4px 24px rgba(0,35,102,.08)" : "none",
+          transition: "box-shadow .25s"
+        }}
+      >
         <PlanExpiryBanner />
         <div style={{
           maxWidth: 1160, margin: "0 auto", padding: "0 20px",
@@ -509,6 +700,30 @@ export default function EmployerHeader({
               </div>
             ))}
           </nav>
+
+          {/* Compact search bar (small input box, shown when NOT expanded) */}
+          {!isSearchExpanded && (
+            <div
+              className="ep-header-search-compact"
+              onClick={() => setIsSearchExpanded(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsSearchExpanded(true);
+                }
+              }}
+              title="Click to search candidate resumes on Resdex"
+              aria-label="Search resumes on Resdex"
+            >
+              <FiSearch size={14} style={{ color: C.s400, flexShrink: 0 }} />
+              <span className="ep-compact-search-placeholder">
+                {searchKeyword ? searchKeyword : "Search Resdex resumes..."}
+              </span>
+              {/* <span className="ep-compact-search-badge">Resdex</span> */}
+            </div>
+          )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: "auto" }}>
             {(location?.pathname === "/employer-dashboard" || onMessagesClick || isEmployerLoggedIn) && (
@@ -1532,6 +1747,94 @@ export default function EmployerHeader({
           </div>
         </div>
 
+        {/* ─── Expanded Search Row on Y-axis (Header expands vertically) ─── */}
+        {isSearchExpanded && (
+          <div className="ep-header-search-expanded-row">
+            <div className="ep-header-search-expanded-inner">
+              <form onSubmit={handleSearchSubmit} className="ep-header-search-form">
+                <div className="ep-search-input-field-wrap">
+                  <FiSearch size={17} className="ep-search-field-icon" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchKeyword}
+                    onChange={(e) => {
+                      setSearchKeyword(e.target.value);
+                      setShowRecentDropdown(true);
+                    }}
+                    onFocus={() => setShowRecentDropdown(true)}
+                    placeholder="Search candidate profiles by keywords, skills, designations (e.g. React Developer, Node.js, Mumbai)..."
+                    className="ep-search-field-input"
+                  />
+                  {searchKeyword && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchKeyword("");
+                        searchInputRef.current?.focus();
+                        setShowRecentDropdown(true);
+                      }}
+                      className="ep-search-field-clear"
+                      aria-label="Clear keyword"
+                      title="Clear"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  )}
+
+                  {/* 5 Recent Searches Dropdown Options */}
+                  {isSearchExpanded && showRecentDropdown && recentSearches && recentSearches.length > 0 && (
+                    <div className="ep-search-recent-dropdown">
+                      <div className="ep-search-recent-header">
+                        <FiClock size={12} className="ep-search-recent-header-icon" />
+                        <span className="ep-search-recent-header-label">Recent Searches</span>
+                      </div>
+                      <div className="ep-search-recent-list">
+                        {recentSearches.slice(0, 5).map((term, index) => (
+                          <div
+                            key={index}
+                            className="ep-search-recent-item"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectRecentSearch(term);
+                            }}
+                          >
+                            <div className="ep-search-recent-item-left">
+                              <FiClock size={13} className="ep-search-recent-item-icon" />
+                              <span className="ep-search-recent-item-text">{term}</span>
+                            </div>
+                            <span className="ep-search-recent-item-badge">Search</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="ep-search-action-btn"
+                  disabled={!searchKeyword.trim()}
+                >
+                  <FiSearch size={15} />
+                  <span>Search</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSearchExpanded(false);
+                    setShowRecentDropdown(false);
+                  }}
+                  className="ep-search-close-action-btn"
+                  aria-label="Close search"
+                  title="Close (Esc)"
+                >
+                  <FiX size={18} />
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* ─── Responsive Mobile Sidebar Drawer ─── */}
         <div
           className={`ep-mob-sidebar-overlay ${mobileMenuOpen ? 'show' : ''}`}
@@ -1991,41 +2294,15 @@ export default function EmployerHeader({
           </div>
         </div>
 
-        {/* ─── Global Employer Notification Sidebar ─── */}
+        {/* ─── Global Employer Notification Sidebar (Tabs: Activity & Reminders) ─── */}
         <div
           className={`pd-notif-overlay ${showNotifications ? 'show' : ''}`}
           onClick={() => setShowNotifications(false)}
         />
         <div className={`pd-notif-sidebar ${showNotifications ? 'show' : ''}`}>
+          {/* Header */}
           <div className="pd-notif-head">
-            <h3>Notifications</h3>
-            {unreadNotificationsCount > 0 && (
-              <button
-                type="button"
-                className="pd-notif-mark-read"
-                onClick={async () => {
-                  if (unreadNotificationsCount === 0) return;
-                  try {
-                    await authService.markAllEmployerNotificationsRead();
-                  } catch {}
-                  setEmployerNotifications((curr) =>
-                    curr.map((x) => ({ ...x, status: "READ" }))
-                  );
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: C.navy,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  marginRight: "auto",
-                  marginLeft: 12,
-                }}
-              >
-                Mark all read
-              </button>
-            )}
+            <h3>All notifications</h3>
             <button
               className="pd-notif-close"
               onClick={() => setShowNotifications(false)}
@@ -2034,106 +2311,582 @@ export default function EmployerHeader({
               <FiX size={18} />
             </button>
           </div>
-          <div className="pd-notif-body">
-            <div className="pd-notif-date">Today</div>
 
-            {notificationsLoading && (
-              <div style={{ padding: "0 24px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: C.s500, fontFamily: C.fd }}>
-                  Loading notifications...
-                </div>
-                <div style={{ height: 40 }} />
-              </div>
-            )}
+          {/* Tab Navigation */}
+          <div className="pd-notif-tabs-bar">
+            <button
+              type="button"
+              className={`pd-notif-tab-btn ${notifActiveTab === 'activity' ? 'active' : ''}`}
+              onClick={() => setNotifActiveTab('activity')}
+            >
+              <span>Activity</span>
+              {unreadNotificationsCount > 0 && (
+                <span className="pd-notif-tab-badge">{unreadNotificationsCount}</span>
+              )}
+              {notifActiveTab === 'activity' && <div className="pd-notif-tab-indicator" />}
+            </button>
 
-            {!notificationsLoading && notificationsError && (
-              <div style={{ padding: "0 24px 16px", color: "#b91c1c", fontSize: 12.5, fontWeight: 800, fontFamily: C.fd }}>
-                {notificationsError}
-              </div>
-            )}
+            <button
+              type="button"
+              className={`pd-notif-tab-btn ${notifActiveTab === 'reminders' ? 'active' : ''}`}
+              onClick={() => setNotifActiveTab('reminders')}
+            >
+              <span>Reminders</span>
+              {reminders.length > 0 && (
+                <span className="pd-notif-tab-badge">{reminders.length}</span>
+              )}
+              {notifActiveTab === 'reminders' && <div className="pd-notif-tab-indicator" />}
+            </button>
+          </div>
 
-            {!notificationsLoading && !notificationsError && employerNotifications.length === 0 && (
-              <div style={{ padding: "0 24px 16px", color: C.s400, fontSize: 12.5, fontWeight: 700, fontFamily: C.fd }}>
-                No notifications right now.
-              </div>
-            )}
-
-            {!notificationsLoading && employerNotifications.map((n) => {
-              const id = String(n?.id || n?._id || "");
-              const isRead = String(n?.status || "").toUpperCase() === "READ";
-              const title = n?.title || "";
-              const desc = n?.message || n?.desc || "";
-              const time = n?.lastUpdated || n?.createdAt || "";
-
-              return (
-                <div
-                  className="pd-notif-item"
-                  key={id || title + time}
-                  onClick={async () => {
-                    if (!id) return;
-                    // If not already read, call API and mark in local state
-                    if (!isRead) {
+          {/* Tab 1: Activity (Notifications) */}
+          {notifActiveTab === 'activity' && (
+            <div className="pd-notif-body">
+              {unreadNotificationsCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 20px 10px' }}>
+                  <button
+                    type="button"
+                    className="pd-notif-mark-read"
+                    onClick={async () => {
+                      if (unreadNotificationsCount === 0) return;
                       try {
-                        await authService.markEmployerNotificationRead(id);
+                        await authService.markAllEmployerNotificationsRead();
                       } catch {}
-
-                      setEmployerNotifications((current) =>
-                        current.map((x) => {
-                          const xid = String(x?.id || x?._id || "");
-                          if (!xid || xid !== id) return x;
-                          return { ...x, status: "READ" };
-                        })
+                      setEmployerNotifications((curr) =>
+                        curr.map((x) => ({ ...x, status: "READ" }))
                       );
-                    }
-
-                    if (n?.actionUrl) {
-                      setShowNotifications(false);
-                      navigate(n.actionUrl);
-                    }
-                  }}
-                  style={{ background: isRead ? "transparent" : "#EEF2FF" }}
-                >
-                  <div
-                    className="pd-notif-icon"
-                    style={{
-                      background: isRead ? C.s200 : `${C.navy}14`,
-                      color: isRead ? C.s500 : C.navy,
                     }}
                   >
-                    <FiBell size={16} />
-                  </div>
+                    Mark all as read
+                  </button>
+                </div>
+              )}
 
-                  <div className="pd-notif-content">
-                    <div className="pd-notif-title" style={{ opacity: isRead ? 0.7 : 1, fontWeight: isRead ? 600 : 700 }}>
-                      {title}
-                    </div>
-                    {desc ? <div className="pd-notif-desc">{desc}</div> : null}
-                    {time ? <div className="pd-notif-time">{time}</div> : null}
+              {notificationsLoading && (
+                <div style={{ padding: "30px 24px", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.s500, fontFamily: C.fd }}>
+                    Loading notifications...
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+
+              {!notificationsLoading && notificationsError && (
+                <div style={{ padding: "20px 24px", color: "#b91c1c", fontSize: 13, fontWeight: 700, fontFamily: C.fd }}>
+                  {notificationsError}
+                </div>
+              )}
+
+              {!notificationsLoading && !notificationsError && employerNotifications.length === 0 && (
+                <div className="pd-notif-empty-state">
+                  <img
+                    src={notAllowedImg}
+                    alt="No activity"
+                    style={{
+                      width: 140,
+                      maxWidth: "70%",
+                      height: "auto",
+                      objectFit: "contain",
+                      marginBottom: 14
+                    }}
+                  />
+                  <h4 className="pd-empty-title">You have no new activity</h4>
+                </div>
+              )}
+
+              {!notificationsLoading && employerNotifications.map((n) => {
+                const id = String(n?.id || n?._id || "");
+                const isRead = String(n?.status || "").toUpperCase() === "READ";
+                const title = n?.title || "";
+                const desc = n?.message || n?.desc || "";
+                const time = n?.lastUpdated || n?.createdAt || "";
+
+                return (
+                  <div
+                    className="pd-notif-item"
+                    key={id || title + time}
+                    onClick={async () => {
+                      if (!id) return;
+                      if (!isRead) {
+                        try {
+                          await authService.markEmployerNotificationRead(id);
+                        } catch {}
+
+                        setEmployerNotifications((current) =>
+                          current.map((x) => {
+                            const xid = String(x?.id || x?._id || "");
+                            if (!xid || xid !== id) return x;
+                            return { ...x, status: "READ" };
+                          })
+                        );
+                      }
+
+                      if (n?.actionUrl) {
+                        setShowNotifications(false);
+                        navigate(n.actionUrl);
+                      }
+                    }}
+                    style={{ background: isRead ? "transparent" : "#EEF2FF" }}
+                  >
+                    <div
+                      className="pd-notif-icon"
+                      style={{
+                        background: isRead ? C.s200 : `${C.navy}14`,
+                        color: isRead ? C.s500 : C.navy,
+                      }}
+                    >
+                      <FiBell size={16} />
+                    </div>
+
+                    <div className="pd-notif-content">
+                      <div className="pd-notif-title" style={{ opacity: isRead ? 0.7 : 1, fontWeight: isRead ? 600 : 700 }}>
+                        {title}
+                      </div>
+                      {desc ? <div className="pd-notif-desc">{desc}</div> : null}
+                      {time ? <div className="pd-notif-time">{time}</div> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Tab 2: Reminders (Set by recruiter) */}
+          {notifActiveTab === 'reminders' && (
+            <div className="pd-notif-body">
+              {remindersLoading && (
+                <div style={{ padding: "30px 24px", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.s500, fontFamily: C.fd }}>
+                    Loading reminders...
+                  </div>
+                </div>
+              )}
+
+              {!remindersLoading && remindersError && (
+                <div style={{ padding: "20px 24px", color: "#b91c1c", fontSize: 13, fontWeight: 700, fontFamily: C.fd }}>
+                  {remindersError}
+                </div>
+              )}
+
+              {!remindersLoading && !remindersError && reminders.length === 0 && (
+                <div className="pd-notif-empty-state">
+                  <img
+                    src={notAllowedImg}
+                    alt="No reminders"
+                    style={{
+                      width: 140,
+                      maxWidth: "70%",
+                      height: "auto",
+                      objectFit: "contain",
+                      marginBottom: 14
+                    }}
+                  />
+                  <h4 className="pd-empty-title">You have no reminders</h4>
+                  <p className="pd-empty-sub">
+                    Reminders set on candidates in Resdex will appear here for you.
+                  </p>
+                </div>
+              )}
+
+              {!remindersLoading && reminders.map((rem) => {
+                const remId = rem._id || rem.id;
+                const candidate = rem.candidateId;
+                const candidateName = rem.candidateName || candidate?.name || rem.candidateProfile?.name || rem.candidateProfile?.fullName || (candidate?.email ? candidate.email.split('@')[0] : "Candidate");
+                const candidateTitle = rem.candidateProfile?.currentTitle || rem.candidateProfile?.headline || rem.candidateProfile?.currentCompany || "";
+                const candidateCity = rem.candidateProfile?.currentCity || rem.candidateProfile?.city || "";
+                const targetCandidateId = rem.candidateUserId || candidate?._id || candidate?.id || rem.candidateProfile?.userId?._id || rem.candidateProfile?.userId || (typeof candidate === "string" ? candidate : null);
+                const isSent = rem.status === "sent";
+
+                const handleOpenCandidateFullProfile = (e) => {
+                  if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                  if (targetCandidateId) {
+                    window.open(`/employer/candidate/${targetCandidateId}`, '_blank', 'noopener,noreferrer');
+                  }
+                };
+
+                return (
+                  <div className="pd-rem-card" key={remId || rem.date}>
+                    <div className="pd-rem-head-row">
+                      <span className="pd-rem-type-pill">
+                        {rem.type || "Reminder"}
+                      </span>
+                      <div className="pd-rem-time-badge">
+                        <FiClock size={12} />
+                        <span>{formatReminderDate(rem.date)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteReminder(remId, e)}
+                        className="pd-rem-delete-btn"
+                        title="Dismiss reminder"
+                        aria-label="Dismiss reminder"
+                      >
+                        <FiTrash2 size={13} />
+                      </button>
+                    </div>
+
+                    <div
+                      className="pd-rem-candidate-row"
+                      onClick={handleOpenCandidateFullProfile}
+                      role={targetCandidateId ? "button" : undefined}
+                      tabIndex={targetCandidateId ? 0 : undefined}
+                      title={targetCandidateId ? `View ${candidateName}'s full profile in new tab` : candidateName}
+                    >
+                      <div className="pd-rem-avatar">
+                        {candidate?.avatar || candidate?.profilePic || rem.candidateProfile?.avatar ? (
+                          <img src={candidate?.avatar || candidate?.profilePic || rem.candidateProfile?.avatar} alt={candidateName} />
+                        ) : (
+                          <span className="pd-rem-avatar-initials">
+                            {candidateName.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="pd-rem-cand-info">
+                        <div className="pd-rem-cand-name-wrap">
+                          <span className="pd-rem-cand-name">{candidateName}</span>
+                          <FiExternalLink size={12} className="pd-rem-cand-ext-icon" />
+                        </div>
+                        {(candidateTitle || candidateCity) && (
+                          <div className="pd-rem-cand-title">
+                            {[candidateTitle, candidateCity].filter(Boolean).join(" • ")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {rem.description && (
+                      <div className="pd-rem-desc">{rem.description}</div>
+                    )}
+
+                    <div className="pd-rem-footer-row">
+                      <span className={`pd-rem-status-tag ${isSent ? 'sent' : 'pending'}`}>
+                        {isSent ? '● Sent' : '● Pending'}
+                      </span>
+                      {targetCandidateId && (
+                        <button
+                          type="button"
+                          onClick={handleOpenCandidateFullProfile}
+                          className="pd-rem-view-cand-btn"
+                          title="Open candidate profile in new tab"
+                        >
+                          View Full Profile <FiExternalLink size={11} style={{ marginLeft: 4 }} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <style>{`
           .pd-notif-overlay { position: fixed; inset: 0; background: rgba(0, 35, 102, 0.35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 100000; opacity: 0; visibility: hidden; transition: all 0.3s; }
           .pd-notif-overlay.show { opacity: 1; visibility: visible; }
-          .pd-notif-sidebar { position: fixed; top: 0; right: -400px; left: auto !important; width: 400px; max-width: 90vw; height: 100vh; background: white; z-index: 100001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.12); display: flex; flex-direction: column; transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+          .pd-notif-sidebar { position: fixed; top: 0; right: -420px; left: auto !important; width: 420px; max-width: 92vw; height: 100vh; background: white; z-index: 100001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.12); display: flex; flex-direction: column; transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
           .pd-notif-sidebar.show { right: 0 !important; left: auto !important; }
-          .pd-notif-head { padding: 20px 22px; border-bottom: 1px solid ${C.s200}; display: flex; align-items: center; justify-content: space-between; }
-          .pd-notif-head h3 { font-family: ${C.fd}; font-size: 18px; font-weight: 800; color: ${C.navy}; margin:0;}
+          .pd-notif-head { padding: 18px 22px 14px; display: flex; align-items: center; justify-content: space-between; }
+          .pd-notif-head h3 { font-family: ${C.fd}; font-size: 19px; font-weight: 800; color: #0F172A; margin:0;}
           .pd-notif-close { background: ${C.s100}; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: ${C.s500}; cursor: pointer; transition: all 0.2s; }
           .pd-notif-close:hover { background: #FEE2E2; color: #ef4444; transform: rotate(90deg); }
-          .pd-notif-body { flex: 1; overflow-y: auto; padding: 16px 0; }
+          
+          /* Notification Tabs */
+          .pd-notif-tabs-bar {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid ${C.s200};
+            padding: 0 16px;
+            gap: 20px;
+          }
+          .pd-notif-tab-btn {
+            position: relative;
+            background: none;
+            border: none;
+            padding: 10px 4px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #64748B;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'DM Sans', sans-serif;
+            transition: color 0.15s ease;
+          }
+          .pd-notif-tab-btn:hover {
+            color: #0F172A;
+          }
+          .pd-notif-tab-btn.active {
+            color: #2563EB;
+            font-weight: 700;
+          }
+          .pd-notif-tab-indicator {
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #2563EB;
+            border-radius: 3px 3px 0 0;
+          }
+          .pd-notif-tab-badge {
+            background: #EFF6FF;
+            color: #2563EB;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 10px;
+            border: 1px solid #DBEAFE;
+          }
+          .pd-notif-mark-read {
+            background: transparent;
+            border: none;
+            color: #2563EB;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.15s;
+          }
+          .pd-notif-mark-read:hover {
+            background: #EFF6FF;
+          }
+
+          .pd-notif-body { flex: 1; overflow-y: auto; padding: 14px 0; }
           .pd-notif-date { padding: 0 24px 10px; font-size: 11.5px; font-weight: 800; color: ${C.s400}; letter-spacing: 0.08em; text-transform: uppercase; }
-          .pd-notif-item { display: flex; gap: 14px; padding: 16px 24px; border-bottom: 1px solid ${C.s100}; cursor: pointer; transition: background 0.15s; }
+          .pd-notif-item { display: flex; gap: 14px; padding: 14px 22px; border-bottom: 1px solid ${C.s100}; cursor: pointer; transition: background 0.15s; }
           .pd-notif-item:hover { background: ${C.s50}; }
-          .pd-notif-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
-          .pd-notif-content { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-          .pd-notif-title { font-size: 14px; font-weight: 600; line-height: 1.4; color: ${C.s800}; }
-          .pd-notif-desc { font-size: 12.5px; color: ${C.s500}; }
-          .pd-notif-time { font-size: 11.5px; color: ${C.s400}; margin-top: 2px; }
+          .pd-notif-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+          .pd-notif-content { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+          .pd-notif-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; color: ${C.s800}; }
+          .pd-notif-desc { font-size: 12px; color: ${C.s500}; }
+          .pd-notif-time { font-size: 11px; color: ${C.s400}; margin-top: 2px; }
+
+          /* Empty State */
+          .pd-notif-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+            text-align: center;
+          }
+          .pd-empty-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1E293B;
+            margin: 14px 0 6px;
+            font-family: 'DM Sans', sans-serif;
+          }
+          .pd-empty-sub {
+            font-size: 12.5px;
+            color: #64748B;
+            max-width: 260px;
+            line-height: 1.5;
+            margin: 0 0 16px;
+          }
+          .pd-empty-action-btn {
+            background: #002366;
+            color: #ffffff;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+          }
+          .pd-empty-action-btn:hover {
+            background: #001948;
+            transform: translateY(-1px);
+          }
+
+          /* Reminder Card */
+          .pd-rem-card {
+            margin: 0 16px 12px;
+            padding: 13px 15px;
+            background: #ffffff;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+            transition: all 0.16s ease;
+          }
+          .pd-rem-card:hover {
+            border-color: #CBD5E1;
+            box-shadow: 0 4px 14px rgba(0, 35, 102, 0.07);
+          }
+          .pd-rem-head-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+          }
+          .pd-rem-type-pill {
+            background: #EFF6FF;
+            color: #1D4ED8;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.02em;
+          }
+          .pd-rem-time-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11.5px;
+            color: #D97706;
+            font-weight: 600;
+            margin-right: auto;
+          }
+          .pd-rem-delete-btn {
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+          }
+          .pd-rem-delete-btn:hover {
+            background: #FEE2E2;
+            color: #EF4444;
+          }
+          .pd-rem-candidate-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            background: #F8FAFC;
+            border: 1px solid #EEF2F6;
+            border-radius: 9px;
+            margin-bottom: 9px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+          }
+          .pd-rem-candidate-row:hover {
+            background: #EFF6FF;
+            border-color: #BFDBFE;
+          }
+          .pd-rem-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: #E0E7FF;
+            color: #3730A3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            font-weight: 700;
+            font-size: 13px;
+          }
+          .pd-rem-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .pd-rem-avatar-initials {
+            font-weight: 800;
+            font-size: 13px;
+            color: #1E3A8A;
+          }
+          .pd-rem-cand-info {
+            flex: 1;
+            min-width: 0;
+          }
+          .pd-rem-cand-name-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            max-width: 100%;
+          }
+          .pd-rem-cand-name {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #002366;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color 0.15s ease;
+          }
+          .pd-rem-candidate-row:hover .pd-rem-cand-name {
+            color: #2563EB;
+            text-decoration: underline;
+          }
+          .pd-rem-cand-ext-icon {
+            color: #94A3B8;
+            flex-shrink: 0;
+            transition: color 0.15s ease, transform 0.15s ease;
+          }
+          .pd-rem-candidate-row:hover .pd-rem-cand-ext-icon {
+            color: #2563EB;
+            transform: translate(1px, -1px);
+          }
+          .pd-rem-cand-title {
+            font-size: 11.5px;
+            color: #64748B;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1px;
+          }
+          .pd-rem-desc {
+            font-size: 12.5px;
+            color: #334155;
+            line-height: 1.45;
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            background: #F8FAFC;
+            border-left: 2.5px solid #002366;
+            border-radius: 0 6px 6px 0;
+            font-style: italic;
+          }
+          .pd-rem-footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 7px;
+            border-top: 1px dashed #E2E8F0;
+          }
+          .pd-rem-status-tag {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+          .pd-rem-status-tag.pending {
+            color: #D97706;
+          }
+          .pd-rem-status-tag.sent {
+            color: #10B981;
+          }
+          .pd-rem-view-cand-btn {
+            background: #EFF6FF;
+            border: 1px solid #DBEAFE;
+            color: #002366;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 4px 9px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            transition: all 0.15s ease;
+          }
+          .pd-rem-view-cand-btn:hover {
+            background: #002366;
+            border-color: #002366;
+            color: #ffffff;
+            transform: translateY(-1px);
+          }
 
           .ep-nav-link {
             padding: 18px 14px; font-size: 13px; font-weight: 600; color: ${C.s500};
@@ -2376,6 +3129,357 @@ export default function EmployerHeader({
             background: #f1f5f9 !important;
             color: #002366 !important;
             font-weight: 600 !important;
+          }
+
+          /* Compact Search Trigger */
+          .ep-header-search-compact {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            height: 36px;
+            padding: 0 12px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            user-select: none;
+            max-width: 250px;
+            min-width: 170px;
+            margin-right: 14px;
+            flex-shrink: 1;
+          }
+
+          .ep-header-search-compact:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0, 35, 102, 0.05);
+          }
+
+          .ep-compact-search-placeholder {
+            font-size: 12px;
+            font-weight: 500;
+            color: #94a3b8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            font-family: 'DM Sans', sans-serif;
+          }
+
+          .ep-compact-search-badge {
+            font-size: 10px;
+            font-weight: 700;
+            background: rgba(0, 35, 102, 0.08);
+            color: #002366;
+            padding: 2px 6px;
+            border-radius: 5px;
+            letter-spacing: 0.02em;
+            flex-shrink: 0;
+          }
+
+          /* Expanded Search Row on Y-axis */
+          .ep-header-search-expanded-row {
+            border-top: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            animation: epSearchExpand 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 6px 20px rgba(0, 35, 102, 0.06);
+          }
+
+          @keyframes epSearchExpand {
+            from {
+              opacity: 0;
+              transform: translateY(-8px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .ep-header-search-expanded-inner {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 10px 20px;
+          }
+
+          .ep-header-search-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+          }
+
+          .ep-search-input-field-wrap {
+            position: relative;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border: 1.5px solid #002366;
+            box-shadow: 0 0 0 3px rgba(0, 35, 102, 0.08);
+            border-radius: 12px;
+            padding: 0 14px;
+            height: 44px;
+            transition: all 0.16s ease;
+          }
+
+          .ep-search-field-icon {
+            color: #002366;
+            flex-shrink: 0;
+            margin-right: 10px;
+          }
+
+          .ep-search-field-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 13.5px;
+            font-weight: 500;
+            color: #0f172a;
+            font-family: 'DM Sans', sans-serif;
+          }
+
+          .ep-search-field-input::placeholder {
+            color: #94a3b8;
+          }
+
+          .ep-search-field-clear {
+            background: #f1f5f9;
+            border: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0;
+            transition: all 0.14s ease;
+            flex-shrink: 0;
+          }
+
+          .ep-search-field-clear:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+          }
+
+          .ep-search-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            height: 44px;
+            padding: 0 20px;
+            border-radius: 12px;
+            border: none;
+            background: #002366;
+            color: #ffffff;
+            font-size: 13.5px;
+            font-weight: 700;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 35, 102, 0.2);
+            transition: all 0.16s ease;
+            flex-shrink: 0;
+            white-space: nowrap;
+          }
+
+          .ep-search-action-btn:hover {
+            background: #001948;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0, 35, 102, 0.28);
+          }
+
+          .ep-search-action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            background: #002366;
+          }
+
+          .ep-search-close-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 44px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.14s ease;
+            flex-shrink: 0;
+          }
+
+          .ep-search-close-action-btn:hover {
+            background: #fee2e2;
+            color: #ef4444;
+            border-color: #fca5a5;
+          }
+
+          /* Recent Searches Dropdown on Input Box */
+          .ep-search-recent-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 12px 32px rgba(0, 35, 102, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+            z-index: 350;
+            overflow: hidden;
+            animation: epDropdownFade 0.16s ease-out;
+          }
+
+          @keyframes epDropdownFade {
+            from {
+              opacity: 0;
+              transform: translateY(-4px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .ep-search-recent-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
+          }
+
+          .ep-search-recent-header-icon {
+            color: #64748b;
+          }
+
+          .ep-search-recent-header-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'DM Sans', sans-serif;
+          }
+
+          .ep-search-recent-list {
+            padding: 4px 0;
+          }
+
+          .ep-search-recent-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+          }
+
+          .ep-search-recent-item:hover {
+            background: #f1f5f9;
+          }
+
+          .ep-search-recent-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+          }
+
+          .ep-search-recent-item-icon {
+            color: #94a3b8;
+            flex-shrink: 0;
+            transition: color 0.15s ease;
+          }
+
+          .ep-search-recent-item:hover .ep-search-recent-item-icon {
+            color: #002366;
+          }
+
+          .ep-search-recent-item-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'DM Sans', sans-serif;
+          }
+
+          .ep-search-recent-item:hover .ep-search-recent-item-text {
+            color: #002366;
+          }
+
+          .ep-search-recent-item-badge {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #94a3b8;
+            background: #f1f5f9;
+            padding: 2px 7px;
+            border-radius: 4px;
+            margin-left: 8px;
+            flex-shrink: 0;
+          }
+
+          .ep-search-recent-item:hover .ep-search-recent-item-badge {
+            background: #e2e8f0;
+            color: #002366;
+          }
+
+          @media (max-width: 1024px) {
+            .ep-header-search-compact {
+              max-width: 200px;
+              min-width: 130px;
+              height: 34px;
+              padding: 0 10px;
+              margin-right: 8px;
+            }
+          }
+
+          @media (max-width: 640px) {
+            .ep-header-search-compact {
+              max-width: 150px;
+              min-width: 95px;
+              height: 32px;
+              padding: 0 8px;
+              gap: 5px;
+              margin-right: 6px;
+            }
+            .ep-compact-search-badge {
+              display: none;
+            }
+            .ep-compact-search-placeholder {
+              font-size: 11px;
+            }
+            .ep-header-search-expanded-inner {
+              padding: 8px 12px;
+            }
+            .ep-search-input-field-wrap {
+              height: 38px;
+              padding: 0 10px;
+            }
+            .ep-search-field-input {
+              font-size: 12.5px;
+            }
+            .ep-search-action-btn {
+              height: 38px;
+              padding: 0 12px;
+              font-size: 12.5px;
+            }
+            .ep-search-close-action-btn {
+              width: 34px;
+              height: 38px;
+            }
           }
         `}</style>
       </header>

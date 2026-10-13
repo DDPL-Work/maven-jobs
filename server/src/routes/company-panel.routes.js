@@ -120,6 +120,8 @@ router.patch("/resdex/searches/:id/pin", resdexController.togglePin);
 router.post("/resdex/forward-cv", resdexController.forwardCV);
 router.get("/resdex/shared-cvs", resdexController.getSharedCVs);
 router.post("/resdex/reminders", resdexController.setCandidateReminder);
+router.get("/resdex/reminders", resdexController.getCandidateReminders);
+router.delete("/resdex/reminders/:id", resdexController.deleteCandidateReminder);
 // NVite — Send MIvites
 router.post("/resdex/nvite/send", nviteController.sendNvite);
 router.get("/resdex/nvite/list", nviteController.listNvites);

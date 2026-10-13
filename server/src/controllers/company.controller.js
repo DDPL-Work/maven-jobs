@@ -1,6 +1,7 @@
 const Company = require("../models/Company");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const emailService = require("../services/email.service");
 
 // FSE creates client company
 exports.createCompany = async (req, res) => {
@@ -25,10 +26,21 @@ exports.createCompany = async (req, res) => {
     companyId: company._id,
   });
 
+  // Send credentials email to the new client user
+  emailService.sendNewUserCredentialsEmail({
+    to: email,
+    name,
+    password,
+    companyName: name,
+    role: "CLIENT",
+  }).catch((err) => {
+    console.error(`[CompanyController] Failed to send credentials email to ${email}:`, err);
+  });
+
   res.status(201).json({
-    message: "Company created successfully",
+    message: "Company created successfully. Credentials sent to email.",
     company,
-    temporaryPassword: password, // send via email in production
+    temporaryPassword: password,
   });
 };
 

@@ -19,6 +19,31 @@ const LoginOTP = require("../models/LoginOTP");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 
+// --- Helper: Generate Secure System Password ---
+const generateSystemPassword = (length = 10) => {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const all = upper + lower + digits;
+
+  let password = [
+    upper[crypto.randomInt(0, upper.length)],
+    lower[crypto.randomInt(0, lower.length)],
+    digits[crypto.randomInt(0, digits.length)],
+  ];
+
+  for (let i = password.length; i < length; i++) {
+    password.push(all[crypto.randomInt(0, all.length)]);
+  }
+
+  for (let i = password.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [password[i], password[j]] = [password[j], password[i]];
+  }
+
+  return password.join("");
+};
+
 // --- Helper: Get Company Plan Seat Limits ---
 const getCompanySeatLimits = async (companyId) => {
   const company = await Company.findById(companyId);
@@ -126,6 +151,13 @@ exports.getUsers = asyncHandler(async (req, res) => {
     "name email role isActive"
   );
 
+  // Filter out any orphaned sub-users whose User record was deleted or is null
+  const orphanedIds = subUsers.filter((su) => !su.userId).map((su) => su._id);
+  if (orphanedIds.length > 0) {
+    CompanySubUser.deleteMany({ _id: { $in: orphanedIds } }).catch(() => {});
+    subUsers = subUsers.filter((su) => su.userId);
+  }
+
   // Migration for legacy companies: if no super user exists, create one for the clientUserId
   const hasSuperUser = subUsers.some((su) => su.isSuperUser);
   if (!hasSuperUser && company.clientUserId) {
@@ -147,26 +179,30 @@ exports.getUsers = asyncHandler(async (req, res) => {
         "userId",
         "name email role isActive"
       );
+      subUsers = subUsers.filter((su) => su.userId);
     }
   }
 
-  const formattedUsers = subUsers.map((su) => ({
-    id: su._id,
-    userId: su.userId._id,
-    name: su.userId.name,
-    email: su.userId.email,
-    isSuperUser: su.isSuperUser,
-    isRestricted: su.isRestricted,
-    jobPosting: su.permissions.jobPosting,
-    jobBooster: su.permissions.jobBooster,
-    resdex: su.permissions.resdex,
-    timeRestriction: su.timeRestriction,
-    ipRestriction: su.ipRestriction,
-    accountSecurity: su.accountSecurity,
-    avatar: su.avatar || su.userId.name.charAt(0).toUpperCase(),
-    avatarBg: su.avatarBg || "#fef3c7",
-    avatarColor: su.avatarColor || "#b45309",
-  })).sort((a, b) => (b.isSuperUser ? 1 : 0) - (a.isSuperUser ? 1 : 0));
+  const formattedUsers = subUsers
+    .filter((su) => su.userId)
+    .map((su) => ({
+      id: su._id,
+      userId: su.userId._id,
+      name: su.userId.name || "User",
+      email: su.userId.email || "",
+      isSuperUser: su.isSuperUser,
+      isRestricted: su.isRestricted,
+      jobPosting: Boolean(su.permissions?.jobPosting),
+      jobBooster: Boolean(su.permissions?.jobBooster),
+      resdex: Boolean(su.permissions?.resdex),
+      timeRestriction: su.timeRestriction,
+      ipRestriction: su.ipRestriction,
+      accountSecurity: su.accountSecurity,
+      avatar: su.avatar || (su.userId.name ? su.userId.name.charAt(0).toUpperCase() : "U"),
+      avatarBg: su.avatarBg || "#fef3c7",
+      avatarColor: su.avatarColor || "#b45309",
+    }))
+    .sort((a, b) => (b.isSuperUser ? 1 : 0) - (a.isSuperUser ? 1 : 0));
 
   const jobPostingCount = subUsers.filter((su) => su.permissions?.jobPosting).length;
   const resdexCount = subUsers.filter((su) => su.permissions?.resdex).length;
@@ -256,9 +292,9 @@ exports.createUser = asyncHandler(async (req, res) => {
     throw createHttpError(400, `Job Booster seat limit of ${limits.jobBoosterLimit} reached.`);
   }
 
-  // Set default password for new sub-users
-  const defaultPassword = "Maven@123";
-  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  // Generate secure system password for new sub-user
+  const systemGeneratedPassword = req.body.password?.trim() || generateSystemPassword();
+  const hashedPassword = await bcrypt.hash(systemGeneratedPassword, 10);
 
   const newUser = await User.create({
     name,
@@ -278,6 +314,17 @@ exports.createUser = asyncHandler(async (req, res) => {
       jobBooster: Boolean(jobBooster),
       resdex: Boolean(resdex),
     },
+  });
+
+  // Send credentials email to the newly created user with system generated password
+  emailService.sendNewUserCredentialsEmail({
+    to: newUser.email,
+    name: newUser.name,
+    password: systemGeneratedPassword,
+    companyName: company.name,
+    role: newUser.role,
+  }).catch((err) => {
+    console.error(`[UserManagement] Failed to send credentials email to ${newUser.email}:`, err);
   });
 
   // Notify company admin of new team member
@@ -307,6 +354,7 @@ exports.createUser = asyncHandler(async (req, res) => {
       userId: newUser._id,
       name: newUser.name,
       email: newUser.email,
+      temporaryPassword: systemGeneratedPassword,
       isSuperUser: newSubUser.isSuperUser,
       isRestricted: newSubUser.isRestricted,
       jobPosting: newSubUser.permissions.jobPosting,
@@ -319,7 +367,7 @@ exports.createUser = asyncHandler(async (req, res) => {
       avatarBg: newSubUser.avatarBg || "#fef3c7",
       avatarColor: newSubUser.avatarColor || "#b45309",
     },
-    message: "User created successfully",
+    message: "User created successfully. System generated password has been sent to their email.",
   });
 });
 
@@ -329,7 +377,7 @@ exports.updateUser = asyncHandler(async (req, res) => {
   const companyId = req.user.companyId;
 
   const subUser = await CompanySubUser.findOne({ _id: id, companyId }).populate("userId");
-  if (!subUser) {
+  if (!subUser || !subUser.userId) {
     throw createHttpError(404, "Sub-user not found");
   }
 
@@ -424,7 +472,7 @@ exports.changeUserPassword = asyncHandler(async (req, res) => {
   const companyId = req.user.companyId;
 
   const subUser = await CompanySubUser.findOne({ _id: id, companyId }).populate("userId");
-  if (!subUser) {
+  if (!subUser || !subUser.userId) {
     throw createHttpError(404, "Sub-user not found");
   }
 
@@ -432,9 +480,22 @@ exports.changeUserPassword = asyncHandler(async (req, res) => {
   subUser.userId.password = hashedPassword;
   await subUser.userId.save();
 
+  const company = await Company.findById(companyId);
+
+  // Send notification email to the user whose password was changed
+  emailService.sendPasswordChangedNotificationEmail({
+    to: subUser.userId.email,
+    name: subUser.userId.name,
+    newPassword,
+    companyName: company?.name || "Maven Jobs",
+    changedByName: req.user.name || "Company Administrator",
+  }).catch((err) => {
+    console.error(`[UserManagement] Failed to send password changed email to ${subUser.userId.email}:`, err);
+  });
+
   res.status(200).json({
     success: true,
-    message: "Password updated successfully",
+    message: "Password updated successfully. Notification email sent to the user.",
   });
 });
 

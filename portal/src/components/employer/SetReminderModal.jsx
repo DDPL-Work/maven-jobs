@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FiX, FiCalendar, FiClock } from 'react-icons/fi';
 import './SetReminderModal.css';
@@ -26,10 +26,12 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
   const [mailCalendarEvent, setMailCalendarEvent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const isSubmitting = useRef(false);
 
   // When modal opens, prefill defaults
   useEffect(() => {
     if (isOpen) {
+      isSubmitting.current = false;
       const activeType = initialType || "For other task";
       setType(activeType);
       setDescription(DEFAULT_DESCRIPTIONS[activeType] || "");
@@ -52,12 +54,14 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
   };
 
   const handleSubmit = async () => {
+    if (loading || isSubmitting.current) return;
     if (!description.trim() || !date || !time) {
       setErrorMsg("Please fill all required fields");
       return;
     }
     setErrorMsg("");
 
+    isSubmitting.current = true;
     setLoading(true);
     try {
       const combinedDateTime = new Date(`${date}T${time}`);
@@ -73,6 +77,7 @@ const SetReminderModal = ({ isOpen, onClose, initialType, candidate, onSubmit })
       setErrorMsg("Error setting reminder. Please try again.");
     } finally {
       setLoading(false);
+      isSubmitting.current = false;
     }
   };
 

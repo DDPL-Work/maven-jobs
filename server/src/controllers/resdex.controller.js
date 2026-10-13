@@ -1161,12 +1161,36 @@ exports.setCandidateReminder = asyncHandler(async (req, res) => {
 
   const CandidateReminder = require("../models/CandidateReminder");
 
+  const targetDate = new Date(date);
+  // Check if identical reminder already exists for same user, candidate, and date (or within 2 minutes)
+  const windowStart = new Date(targetDate.getTime() - 2 * 60 * 1000);
+  const windowEnd = new Date(targetDate.getTime() + 2 * 60 * 1000);
+
+  const existingReminder = await CandidateReminder.findOne({
+    userId: user._id,
+    candidateId,
+    date: { $gte: windowStart, $lte: windowEnd },
+    status: "pending",
+  });
+
+  if (existingReminder) {
+    existingReminder.type = type || existingReminder.type;
+    existingReminder.description = description || existingReminder.description;
+    existingReminder.mailCalendarEvent = mailCalendarEvent !== undefined ? mailCalendarEvent : existingReminder.mailCalendarEvent;
+    await existingReminder.save();
+    return res.status(200).json({
+      success: true,
+      message: "Reminder updated successfully",
+      data: existingReminder
+    });
+  }
+
   const reminder = await CandidateReminder.create({
     userId: user._id,
     candidateId,
     type: type || "Other",
     description,
-    date: new Date(date),
+    date: targetDate,
     mailCalendarEvent: mailCalendarEvent || false,
     status: "pending"
   });
@@ -1177,3 +1201,111 @@ exports.setCandidateReminder = asyncHandler(async (req, res) => {
     data: reminder
   });
 });
+
+exports.getCandidateReminders = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const CandidateReminder = require("../models/CandidateReminder");
+  const CandidateProfile = require("../models/CandidateProfile");
+
+  // Strictly filter by req.user._id so reminders set by one recruiter are never exposed to another recruiter
+  const reminders = await CandidateReminder.find({
+    userId: user._id,
+  })
+    .populate("candidateId", "name email phone avatar profilePic")
+    .sort({ date: 1, createdAt: -1 })
+    .lean();
+
+  const User = require("../models/User");
+
+  const populatedReminders = await Promise.all(
+    reminders.map(async (r) => {
+      let candidateProfile = null;
+      let candidateUser = r.candidateId;
+
+      if (r.candidateId?._id) {
+        candidateProfile = await CandidateProfile.findOne({ userId: r.candidateId._id })
+          .select("currentTitle headline currentCompany currentCity name fullName phone")
+          .lean();
+      } else if (r.candidateId) {
+        // Fallback: candidateId might be unpopulated User ID or CandidateProfile ID
+        const rawId = String(r.candidateId);
+        const userDoc = await User.findById(rawId).select("name email phone avatar profilePic").lean();
+        if (userDoc) {
+          candidateUser = userDoc;
+          candidateProfile = await CandidateProfile.findOne({ userId: userDoc._id })
+            .select("currentTitle headline currentCompany currentCity name fullName phone")
+            .lean();
+        } else {
+          const profileDoc = await CandidateProfile.findById(rawId)
+            .populate("userId", "name email phone avatar profilePic")
+            .select("currentTitle headline currentCompany currentCity name fullName phone userId")
+            .lean();
+          if (profileDoc) {
+            candidateProfile = profileDoc;
+            candidateUser = profileDoc.userId || {
+              _id: profileDoc.userId || profileDoc._id,
+              name: profileDoc.name || profileDoc.fullName || "Candidate",
+            };
+          }
+        }
+      }
+
+      const candidateName = candidateUser?.name || candidateProfile?.name || candidateProfile?.fullName || "Candidate";
+      const candidateUserId = candidateUser?._id
+        ? String(candidateUser._id)
+        : candidateProfile?.userId?._id
+        ? String(candidateProfile.userId._id)
+        : candidateProfile?.userId
+        ? String(candidateProfile.userId)
+        : String(r.candidateId || "");
+
+      return {
+        ...r,
+        candidateId: candidateUser,
+        candidateName,
+        candidateUserId,
+        candidateProfile,
+      };
+    })
+  );
+
+  // Deduplicate reminders by candidateId + date string (down to minute) to guarantee no duplicates
+  const uniqueReminders = [];
+  const seenKeys = new Set();
+  for (const r of populatedReminders) {
+    const cId = r.candidateId?._id ? String(r.candidateId._id) : String(r.candidateId || "");
+    const dateStr = r.date ? new Date(r.date).toISOString().slice(0, 16) : "";
+    const key = `${cId}_${dateStr}_${r.type || ""}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      uniqueReminders.push(r);
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    data: uniqueReminders,
+  });
+});
+
+exports.deleteCandidateReminder = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const { id } = req.params;
+  const CandidateReminder = require("../models/CandidateReminder");
+
+  // Strictly delete only if userId matches
+  const reminder = await CandidateReminder.findOneAndDelete({
+    _id: id,
+    userId: user._id,
+  });
+
+  if (!reminder) {
+    return res.status(404).json({ success: false, message: "Reminder not found or unauthorized" });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Reminder removed successfully",
+  });
+});
+
