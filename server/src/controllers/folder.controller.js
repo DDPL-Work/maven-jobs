@@ -876,3 +876,108 @@ exports.deleteCandidateComment = asyncHandler(async (req, res) => {
     data: fc.comments,
   });
 });
+
+// GET /folders/saved-profiles - Returns all saved candidate profiles across company folders
+exports.getAllSavedProfiles = asyncHandler(async (req, res) => {
+  const companyId = req.company._id;
+  const employerId = req.user._id;
+
+  // Find all accessible folders for this company/employer
+  const validFolders = await Folder.find({
+    companyId,
+    $or: [{ employerId }, { isCompanyShared: true }, { sharedWith: req.user.email }],
+  })
+    .select("_id name color folderType")
+    .lean();
+
+  const validFolderIds = validFolders.map((f) => f._id);
+  const validFolderMap = validFolders.reduce((acc, f) => {
+    acc[String(f._id)] = f;
+    return acc;
+  }, {});
+
+  if (validFolderIds.length === 0) {
+    return res.json({ success: true, data: [] });
+  }
+
+  // Find all FolderCandidate records across these folders, sorted by newest
+  const folderCandidates = await FolderCandidate.find({
+    folderId: { $in: validFolderIds },
+  })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .limit(100)
+    .lean();
+
+  const rawCandidateIds = [
+    ...new Set(
+      folderCandidates.map((fc) => String(fc.candidateId)).filter(Boolean)
+    ),
+  ];
+
+  if (rawCandidateIds.length === 0) {
+    return res.json({ success: true, data: [] });
+  }
+
+  const [users, profiles] = await Promise.all([
+    User.find({ _id: { $in: rawCandidateIds } })
+      .select("name email avatar")
+      .lean(),
+    CandidateProfile.find({
+      $or: [
+        { userId: { $in: rawCandidateIds } },
+        { _id: { $in: rawCandidateIds } },
+      ],
+    })
+      .select(
+        "userId name fullName headline summary currentTitle currentCompany totalExperience currentCity currentState skills expectedSalary noticePeriod education resume profilePic avatar publicShareId",
+      )
+      .lean(),
+  ]);
+
+  const userMap = {};
+  for (const u of users) userMap[String(u._id)] = u;
+
+  const profileByUserId = {};
+  const profileById = {};
+  for (const p of profiles) {
+    if (p.userId) profileByUserId[String(p.userId)] = p;
+    profileById[String(p._id)] = p;
+  }
+
+  // Deduplicate candidates (if in multiple folders, pick the first/latest folder)
+  const seenCandidateIds = new Set();
+  const enriched = [];
+
+  for (const fc of folderCandidates) {
+    const rawIdStr = String(fc.candidateId || "");
+    if (seenCandidateIds.has(rawIdStr)) continue;
+    seenCandidateIds.add(rawIdStr);
+
+    const user = userMap[rawIdStr] || {};
+    const profile = profileByUserId[rawIdStr] || profileById[rawIdStr] || {};
+    const folderInfo = validFolderMap[String(fc.folderId)] || { name: "Saved Folder", color: "#002366" };
+
+    enriched.push({
+      id: rawIdStr,
+      folderCandidateId: String(fc._id),
+      folderId: String(fc.folderId),
+      folderName: folderInfo.name || "Saved",
+      folderColor: folderInfo.color || "#002366",
+      userId: String(user._id || profile.userId || rawIdStr),
+      name: user.name || profile.fullName || profile.name || "Candidate",
+      email: user.email || "",
+      avatar: user.avatar || profile.avatar || profile.profilePic || "",
+      headline: profile.headline || "",
+      currentTitle: profile.currentTitle || profile.headline || "",
+      currentCompany: profile.currentCompany || "",
+      totalExperience: profile.totalExperience || "",
+      currentCity: profile.currentCity || profile.currentState || "",
+      skills: Array.isArray(profile.skills) ? profile.skills.slice(0, 5) : [],
+      tag: fc.tag || "prospect",
+      callStatus: fc.callStatus || "",
+      savedAt: fc.createdAt || fc.updatedAt || null,
+    });
+  }
+
+  res.json({ success: true, data: enriched });
+});

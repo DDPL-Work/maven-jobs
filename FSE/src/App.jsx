@@ -13,6 +13,7 @@ import {
   LuX,
   LuCalendarOff,
   LuGlobe,
+  LuMessageSquareQuote,
 } from "react-icons/lu";
 import logo from "./assets/maven-logo.svg";
 import {
@@ -37,6 +38,7 @@ const ClientAccounts = lazy(() => import("./pages/ClientAccounts"));
 const QRManagement = lazy(() => import("./pages/QRManagement"));
 const NonVisitDays = lazy(() => import("./pages/NonVisitDays"));
 const PortalLeads = lazy(() => import("./pages/PortalLeads"));
+const EnquiryRequests = lazy(() => import("./pages/EnquiryRequests"));
 
 const getSession = () => getStoredCrmSession();
 
@@ -132,6 +134,9 @@ export default function App() {
                 <NavLink to="/portal-leads" className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
                   <LuGlobe /> Portal Lead
                 </NavLink>
+                <NavLink to="/enquiries" className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
+                  <LuMessageSquareQuote /> Sales Enquiries
+                </NavLink>
                 <NavLink to="/non-visit-days" className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
                   <LuCalendarOff /> Non-Visit Days
                 </NavLink>
@@ -211,6 +216,9 @@ export default function App() {
                 } />
                 <Route path="/portal-leads" element={
                   <Suspense fallback={<SkeletonTable />}><PortalLeads /></Suspense>
+                } />
+                <Route path="/enquiries" element={
+                  <Suspense fallback={<SkeletonTable />}><EnquiryRequests /></Suspense>
                 } />
                 <Route path="/profile" element={
                   <Suspense fallback={<SkeletonForm />}><Profile /></Suspense>

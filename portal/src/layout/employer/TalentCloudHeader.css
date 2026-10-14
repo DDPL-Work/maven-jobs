@@ -1,0 +1,204 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Maven Talent Cloud - Dedicated Header Styles
+   ═══════════════════════════════════════════════════════════════════ */
+
+.mtc-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  background: rgba(6, 11, 24, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+  transition: all 0.3s ease;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.mtc-header-container {
+  max-width: 1320px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Brand Link & Logo */
+.mtc-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.mtc-header-logo-img {
+  height: 36px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.mtc-header-brand-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.28rem;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.mtc-header-brand-text strong {
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.mtc-header-brand-text span {
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+/* Navigation & Actions */
+.mtc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+/* Dropdown Menu */
+.mtc-dropdown-wrap {
+  position: relative;
+}
+
+.mtc-dropdown-trigger {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 0.96rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.mtc-dropdown-trigger:hover,
+.mtc-dropdown-wrap.open .mtc-dropdown-trigger {
+  color: #38bdf8;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mtc-dropdown-chevron {
+  transition: transform 0.25s ease;
+}
+
+.mtc-dropdown-wrap.open .mtc-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.mtc-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  background: #091124;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mtc-dropdown-wrap.open .mtc-dropdown-menu,
+.mtc-dropdown-wrap:hover .mtc-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.mtc-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.mtc-dropdown-item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  color: #ffffff;
+  padding-left: 18px;
+}
+
+/* Request Demo Button */
+.mtc-header-btn-demo {
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mtc-header-btn-demo:hover {
+  background: #ffffff;
+  color: #060b18;
+  border-color: #ffffff;
+  box-shadow: 0 4px 18px rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .mtc-header-container {
+    padding: 0 18px;
+  }
+  .mtc-header-brand-text {
+    font-size: 1.05rem;
+  }
+  .mtc-header-right {
+    gap: 12px;
+  }
+  .mtc-header-btn-demo {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+  }
+  .mtc-dropdown-trigger {
+    font-size: 0.86rem;
+    padding: 6px 8px;
+  }
+}

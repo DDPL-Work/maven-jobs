@@ -608,6 +608,15 @@ const authService = {
     }
   },
 
+  submitSalesEnquiry: async (payload) => {
+    try {
+      const response = await api.post('/sales-enquiry', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to submit sales enquiry' };
+    }
+  },
+
   getPackages: async () => {
     try {
       const response = await api.get('/company-panel/packages');
@@ -620,17 +629,55 @@ const authService = {
   employerLogin: async (email, password) => {
     try {
       const response = await api.post('/company-panel/auth/login', { email, password });
+      const token = response.data?.token || response.data?.accessToken;
+      if (token) {
+        try {
+          localStorage.setItem('employerToken', token);
+          localStorage.setItem('token', token);
+        } catch {}
+      }
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Employer login failed' };
     }
   },
 
+  sendEmployerMobileLoginOtp: async (phone) => {
+    try {
+      const response = await api.post('/company-panel/auth/mobile-login/send-otp', { phone });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send OTP' };
+    }
+  },
+
+  verifyEmployerMobileLoginOtp: async (phone, otp) => {
+    try {
+      const response = await api.post('/company-panel/auth/mobile-login/verify-otp', { phone, otp });
+      const token = response.data?.token || response.data?.accessToken;
+      if (token) {
+        try {
+          localStorage.setItem('employerToken', token);
+          localStorage.setItem('token', token);
+        } catch {}
+      }
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to verify OTP' };
+    }
+  },
+
   logoutEmployer: async () => {
     try {
+      try {
+        localStorage.removeItem('employerToken');
+      } catch {}
       const response = await api.post('/company-panel/auth/logout');
       return response.data;
     } catch (error) {
+      try {
+        localStorage.removeItem('employerToken');
+      } catch {}
       throw error.response?.data || { message: 'Employer logout failed' };
     }
   },
@@ -987,6 +1034,15 @@ const authService = {
     }
   },
 
+  recordResdexRecentSearch: async (keyword) => {
+    try {
+      const response = await api.post('/company-panel/resdex/searches/record-recent', { keyword });
+      return response.data;
+    } catch {
+      return { success: false };
+    }
+  },
+
   // ── NVite (Send MIvites) ────────────────────────────────────────────────────
   sendMivite: async (payload) => {
     try {
@@ -1016,6 +1072,15 @@ const authService = {
   },
 
   // ── Folder Management ──
+  getSavedProfiles: async () => {
+    try {
+      const response = await api.get('/company-panel/folders/saved-profiles');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch saved profiles' };
+    }
+  },
+
   getContactedCandidates: async () => {
     try {
       const response = await api.get('/company-panel/folders/candidates/contacted');

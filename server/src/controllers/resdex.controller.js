@@ -891,12 +891,47 @@ exports.togglePin = asyncHandler(async (req, res) => {
 
 exports.recentSearches = asyncHandler(async (req, res) => {
   const searches = await ResdexSearch.find({ companyId: req.company._id })
-    .sort({ lastRunAt: -1 })
+    .sort({ lastRunAt: -1, updatedAt: -1 })
     .limit(20)
-    .select("name resultCount runCount lastRunAt")
+    .select("name resultCount runCount lastRunAt filters")
     .lean();
 
   res.json({ success: true, data: searches });
+});
+
+exports.recordRecentSearch = asyncHandler(async (req, res) => {
+  const keyword = String(req.body?.keyword || req.body?.name || "").trim();
+  if (!keyword) {
+    return res.status(400).json({ success: false, message: "Keyword is required" });
+  }
+
+  const companyId = req.company._id;
+  const userId = req.user._id;
+
+  const existing = await ResdexSearch.findOne({
+    companyId,
+    name: { $regex: `^${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" },
+  });
+
+  let search;
+  if (existing) {
+    existing.lastRunAt = new Date();
+    existing.runCount = (existing.runCount || 0) + 1;
+    existing.filters = { ...existing.filters, keyword };
+    await existing.save();
+    search = existing;
+  } else {
+    search = await ResdexSearch.create({
+      companyId,
+      userId,
+      name: keyword,
+      filters: { keyword },
+      lastRunAt: new Date(),
+      runCount: 1,
+    });
+  }
+
+  res.status(200).json({ success: true, data: search });
 });
 
 exports.aiParseQuery = asyncHandler(async (req, res) => {

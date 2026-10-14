@@ -148,7 +148,7 @@ exports.getUsers = asyncHandler(async (req, res) => {
 
   let subUsers = await CompanySubUser.find({ companyId }).populate(
     "userId",
-    "name email role isActive"
+    "name email role isActive phone"
   );
 
   // Filter out any orphaned sub-users whose User record was deleted or is null
@@ -177,7 +177,7 @@ exports.getUsers = asyncHandler(async (req, res) => {
       // Re-fetch to get populated fields
       subUsers = await CompanySubUser.find({ companyId }).populate(
         "userId",
-        "name email role isActive"
+        "name email role isActive phone"
       );
       subUsers = subUsers.filter((su) => su.userId);
     }
@@ -190,6 +190,7 @@ exports.getUsers = asyncHandler(async (req, res) => {
       userId: su.userId._id,
       name: su.userId.name || "User",
       email: su.userId.email || "",
+      phone: su.userId.phone || su.phone || "",
       isSuperUser: su.isSuperUser,
       isRestricted: su.isRestricted,
       jobPosting: Boolean(su.permissions?.jobPosting),
@@ -238,6 +239,7 @@ exports.createUser = asyncHandler(async (req, res) => {
   const {
     name,
     email,
+    phone,
     jobPosting,
     jobBooster,
     resdex,
@@ -296,9 +298,13 @@ exports.createUser = asyncHandler(async (req, res) => {
   const systemGeneratedPassword = req.body.password?.trim() || generateSystemPassword();
   const hashedPassword = await bcrypt.hash(systemGeneratedPassword, 10);
 
+  const cleanPhone = phone ? String(phone).trim().replace(/\D/g, "") : "";
+  const phoneToSave = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+
   const newUser = await User.create({
     name,
     email: email.toLowerCase(),
+    phone: phoneToSave,
     password: hashedPassword,
     role: role || "RECRUITER",
     companyId: companyId,
@@ -309,6 +315,7 @@ exports.createUser = asyncHandler(async (req, res) => {
     userId: newUser._id,
     companyId,
     createdBy,
+    phone: phoneToSave,
     permissions: {
       jobPosting: Boolean(jobPosting),
       jobBooster: Boolean(jobBooster),
@@ -392,6 +399,14 @@ exports.updateUser = asyncHandler(async (req, res) => {
 
   if (name) {
     subUser.userId.name = name;
+  }
+
+  if (req.body.phone !== undefined) {
+    const cleanPhone = String(req.body.phone || "").trim().replace(/\D/g, "");
+    const phoneToSave = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+    subUser.userId.phone = phoneToSave;
+    subUser.phone = phoneToSave;
+    await subUser.save();
   }
 
   await subUser.userId.save();

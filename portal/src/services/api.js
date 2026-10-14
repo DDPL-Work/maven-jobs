@@ -84,6 +84,15 @@ const tryRefresh = async () => {
 
 api.interceptors.request.use(
   (config) => {
+    try {
+      const isEmployer = config.url?.includes("company-panel") || config.url?.includes("/employer");
+      const token = isEmployer
+        ? (localStorage.getItem("employerToken") || localStorage.getItem("token"))
+        : (localStorage.getItem("token") || localStorage.getItem("employerToken"));
+      if (token && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {}
     return config;
   },
   (error) => Promise.reject(error)
@@ -109,6 +118,7 @@ api.interceptors.response.use(
         const isEmployer = originalRequest.url?.includes("company-panel");
         if (isEmployer) {
           localStorage.removeItem("employerUser");
+          localStorage.removeItem("employerToken");
           sessionStorage.clear();
         } else {
           clearStoredSession();

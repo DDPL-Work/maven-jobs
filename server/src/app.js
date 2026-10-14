@@ -32,6 +32,7 @@ const { webhookHandler } = require("./routes/payment.routes");
 const passwordResetRoutes = require("./routes/passwordReset.routes");
 const commercialAdminRoutes = require("./routes/commercial-admin.routes");
 const commercialCompanyRoutes = require("./routes/commercial-company.routes");
+const salesEnquiryRoutes = require("./routes/sales-enquiry.routes");
 const { registerAllSubscribers } = require("./subscribers");
 const recommendationEngine = require("./recommendations");
 const cacheService = require("./services/cache/cache.service");
@@ -133,7 +134,6 @@ app.use(`${BASE_ROUTE}/candidate`, candidateRoutes);
 app.use(`${BASE_ROUTE}/ai`, aiRoutes);
 app.use(`${BASE_ROUTE}/national-sales-head`, nshRoutes);
 app.use(`${BASE_ROUTE}/company-panel`, companyPanelRoutes);
-app.use(`${BASE_ROUTE}/company-panel/auth`, passwordResetRoutes);
 app.use(`${BASE_ROUTE}/blog`, blogRoutes);
 app.use(`${BASE_ROUTE}/admin/blogs`, blogRoutes);
 app.use(`${BASE_ROUTE}/email`, emailRoutes);
@@ -141,6 +141,7 @@ app.use(`${BASE_ROUTE}/notifications/preferences`, notificationPreferencesRoutes
 app.use(`${BASE_ROUTE}/recommendations`, recommendationsRoutes);
 app.use(`${BASE_ROUTE}/chatbot`, chatbotRoutes);
 app.use(`${BASE_ROUTE}/payment`, paymentRoutes);
+app.use(`${BASE_ROUTE}/sales-enquiry`, salesEnquiryRoutes);
 
 app.get(["/download", `${BASE_ROUTE}/download`, `${BASE_ROUTE}/app/download`], (req, res) => {
   const ua = req.headers["user-agent"] || "";

@@ -593,6 +593,18 @@ export default function SearchResume() {
         setSearchResults([]);
         setSearchPagination({ page: 1, limit: currentLimit, total: 0, totalPages: 0 });
       }
+
+      if (params.keyword && params.keyword.trim()) {
+        const kwClean = params.keyword.trim();
+        authService.recordResdexRecentSearch(kwClean).catch(() => {});
+        try {
+          const stored = JSON.parse(localStorage.getItem("resdex_recent_searches") || "[]");
+          const nextSearches = [kwClean, ...stored.filter(s => s.toLowerCase() !== kwClean.toLowerCase())].slice(0, 10);
+          localStorage.setItem("resdex_recent_searches", JSON.stringify(nextSearches));
+          window.dispatchEvent(new CustomEvent("resdex-recent-searches-updated", { detail: { query: kwClean } }));
+        } catch {}
+      }
+
       refreshRecentSearches();
     } catch {
       setSearchResults([]);

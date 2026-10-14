@@ -5,7 +5,7 @@ import {
   FiChevronDown, FiChevronUp, FiSearch, FiGrid, FiSend, FiLogOut,
   FiBarChart2, FiUsers, FiStar, FiFolder, FiFileText,
   FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck, FiBookOpen, FiMessageCircle,
-  FiEye, FiEyeOff, FiClock, FiCalendar, FiTrash2, FiUser, FiExternalLink
+  FiEye, FiEyeOff, FiClock, FiCalendar, FiTrash2, FiUser, FiExternalLink, FiBookmark
 } from 'react-icons/fi';
 import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
@@ -13,6 +13,7 @@ import notAllowedImg from '../../../assets/notAllowed.png';
 import authService from '../../services/authService';
 import FeedbackModal from '../../components/employer/FeedbackModal';
 import PlanExpiryBanner from '../../components/employer/PlanExpiryBanner';
+import { getCartItems, removeFromCart, clearCart, getCartTotals } from '../../utils/cartStorage';
 
 const C = {
   navy: "#002366",
@@ -23,13 +24,6 @@ const C = {
   fd: "'Bricolage Grotesque',sans-serif",
 };
 
-const DEFAULT_RECENT_SEARCHES = [
-  "React Developer",
-  "Full Stack Developer",
-  "Node.js Developer",
-  "UI/UX Designer",
-  "Product Manager",
-];
 
 export default function EmployerHeader({
   company = {},
@@ -64,6 +58,7 @@ export default function EmployerHeader({
     resdex: false,
     report: false,
     settings: false,
+    recentSearches: false,
   });
 
   const toggleMobileSection = (section) => {
@@ -89,37 +84,45 @@ export default function EmployerHeader({
   const searchInputRef = useRef(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showRecentDropdown, setShowRecentDropdown] = useState(false);
+  const [showRecentSearchesMenu, setShowRecentSearchesMenu] = useState(false);
+  const recentSearchesMenuRef = useRef(null);
+
+  const [showSavedProfilesSidebar, setShowSavedProfilesSidebar] = useState(false);
+  const [savedProfiles, setSavedProfiles] = useState([]);
+  const [savedProfilesLoading, setSavedProfilesLoading] = useState(false);
+  const [savedProfilesError, setSavedProfilesError] = useState("");
+  const [savedProfilesSearch, setSavedProfilesSearch] = useState("");
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [cartItems, setCartItems] = useState(() => getCartItems());
+  const [cartTotals, setCartTotals] = useState(() => getCartTotals());
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [dropdownActiveIndex, setDropdownActiveIndex] = useState(-1);
+
+  // Sync employer cart across windows and tabs
+  useEffect(() => {
+    const updateCart = () => {
+      const items = getCartItems();
+      setCartItems(items);
+      setCartTotals(getCartTotals(items));
+    };
+    updateCart();
+    window.addEventListener("employer-cart-updated", updateCart);
+    window.addEventListener("storage", updateCart);
+    return () => {
+      window.removeEventListener("employer-cart-updated", updateCart);
+      window.removeEventListener("storage", updateCart);
+    };
+  }, []);
+
   const [recentSearches, setRecentSearches] = useState(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("resdex_recent_searches") || "[]");
       if (Array.isArray(stored) && stored.length > 0) {
-        const combined = Array.from(new Set([...stored, ...DEFAULT_RECENT_SEARCHES])).filter(Boolean);
-        return combined.slice(0, 5);
+        return stored.filter(Boolean).slice(0, 10);
       }
     } catch {}
-    return DEFAULT_RECENT_SEARCHES;
+    return [];
   });
-
-  const saveRecentSearch = useCallback((term) => {
-    if (!term || !term.trim()) return;
-    const clean = term.trim();
-    setRecentSearches((prev) => {
-      const updated = [clean, ...prev.filter((s) => s.toLowerCase() !== clean.toLowerCase())].slice(0, 5);
-      try {
-        localStorage.setItem("resdex_recent_searches", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  }, []);
-
-  const handleSelectRecentSearch = useCallback((term) => {
-    if (!term) return;
-    setSearchKeyword(term);
-    saveRecentSearch(term);
-    window.open(`/resume-search?keyword=${encodeURIComponent(term)}`, '_blank');
-    setIsSearchExpanded(false);
-    setShowRecentDropdown(false);
-  }, [saveRecentSearch]);
 
   const [searchKeyword, setSearchKeyword] = useState(() => {
     try {
@@ -131,6 +134,36 @@ export default function EmployerHeader({
   });
   const userStored = localStorage.getItem("employerUser");
   const isEmployerLoggedIn = !!userStored && userStored !== "undefined";
+
+  const saveRecentSearch = useCallback((term) => {
+    if (!term || !term.trim()) return;
+    const clean = term.trim();
+    setRecentSearches((prev) => {
+      const updated = [clean, ...prev.filter((s) => s.toLowerCase() !== clean.toLowerCase())].slice(0, 10);
+      try {
+        localStorage.setItem("resdex_recent_searches", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    if (isEmployerLoggedIn) {
+      authService.recordResdexRecentSearch(clean).catch(() => {});
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent("resdex-recent-searches-updated", { detail: { query: clean } }));
+    } catch {}
+  }, [isEmployerLoggedIn]);
+
+  const handleSelectRecentSearch = useCallback((term) => {
+    if (!term) return;
+    setSearchKeyword(term);
+    saveRecentSearch(term);
+    window.open(`/resume-search?keyword=${encodeURIComponent(term)}`, '_blank');
+    setIsSearchExpanded(false);
+    setShowRecentDropdown(false);
+    setShowRecentSearchesMenu(false);
+  }, [saveRecentSearch]);
 
   const [sessionUser, setSessionUser] = useState(() => {
     try {
@@ -150,8 +183,8 @@ export default function EmployerHeader({
         const apiNames = res.data.map(item => item?.name).filter(Boolean);
         if (apiNames.length > 0) {
           setRecentSearches((prev) => {
-            const combined = Array.from(new Set([...prev, ...apiNames, ...DEFAULT_RECENT_SEARCHES])).filter(Boolean);
-            const sliced = combined.slice(0, 5);
+            const combined = Array.from(new Set([...prev, ...apiNames])).filter(Boolean);
+            const sliced = combined.slice(0, 10);
             try {
               localStorage.setItem("resdex_recent_searches", JSON.stringify(sliced));
             } catch {}
@@ -162,6 +195,78 @@ export default function EmployerHeader({
       .catch(() => {});
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      const q = e?.detail?.query;
+      if (q && typeof q === 'string') {
+        const clean = q.trim();
+        setRecentSearches((prev) => {
+          if (prev.some(s => s.toLowerCase() === clean.toLowerCase())) return prev;
+          const updated = [clean, ...prev].slice(0, 10);
+          try {
+            localStorage.setItem("resdex_recent_searches", JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
+    };
+    window.addEventListener("resdex-recent-searches-updated", handler);
+    return () => window.removeEventListener("resdex-recent-searches-updated", handler);
+  }, []);
+
+  const loadSavedProfiles = useCallback(async () => {
+    if (!isEmployerLoggedIn) return;
+    try {
+      setSavedProfilesLoading(true);
+      setSavedProfilesError("");
+      const res = await authService.getSavedProfiles();
+      const list = res?.data || [];
+      setSavedProfiles(Array.isArray(list) ? list : []);
+    } catch (err) {
+      setSavedProfilesError((err?.message || "Failed to load saved profiles").toString());
+    } finally {
+      setSavedProfilesLoading(false);
+    }
+  }, [isEmployerLoggedIn]);
+
+  useEffect(() => {
+    if (isEmployerLoggedIn) {
+      loadSavedProfiles();
+    }
+  }, [isEmployerLoggedIn, loadSavedProfiles]);
+
+  useEffect(() => {
+    if (showSavedProfilesSidebar && isEmployerLoggedIn) {
+      loadSavedProfiles();
+    }
+  }, [showSavedProfilesSidebar, isEmployerLoggedIn, loadSavedProfiles]);
+
+  useEffect(() => {
+    const handler = () => loadSavedProfiles();
+    window.addEventListener("employer-saved-profiles-changed", handler);
+    window.addEventListener("candidate-saved-to-folder", handler);
+    window.addEventListener("folder-candidates-updated", handler);
+    return () => {
+      window.removeEventListener("employer-saved-profiles-changed", handler);
+      window.removeEventListener("candidate-saved-to-folder", handler);
+      window.removeEventListener("folder-candidates-updated", handler);
+    };
+  }, [loadSavedProfiles]);
+
+  const filteredSavedProfiles = useMemo(() => {
+    if (!savedProfilesSearch.trim()) return savedProfiles;
+    const q = savedProfilesSearch.toLowerCase().trim();
+    return savedProfiles.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const title = (p.currentTitle || p.headline || "").toLowerCase();
+      const company = (p.currentCompany || "").toLowerCase();
+      const city = (p.currentCity || "").toLowerCase();
+      const folder = (p.folderName || "").toLowerCase();
+      const skills = (Array.isArray(p.skills) ? p.skills.join(" ") : "").toLowerCase();
+      return name.includes(q) || title.includes(q) || company.includes(q) || city.includes(q) || folder.includes(q) || skills.includes(q);
+    });
+  }, [savedProfiles, savedProfilesSearch]);
 
   useEffect(() => {
     const sp = new URLSearchParams(location.search);
@@ -182,6 +287,100 @@ export default function EmployerHeader({
       setShowRecentDropdown(false);
     }
   }, [isSearchExpanded]);
+
+  const filteredLiveSuggestions = useMemo(() => {
+    const q = searchKeyword.trim().toLowerCase();
+    if (!q) return [];
+
+    // Matches from recent searches (excluding exact match)
+    const recentMatches = recentSearches.filter(
+      (s) => s.toLowerCase().includes(q) && s.toLowerCase() !== q
+    );
+
+    // Matches from live backend API search suggestions
+    const apiMatches = searchSuggestions.filter(
+      (s) => s && typeof s === "string" && s.toLowerCase() !== q
+    );
+
+    const combined = [];
+    const seen = new Set([q]);
+
+    for (const item of [...recentMatches, ...apiMatches]) {
+      const lower = item.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        combined.push(item);
+        if (combined.length >= 6) break;
+      }
+    }
+
+    return combined;
+  }, [searchKeyword, recentSearches, searchSuggestions]);
+
+  useEffect(() => {
+    const q = searchKeyword.trim();
+    if (!q || !isSearchExpanded) {
+      setSearchSuggestions([]);
+      return;
+    }
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await authService.getSearchSuggestions(q);
+        if (active && res?.data?.suggestions && Array.isArray(res.data.suggestions)) {
+          setSearchSuggestions(res.data.suggestions);
+        }
+      } catch {
+        if (active) setSearchSuggestions([]);
+      }
+    }, 180);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [searchKeyword, isSearchExpanded]);
+
+  useEffect(() => {
+    setDropdownActiveIndex(-1);
+  }, [searchKeyword, showRecentDropdown]);
+
+  const handleSearchKeyDown = (e) => {
+    if (!showRecentDropdown) return;
+
+    const totalItems = searchKeyword.trim()
+      ? 1 + filteredLiveSuggestions.length
+      : Math.min(recentSearches.length, 5);
+
+    if (totalItems <= 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setDropdownActiveIndex((prev) => (prev < totalItems - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setDropdownActiveIndex((prev) => (prev > 0 ? prev - 1 : totalItems - 1));
+    } else if (e.key === "Enter") {
+      if (dropdownActiveIndex >= 0) {
+        e.preventDefault();
+        if (searchKeyword.trim()) {
+          if (dropdownActiveIndex === 0) {
+            handleSelectRecentSearch(searchKeyword.trim());
+          } else if (filteredLiveSuggestions[dropdownActiveIndex - 1]) {
+            handleSelectRecentSearch(filteredLiveSuggestions[dropdownActiveIndex - 1]);
+          }
+        } else {
+          const selected = recentSearches[dropdownActiveIndex];
+          if (selected) {
+            handleSelectRecentSearch(selected);
+          }
+        }
+      }
+    } else if (e.key === "Escape") {
+      setShowRecentDropdown(false);
+      setIsSearchExpanded(false);
+    }
+  };
 
   useEffect(() => {
     if (!isEmployerLoggedIn) return;
@@ -436,11 +635,16 @@ export default function EmployerHeader({
   ).length;
 
   useEffect(() => {
-    if (!showProfileSidebar && !openDropdown && !showNotifications && !mobileMenuOpen && !isSearchExpanded) return;
+    if (!showProfileSidebar && !openDropdown && !showNotifications && !mobileMenuOpen && !isSearchExpanded && !showRecentSearchesMenu && !showSavedProfilesSidebar) return;
     const handler = (e) => {
       if (openDropdown) {
         const dd = dropdownRefs.current[openDropdown];
         if (dd && !dd.contains(e.target)) setOpenDropdown(null);
+      }
+      if (showRecentSearchesMenu) {
+        if (recentSearchesMenuRef.current && !recentSearchesMenuRef.current.contains(e.target)) {
+          setShowRecentSearchesMenu(false);
+        }
       }
       if (isSearchExpanded) {
         if (searchHeaderRef.current && !searchHeaderRef.current.contains(e.target)) {
@@ -454,6 +658,9 @@ export default function EmployerHeader({
         setOpenDropdown(null);
         setShowChangePassword(false);
         setIsSearchExpanded(false);
+        setShowRecentSearchesMenu(false);
+        setShowSavedProfilesSidebar(false);
+        setCartDrawerOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -462,10 +669,10 @@ export default function EmployerHeader({
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("keydown", handler);
     };
-  }, [showProfileSidebar, openDropdown, showNotifications, mobileMenuOpen, isSearchExpanded]);
+  }, [showProfileSidebar, openDropdown, showNotifications, mobileMenuOpen, isSearchExpanded, showRecentSearchesMenu, showSavedProfilesSidebar, cartDrawerOpen]);
 
   useEffect(() => {
-    if (showProfileSidebar || showNotifications || mobileMenuOpen) {
+    if (showProfileSidebar || showNotifications || mobileMenuOpen || showSavedProfilesSidebar || cartDrawerOpen) {
       document.body.classList.add("employer-sidebar-open");
       window.dispatchEvent(new CustomEvent("employer-sidebar-toggle", { detail: { open: true } }));
     } else {
@@ -476,7 +683,7 @@ export default function EmployerHeader({
       document.body.classList.remove("employer-sidebar-open");
       window.dispatchEvent(new CustomEvent("employer-sidebar-toggle", { detail: { open: false } }));
     };
-  }, [showProfileSidebar, showNotifications, mobileMenuOpen]);
+  }, [showProfileSidebar, showNotifications, mobileMenuOpen, showSavedProfilesSidebar, cartDrawerOpen]);
 
   const handleSearchSubmit = useCallback((e) => {
     if (e) e.preventDefault();
@@ -726,7 +933,7 @@ export default function EmployerHeader({
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: "auto" }}>
-            {(location?.pathname === "/employer-dashboard" || onMessagesClick || isEmployerLoggedIn) && (
+            {/* {(location?.pathname === "/employer-dashboard" || onMessagesClick || isEmployerLoggedIn) && (
               <>
                 <button
                   type="button"
@@ -751,7 +958,188 @@ export default function EmployerHeader({
 
                 <div className="ep-msg-sep" style={{ width: 1, height: 30, background: C.s200 }} />
               </>
-            )}
+            )} */}
+
+            {/* Recent Searches Header Button & Dropdown Popover */}
+            <div style={{ position: "relative" }} ref={recentSearchesMenuRef}>
+              <button
+                type="button"
+                className="ep-header-recent-btn"
+                onClick={() => setShowRecentSearchesMenu((prev) => !prev)}
+                title="Recent Searches"
+                aria-label="Recent Searches"
+                aria-expanded={showRecentSearchesMenu}
+                style={{
+                  width: 36, height: 36, borderRadius: 9,
+                  background: showRecentSearchesMenu ? C.s100 : C.s50,
+                  border: `1px solid ${showRecentSearchesMenu ? C.navy + '30' : C.s200}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: showRecentSearchesMenu ? C.navy : C.s500,
+                  position: "relative", transition: "all .16s", flexShrink: 0
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(0,35,102,.2)"; e.currentTarget.style.color = C.navy; }}
+                onMouseLeave={e => {
+                  if (!showRecentSearchesMenu) {
+                    e.currentTarget.style.borderColor = C.s200;
+                    e.currentTarget.style.color = C.s500;
+                  }
+                }}
+              >
+                <FiClock size={16} />
+              </button>
+
+              {showRecentSearchesMenu && (
+                <div className="ep-header-recent-searches-popover">
+                  <div className="ep-popover-head">
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <FiClock size={14} color={C.navy} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", fontFamily: C.fd }}>Recent Searches</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: C.s500, fontWeight: 700, background: C.s100, padding: "2px 7px", borderRadius: 6 }}>
+                      {recentSearches.length}
+                    </span>
+                  </div>
+                  <div className="ep-popover-list">
+                    {recentSearches.length === 0 ? (
+                      <div style={{ padding: "24px 16px", textAlign: "center", color: C.s500, fontSize: 12.5 }}>
+                        <FiClock size={20} color={C.s400} style={{ marginBottom: 6 }} />
+                        <div>No recent searches yet</div>
+                        <div style={{ fontSize: 11, color: C.s400, marginTop: 4 }}>Searches from header or Resdex will appear here</div>
+                      </div>
+                    ) : (
+                      recentSearches.map((term, i) => (
+                        <div
+                          key={i}
+                          className="ep-popover-item"
+                          onClick={() => {
+                            handleSelectRecentSearch(term);
+                            setShowRecentSearchesMenu(false);
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, flex: 1 }}>
+                            <FiSearch size={13} color={C.s400} style={{ flexShrink: 0 }} />
+                            <span className="ep-popover-item-text">{term}</span>
+                          </div>
+                          <span className="ep-popover-item-badge">Search</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="ep-popover-foot">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRecentSearchesMenu(false);
+                        navigate("/manage-search");
+                      }}
+                      className="ep-popover-foot-link"
+                    >
+                      Manage Saved Searches →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Saved Profiles Header Button */}
+            <button
+              type="button"
+              className="ep-header-saved-btn"
+              onClick={() => setShowSavedProfilesSidebar((prev) => !prev)}
+              title="Saved Profiles"
+              aria-label="Saved Profiles"
+              style={{
+                width: 36, height: 36, borderRadius: 9,
+                background: showSavedProfilesSidebar ? C.s100 : C.s50,
+                border: `1px solid ${showSavedProfilesSidebar ? C.navy + '30' : C.s200}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", color: showSavedProfilesSidebar ? C.navy : C.s500,
+                position: "relative", transition: "all .16s", flexShrink: 0
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(0,35,102,.2)"; e.currentTarget.style.color = C.navy; }}
+              onMouseLeave={e => {
+                if (!showSavedProfilesSidebar) {
+                  e.currentTarget.style.borderColor = C.s200;
+                  e.currentTarget.style.color = C.s500;
+                }
+              }}
+            >
+              <div style={{ position: "relative", display: "inline-flex" }}>
+                <FiBookmark size={16} />
+                {savedProfiles.length > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: -6,
+                    right: -8,
+                    minWidth: 16,
+                    height: 16,
+                    padding: "0 4px",
+                    borderRadius: 8,
+                    backgroundColor: C.navy,
+                    color: "#ffffff",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1.5px solid #ffffff",
+                    lineHeight: 1,
+                  }}>
+                    {savedProfiles.length > 99 ? "99+" : savedProfiles.length}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            {/* Cart Header Button */}
+            <button
+              type="button"
+              className="ep-header-cart-btn"
+              onClick={() => setCartDrawerOpen((prev) => !prev)}
+              title="Cart"
+              aria-label="Shopping Cart"
+              style={{
+                width: 36, height: 36, borderRadius: 9,
+                background: cartDrawerOpen ? C.s100 : C.s50,
+                border: `1px solid ${cartDrawerOpen ? C.navy + '30' : C.s200}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", color: cartDrawerOpen ? C.navy : C.s500,
+                position: "relative", transition: "all .16s", flexShrink: 0
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(0,35,102,.2)"; e.currentTarget.style.color = C.navy; }}
+              onMouseLeave={e => {
+                if (!cartDrawerOpen) {
+                  e.currentTarget.style.borderColor = C.s200;
+                  e.currentTarget.style.color = C.s500;
+                }
+              }}
+            >
+              <div style={{ position: "relative", display: "inline-flex" }}>
+                <FiShoppingCart size={16} />
+                {cartItems.length > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: -6,
+                    right: -8,
+                    minWidth: 16,
+                    height: 16,
+                    padding: "0 4px",
+                    borderRadius: 8,
+                    backgroundColor: "#ef4444",
+                    color: "#ffffff",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1.5px solid #ffffff",
+                    lineHeight: 1,
+                  }}>
+                    {cartItems.length > 99 ? "99+" : cartItems.length}
+                  </span>
+                )}
+              </div>
+            </button>
 
             <button
               type="button"
@@ -1328,366 +1716,6 @@ export default function EmployerHeader({
                   </div>
                 </div>
               )}
-
-              {/* Change Password Modal */}
-              {showChangePassword && (
-                <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    zIndex: 100001,
-                    background: "rgba(15, 23, 42, 0.5)",
-                    backdropFilter: "blur(6px)",
-                    WebkitBackdropFilter: "blur(6px)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: 20,
-                  }}
-                  onClick={() => {
-                    setShowChangePassword(false);
-                    setCpMsg(null);
-                  }}
-                >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      background: "#ffffff",
-                      borderRadius: 18,
-                      maxWidth: 420,
-                      width: "100%",
-                      padding: "24px 24px 22px",
-                      boxShadow: "0 20px 48px rgba(15, 23, 42, 0.2)",
-                      position: "relative",
-                    }}
-                  >
-                    <button
-                      onClick={() => {
-                        setShowChangePassword(false);
-                        setCpMsg(null);
-                      }}
-                      style={{
-                        position: "absolute",
-                        top: 16,
-                        right: 16,
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
-                        border: "none",
-                        background: "#f1f5f9",
-                        color: "#64748b",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <FiX size={16} />
-                    </button>
-
-                    <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>
-                      Change Password
-                    </h2>
-                    <p style={{ fontSize: 12.5, color: "#64748b", margin: "0 0 18px" }}>
-                      Enter your current password and choose a new secure password.
-                    </p>
-
-                    {cpMsg && (
-                      <div
-                        style={{
-                          padding: "10px 14px",
-                          borderRadius: 10,
-                          fontSize: 12.5,
-                          fontWeight: 600,
-                          marginBottom: 14,
-                          background: cpMsg.type === "success" ? "#dcfce7" : "#fee2e2",
-                          color: cpMsg.type === "success" ? "#15803d" : "#b91c1c",
-                          border: `1px solid ${cpMsg.type === "success" ? "#bbf7d0" : "#fecaca"}`,
-                        }}
-                      >
-                        {cpMsg.text}
-                      </div>
-                    )}
-
-                    <form
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        setCpMsg(null);
-                        if (!cpCurrent) {
-                          setCpMsg({ type: "error", text: "Please enter your current password." });
-                          return;
-                        }
-                        if (cpNew.length < 6) {
-                          setCpMsg({ type: "error", text: "New password must be at least 6 characters." });
-                          return;
-                        }
-                        if (cpNew !== cpConfirm) {
-                          setCpMsg({ type: "error", text: "New passwords do not match." });
-                          return;
-                        }
-                        setCpLoading(true);
-                        try {
-                          await authService.employerChangePassword(cpCurrent, cpNew);
-                          setCpMsg({ type: "success", text: "Password updated successfully!" });
-                          setTimeout(() => {
-                            setShowChangePassword(false);
-                            setCpCurrent("");
-                            setCpNew("");
-                            setCpConfirm("");
-                            setCpMsg(null);
-                          }, 1200);
-                        } catch (err) {
-                          setCpMsg({ type: "error", text: err?.message || "Failed to change password." });
-                        } finally {
-                          setCpLoading(false);
-                        }
-                      }}
-                      style={{ display: "flex", flexDirection: "column", gap: 14 }}
-                    >
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                          Current Password
-                        </label>
-                        <div style={{ position: "relative" }}>
-                          <input
-                            type={showCpCurrent ? "text" : "password"}
-                            required
-                            value={cpCurrent}
-                            onChange={(e) => setCpCurrent(e.target.value)}
-                            placeholder="Enter current password"
-                            style={{
-                              width: "100%",
-                              padding: "10px 40px 10px 12px",
-                              borderRadius: 8,
-                              border: `1px solid ${C.s300}`,
-                              fontSize: 13,
-                              outline: "none",
-                              boxSizing: "border-box",
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCpCurrent(!showCpCurrent)}
-                            style={{
-                              position: "absolute",
-                              right: 12,
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              color: "#64748b",
-                              padding: 0,
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            {showCpCurrent ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                          New Password
-                        </label>
-                        <div style={{ position: "relative" }}>
-                          <input
-                            type={showCpNew ? "text" : "password"}
-                            required
-                            value={cpNew}
-                            onChange={(e) => setCpNew(e.target.value)}
-                            placeholder="At least 6 characters"
-                            style={{
-                              width: "100%",
-                              padding: "10px 40px 10px 12px",
-                              borderRadius: 8,
-                              border: `1px solid ${C.s300}`,
-                              fontSize: 13,
-                              outline: "none",
-                              boxSizing: "border-box",
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCpNew(!showCpNew)}
-                            style={{
-                              position: "absolute",
-                              right: 12,
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              color: "#64748b",
-                              padding: 0,
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            {showCpNew ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                          Confirm New Password
-                        </label>
-                        <div style={{ position: "relative" }}>
-                          <input
-                            type={showCpConfirm ? "text" : "password"}
-                            required
-                            value={cpConfirm}
-                            onChange={(e) => setCpConfirm(e.target.value)}
-                            placeholder="Re-enter new password"
-                            style={{
-                              width: "100%",
-                              padding: "10px 40px 10px 12px",
-                              borderRadius: 8,
-                              border: `1px solid ${C.s300}`,
-                              fontSize: 13,
-                              outline: "none",
-                              boxSizing: "border-box",
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCpConfirm(!showCpConfirm)}
-                            style={{
-                              position: "absolute",
-                              right: 12,
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              color: "#64748b",
-                              padding: 0,
-                              display: "flex",
-                              alignItems: "center"
-                            }}
-                          >
-                            {showCpConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowChangePassword(false);
-                            setCpMsg(null);
-                          }}
-                          style={{
-                            flex: 1,
-                            padding: "10px 14px",
-                            borderRadius: 8,
-                            border: `1px solid ${C.s300}`,
-                            background: "#ffffff",
-                            color: "#475569",
-                            fontSize: 13,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={cpLoading}
-                          style={{
-                            flex: 1,
-                            padding: "10px 14px",
-                            borderRadius: 8,
-                            border: "none",
-                            background: C.navy,
-                            color: "#ffffff",
-                            fontSize: 13,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            opacity: cpLoading ? 0.7 : 1,
-                          }}
-                        >
-                          {cpLoading ? "Updating..." : "Save Password"}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              {showLogoutConfirm && (
-                <div style={{
-                  position: "fixed", inset: 0, zIndex: 99999,
-                  background: "rgba(15,23,42,0.5)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: 24
-                }} onClick={() => setShowLogoutConfirm(false)}>
-                  <div onClick={e => e.stopPropagation()} style={{
-                    background: "rgba(255,255,255,0.97)",
-                    backdropFilter: "blur(24px)",
-                    WebkitBackdropFilter: "blur(24px)",
-                    borderRadius: 24,
-                    border: "1px solid rgba(255,255,255,0.5)",
-                    boxShadow: "0 32px 80px rgba(0,0,0,0.2)",
-                    maxWidth: 400, width: "100%",
-                    padding: "36px 32px 28px",
-                    textAlign: "center"
-                  }}>
-                    <div style={{
-                      width: 56, height: 56, borderRadius: "50%",
-                      background: "linear-gradient(135deg, #FEF2F2, #FEE2E2)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      margin: "0 auto 16px",
-                      boxShadow: "0 8px 24px rgba(239,68,68,0.12)"
-                    }}>
-                      <FiLogOut size={26} color="#DC2626" />
-                    </div>
-                    <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.02em" }}>
-                      Logout from Maven Jobs
-                    </h3>
-                    <p style={{ margin: "0 0 24px", fontSize: 14.5, color: "#475569", fontWeight: 500, lineHeight: 1.5 }}>
-                      Are you sure you want to log out of your Maven Jobs account?
-                    </p>
-                    <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                      <button onClick={() => setShowLogoutConfirm(false)}
-                        style={{
-                          padding: "11px 24px", borderRadius: 12, border: `1.5px solid #E2E8F0`,
-                          background: "#fff", color: "#475569", fontSize: 14, fontWeight: 700,
-                          cursor: "pointer", fontFamily: C.dm, transition: "all 0.15s"
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "#F8FAFC"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleLogoutAction}
-                        style={{
-                          padding: "11px 24px", borderRadius: 12, border: "none",
-                          background: "linear-gradient(135deg, #DC2626, #B91C1C)",
-                          color: "#fff", fontSize: 14, fontWeight: 700,
-                          cursor: "pointer", fontFamily: C.dm,
-                          boxShadow: "0 6px 20px rgba(220,38,38,0.25)",
-                          transition: "all 0.15s"
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                          e.currentTarget.style.boxShadow = "0 10px 28px rgba(220,38,38,0.35)";
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.boxShadow = "0 6px 20px rgba(220,38,38,0.25)";
-                        }}
-                      >
-                        Yes, Logout
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
             ) : (
               <button
@@ -1763,6 +1791,7 @@ export default function EmployerHeader({
                       setShowRecentDropdown(true);
                     }}
                     onFocus={() => setShowRecentDropdown(true)}
+                    onKeyDown={handleSearchKeyDown}
                     placeholder="Search candidate profiles by keywords, skills, designations (e.g. React Developer, Node.js, Mumbai)..."
                     className="ep-search-field-input"
                   />
@@ -1782,30 +1811,88 @@ export default function EmployerHeader({
                     </button>
                   )}
 
-                  {/* 5 Recent Searches Dropdown Options */}
-                  {isSearchExpanded && showRecentDropdown && recentSearches && recentSearches.length > 0 && (
+                  {/* Dropdown: Shows recent 5 searches initially, and updates dynamically based on typing */}
+                  {isSearchExpanded && showRecentDropdown && (
                     <div className="ep-search-recent-dropdown">
                       <div className="ep-search-recent-header">
-                        <FiClock size={12} className="ep-search-recent-header-icon" />
-                        <span className="ep-search-recent-header-label">Recent Searches</span>
+                        {searchKeyword.trim() ? (
+                          <FiSearch size={12} className="ep-search-recent-header-icon" />
+                        ) : (
+                          <FiClock size={12} className="ep-search-recent-header-icon" />
+                        )}
+                        <span className="ep-search-recent-header-label">
+                          {searchKeyword.trim() ? `Suggestions for "${searchKeyword.trim()}"` : "Recent Searches"}
+                        </span>
                       </div>
                       <div className="ep-search-recent-list">
-                        {recentSearches.slice(0, 5).map((term, index) => (
+                        {/* 1. When typing: top row to directly search for typed query */}
+                        {searchKeyword.trim() && (
                           <div
-                            key={index}
-                            className="ep-search-recent-item"
+                            className={`ep-search-recent-item ${dropdownActiveIndex === 0 ? "active" : ""}`}
                             onMouseDown={(e) => {
                               e.preventDefault();
-                              handleSelectRecentSearch(term);
+                              handleSelectRecentSearch(searchKeyword.trim());
                             }}
                           >
                             <div className="ep-search-recent-item-left">
-                              <FiClock size={13} className="ep-search-recent-item-icon" />
-                              <span className="ep-search-recent-item-text">{term}</span>
+                              <FiSearch size={13} className="ep-search-recent-item-icon" style={{ color: C.navy }} />
+                              <span className="ep-search-recent-item-text">
+                                Search for <strong>"{searchKeyword.trim()}"</strong>
+                              </span>
                             </div>
-                            <span className="ep-search-recent-item-badge">Search</span>
+                            <span className="ep-search-recent-item-badge" style={{ background: `${C.navy}12`, color: C.navy, fontWeight: 700 }}>
+                              Search
+                            </span>
                           </div>
-                        ))}
+                        )}
+
+                        {/* 2. Initial state (empty input): show only recent 5 searches */}
+                        {!searchKeyword.trim() && recentSearches && recentSearches.length > 0 && (
+                          recentSearches.slice(0, 5).map((term, index) => (
+                            <div
+                              key={index}
+                              className={`ep-search-recent-item ${dropdownActiveIndex === index ? "active" : ""}`}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectRecentSearch(term);
+                              }}
+                            >
+                              <div className="ep-search-recent-item-left">
+                                <FiClock size={13} className="ep-search-recent-item-icon" />
+                                <span className="ep-search-recent-item-text">{term}</span>
+                              </div>
+                              <span className="ep-search-recent-item-badge">Recent</span>
+                            </div>
+                          ))
+                        )}
+
+                        {/* 3. When typing: show matching live suggestions and matching recent searches */}
+                        {searchKeyword.trim() && filteredLiveSuggestions.map((term, index) => {
+                          const itemIndex = index + 1; // 0 is the "Search for ..." item
+                          const isRecent = recentSearches.some(r => r.toLowerCase() === term.toLowerCase());
+                          return (
+                            <div
+                              key={term}
+                              className={`ep-search-recent-item ${dropdownActiveIndex === itemIndex ? "active" : ""}`}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectRecentSearch(term);
+                              }}
+                            >
+                              <div className="ep-search-recent-item-left">
+                                {isRecent ? (
+                                  <FiClock size={13} className="ep-search-recent-item-icon" />
+                                ) : (
+                                  <FiSearch size={13} className="ep-search-recent-item-icon" />
+                                )}
+                                <span className="ep-search-recent-item-text">{term}</span>
+                              </div>
+                              <span className="ep-search-recent-item-badge">
+                                {isRecent ? "Recent" : "Suggested"}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -2116,6 +2203,82 @@ export default function EmployerHeader({
               <FiList size={18} />
               <span>My Subscription</span>
             </button>
+
+            {/* Saved Profiles Mobile Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setShowSavedProfilesSidebar(true);
+              }}
+              className="ep-mob-nav-btn"
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
+                <FiBookmark size={18} />
+                <span>Saved Profiles</span>
+              </div>
+              {savedProfiles.length > 0 && (
+                <span style={{
+                  background: `${C.navy}12`,
+                  color: C.navy,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                }}>
+                  {savedProfiles.length}
+                </span>
+              )}
+            </button>
+
+            {/* Recent Searches Accordion */}
+            <div>
+              <button
+                type="button"
+                onClick={() => toggleMobileSection("recentSearches")}
+                className={`ep-mob-accordion-btn ${mobileSections.recentSearches ? "open" : ""}`}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <FiClock size={18} />
+                  <span>Recent Searches</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {recentSearches.length > 0 && (
+                    <span style={{ fontSize: 11, color: C.s500, fontWeight: 700 }}>
+                      {recentSearches.length}
+                    </span>
+                  )}
+                  <FiChevronDown
+                    size={16}
+                    style={{
+                      transition: "transform 0.22s ease",
+                      transform: mobileSections.recentSearches ? "rotate(180deg)" : "rotate(0deg)",
+                    }}
+                  />
+                </div>
+              </button>
+              {mobileSections.recentSearches && (
+                <div className="ep-mob-sublist">
+                  {recentSearches.length === 0 ? (
+                    <div style={{ padding: "8px 12px", color: C.s400, fontSize: 12 }}>No recent searches</div>
+                  ) : (
+                    recentSearches.map((term, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          handleSelectRecentSearch(term);
+                          setMobileMenuOpen(false);
+                        }}
+                        className="ep-mob-subbtn"
+                      >
+                        {term}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* 8. Settings (Collapsible Accordion with all child tabs) */}
             <div>
@@ -2582,7 +2745,776 @@ export default function EmployerHeader({
           )}
         </div>
 
+        {/* ─── Global Employer Saved Profiles Sidebar ─── */}
+        <div
+          className={`pd-saved-overlay ${showSavedProfilesSidebar ? 'show' : ''}`}
+          onClick={() => setShowSavedProfilesSidebar(false)}
+        />
+        <div className={`pd-saved-sidebar ${showSavedProfilesSidebar ? 'show' : ''}`}>
+          {/* Header */}
+          <div className="pd-saved-head">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 34,
+                height: 34,
+                borderRadius: 9,
+                background: `${C.navy}12`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: C.navy,
+              }}>
+                <FiBookmark size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0F172A", fontFamily: C.fd }}>
+                  Saved Profiles
+                </h3>
+                <span style={{ fontSize: 12, color: C.s500, fontWeight: 500 }}>
+                  {savedProfiles.length} candidate{savedProfiles.length === 1 ? '' : 's'} saved across folders
+                </span>
+              </div>
+            </div>
+            <button
+              className="pd-saved-close"
+              onClick={() => setShowSavedProfilesSidebar(false)}
+              aria-label="Close saved profiles"
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+
+          {/* Search Filter in Sidebar */}
+          <div className="pd-saved-filter-bar">
+            <div className="pd-saved-search-box">
+              <FiSearch size={14} color={C.s400} />
+              <input
+                type="text"
+                placeholder="Filter saved profiles by name, skill, folder..."
+                value={savedProfilesSearch}
+                onChange={(e) => setSavedProfilesSearch(e.target.value)}
+                className="pd-saved-search-input"
+              />
+              {savedProfilesSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSavedProfilesSearch("")}
+                  className="pd-saved-search-clear"
+                >
+                  <FiX size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Body Content */}
+          <div className="pd-saved-body">
+            {savedProfilesLoading && (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: C.s500, fontSize: 13, fontWeight: 600 }}>
+                <div className="pd-saved-spinner" />
+                <div style={{ marginTop: 12 }}>Loading saved profiles...</div>
+              </div>
+            )}
+
+            {!savedProfilesLoading && savedProfilesError && (
+              <div style={{ margin: 16, padding: "14px 16px", borderRadius: 10, background: "#fee2e2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 13, fontWeight: 600 }}>
+                {savedProfilesError}
+              </div>
+            )}
+
+            {!savedProfilesLoading && !savedProfilesError && filteredSavedProfiles.length === 0 && (
+              <div className="pd-saved-empty-state">
+                <div className="pd-saved-empty-icon-wrap">
+                  <FiBookmark size={32} color={C.navy} />
+                </div>
+                <h4 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>
+                  {savedProfiles.length === 0 ? "No saved candidate profiles yet" : "No matches found"}
+                </h4>
+                <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 16px", lineHeight: 1.5, maxWidth: 280 }}>
+                  {savedProfiles.length === 0
+                    ? "When you save candidate profiles from Resdex search into folders, they will appear here for fast access."
+                    : `No saved profiles match "${savedProfilesSearch}". Try checking another keyword.`}
+                </p>
+                {savedProfiles.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSavedProfilesSidebar(false);
+                      window.open("/resume-search", "_blank");
+                    }}
+                    className="pd-saved-action-btn"
+                  >
+                    <FiSearch size={14} /> Search Resumes
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!savedProfilesLoading && filteredSavedProfiles.map((cand) => {
+              const cId = cand.candidateId || cand._id || cand.id;
+              const name = cand.name || "Candidate";
+              const title = cand.currentTitle || cand.headline || "";
+              const company = cand.currentCompany || "";
+              const exp = cand.totalExperience != null ? `${cand.totalExperience} yrs` : "";
+              const city = cand.currentCity || cand.city || "";
+              const folderName = cand.folderName || "Saved Folder";
+              const skills = Array.isArray(cand.skills) ? cand.skills.slice(0, 4) : [];
+              const savedDate = cand.savedAt ? new Date(cand.savedAt).toLocaleDateString([], { month: "short", day: "numeric" }) : "";
+
+              return (
+                <div key={cand._id || `${cId}_${cand.folderId}`} className="pd-saved-card">
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div className="pd-saved-card-avatar">
+                      {cand.avatar ? (
+                        <img src={cand.avatar} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        name.slice(0, 2).toUpperCase()
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <h4 className="pd-saved-cand-name" title={name}>
+                          {name}
+                        </h4>
+                        {savedDate && <span className="pd-saved-card-date">{savedDate}</span>}
+                      </div>
+
+                      {(title || company) && (
+                        <div className="pd-saved-cand-role">
+                          {title}{title && company ? ' • ' : ''}{company}
+                        </div>
+                      )}
+
+                      <div className="pd-saved-cand-meta">
+                        {exp && <span>{exp}</span>}
+                        {exp && city && <span>•</span>}
+                        {city && <span>{city}</span>}
+                        <span className="pd-saved-folder-tag" title={`Folder: ${folderName}`}>
+                          📁 {folderName}
+                        </span>
+                      </div>
+
+                      {skills.length > 0 && (
+                        <div className="pd-saved-skills-wrap">
+                          {skills.map((sk, idx) => (
+                            <span key={idx} className="pd-saved-skill-pill">{sk}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSavedProfilesSidebar(false);
+                            window.open(`/employer/candidate/${cId}`, "_blank", "noopener,noreferrer");
+                          }}
+                          className="pd-saved-view-btn"
+                        >
+                          View Full Profile <FiExternalLink size={12} style={{ marginLeft: 4 }} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="pd-saved-foot">
+            <button
+              type="button"
+              onClick={() => {
+                setShowSavedProfilesSidebar(false);
+                navigate("/employer-dashboard/folders");
+              }}
+              className="pd-saved-foot-link"
+            >
+              Manage Folders & Candidates →
+            </button>
+          </div>
+        </div>
+
+        {/* ─── Global Employer Cart Sidebar ─── */}
+        <div
+          className={`pd-saved-overlay ${cartDrawerOpen ? 'show' : ''}`}
+          onClick={() => setCartDrawerOpen(false)}
+        />
+        <div className={`pd-saved-sidebar ${cartDrawerOpen ? 'show' : ''}`}>
+          {/* Header */}
+          <div className="pd-saved-head">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 34,
+                height: 34,
+                borderRadius: 9,
+                background: `${C.navy}12`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: C.navy,
+              }}>
+                <FiShoppingCart size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0F172A", fontFamily: C.fd }}>
+                  My Cart
+                </h3>
+                <span style={{ fontSize: 12, color: C.s500, fontWeight: 500 }}>
+                  {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} saved in cart
+                </span>
+              </div>
+            </div>
+            <button
+              className="pd-saved-close"
+              onClick={() => setCartDrawerOpen(false)}
+              aria-label="Close cart"
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+
+          {/* Cart Body */}
+          <div className="pd-saved-body">
+            {cartItems.length === 0 ? (
+              <div className="pd-saved-empty-state">
+                <div className="pd-saved-empty-icon-wrap" style={{ background: "#eff6ff" }}>
+                  <FiShoppingCart size={32} color={C.navy} />
+                </div>
+                <h4 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>
+                  Your cart is empty
+                </h4>
+                <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 16px", lineHeight: 1.5, maxWidth: 280 }}>
+                  When you initiate a purchase on plans, job postings, or resume database credits, items will be saved here so you can finish anytime.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCartDrawerOpen(false);
+                    navigate("/buy-online");
+                  }}
+                  className="pd-saved-action-btn"
+                >
+                  <FiShoppingCart size={14} /> Explore Plans &amp; Pricing
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 2px" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.s500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Items in Cart ({cartItems.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => clearCart()}
+                    style={{ background: "none", border: "none", color: "#dc2626", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Clear all
+                  </button>
+                </div>
+
+                {cartItems.map((item) => {
+                  const itemId = item.id || item._id || item.code;
+                  const itemPrice = Number(item.total ?? item.price ?? 0);
+                  const isPlan = item.itemType === "PLAN";
+
+                  return (
+                    <div key={itemId} className="pd-saved-card">
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 3 }}>
+                            <h4 className="pd-saved-cand-name" style={{ fontSize: 15 }}>
+                              {item.name}
+                            </h4>
+                            <span className="pd-saved-folder-tag" style={{ background: isPlan ? "#eff6ff" : "#f0fdf4", color: isPlan ? "#1d4ed8" : "#15803d", borderColor: isPlan ? "#bfdbfe" : "#bbf7d0" }}>
+                              {isPlan ? "Plan" : item.category || "Product"}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: C.s500 }}>
+                            {item.quantity > 1 && <span>Qty: <strong>{item.quantity} {item.unit || "Units"}</strong> • </span>}
+                            <span>{item.validity} Days Validity</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(itemId)}
+                          title="Remove item from cart"
+                          style={{
+                            background: "transparent", border: "none", color: C.s400,
+                            cursor: "pointer", padding: 4, borderRadius: 6, display: "flex",
+                            alignItems: "center", justifyContent: "center", transition: "all 0.15s"
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fee2e2"; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = C.s400; e.currentTarget.style.background = "transparent"; }}
+                        >
+                          <FiTrash2 size={15} />
+                        </button>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, borderTop: `1px dashed ${C.s200}` }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                          {item.discount > 0 && item.basePrice > itemPrice && (
+                            <span style={{ fontSize: 12, color: C.s400, textDecoration: "line-through" }}>
+                              ₹{Number(item.basePrice).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          <span style={{ fontSize: 16, fontWeight: 800, color: C.navy, fontFamily: C.fd }}>
+                            {itemPrice === 0 ? "Free" : `₹${itemPrice.toLocaleString("en-IN")}`}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCartDrawerOpen(false);
+                            navigate(`/buy-online?resume_cart=true&checkout_item=${encodeURIComponent(itemId)}`);
+                          }}
+                          style={{
+                            background: C.navy, color: "#fff", border: "none",
+                            padding: "6px 12px", borderRadius: 8, fontSize: 12,
+                            fontWeight: 700, cursor: "pointer", display: "inline-flex",
+                            alignItems: "center", gap: 4, transition: "opacity 0.15s"
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
+                          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+                        >
+                          Complete Purchase <FiArrowRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="pd-saved-foot" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 14, color: C.s600 }}>
+              <span>Total ({cartItems.length} {cartItems.length === 1 ? "item" : "items"})</span>
+              <strong style={{ fontSize: 17, color: "#0F172A", fontFamily: C.fd }}>
+                ₹{cartTotals.total.toLocaleString("en-IN")}
+              </strong>
+            </div>
+            {cartTotals.taxTotal > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: C.s400 }}>
+                <span>Includes GST / Taxes</span>
+                <span>₹{cartTotals.taxTotal.toLocaleString("en-IN")}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              disabled={cartItems.length === 0}
+              onClick={() => {
+                setCartDrawerOpen(false);
+                const first = cartItems[0];
+                if (first) {
+                  navigate(`/buy-online?resume_cart=true&checkout_item=${encodeURIComponent(first.id || first._id || first.code)}`);
+                } else {
+                  navigate("/buy-online");
+                }
+              }}
+              style={{
+                width: "100%", padding: "11px 16px", borderRadius: 10,
+                border: "none", background: cartItems.length > 0 ? C.navy : C.s300,
+                color: "#ffffff", fontSize: 13.5, fontWeight: 700,
+                cursor: cartItems.length > 0 ? "pointer" : "not-allowed",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                boxShadow: cartItems.length > 0 ? "0 4px 14px rgba(0,35,102,0.2)" : "none"
+              }}
+            >
+              {cartItems.length > 0 ? (
+                <>Proceed to Checkout ({cartItems.length}) <FiArrowRight size={14} /></>
+              ) : (
+                <>Explore Plans &amp; Pricing <FiArrowRight size={14} /></>
+              )}
+            </button>
+          </div>
+        </div>
+
         <style>{`
+          /* ─── Global Saved Profiles Sidebar & Popover ─── */
+          .pd-saved-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 35, 102, 0.35);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 100000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+          }
+          .pd-saved-overlay.show {
+            opacity: 1;
+            visibility: visible;
+          }
+          .pd-saved-sidebar {
+            position: fixed;
+            top: 0;
+            right: -440px;
+            left: auto !important;
+            width: 440px;
+            max-width: 94vw;
+            height: 100vh;
+            background: #ffffff;
+            z-index: 100001;
+            box-shadow: -14px 0 45px rgba(0, 35, 102, 0.14);
+            display: flex;
+            flex-direction: column;
+            transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          .pd-saved-sidebar.show {
+            right: 0 !important;
+            left: auto !important;
+          }
+          .pd-saved-head {
+            padding: 18px 22px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid ${C.s200};
+            background: #ffffff;
+          }
+          .pd-saved-close {
+            background: ${C.s100};
+            border: none;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: ${C.s500};
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .pd-saved-close:hover {
+            background: #FEE2E2;
+            color: #ef4444;
+            transform: rotate(90deg);
+          }
+          .pd-saved-filter-bar {
+            padding: 12px 18px;
+            border-bottom: 1px solid ${C.s100};
+            background: #f8fafc;
+          }
+          .pd-saved-search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+            border: 1px solid ${C.s200};
+            border-radius: 8px;
+            padding: 7px 12px;
+            transition: border-color 0.15s;
+          }
+          .pd-saved-search-box:focus-within {
+            border-color: ${C.navy};
+            box-shadow: 0 0 0 2px ${C.navy}15;
+          }
+          .pd-saved-search-input {
+            border: none;
+            outline: none;
+            font-size: 13px;
+            color: #0f172a;
+            width: 100%;
+            background: transparent;
+            font-family: inherit;
+          }
+          .pd-saved-search-input::placeholder {
+            color: #94a3b8;
+          }
+          .pd-saved-search-clear {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 0;
+            display: flex;
+            align-items: center;
+          }
+          .pd-saved-search-clear:hover {
+            color: #0f172a;
+          }
+          .pd-saved-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f8fafc;
+          }
+          .pd-saved-card {
+            background: #ffffff;
+            border: 1px solid ${C.s200};
+            border-radius: 12px;
+            padding: 14px 16px;
+            transition: all 0.16s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+          }
+          .pd-saved-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 6px 16px rgba(0, 35, 102, 0.06);
+            transform: translateY(-1px);
+          }
+          .pd-saved-card-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, ${C.navy}, #1e5eff);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+            overflow: hidden;
+          }
+          .pd-saved-cand-name {
+            margin: 0;
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #0f172a;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .pd-saved-card-date {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 500;
+            flex-shrink: 0;
+          }
+          .pd-saved-cand-role {
+            font-size: 12.5px;
+            color: #475569;
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 500;
+          }
+          .pd-saved-cand-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 11.5px;
+            color: #64748b;
+            flex-wrap: wrap;
+          }
+          .pd-saved-folder-tag {
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 6px;
+            border: 1px solid #bfdbfe;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .pd-saved-skills-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+          }
+          .pd-saved-skill-pill {
+            background: #f1f5f9;
+            color: #334155;
+            font-size: 10.5px;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-weight: 500;
+          }
+          .pd-saved-view-btn {
+            background: none;
+            border: none;
+            color: ${C.navy};
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: all 0.14s;
+          }
+          .pd-saved-view-btn:hover {
+            background: #eff6ff;
+            text-decoration: underline;
+          }
+          .pd-saved-empty-state {
+            padding: 50px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+          .pd-saved-empty-icon-wrap {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: #eff6ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+          }
+          .pd-saved-action-btn {
+            background: ${C.navy};
+            color: #ffffff;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.15s;
+          }
+          .pd-saved-action-btn:hover {
+            opacity: 0.9;
+          }
+          .pd-saved-foot {
+            padding: 14px 20px;
+            border-top: 1px solid ${C.s200};
+            background: #ffffff;
+            text-align: center;
+          }
+          .pd-saved-foot-link {
+            background: none;
+            border: none;
+            color: ${C.navy};
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+          }
+          .pd-saved-foot-link:hover {
+            text-decoration: underline;
+          }
+          .pd-saved-spinner {
+            width: 26px;
+            height: 26px;
+            border: 3px solid #e2e8f0;
+            border-top-color: ${C.navy};
+            border-radius: 50%;
+            margin: 0 auto;
+            animation: spin 0.8s linear infinite;
+          }
+
+          /* ─── Header Recent Searches Popover ─── */
+          .ep-header-recent-searches-popover {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: -40px;
+            width: 320px;
+            max-width: 90vw;
+            background: #ffffff;
+            border: 1px solid ${C.s200};
+            border-radius: 14px;
+            box-shadow: 0 16px 36px rgba(0, 35, 102, 0.12), 0 3px 8px rgba(0, 0, 0, 0.04);
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeInDown 0.18s ease-out;
+          }
+          .ep-popover-head {
+            padding: 12px 16px;
+            border-bottom: 1px solid ${C.s100};
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fafbfc;
+          }
+          .ep-popover-clear-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 2px 4px;
+          }
+          .ep-popover-clear-btn:hover {
+            color: #dc2626;
+            text-decoration: underline;
+          }
+          .ep-popover-list {
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 6px;
+          }
+          .ep-popover-item {
+            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.14s;
+          }
+          .ep-popover-item:hover {
+            background: #f1f5f9;
+          }
+          .ep-popover-item-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .ep-popover-item-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: ${C.navy};
+            background: #eff6ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #bfdbfe;
+            margin-left: 8px;
+            flex-shrink: 0;
+          }
+          .ep-popover-foot {
+            padding: 10px 16px;
+            border-top: 1px solid ${C.s100};
+            background: #fafbfc;
+            text-align: center;
+          }
+          .ep-popover-foot-link {
+            background: none;
+            border: none;
+            color: ${C.navy};
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+          }
+          .ep-popover-foot-link:hover {
+            text-decoration: underline;
+          }
+          @keyframes fadeInDown {
+            from {
+              opacity: 0;
+              transform: translateY(-6px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
           .pd-notif-overlay { position: fixed; inset: 0; background: rgba(0, 35, 102, 0.35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 100000; opacity: 0; visibility: hidden; transition: all 0.3s; }
           .pd-notif-overlay.show { opacity: 1; visibility: visible; }
           .pd-notif-sidebar { position: fixed; top: 0; right: -420px; left: auto !important; width: 420px; max-width: 92vw; height: 100vh; background: white; z-index: 100001; box-shadow: -12px 0 40px rgba(0, 35, 102, 0.12); display: flex; flex-direction: column; transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -3436,6 +4368,23 @@ export default function EmployerHeader({
             color: #002366;
           }
 
+          .ep-search-recent-item.active {
+            background: #eff6ff;
+          }
+
+          .ep-search-recent-item.active .ep-search-recent-item-icon {
+            color: #002366;
+          }
+
+          .ep-search-recent-item.active .ep-search-recent-item-text {
+            color: #002366;
+          }
+
+          .ep-search-recent-item.active .ep-search-recent-item-badge {
+            background: #dbeafe;
+            color: #002366;
+          }
+
           @media (max-width: 1024px) {
             .ep-header-search-compact {
               max-width: 200px;
@@ -3483,6 +4432,369 @@ export default function EmployerHeader({
           }
         `}</style>
       </header>
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100005,
+            background: "rgba(15, 23, 42, 0.5)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+          onClick={() => {
+            setShowChangePassword(false);
+            setCpMsg(null);
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: 18,
+              maxWidth: 420,
+              width: "100%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: "24px 24px 22px",
+              boxShadow: "0 20px 48px rgba(15, 23, 42, 0.2)",
+              position: "relative",
+            }}
+          >
+            <button
+              onClick={() => {
+                setShowChangePassword(false);
+                setCpMsg(null);
+              }}
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: "none",
+                background: "#f1f5f9",
+                color: "#64748b",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <FiX size={16} />
+            </button>
+
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", margin: "0 0 6px" }}>
+              Change Password
+            </h2>
+            <p style={{ fontSize: 12.5, color: "#64748b", margin: "0 0 18px" }}>
+              Enter your current password and choose a new secure password.
+            </p>
+
+            {cpMsg && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  marginBottom: 14,
+                  background: cpMsg.type === "success" ? "#dcfce7" : "#fee2e2",
+                  color: cpMsg.type === "success" ? "#15803d" : "#b91c1c",
+                  border: `1px solid ${cpMsg.type === "success" ? "#bbf7d0" : "#fecaca"}`,
+                }}
+              >
+                {cpMsg.text}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setCpMsg(null);
+                if (!cpCurrent) {
+                  setCpMsg({ type: "error", text: "Please enter your current password." });
+                  return;
+                }
+                if (cpNew.length < 6) {
+                  setCpMsg({ type: "error", text: "New password must be at least 6 characters." });
+                  return;
+                }
+                if (cpNew !== cpConfirm) {
+                  setCpMsg({ type: "error", text: "New passwords do not match." });
+                  return;
+                }
+                setCpLoading(true);
+                try {
+                  await authService.employerChangePassword(cpCurrent, cpNew);
+                  setCpMsg({ type: "success", text: "Password updated successfully!" });
+                  setTimeout(() => {
+                    setShowChangePassword(false);
+                    setCpCurrent("");
+                    setCpNew("");
+                    setCpConfirm("");
+                    setCpMsg(null);
+                  }, 1200);
+                } catch (err) {
+                  setCpMsg({ type: "error", text: err?.message || "Failed to change password." });
+                } finally {
+                  setCpLoading(false);
+                }
+              }}
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
+            >
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                  Current Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showCpCurrent ? "text" : "password"}
+                    required
+                    value={cpCurrent}
+                    onChange={(e) => setCpCurrent(e.target.value)}
+                    placeholder="Enter current password"
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 12px",
+                      borderRadius: 8,
+                      border: `1px solid ${C.s300}`,
+                      fontSize: 13,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCpCurrent(!showCpCurrent)}
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#64748b",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                  >
+                    {showCpCurrent ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                  New Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showCpNew ? "text" : "password"}
+                    required
+                    value={cpNew}
+                    onChange={(e) => setCpNew(e.target.value)}
+                    placeholder="At least 6 characters"
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 12px",
+                      borderRadius: 8,
+                      border: `1px solid ${C.s300}`,
+                      fontSize: 13,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCpNew(!showCpNew)}
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#64748b",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                  >
+                    {showCpNew ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                  Confirm New Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showCpConfirm ? "text" : "password"}
+                    required
+                    value={cpConfirm}
+                    onChange={(e) => setCpConfirm(e.target.value)}
+                    placeholder="Re-enter new password"
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 12px",
+                      borderRadius: 8,
+                      border: `1px solid ${C.s300}`,
+                      fontSize: 13,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCpConfirm(!showCpConfirm)}
+                    style={{
+                      position: "absolute",
+                      right: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#64748b",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                  >
+                    {showCpConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePassword(false);
+                    setCpMsg(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: `1px solid ${C.s300}`,
+                    background: "#ffffff",
+                    color: "#475569",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={cpLoading}
+                  style={{
+                    flex: 1,
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: C.navy,
+                    color: "#ffffff",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    opacity: cpLoading ? 0.7 : 1,
+                  }}
+                >
+                  {cpLoading ? "Updating..." : "Save Password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 100005,
+          background: "rgba(15,23,42,0.5)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 24
+        }} onClick={() => setShowLogoutConfirm(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "rgba(255,255,255,0.97)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            borderRadius: 24,
+            border: "1px solid rgba(255,255,255,0.5)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.2)",
+            maxWidth: 400, width: "100%",
+            padding: "36px 32px 28px",
+            textAlign: "center"
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              background: "linear-gradient(135deg, #FEF2F2, #FEE2E2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px",
+              boxShadow: "0 8px 24px rgba(239,68,68,0.12)"
+            }}>
+              <FiLogOut size={26} color="#DC2626" />
+            </div>
+            <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.02em" }}>
+              Logout from Maven Jobs
+            </h3>
+            <p style={{ margin: "0 0 24px", fontSize: 14.5, color: "#475569", fontWeight: 500, lineHeight: 1.5 }}>
+              Are you sure you want to log out of your Maven Jobs account?
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  padding: "11px 24px", borderRadius: 12, border: `1.5px solid #E2E8F0`,
+                  background: "#fff", color: "#475569", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", fontFamily: C.dm, transition: "all 0.15s"
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#F8FAFC"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogoutAction}
+                style={{
+                  padding: "11px 24px", borderRadius: 12, border: "none",
+                  background: "linear-gradient(135deg, #DC2626, #B91C1C)",
+                  color: "#fff", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", fontFamily: C.dm,
+                  boxShadow: "0 6px 20px rgba(220,38,38,0.25)",
+                  transition: "all 0.15s"
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow = "0 10px 28px rgba(220,38,38,0.35)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 6px 20px rgba(220,38,38,0.25)";
+                }}
+              >
+                Yes, Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <FeedbackModal 
         isOpen={showFeedbackModal} 

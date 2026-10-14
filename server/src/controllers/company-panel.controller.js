@@ -46,6 +46,7 @@ const smsService = require("../services/sms.service");
 const emailService = require("../services/email.service");
 const EntitlementService = require("../services/commercial/entitlement.service");
 const RegistrationOTP = require("../models/RegistrationOTP");
+const LoginOTP = require("../models/LoginOTP");
 const { buildOTPHtml } = require("../email/templates/layouts");
 const CompanySubUser = require("../models/CompanySubUser");
 const UserLoginLog = require("../models/UserLoginLog");
@@ -530,6 +531,9 @@ exports.login = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
+    token: tokenPair.accessToken,
+    accessToken: tokenPair.accessToken,
+    refreshToken: tokenPair.refreshToken,
     expiresInSeconds: tokenPair.expiresInSeconds,
     user: {
       id: String(user._id),
@@ -540,6 +544,7 @@ exports.login = asyncHandler(async (req, res) => {
       companyName: company.name || "",
       permissions: recruiterPermissions,
       superUserEmail: superUserEmail,
+      token: tokenPair.accessToken,
     },
     company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
   });
@@ -579,6 +584,302 @@ exports.verifyMobileOtp = asyncHandler(async (req, res) => {
 
   const mobileToken = jwt.sign({ phone, countryCode, verified: true }, process.env.JWT_SECRET, { expiresIn: "1h" });
   res.status(200).json({ success: true, data: { mobileToken } });
+});
+
+/**
+ * Helper to locate an active CLIENT or RECRUITER by phone number.
+ * Searches User.phone, CompanySubUser.phone, and Company.phone / altPhone.
+ */
+const findEmployerUserByPhone = async (phone) => {
+  if (!phone) return { user: null, phone: "" };
+  const cleanPhone = String(phone).trim().replace(/\D/g, "");
+  const last10 = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+  const phoneVariations = [
+    last10,
+    `+91${last10}`,
+    `91${last10}`,
+    `0${last10}`,
+  ];
+
+  // 1. Direct search on User collection for CLIENT or RECRUITER
+  let user = await User.findOne({
+    role: { $in: ["CLIENT", "RECRUITER"] },
+    $or: phoneVariations.map((p) => ({ phone: p })),
+  });
+
+  // 2. If not found, check CompanySubUser collection (recruiter phone)
+  if (!user) {
+    const subUser = await CompanySubUser.findOne({
+      $or: phoneVariations.map((p) => ({ phone: p })),
+    }).populate("userId");
+    if (subUser && subUser.userId && ["CLIENT", "RECRUITER"].includes(subUser.userId.role)) {
+      user = subUser.userId;
+      if (!user.phone) {
+        user.phone = last10;
+        await user.save().catch(() => {});
+      }
+    }
+  }
+
+  // 3. If not found, search Company collection (client phone or altPhone)
+  if (!user) {
+    const company = await Company.findOne({
+      $or: [
+        ...phoneVariations.map((p) => ({ phone: p })),
+        ...phoneVariations.map((p) => ({ altPhone: p })),
+      ],
+    });
+
+    if (company) {
+      if (company.clientUserId) {
+        user = await User.findOne({ _id: company.clientUserId, role: "CLIENT" });
+      }
+      if (!user) {
+        user = await User.findOne({ companyId: company._id, role: "CLIENT" });
+      }
+      if (user && !user.phone) {
+        user.phone = last10;
+        await user.save().catch(() => {});
+      }
+    }
+  }
+
+  return { user, phone: last10 };
+};
+
+/**
+ * POST /api/v1/company-panel/auth/mobile-login/send-otp
+ * Body: { phone: "9876543210" }
+ *
+ * Sends a login OTP via SMS specifically for registered CLIENT and RECRUITER users.
+ * Verifies that the phone number belongs only to a registered client or recruiter.
+ */
+exports.sendEmployerMobileLoginOtp = asyncHandler(async (req, res) => {
+  const rawPhone = String(req.body?.phone || req.body?.mobile || "").trim();
+  const cleanPhone = rawPhone.replace(/\D/g, "");
+  const phone = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+
+  if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+    throw createHttpError(400, "Please enter a valid 10-digit mobile number.");
+  }
+
+  // Strictly verify that this mobile number belongs to a registered CLIENT or RECRUITER
+  const { user } = await findEmployerUserByPhone(phone);
+  if (!user) {
+    throw createHttpError(
+      404,
+      "No client or recruiter account is registered with this mobile number. Please check the number or log in with your email."
+    );
+  }
+
+  if (!user.isActive || user.accessStatus === "RESTRICTED") {
+    throw createHttpError(403, "Your account is inactive or restricted. Please contact support.");
+  }
+
+  if (user.accessStatus === "PENDING_VERIFICATION") {
+    throw createHttpError(
+      403,
+      "Your account is currently pending verification by our team. You will be able to log in once approved."
+    );
+  }
+
+  const company = user.companyId ? await Company.findById(user.companyId) : null;
+  if (!company) {
+    throw createHttpError(404, "Associated company profile not found.");
+  }
+
+  if (company.status === "INACTIVE") {
+    throw createHttpError(403, "Your company account is inactive. Please contact support.");
+  }
+
+  if (company.status === "PENDING_VERIFICATION") {
+    throw createHttpError(
+      403,
+      "Your company account is currently pending verification. You will be able to log in once approved."
+    );
+  }
+
+  // Rate limiting: maximum 5 requests in 10 minutes
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const recentCount = await LoginOTP.countDocuments({
+    phone,
+    createdAt: { $gte: tenMinutesAgo },
+  });
+
+  if (recentCount >= 5) {
+    throw createHttpError(429, "Too many OTP requests. Please wait a few minutes before trying again.");
+  }
+
+  // Invalidate any previous unused OTP sessions for this phone
+  await LoginOTP.updateMany(
+    { phone, used: false },
+    { $set: { used: true } }
+  );
+
+  // Send OTP via 2Factor.in SMS service
+  let sessionId;
+  try {
+    sessionId = await smsService.sendOTP(phone);
+  } catch (smsErr) {
+    console.error("[sendEmployerMobileLoginOtp] SMS sending failed:", smsErr?.message || smsErr);
+    throw createHttpError(503, "Failed to send OTP via SMS. Please try again later.");
+  }
+
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await LoginOTP.create({
+    phone,
+    userId: user._id,
+    sessionId,
+    expiresAt,
+    ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+    userAgent: req.headers["user-agent"] || "",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "OTP sent successfully to your registered mobile number.",
+    data: {
+      phone: `${phone.slice(0, 2)}******${phone.slice(-2)}`,
+      role: user.role === "RECRUITER" ? "Recruiter" : "Client / Super User",
+      expiresIn: 600,
+    },
+  });
+});
+
+/**
+ * POST /api/v1/company-panel/auth/mobile-login/verify-otp
+ * Body: { phone: "9876543210", otp: "123456" }
+ *
+ * Verifies mobile OTP and logs in the CLIENT or RECRUITER, issuing full auth cookies/tokens.
+ */
+exports.verifyEmployerMobileLoginOtp = asyncHandler(async (req, res) => {
+  const rawPhone = String(req.body?.phone || req.body?.mobile || "").trim();
+  const cleanPhone = rawPhone.replace(/\D/g, "");
+  const phone = cleanPhone.length > 10 ? cleanPhone.slice(-10) : cleanPhone;
+  const otp = String(req.body?.otp || "").trim();
+
+  if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+    throw createHttpError(400, "Please enter a valid 10-digit mobile number.");
+  }
+
+  if (!otp || !/^\d{4,6}$/.test(otp)) {
+    throw createHttpError(400, "Please enter a valid OTP.");
+  }
+
+  // Find latest unused OTP session
+  const otpDoc = await LoginOTP.findOne({ phone, used: false }).sort({ createdAt: -1 });
+  if (!otpDoc) {
+    throw createHttpError(400, "No active OTP session found. Please request a new OTP.");
+  }
+
+  if (new Date() > otpDoc.expiresAt) {
+    throw createHttpError(400, "OTP has expired. Please request a new one.");
+  }
+
+  if (otpDoc.attempts >= 5) {
+    throw createHttpError(400, "Maximum OTP verification attempts exceeded. Please request a new OTP.");
+  }
+
+  // Verify OTP with SMS service
+  const isValid = await smsService.verifyOTP(otpDoc.sessionId, otp);
+  if (!isValid) {
+    otpDoc.attempts += 1;
+    await otpDoc.save();
+    const remaining = 5 - otpDoc.attempts;
+    if (remaining <= 0) {
+      throw createHttpError(400, "Invalid OTP. You have reached the maximum number of attempts. Please request a new OTP.");
+    }
+    throw createHttpError(400, `Invalid OTP. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
+  }
+
+  otpDoc.used = true;
+  await otpDoc.save();
+
+  // Retrieve user
+  const user = await User.findById(otpDoc.userId);
+  if (!user || !["CLIENT", "RECRUITER"].includes(user.role)) {
+    throw createHttpError(403, "Access denied. Only registered client and recruiter accounts can log in here.");
+  }
+
+  if (!user.isActive || user.accessStatus === "RESTRICTED") {
+    throw createHttpError(403, "Account is inactive or restricted. Please contact support.");
+  }
+
+  const company = user.companyId ? await Company.findById(user.companyId) : null;
+  if (!company) {
+    throw createHttpError(404, "Company profile not found.");
+  }
+
+  if (company.status === "INACTIVE") {
+    throw createHttpError(403, "Company profile is inactive.");
+  }
+
+  if (company.status === "PENDING_VERIFICATION" || user.accessStatus === "PENDING_VERIFICATION") {
+    throw createHttpError(403, "Your account is currently pending verification by our team. You will be able to log in once approved.");
+  }
+
+  // Sync package snapshot / context
+  const { packageSnapshot } = await syncCompanyPackageContext(company);
+
+  // Issue standard auth token pair
+  const tokenPair = await issueTokenPair({
+    user,
+    source: "USER",
+    req,
+  });
+
+  setRefreshCookie(res, tokenPair.refreshToken);
+  setAccessCookie(res, tokenPair.accessToken);
+
+  let recruiterPermissions = null;
+  let superUserEmail = null;
+  if (user.role === "RECRUITER") {
+    const subUser = await CompanySubUser.findOne({ userId: user._id }).lean();
+    if (subUser && subUser.permissions) {
+      recruiterPermissions = subUser.permissions;
+    }
+    const clientUser = await User.findOne({ companyId: company._id, role: "CLIENT" }).lean();
+    if (clientUser && clientUser.email) {
+      superUserEmail = clientUser.email;
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    token: tokenPair.accessToken,
+    accessToken: tokenPair.accessToken,
+    refreshToken: tokenPair.refreshToken,
+    expiresInSeconds: tokenPair.expiresInSeconds,
+    user: {
+      id: String(user._id),
+      username: user.name || "",
+      email: user.email || "",
+      role: user.role || "CLIENT",
+      companyId: String(company._id),
+      companyName: company.name || "",
+      permissions: recruiterPermissions,
+      superUserEmail: superUserEmail,
+      token: tokenPair.accessToken,
+    },
+    company: formatCompanyForClient(company, { jobLimit: packageSnapshot.jobLimit, user }),
+  });
+
+  // Log login event (fire-and-forget)
+  UserLoginLog.create({
+    userId: user._id,
+    companyId: company._id,
+    userName: user.name || "",
+    userEmail: user.email || "",
+    role: user.role,
+    event: "LOGIN",
+    loginMethod: "MOBILE_OTP",
+    loginTime: new Date(),
+    sessionId: tokenPair.sessionId || "",
+    ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+    userAgent: req.headers["user-agent"] || "",
+    platform: "WEB",
+    timestamp: new Date(),
+  }).catch(() => {});
 });
 
 exports.sendEmailOtp = asyncHandler(async (req, res) => {

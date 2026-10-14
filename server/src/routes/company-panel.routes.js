@@ -9,6 +9,12 @@ const folderController = require("../controllers/folder.controller");
 const creditController = require("../controllers/credit.controller");
 const employerReportController = require("../controllers/employer-report.controller");
 const userManagementController = require("../controllers/user-management.controller");
+const passwordResetController = require("../controllers/passwordReset.controller");
+const {
+  forgotPasswordLimiter,
+  verifyOtpLimiter,
+  resetPasswordLimiter,
+} = require("./passwordReset.routes");
 const { protectUser } = require("../middleware/auth.middleware");
 const role = require("../middleware/role.middleware");
 const { resolveCompanyContext } = require("../middleware/company-context.middleware");
@@ -39,6 +45,19 @@ router.post("/auth/send-mobile-otp", controller.sendMobileOtp);
 router.post("/auth/verify-mobile-otp", controller.verifyMobileOtp);
 router.post("/auth/send-email-otp", controller.sendEmailOtp);
 router.post("/auth/verify-email-otp", controller.verifyEmailOtp);
+
+// Employer Mobile OTP Login routes (CLIENT & RECRUITER)
+router.post("/auth/mobile-login/send-otp", controller.sendEmployerMobileLoginOtp);
+router.post("/auth/mobile-login/verify-otp", controller.verifyEmployerMobileLoginOtp);
+
+// Public Employer Password Reset routes
+router.post("/auth/forgot-password", forgotPasswordLimiter, passwordResetController.employerForgotPassword);
+router.post("/auth/verify-reset-otp", verifyOtpLimiter, passwordResetController.employerVerifyResetOTP);
+router.post("/auth/reset-password", resetPasswordLimiter, passwordResetController.employerResetPassword);
+
+router.post("/auth/employer/forgot-password", forgotPasswordLimiter, passwordResetController.employerForgotPassword);
+router.post("/auth/employer/verify-reset-otp", verifyOtpLimiter, passwordResetController.employerVerifyResetOTP);
+router.post("/auth/employer/reset-password", resetPasswordLimiter, passwordResetController.employerResetPassword);
 
 router.get("/packages", controller.getPackages);
 
@@ -114,6 +133,7 @@ router.post("/resdex/ai-parse", resdexController.aiParseQuery);
 router.get("/resdex/searches", resdexController.listSearches);
 router.post("/resdex/searches", resdexController.saveSearch);
 router.get("/resdex/searches/recent", resdexController.recentSearches);
+router.post("/resdex/searches/record-recent", resdexController.recordRecentSearch);
 router.patch("/resdex/searches/:id", resdexController.updateSearch);
 router.delete("/resdex/searches/:id", resdexController.deleteSearch);
 router.patch("/resdex/searches/:id/pin", resdexController.togglePin);
@@ -129,6 +149,7 @@ router.get("/resdex/nvite/stats", nviteController.getNviteStats);
 
 // Folders — Candidate Folder Management
 router.get("/folders", folderController.listFolders);
+router.get("/folders/saved-profiles", folderController.getAllSavedProfiles);
 router.post("/folders", folderController.createFolder);
 router.get("/folders/candidates/contacted", folderController.getContactedCandidates);
 router.get("/folders/duplicate/:id", folderController.duplicateFolder);

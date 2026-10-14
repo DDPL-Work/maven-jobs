@@ -1,0 +1,350 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Talent Cloud Demo Booking Form - Modular Component Styles
+   ═══════════════════════════════════════════════════════════════════ */
+
+.tcd-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 36px 32px;
+  box-shadow: 0 20px 60px rgba(0, 35, 102, 0.08);
+  border: 1px solid #e2e8f0;
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+}
+
+.tcd-card.tcd-embedded {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 100%;
+}
+
+.tcd-heading {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: center;
+  margin: 0 0 24px 0;
+  letter-spacing: -0.02em;
+}
+
+.tcd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Input Fields */
+.tcd-input-group {
+  position: relative;
+  width: 100%;
+}
+
+.tcd-input {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 12px;
+  border: 1.5px solid #dbeafe;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.tcd-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.tcd-input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.tcd-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+/* Entity Type Toggle Tabs (Your company / Your consultancy) */
+.tcd-entity-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.tcd-entity-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.tcd-tabs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.tcd-tab-btn {
+  padding: 11px 18px;
+  border-radius: 9999px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  outline: none;
+}
+
+.tcd-tab-btn:hover {
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+.tcd-tab-btn.active {
+  border: 2px solid #2563eb;
+  color: #2563eb;
+  background: #f0f7ff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+/* Dynamic Expanded Fields */
+.tcd-expanded-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 4px;
+  animation: tcdFadeSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tcdFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mock reCAPTCHA Widget matching reference */
+.tcd-recaptcha-box {
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+  user-select: none;
+}
+
+.tcd-recaptcha-box.error-state {
+  border-color: #f87171;
+  background: #fff5f5;
+}
+
+.tcd-recaptcha-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.tcd-recaptcha-checkbox {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 2px solid #c1c7cd;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.tcd-recaptcha-box.error-state .tcd-recaptcha-checkbox {
+  border-color: #dc2626;
+}
+
+.tcd-recaptcha-checkbox.checked {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.tcd-recaptcha-label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.tcd-recaptcha-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.tcd-recaptcha-logo-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+}
+
+.tcd-recaptcha-brand-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+
+.tcd-recaptcha-error-msg {
+  font-size: 0.75rem;
+  color: #dc2626;
+  margin-bottom: 4px;
+}
+
+/* Submit / Continue Button */
+.tcd-btn-continue {
+  background: #ffffff;
+  border: 2px solid #2563eb;
+  color: #2563eb;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 13px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  margin-top: 4px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+}
+
+.tcd-btn-continue:hover {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+
+.tcd-btn-continue:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Consent Disclaimer */
+.tcd-consent {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.45;
+  text-align: center;
+  margin: 6px 0 0 0;
+}
+
+/* Form Error Banner */
+.tcd-error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* Success State */
+.tcd-success-wrap {
+  text-align: center;
+  padding: 60px 24px 50px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: tcdFadeSlide 0.35s ease;
+  min-height: 420px;
+}
+
+.tcd-success-icon-badge {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #00ba74;
+  box-shadow: 0 0 0 8px rgba(0, 186, 116, 0.18), 0 10px 25px rgba(0, 186, 116, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.tcd-success-check-svg {
+  width: 44px;
+  height: 44px;
+  color: #ffffff;
+}
+
+.tcd-success-title {
+  font-size: 2.15rem;
+  font-weight: 800;
+  color: #0b1528;
+  margin: 0 0 14px 0;
+  letter-spacing: -0.02em;
+  font-family: inherit;
+}
+
+.tcd-success-desc {
+  font-size: 1.12rem;
+  color: #475569;
+  line-height: 1.55;
+  margin: 0 0 32px 0;
+  max-width: 360px;
+}
+
+.tcd-btn-reset {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tcd-btn-reset:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}

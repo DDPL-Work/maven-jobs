@@ -28,8 +28,10 @@ import {
 import { useAuth } from "../../../../AuthContext";
 import paymentService from "../../../../services/paymentService";
 import commercialService from "../../../../services/commercialService";
+import authService from "../../../../services/authService";
 import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
 import EmployerLoginModal from "../../../../components/employer/EmployerLoginModal";
+import { addToCart, removeFromCart, getCartItems } from "../../../../utils/cartStorage";
 import "./Buyonline.css";
 
 /* ── Helpers ── */
@@ -523,6 +525,37 @@ export default function Buyonline() {
     }
   }, [searchParams, location.hash]);
 
+  // Listen for resume cart checkout events or checkout_item URL parameter
+  useEffect(() => {
+    const handleResumeCart = (e) => {
+      if (e?.detail?.item) {
+        handleInitiatePurchase(e.detail.item, e.detail.item.itemType || "PLAN");
+      }
+    };
+    window.addEventListener("employer-resume-cart-checkout", handleResumeCart);
+
+    const checkoutItemId = searchParams.get("checkout_item");
+    const resumeCart = searchParams.get("resume_cart") === "true";
+    if (checkoutItemId || resumeCart) {
+      const items = getCartItems();
+      const targetItem = checkoutItemId
+        ? items.find(
+            (i) =>
+              String(i.id) === String(checkoutItemId) ||
+              String(i._id) === String(checkoutItemId) ||
+              String(i.code) === String(checkoutItemId)
+          )
+        : items[0];
+      if (targetItem) {
+        setTimeout(() => {
+          handleInitiatePurchase(targetItem, targetItem.itemType || "PLAN");
+        }, 500);
+      }
+    }
+
+    return () => window.removeEventListener("employer-resume-cart-checkout", handleResumeCart);
+  }, [searchParams]);
+
   // Auto-close purchase success modal after 3 seconds with live countdown
   useEffect(() => {
     if (!isSuccessModalOpen) {
@@ -697,6 +730,13 @@ export default function Buyonline() {
     const purchaseItem = { ...item, itemType: type };
     const isStandalone = checkIfStandaloneProduct(purchaseItem, type);
 
+    if (!purchaseItem.pricing) {
+      purchaseItem.pricing = getItemPricing(purchaseItem);
+    }
+
+    // Persist into localStorage cart so if user stops or leaves before finishing, it remains in the cart
+    addToCart(purchaseItem, type);
+
     // Check employer authentication immediately upon clicking the Buy button from any card
     const employerUser = getEmployerUser();
     if (!employerUser) {
@@ -776,6 +816,7 @@ export default function Buyonline() {
           isRenewal: Boolean(isRenew || isPlanExpired),
         });
         setPurchaseSuccessData({ item: selectedItemForPurchase, isPlan: true, details: purchaseRes });
+        removeFromCart(selectedItemForPurchase._id || selectedItemForPurchase.id || selectedItemForPurchase.code);
         setIsPurchaseModalOpen(false);
         setIsSuccessModalOpen(true);
         loadCommercialData();
@@ -860,6 +901,7 @@ export default function Buyonline() {
               details: purchaseRes,
               razorpayPaymentId: razorpayResponse.razorpay_payment_id,
             });
+            removeFromCart(selectedItemForPurchase._id || selectedItemForPurchase.id || selectedItemForPurchase.code);
             setIsPurchaseModalOpen(false);
             setIsSuccessModalOpen(true);
             loadCommercialData();
@@ -896,20 +938,32 @@ export default function Buyonline() {
     }
     setSalesSubmitted(true);
     try {
-      if (commercialService.submitSalesInquiry) {
-        await commercialService.submitSalesInquiry({
-          fullName: salesForm.fullName,
-          mobileNumber: salesForm.mobileNumber,
-          companyName: salesForm.companyName,
-          hiringFor: salesForm.hiringFor,
-          employeeCount: salesForm.employeeRange,
-          designation: salesForm.designation,
-          workEmail: salesForm.workEmail,
-          city: salesForm.city,
-          notes: salesForm.notes,
-          extraFields: (salesForm.extraFields || []).filter((f) => f.label && f.value),
-        });
-      }
+      const entityType =
+        salesForm.hiringFor && salesForm.hiringFor.toLowerCase().includes("consultancy")
+          ? "consultancy"
+          : "company";
+
+      const extraNotes = (salesForm.extraFields || [])
+        .filter((f) => f.label && f.value)
+        .map((f) => `${f.label}: ${f.value}`)
+        .join("; ");
+      const combinedNotes = [salesForm.notes, extraNotes].filter(Boolean).join(" | ");
+
+      const payload = {
+        fullName: salesForm.fullName?.trim(),
+        mobile: String(salesForm.mobileNumber || "").replace(/\D/g, ""),
+        email: salesForm.workEmail?.trim().toLowerCase(),
+        organizationName: salesForm.companyName?.trim(),
+        entityType,
+        employeeCount: salesForm.employeeRange,
+        designation: salesForm.designation?.trim(),
+        city: salesForm.city?.trim(),
+        notes: combinedNotes,
+        source: "BUY_ONLINE",
+      };
+
+      await authService.submitSalesEnquiry(payload);
+
       setSalesSuccess(true);
       setTimeout(() => {
         setIsSalesModalOpen(false);
@@ -932,14 +986,10 @@ export default function Buyonline() {
         setShowExtraFields(false);
       }, 2000);
     } catch (err) {
-      console.warn("Sales inquiry submit notice:", err);
-      setSalesSuccess(true);
-      setTimeout(() => {
-        setIsSalesModalOpen(false);
-        setSalesSubmitted(false);
-        setSalesSuccess(false);
-        setCaptchaLoading(false);
-      }, 1800);
+      console.error("Sales enquiry error:", err);
+      alert(err?.response?.data?.message || err?.message || "Failed to submit sales enquiry. Please try again.");
+      setSalesSubmitted(false);
+      setCaptchaLoading(false);
     }
   };
 

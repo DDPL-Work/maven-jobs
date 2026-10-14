@@ -55,3 +55,6 @@ router.post("/employer/verify-reset-otp", verifyOtpLimiter, employerVerifyResetO
 router.post("/employer/reset-password", resetPasswordLimiter, employerResetPassword);
 
 module.exports = router;
+module.exports.forgotPasswordLimiter = forgotPasswordLimiter;
+module.exports.verifyOtpLimiter = verifyOtpLimiter;
+module.exports.resetPasswordLimiter = resetPasswordLimiter;

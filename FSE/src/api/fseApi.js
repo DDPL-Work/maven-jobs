@@ -90,7 +90,7 @@ const resolveModuleApiBaseUrl = (modulePath) => {
 
 const resolveApiV1BaseUrl = () => {
   const configuredBaseUrl = normalizeApiV1BaseUrl(import.meta.env.VITE_API_BASE_URL);
-  return configuredBaseUrl || "http://localhost:3000/api/v1";
+  return configuredBaseUrl || "http://localhost:5050/api/v1";
 };
 
 const API_V1_BASE_URL = resolveApiV1BaseUrl();
@@ -345,4 +345,14 @@ export async function generateFseManagedQRCode(payload) {
 
 export function getFseQrPdfDownloadUrl(token) {
   return `${API_V1_BASE_URL}/qr/download/${token}`;
+}
+
+export async function fetchSalesEnquiries(params = {}) {
+  const { data } = await coreHttp.get("/sales-enquiry", { params });
+  return data;
+}
+
+export async function updateSalesEnquiry(id, payload = {}) {
+  const { data } = await coreHttp.patch(`/sales-enquiry/${id}`, payload);
+  return data;
 }
