@@ -608,6 +608,15 @@ const authService = {
     }
   },
 
+  submitSalesEnquiry: async (payload) => {
+    try {
+      const response = await api.post('/sales-enquiry', payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to submit sales enquiry' };
+    }
+  },
+
   getPackages: async () => {
     try {
       const response = await api.get('/company-panel/packages');
@@ -620,17 +629,55 @@ const authService = {
   employerLogin: async (email, password) => {
     try {
       const response = await api.post('/company-panel/auth/login', { email, password });
+      const token = response.data?.token || response.data?.accessToken;
+      if (token) {
+        try {
+          localStorage.setItem('employerToken', token);
+          localStorage.setItem('token', token);
+        } catch {}
+      }
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Employer login failed' };
     }
   },
 
+  sendEmployerMobileLoginOtp: async (phone) => {
+    try {
+      const response = await api.post('/company-panel/auth/mobile-login/send-otp', { phone });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send OTP' };
+    }
+  },
+
+  verifyEmployerMobileLoginOtp: async (phone, otp) => {
+    try {
+      const response = await api.post('/company-panel/auth/mobile-login/verify-otp', { phone, otp });
+      const token = response.data?.token || response.data?.accessToken;
+      if (token) {
+        try {
+          localStorage.setItem('employerToken', token);
+          localStorage.setItem('token', token);
+        } catch {}
+      }
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to verify OTP' };
+    }
+  },
+
   logoutEmployer: async () => {
     try {
+      try {
+        localStorage.removeItem('employerToken');
+      } catch {}
       const response = await api.post('/company-panel/auth/logout');
       return response.data;
     } catch (error) {
+      try {
+        localStorage.removeItem('employerToken');
+      } catch {}
       throw error.response?.data || { message: 'Employer logout failed' };
     }
   },
@@ -987,6 +1034,15 @@ const authService = {
     }
   },
 
+  recordResdexRecentSearch: async (keyword) => {
+    try {
+      const response = await api.post('/company-panel/resdex/searches/record-recent', { keyword });
+      return response.data;
+    } catch {
+      return { success: false };
+    }
+  },
+
   // ── NVite (Send MIvites) ────────────────────────────────────────────────────
   sendMivite: async (payload) => {
     try {
@@ -1016,6 +1072,15 @@ const authService = {
   },
 
   // ── Folder Management ──
+  getSavedProfiles: async () => {
+    try {
+      const response = await api.get('/company-panel/folders/saved-profiles');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch saved profiles' };
+    }
+  },
+
   getContactedCandidates: async () => {
     try {
       const response = await api.get('/company-panel/folders/candidates/contacted');
@@ -1235,11 +1300,125 @@ const authService = {
   },
 
   setCandidateReminder: async (payload) => {
+    const userId = (() => {
+      try {
+        const u = JSON.parse(localStorage.getItem("employerUser") || localStorage.getItem("user") || "{}");
+        return u.id || u._id || u.userId || u.email || "";
+      } catch { return ""; }
+    })();
+
     try {
       const response = await api.post('/company-panel/resdex/reminders', payload);
+      // Clean up stale local cache if any existed
+      if (userId) {
+        try {
+          const key = `employerReminders_${userId}`;
+          localStorage.removeItem(key);
+        } catch {}
+      }
       return response.data;
     } catch (error) {
+      // If network error/offline, fallback to local storage
+      if (userId) {
+        try {
+          const key = `employerReminders_${userId}`;
+          const existing = JSON.parse(localStorage.getItem(key) || "[]");
+          const newRem = {
+            _id: "local_" + Date.now(),
+            id: "local_" + Date.now(),
+            userId,
+            candidateId: payload.candidateId,
+            type: payload.type || "For other task",
+            description: payload.description || "",
+            date: payload.date,
+            mailCalendarEvent: payload.mailCalendarEvent || false,
+            status: "pending",
+            createdAt: new Date().toISOString(),
+          };
+          localStorage.setItem(key, JSON.stringify([newRem, ...existing]));
+          return { success: true, message: "Reminder saved locally", data: newRem };
+        } catch {}
+      }
       throw error.response?.data || { message: 'Failed to set reminder' };
+    }
+  },
+
+  getCandidateReminders: async () => {
+    const userId = (() => {
+      try {
+        const u = JSON.parse(localStorage.getItem("employerUser") || localStorage.getItem("user") || "{}");
+        return u.id || u._id || u.userId || u.email || "";
+      } catch { return ""; }
+    })();
+
+    let remoteList = [];
+    let remoteSuccess = false;
+    try {
+      const response = await api.get('/company-panel/resdex/reminders');
+      const list = response?.data?.data || response?.data || [];
+      if (Array.isArray(list)) {
+        remoteList = list;
+        remoteSuccess = true;
+      }
+    } catch {}
+
+    // Read local cache for this specific user
+    let localList = [];
+    if (userId) {
+      try {
+        const key = `employerReminders_${userId}`;
+        if (remoteSuccess && remoteList.length > 0) {
+          localStorage.removeItem(key);
+        } else {
+          localList = JSON.parse(localStorage.getItem(key) || "[]");
+        }
+      } catch {}
+    }
+
+    const rawList = remoteSuccess ? remoteList : (remoteList.length > 0 ? remoteList : localList);
+
+    // Merge without duplicates, and strictly filter by userId
+    const seen = new Set();
+    const combined = [];
+    for (const r of rawList) {
+      const rUid = r.userId?._id || r.userId?.id || r.userId;
+      if (userId && rUid && String(rUid) !== String(userId)) {
+        continue;
+      }
+      const candId = String(r.candidateId?._id || r.candidateId?.id || r.candidateId || "");
+      const dateKey = r.date ? new Date(r.date).toISOString().slice(0, 16) : "";
+      const dedupeKey = candId && dateKey ? `${candId}_${dateKey}` : String(r._id || r.id);
+      if (!seen.has(dedupeKey)) {
+        seen.add(dedupeKey);
+        combined.push(r);
+      }
+    }
+
+    return { success: true, data: combined };
+  },
+
+  deleteCandidateReminder: async (reminderId) => {
+    const userId = (() => {
+      try {
+        const u = JSON.parse(localStorage.getItem("employerUser") || localStorage.getItem("user") || "{}");
+        return u.id || u._id || u.userId || u.email || "";
+      } catch { return ""; }
+    })();
+
+    if (userId) {
+      try {
+        const key = `employerReminders_${userId}`;
+        const existing = JSON.parse(localStorage.getItem(key) || "[]");
+        const filtered = existing.filter(r => String(r._id || r.id) !== String(reminderId));
+        localStorage.setItem(key, JSON.stringify(filtered));
+      } catch {}
+    }
+
+    try {
+      const response = await api.delete(`/company-panel/resdex/reminders/${reminderId}`);
+      return response.data;
+    } catch (error) {
+      return { success: true, message: "Reminder deleted" };
     }
   },
   

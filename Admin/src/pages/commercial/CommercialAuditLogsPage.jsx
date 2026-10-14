@@ -6,6 +6,10 @@ import {
   LuShieldAlert,
   LuUser,
   LuClock,
+  LuChevronLeft,
+  LuChevronRight,
+  LuChevronsLeft,
+  LuChevronsRight,
 } from "react-icons/lu";
 import { getCommercialAuditLogs } from "../../services/adminApi";
 
@@ -17,6 +21,10 @@ export default function CommercialAuditLogsPage() {
   // Filters
   const [targetType, setTargetType] = useState("");
   const [search, setSearch] = useState("");
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const loadLogs = async () => {
     setLoading(true);
@@ -37,12 +45,38 @@ export default function CommercialAuditLogsPage() {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     loadLogs();
   }, [targetType]);
 
   const handleSearch = (e) => {
     e.preventDefault();
+    setCurrentPage(1);
     loadLogs();
+  };
+
+  // Pagination calculations
+  const totalEntries = logs.length;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalEntries);
+  const paginatedLogs = logs.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, safeCurrentPage - 2);
+      let end = Math.min(totalPages, start + maxButtons - 1);
+      if (end - start < maxButtons - 1) {
+        start = Math.max(1, end - maxButtons + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
   };
 
   return (
@@ -93,6 +127,24 @@ export default function CommercialAuditLogsPage() {
             <option value="CREDIT_LEDGER">Credit Ledger</option>
           </select>
 
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">Show:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500"
+            >
+              <option value={5}>5 entries</option>
+              <option value={10}>10 entries</option>
+              <option value={20}>20 entries</option>
+              <option value={50}>50 entries</option>
+              <option value={100}>100 entries</option>
+            </select>
+          </div>
+
           <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
             {total} audit entries
           </span>
@@ -114,14 +166,14 @@ export default function CommercialAuditLogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {logs.length === 0 ? (
+              {paginatedLogs.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="py-12 text-center text-slate-400">
                     {loading ? "Loading audit logs..." : "No commercial audit logs found."}
                   </td>
                 </tr>
               ) : (
-                logs.map((log) => (
+                paginatedLogs.map((log) => (
                   <tr key={log._id} className="transition hover:bg-slate-50/50">
                     <td className="px-5 py-4">
                       <span className="rounded-md bg-indigo-50 px-2 py-0.5 font-bold font-mono text-[10px] text-indigo-700">
@@ -162,6 +214,90 @@ export default function CommercialAuditLogsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Table Pagination Footer */}
+        {logs.length > 0 && (
+          <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/50 px-5 py-3.5 sm:flex-row">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+              <span>
+                Showing <strong className="font-semibold text-slate-900">{totalEntries === 0 ? 0 : startIndex + 1}</strong> to{" "}
+                <strong className="font-semibold text-slate-900">{endIndex}</strong> of{" "}
+                <strong className="font-semibold text-slate-900">{totalEntries}</strong> entries
+              </span>
+              <span className="text-slate-300">|</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500">Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-2xs focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-slate-500">per page</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={safeCurrentPage <= 1}
+                title="First Page"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <LuChevronsLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage <= 1}
+                title="Previous Page"
+                className="flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <LuChevronLeft className="h-3.5 w-3.5" /> Previous
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setCurrentPage(num)}
+                    className={`flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-semibold transition ${
+                      safeCurrentPage === num
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "border border-slate-200 bg-white text-slate-700 shadow-2xs hover:bg-slate-50"
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safeCurrentPage >= totalPages}
+                title="Next Page"
+                className="flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next <LuChevronRight className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={safeCurrentPage >= totalPages}
+                title="Last Page"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <LuChevronsRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

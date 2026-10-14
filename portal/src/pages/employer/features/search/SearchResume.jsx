@@ -593,6 +593,18 @@ export default function SearchResume() {
         setSearchResults([]);
         setSearchPagination({ page: 1, limit: currentLimit, total: 0, totalPages: 0 });
       }
+
+      if (params.keyword && params.keyword.trim()) {
+        const kwClean = params.keyword.trim();
+        authService.recordResdexRecentSearch(kwClean).catch(() => {});
+        try {
+          const stored = JSON.parse(localStorage.getItem("resdex_recent_searches") || "[]");
+          const nextSearches = [kwClean, ...stored.filter(s => s.toLowerCase() !== kwClean.toLowerCase())].slice(0, 10);
+          localStorage.setItem("resdex_recent_searches", JSON.stringify(nextSearches));
+          window.dispatchEvent(new CustomEvent("resdex-recent-searches-updated", { detail: { query: kwClean } }));
+        } catch {}
+      }
+
       refreshRecentSearches();
     } catch {
       setSearchResults([]);
@@ -653,7 +665,8 @@ export default function SearchResume() {
   }, [selectedCandidates, showFilterWarning]);
 
   const handleSetReminder = useCallback(async (data) => {
-    const ids = Array.from(selectedCandidates.keys());
+    const rawIds = Array.from(selectedCandidates.keys());
+    const ids = Array.from(new Set(rawIds.map(id => String(id).trim()))).filter(Boolean);
     if (ids.length === 0) return;
     try {
       for (const id of ids) {
@@ -665,6 +678,7 @@ export default function SearchResume() {
           mailCalendarEvent: data.mailCalendarEvent,
         });
       }
+      window.dispatchEvent(new CustomEvent("employer-reminders-changed"));
       showFilterWarning(`Reminder set successfully for ${ids.length} candidate${ids.length > 1 ? 's' : ''}`, "Success", "success");
     } catch (err) {
       showFilterWarning("Failed to set reminder: " + (err.message || "Unknown error"), "Reminder Error", "error");

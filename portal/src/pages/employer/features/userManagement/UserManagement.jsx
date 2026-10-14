@@ -285,8 +285,8 @@ export default function UserManagement() {
       return;
     }
     try {
-      await userManagementService.changePassword(changePasswordUser.id, newPassword);
-      showToast(`Password changed successfully for ${changePasswordUser?.name || changePasswordUser?.email}!`);
+      const res = await userManagementService.changePassword(changePasswordUser.id, newPassword);
+      showToast(res?.message || `Password changed and notification email sent to ${changePasswordUser?.name || changePasswordUser?.email}!`);
       handleCloseChangePassword();
     } catch (err) {
       setPasswordError(err?.message || 'Failed to change password');
@@ -514,7 +514,7 @@ export default function UserManagement() {
         role: 'RECRUITER',
       });
       setUsers((prev) => [...prev, result.data]);
-      showToast(`User "${trimmedName}" added successfully!`);
+      showToast(result?.message || `User "${trimmedName}" added! Credentials sent to their email.`);
       fetchUsers();
 
       // Reset inputs

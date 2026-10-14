@@ -51,6 +51,7 @@ import ResumeBuilder from "./pages/candidates/features/resume/ResumeBuilder";
 import ResumeView from "./pages/candidates/features/resume/ResumeView";
 import ResumeViewer from "./pages/candidates/features/resume/ResumeViewer";
 import HiringAutomation from "./pages/employer/features/landing/HiringAutomation";
+import MavenTalentCloud from "./pages/employer/features/landing/MavenTalentCloud";
 import EmployerDashboard from "./pages/employer/features/dashboard/Dashboards";
 import AnalyticsPage from "./pages/employer/features/dashboard/AnalyticsPage";
 import SearchResume from "./pages/employer/features/search/SearchResume";
@@ -121,6 +122,8 @@ const isRecruiterOrEmployerRoute = (pathname) => {
     "/job-posting",
     "/resume-database",
     "/hiring-automation",
+    "/maven-talent-cloud",
+    "/talent-cloud",
     "/employer/site-map",
     "/post-job",
     "/employer-draft-jobs",
@@ -338,6 +341,8 @@ function AppContent() {
         <Route path="/job-posting" element={<JobPosting />} />
         <Route path="/resume-database" element={<ResumeDatabase />} />
         <Route path="/hiring-automation" element={<HiringAutomation />} />
+        <Route path="/maven-talent-cloud" element={<MavenTalentCloud />} />
+        <Route path="/talent-cloud" element={<MavenTalentCloud />} />
         <Route path="/review/:reviewId" element={<ReviewSharePage />} />
          <Route path="/employers/learning-center" element={<LearningCenter />} />
         <Route path="/employers/learning-center/guides/ai-rex" element={<AiRexGuide />} />

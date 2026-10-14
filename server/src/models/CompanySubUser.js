@@ -21,6 +21,10 @@ const companySubUserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    phone: {
+      type: String,
+      default: "",
+    },
     permissions: {
       jobPosting: { type: Boolean, default: true },
       jobBooster: { type: Boolean, default: false },

@@ -1,0 +1,979 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Maven Talent Cloud - Premium Enterprise AI Hiring Page Styles
+   ═══════════════════════════════════════════════════════════════════ */
+
+.mtc-page {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #0f172a;
+  background-color: #ffffff;
+  overflow-x: clip;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* ─── Hero Section ───────────────────────────────────────────────── */
+.mtc-hero {
+  position: relative;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #060b18 0%, #0a142e 50%, #0b1739 100%);
+  color: #ffffff;
+  padding: 120px 0 80px;
+  overflow: hidden;
+}
+
+.mtc-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.mtc-hero-img-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 55%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.8) 40%, black 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.8) 40%, black 100%);
+}
+
+.mtc-hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 40%, rgba(37, 99, 235, 0.18) 0%, transparent 60%),
+              radial-gradient(circle at 80% 20%, rgba(124, 58, 237, 0.15) 0%, transparent 50%);
+}
+
+.mtc-hero-inner {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 36px;
+  position: relative;
+  z-index: 2;
+}
+
+.mtc-hero-content {
+  max-width: 650px;
+}
+
+.mtc-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 24px;
+}
+
+.mtc-hero-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin: 0 0 20px 0;
+  color: #ffffff;
+}
+
+.mtc-hero-desc {
+  font-size: 1.12rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin: 0 0 36px 0;
+  font-weight: 400;
+}
+
+.mtc-hero-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 48px;
+}
+
+.mtc-btn-primary {
+  background: #ffffff;
+  color: #060b18;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mtc-btn-primary:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.25);
+}
+
+.mtc-btn-outline {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 14px 26px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mtc-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Brand Strip */
+.mtc-brand-strip {
+  padding-top: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.mtc-brand-strip-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mtc-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  transition: all 0.2s;
+}
+
+.mtc-brand-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── Showcase Video / Billboard Section ─────────────────────────── */
+.mtc-showcase-section {
+  padding: 60px 0 80px;
+  background: #ffffff;
+}
+
+.mtc-showcase-container {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.mtc-showcase-frame {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  border: 1px solid #e2e8f0;
+  background: #000000;
+  aspect-ratio: 16 / 9;
+  max-height: 580px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mtc-showcase-video {
+  width: 100%;
+  height: 100%;
+  max-height: 580px;
+  display: block;
+  object-fit: contain;
+  background: #000000;
+  outline: none;
+}
+
+.mtc-showcase-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* ─── Explore All Solutions Section ──────────────────────────────── */
+.mtc-solutions-section {
+  padding: 80px 0;
+  background: #f8fafc;
+  scroll-margin-top: 80px;
+}
+
+.mtc-section-header {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 48px;
+}
+
+.mtc-section-kicker {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.mtc-section-title {
+  font-size: clamp(2rem, 3.5vw, 2.75rem);
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+/* Solution Tabs */
+.mtc-tabs-nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+  padding: 0 20px;
+}
+
+.mtc-tab-btn {
+  padding: 10px 20px;
+  border-radius: 30px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.mtc-tab-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.mtc-tab-btn.active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);
+}
+
+/* Tab Intro Subtitle & Description */
+.mtc-tab-intro-wrap {
+  max-width: 920px;
+  margin: 0 auto 40px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.mtc-tab-intro-heading {
+  font-size: clamp(1.4rem, 2.5vw, 1.9rem);
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  margin: 0 0 12px 0;
+}
+
+.mtc-tab-intro-sub {
+  font-size: 1.02rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Solutions Cards Row - All in One Clean Line */
+.mtc-solutions-cards-row {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: grid;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.mtc-solutions-cards-row.cards-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mtc-solutions-cards-row.cards-2 {
+  grid-template-columns: repeat(2, minmax(0, 520px));
+  justify-content: center;
+}
+
+.mtc-sol-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 30px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
+  position: relative;
+  overflow: hidden;
+}
+
+.mtc-sol-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mtc-sol-card:hover {
+  transform: translateY(-5px);
+  border-color: #93c5fd;
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.09);
+}
+
+.mtc-sol-card:hover::before {
+  opacity: 1;
+}
+
+.mtc-sol-card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.mtc-sol-card-header {
+  margin-bottom: 14px;
+}
+
+.mtc-sol-card-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+.mtc-sol-card-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.mtc-sol-card-desc {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.55;
+  margin: 0 0 18px 0;
+}
+
+.mtc-sol-card-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mtc-sol-card-bullets li {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.mtc-sol-card-bullets li::before {
+  content: "✓";
+  color: #2563eb;
+  font-weight: 800;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.mtc-sol-card-footer {
+  padding-top: 18px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mtc-sol-card-brand-logo {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mtc-sol-card-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.mtc-sol-card-btn:hover {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  transform: translateX(2px);
+}
+
+.mtc-solutions-cta-wrap {
+  text-align: center;
+  margin-top: 48px;
+}
+
+.mtc-btn-accent {
+  background: #5000e6;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 12px 32px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(80, 0, 230, 0.3);
+}
+
+.mtc-btn-accent:hover {
+  background: #4200c2;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(80, 0, 230, 0.4);
+}
+
+/* ─── Maven AI Edge Section ───────────────────────────────────────── */
+.mtc-ai-section {
+  background: radial-gradient(circle at 30% 50%, #0d1b3e 0%, #060b18 70%);
+  color: #ffffff;
+  padding: 100px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.mtc-ai-bg-lines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-radial-gradient(circle at 20% 50%, transparent 0, transparent 40px, rgba(37, 99, 235, 0.08) 41px, transparent 43px);
+  pointer-events: none;
+}
+
+.mtc-ai-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.mtc-ai-tag {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 20px;
+}
+
+.mtc-ai-title {
+  font-size: clamp(2.4rem, 4.5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 0 0 28px 0;
+}
+
+.mtc-ai-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  color: #060b18;
+  padding: 2px 10px;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.mtc-ai-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mtc-ai-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.mtc-ai-check-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Metrics Column */
+.mtc-metrics-col {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  padding-left: 48px;
+}
+
+.mtc-metrics-kicker {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mtc-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mtc-metric-number {
+  font-size: clamp(2.8rem, 4vw, 3.8rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.mtc-metric-label {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* ─── Experience One-Stop Solution Section ────────────────────────── */
+.mtc-experience-section {
+  padding: 100px 0;
+  background: #ffffff;
+  position: relative;
+}
+
+.mtc-experience-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 36px;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 60px;
+  align-items: flex-start;
+  position: relative;
+}
+
+.mtc-exp-left {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 120px;
+  align-self: flex-start;
+  height: fit-content;
+  z-index: 10;
+}
+
+.mtc-exp-title {
+  font-size: clamp(2rem, 3.5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+  margin: 0 0 24px 0;
+}
+
+.mtc-exp-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 36px;
+}
+
+.mtc-exp-bullet-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mtc-exp-bullet-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+/* 9-Card Ecosystem Grid */
+.mtc-ecosystem-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.mtc-eco-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 24px;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.mtc-eco-card:hover {
+  transform: translateY(-3px);
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 25px rgba(0, 35, 102, 0.06);
+}
+
+.mtc-eco-card-top {
+  margin-bottom: 14px;
+}
+
+.mtc-eco-logo-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.mtc-eco-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.mtc-eco-tagline {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.mtc-eco-desc {
+  font-size: 0.84rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+/* ─── Demo Booking Form Section ──────────────────────────────────── */
+.mtc-demo-section {
+  padding: 100px 0;
+  background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+  position: relative;
+}
+
+.mtc-demo-container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 36px;
+  display: grid;
+  grid-template-columns: 1fr 460px;
+  gap: 60px;
+  align-items: center;
+}
+
+.mtc-demo-left-kicker {
+  font-size: 1.1rem;
+  color: #475569;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.mtc-demo-left-title {
+  font-size: clamp(2.4rem, 4vw, 3.2rem);
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 28px 0;
+}
+
+.mtc-demo-left-title span {
+  color: #2563eb;
+}
+
+.mtc-demo-left-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.mtc-demo-left-bullet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mtc-demo-contact-strip {
+  padding: 20px 24px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mtc-demo-contact-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.mtc-demo-contact-email {
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+/* Demo Form Card */
+.mtc-demo-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 36px;
+  box-shadow: 0 20px 50px rgba(0, 35, 102, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.mtc-demo-card-heading {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.mtc-form-group {
+  margin-bottom: 14px;
+}
+
+.mtc-form-input, .mtc-form-select {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  font-size: 0.92rem;
+  font-family: inherit;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.mtc-form-input:focus, .mtc-form-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.mtc-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mtc-btn-submit {
+  width: 100%;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.mtc-btn-submit:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.mtc-form-consent {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  line-height: 1.45;
+  text-align: center;
+  margin-top: 14px;
+}
+
+.mtc-form-success {
+  text-align: center;
+  padding: 30px 10px;
+}
+
+.mtc-form-success-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+/* ─── Responsive Queries ─────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .mtc-hero-content {
+    max-width: 100%;
+  }
+  .mtc-hero-img-overlay {
+    display: none;
+  }
+  .mtc-solutions-cards-row.cards-3,
+  .mtc-solutions-cards-row.cards-2 {
+    grid-template-columns: 1fr;
+  }
+  .mtc-ai-container {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .mtc-metrics-col {
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    padding-left: 0;
+    padding-top: 36px;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .mtc-experience-container {
+    grid-template-columns: 1fr;
+  }
+  .mtc-exp-left {
+    position: static;
+  }
+  .mtc-demo-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .mtc-hero-title {
+    font-size: 2.2rem;
+  }
+  .mtc-ecosystem-grid {
+    grid-template-columns: 1fr;
+  }
+  .mtc-metrics-col {
+    flex-direction: column;
+  }
+  .mtc-form-row {
+    grid-template-columns: 1fr;
+  }
+  .mtc-demo-card {
+    padding: 24px;
+  }
+}

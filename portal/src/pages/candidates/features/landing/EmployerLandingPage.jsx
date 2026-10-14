@@ -21,6 +21,7 @@ import {
   FiEye,
   FiEyeOff,
   FiRefreshCcw,
+  FiPhoneCall,
 } from "react-icons/fi";
 import { FaBuilding, FaQuoteLeft } from "react-icons/fa";
 import { useAuth } from "../../../../AuthContext";
@@ -31,6 +32,7 @@ import "./EmployerLandingPage.css";
 import { SkeletonHomePage } from "../../../../components/Skeleton";
 import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
+import TalentCloudDemoForm from "../../../../components/employer/TalentCloudDemoForm";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 
 const getInitials = (value = "Company") =>
@@ -60,10 +62,10 @@ const EmployerLandingPage = () => {
       return null;
     }
   });
-  const [activeTab, setActiveTab] = useState("login");
+  const [activeTab, setActiveTab] = useState("sales");
 
   const [hiringFor, setHiringFor] = useState("company");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [rangeOpen, setRangeOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState("Select range");
@@ -76,10 +78,13 @@ const EmployerLandingPage = () => {
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
   useEffect(() => {
-    if (isLoginModalOpen) {
+    if (isLoginModalOpen || isSalesModalOpen) {
       document.body.style.overflow = "hidden";
       const handleKeyDown = (e) => {
-        if (e.key === "Escape") setIsLoginModalOpen(false);
+        if (e.key === "Escape") {
+          setIsLoginModalOpen(false);
+          setIsSalesModalOpen(false);
+        }
       };
       window.addEventListener("keydown", handleKeyDown);
       return () => {
@@ -89,7 +94,7 @@ const EmployerLandingPage = () => {
     } else {
       document.body.style.overflow = "";
     }
-  }, [isLoginModalOpen]);
+  }, [isLoginModalOpen, isSalesModalOpen]);
   const [formStatus, setFormStatus] = useState({
     loading: false,
     message: "",
@@ -600,27 +605,27 @@ const EmployerLandingPage = () => {
 
             {/* Desktop Callback Card / Profile Modal */}
             <div
-              className="elp-callback-card elp-desktop-callback-card"
+              className={`elp-callback-card elp-desktop-callback-card ${employerSession ? "logged-in" : ""}`}
               style={employerSession ? { padding: 0, overflow: "hidden" } : {}}
             >
-              {/* {!employerSession && (
-                <div className="elp-callback-tabs">
+              {!employerSession && (
+                <div className="elp-card-top-pill">
                   <button
                     type="button"
-                    className="elp-callback-tab"
-                    onClick={() => navigate("/recruit/client-registration-form")}
+                    className={`elp-card-pill-btn ${activeTab === "sales" ? "active" : ""}`}
+                    onClick={() => setActiveTab("sales")}
                   >
-                    Sign Up
+                    Sales enquiry
                   </button>
                   <button
                     type="button"
-                    className={`elp-callback-tab ${activeTab === "login" ? "active" : ""}`}
+                    className={`elp-card-pill-btn ${activeTab !== "sales" ? "active" : ""}`}
                     onClick={() => setActiveTab("login")}
                   >
-                    Login
+                    Register/Log in
                   </button>
                 </div>
-              )} */}
+              )}
 
               {employerSession ? (
                 <div className="elp-profile-modal">
@@ -793,6 +798,26 @@ const EmployerLandingPage = () => {
                     </button>
                   </div>
                 </div>
+              ) : activeTab === "sales" ? (
+                <TalentCloudDemoForm
+                  isEmbedded={true}
+                  showTitle={false}
+                  buttonText="Request callback"
+                  hiringForLabel="HIRING FOR"
+                  onSubmit={async (data) => {
+                    await authService.submitSalesEnquiry({
+                      fullName: data.fullName,
+                      mobile: data.mobile,
+                      email: data.email,
+                      entityType: data.entityType,
+                      designation: data.designation,
+                      organizationName: data.organizationName,
+                      employeeCount: data.employeeCount,
+                      city: data.city,
+                      source: "EMPLOYER_LANDING",
+                    });
+                  }}
+                />
               ) : activeTab === "signup" ? (
                 <form
                   className="elp-callback-form"
@@ -1009,10 +1034,10 @@ const EmployerLandingPage = () => {
               <div className="elp-mobile-auth-actions">
                 <button
                   type="button"
-                  className="elp-mobile-btn-register"
-                  onClick={() => navigate("/recruit/client-registration-form")}
+                  className="elp-mobile-btn-sales"
+                  onClick={() => setIsSalesModalOpen(true)}
                 >
-                  Register as Employer <FiArrowRight size={16} />
+                  <FiPhoneCall size={16} /> Sales enquiry
                 </button>
                 <button
                   type="button"
@@ -1020,6 +1045,13 @@ const EmployerLandingPage = () => {
                   onClick={() => setIsLoginModalOpen(true)}
                 >
                   Employer Login <FiArrowRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="elp-mobile-btn-register"
+                  onClick={() => navigate("/recruit/client-registration-form")}
+                >
+                  Register as Employer <FiArrowRight size={16} />
                 </button>
               </div>
             ) : (
@@ -1263,7 +1295,19 @@ const EmployerLandingPage = () => {
               >
                 Get started free <FiArrowRight size={18} />
               </button>
-              <a href="#" className="elp-cta-link">
+              <a
+                href="#sales-enquiry"
+                className="elp-cta-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (window.innerWidth <= 1024) {
+                    setIsSalesModalOpen(true);
+                  } else {
+                    setActiveTab("sales");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+              >
                 Talk to sales <FiArrowRight size={14} />
               </a>
             </div>
@@ -1273,6 +1317,90 @@ const EmployerLandingPage = () => {
         {/* ─── Footer ─── */}
         <EmployerFooter />
       </div>
+
+      {/* ─── Fullscreen Mobile Sales Enquiry Modal ─── */}
+      {isSalesModalOpen && (
+        <div className="elp-fullscreen-login-modal elp-fullscreen-sales-modal" role="dialog" aria-modal="true">
+          <div className="elp-fullscreen-modal-header">
+            <Link to="/" onClick={() => setIsSalesModalOpen(false)}>
+              <img
+                src={mavenLogo}
+                alt="Maven Jobs Logo"
+                style={{ height: "36px", objectFit: "contain" }}
+              />
+            </Link>
+            <button
+              type="button"
+              className="elp-fullscreen-modal-close"
+              onClick={() => setIsSalesModalOpen(false)}
+              aria-label="Close Sales Enquiry Modal"
+            >
+              <FiX size={22} />
+            </button>
+          </div>
+
+          <div className="elp-fullscreen-modal-body">
+            <div className="elp-card-top-pill" style={{ marginBottom: "20px" }}>
+              <button
+                type="button"
+                className="elp-card-pill-btn active"
+                onClick={() => {}}
+              >
+                Sales enquiry
+              </button>
+              <button
+                type="button"
+                className="elp-card-pill-btn"
+                onClick={() => {
+                  setIsSalesModalOpen(false);
+                  setIsLoginModalOpen(true);
+                }}
+              >
+                Register/Log in
+              </button>
+            </div>
+
+            <div className="elp-fullscreen-modal-title">Sales enquiry</div>
+            <p className="elp-fullscreen-modal-sub">
+              Book your personalized demo or request a callback from our hiring specialists.
+            </p>
+
+            <TalentCloudDemoForm
+              isEmbedded={true}
+              showTitle={false}
+              buttonText="Request callback"
+              hiringForLabel="HIRING FOR"
+              onSubmit={async (data) => {
+                await authService.submitSalesEnquiry({
+                  fullName: data.fullName,
+                  mobile: data.mobile,
+                  email: data.email,
+                  entityType: data.entityType,
+                  designation: data.designation,
+                  organizationName: data.organizationName,
+                  employeeCount: data.employeeCount,
+                  city: data.city,
+                  source: "EMPLOYER_LANDING",
+                });
+              }}
+            />
+
+            <div className="elp-login-footer" style={{ marginTop: "24px" }}>
+              Already registered?{" "}
+              <button
+                type="button"
+                className="elp-signup-link"
+                onClick={() => {
+                  setIsSalesModalOpen(false);
+                  setIsLoginModalOpen(true);
+                }}
+              >
+                Log in here
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Fullscreen Mobile Login Modal ─── */}
       {isLoginModalOpen && (
@@ -1296,6 +1424,26 @@ const EmployerLandingPage = () => {
           </div>
 
           <div className="elp-fullscreen-modal-body">
+            <div className="elp-card-top-pill" style={{ marginBottom: "20px" }}>
+              <button
+                type="button"
+                className="elp-card-pill-btn"
+                onClick={() => {
+                  setIsLoginModalOpen(false);
+                  setIsSalesModalOpen(true);
+                }}
+              >
+                Sales enquiry
+              </button>
+              <button
+                type="button"
+                className="elp-card-pill-btn active"
+                onClick={() => {}}
+              >
+                Register/Log in
+              </button>
+            </div>
+
             <div className="elp-fullscreen-modal-title">Employer Login</div>
             <p className="elp-fullscreen-modal-sub">
               Sign in to manage your jobs, candidates, and hiring pipeline.
@@ -1394,6 +1542,20 @@ const EmployerLandingPage = () => {
               </button>
 
               <div className="elp-login-footer">
+                Need a demo or sales callback?{" "}
+                <button
+                  type="button"
+                  className="elp-signup-link"
+                  onClick={() => {
+                    setIsLoginModalOpen(false);
+                    setIsSalesModalOpen(true);
+                  }}
+                >
+                  Sales enquiry
+                </button>
+              </div>
+
+              <div className="elp-login-footer" style={{ marginTop: "8px" }}>
                 Don't have an employer account?{" "}
                 <button
                   type="button"

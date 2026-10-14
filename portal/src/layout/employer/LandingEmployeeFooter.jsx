@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaInstagram, FaLinkedinIn, FaYoutube } from 'react-icons/fa';
+import { FiPhone, FiMail, FiMapPin } from 'react-icons/fi';
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
 import './LandingEmployeeFooter.css';
 
@@ -11,6 +12,7 @@ export default function EmployerFooter() {
         <div className="emp-footer-top">
           <div className="emp-footer-col">
             <h4>Recruiter services</h4>
+            <Link to="/maven-talent-cloud">Maven Talent Cloud</Link>
             <Link to="/post-job">Job Posting</Link>
             <a href="#">Resume Database (Resdex)</a>
             <a href="#">Employer Branding</a>
@@ -35,52 +37,24 @@ export default function EmployerFooter() {
             <Link to="/maven-jobs/trust-safety">Trust and Safety</Link>
             <Link to="/maven-jobs/whitehat">Whitehat</Link>
             <Link to="/maven-jobs/zones">Find Your Zone</Link>
-
           </div>
           
           <div className="emp-footer-col">
-            <h4>Customer support</h4>
-            <p>Toll Free: 1800 102 5558</p>
-            <p>(10:00 AM to 6:00 PM, Mon - Sat)</p>
-            <a href="mailto:support@mavenjobs.com">support@mavenjobs.com</a>
-          </div>
-        </div>
-
-        <div className="emp-footer-sales">
-          <h4 className="emp-footer-sales-main-heading">Sales enquiries</h4>
-          <h5 className="emp-footer-sales-sub-heading">India</h5>
-          
-          <div className="emp-footer-sales-grid">
-            <div className="emp-footer-sales-item">
-              <strong><Link to="/maven-jobs/zones#north" style={{ color: 'inherit', textDecoration: 'none' }}>North Zone</Link></strong>
-              <p>Toll Free: 1800 102 2558</p>
-              <p>(10:00 AM to 6:00 PM)</p>
-              <p>+91 - 9818882211</p>
-              <a href="mailto:north@mavenjobs.com">north@mavenjobs.com</a>
+            <h4>Contact Details</h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px' }}>
+              <FiPhone style={{ flexShrink: 0, color: '#38bdf8' }} size={14} />
+              <a href="tel:+917015999431" style={{ color: 'inherit', textDecoration: 'none' }}>+91 7015999431</a>
             </div>
-
-            <div className="emp-footer-sales-item">
-              <strong><Link to="/maven-jobs/zones#south" style={{ color: 'inherit', textDecoration: 'none' }}>South Zone</Link></strong>
-              <p>Toll Free: 1800 102 2559</p>
-              <p>(10:00 AM to 6:00 PM)</p>
-              <p>+91 - 9818882212</p>
-              <a href="mailto:south@mavenjobs.com">south@mavenjobs.com</a>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13.5px' }}>
+              <FiMail style={{ marginTop: '3px', flexShrink: 0, color: '#38bdf8' }} size={14} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <a href="mailto:crm@mavenjobs.in" style={{ color: 'inherit', textDecoration: 'none' }}>crm@mavenjobs.in</a>
+                <a href="mailto:info@mavenjobs.in" style={{ color: 'inherit', textDecoration: 'none' }}>info@mavenjobs.in</a>
+              </div>
             </div>
-
-            <div className="emp-footer-sales-item">
-              <strong><Link to="/maven-jobs/zones#east" style={{ color: 'inherit', textDecoration: 'none' }}>East Zone</Link></strong>
-              <p>Toll Free: 1800 102 2560</p>
-              <p>(10:00 AM to 6:00 PM)</p>
-              <p>+91 - 9818882213</p>
-              <a href="mailto:east@mavenjobs.com">east@mavenjobs.com</a>
-            </div>
-
-            <div className="emp-footer-sales-item">
-              <strong><Link to="/maven-jobs/zones#west" style={{ color: 'inherit', textDecoration: 'none' }}>West Zone</Link></strong>
-              <p>Toll Free: 1800 102 2561</p>
-              <p>(10:00 AM to 6:00 PM)</p>
-              <p>+91 - 9818882214</p>
-              <a href="mailto:west@mavenjobs.com">west@mavenjobs.com</a>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', lineHeight: 1.5 }}>
+              <FiMapPin style={{ marginTop: '3px', flexShrink: 0, color: '#38bdf8' }} size={15} />
+              <span>S11, Phase 2, 2nd Floor, Mittal Mega Mall, S-11, Phase, Sector 25, Panipat, Haryana 132104</span>
             </div>
           </div>
         </div>
@@ -99,7 +73,7 @@ export default function EmployerFooter() {
             <a href="https://www.linkedin.com/company/mavenjobs-in/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
               <FaLinkedinIn size={14} />
             </a>
-            <a href="https://www.instagram.com/@mavenjobs" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            <a href="https://www.instagram.com/mavenjobs.in" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
               <FaInstagram size={14} />
             </a>
           </div>

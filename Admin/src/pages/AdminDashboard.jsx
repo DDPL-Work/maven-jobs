@@ -33,6 +33,7 @@ const kpiConfig = [
     detail: "Visible companies across the Admin portfolio",
     tone: "from-[#0f6ae6] to-[#1481ff]",
     icon: LuBuilding2,
+    path: "/admin/companies",
   },
   {
     title: "Total Job Postings",
@@ -42,6 +43,7 @@ const kpiConfig = [
     detail: "Live job volume visible to Admin operations",
     tone: "from-[#17b26a] to-[#84cc16]",
     icon: LuBriefcase,
+    path: "/admin/jobs",
   },
   {
     title: "Total Candidates",
@@ -51,6 +53,7 @@ const kpiConfig = [
     detail: "Candidate profiles available for platform oversight",
     tone: "from-[#6d28d9] to-[#8b5cf6]",
     icon: LuUsers,
+    path: "/admin/candidates",
   },
   {
     title: "Total Applications",
@@ -60,6 +63,7 @@ const kpiConfig = [
     detail: "Applications tracked across current Admin visibility",
     tone: "from-[#f59e0b] to-[#f97316]",
     icon: LuFileCheck2,
+    path: "/admin/applications",
   },
   {
     title: "Over-limit Clients",
@@ -69,6 +73,7 @@ const kpiConfig = [
     detail: "Clients with active job postings above package limits",
     tone: "from-[#dc2626] to-[#f97316]",
     icon: LuCircleAlert,
+    path: "/admin/commercial/credit-ledger",
   },
 ];
 
@@ -135,9 +140,10 @@ export default function AdminDashboard() {
           const Icon = item.icon;
 
           return (
-            <article
+            <Link
               key={item.title}
-              className="group flex min-h-[220px] flex-col justify-between rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_35px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-1 hover:border-lime-300 hover:shadow-[0_22px_55px_rgba(132,204,22,0.16)]"
+              to={item.path}
+              className="group flex min-h-[220px] flex-col justify-between rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_35px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-1 hover:border-lime-300 hover:shadow-[0_22px_55px_rgba(132,204,22,0.16)] cursor-pointer"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
@@ -155,12 +161,17 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="mt-5 space-y-2">
-                <p className="text-sm font-semibold text-emerald-600">
-                  {item.change}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-emerald-600">
+                    {item.change}
+                  </p>
+                  <span className="flex items-center gap-0.5 text-xs font-semibold text-[#163060] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    View ledger <LuChevronRight size={14} />
+                  </span>
+                </div>
                 <p className="text-sm leading-6 text-slate-500">{item.detail}</p>
               </div>
-            </article>
+            </Link>
           );
         })}
       </section>

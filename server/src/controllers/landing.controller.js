@@ -1313,14 +1313,27 @@ exports.getSearchSuggestions = async (req, res) => {
     // ── MongoDB fallback ────────────────────────────────────────────
     const escaped = q.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const regex = new RegExp("^" + escaped, "i");
+    const looseRegex = new RegExp(escaped, "i");
 
-    const [titles, skills, companyNames] = await Promise.all([
-      Job.distinct("title", { isActive: true, approvalStatus: "APPROVED", title: regex }).then(r => r.filter(Boolean).slice(0, 5)),
-      Job.distinct("skills", { isActive: true, approvalStatus: "APPROVED", skills: regex }).then(r => r.filter(Boolean).slice(0, 5)),
-      Company.distinct("name", { status: "ACTIVE", name: regex }).then(r => r.filter(Boolean).slice(0, 5)),
+    const [titles, skills, candidateTitles, candidateSkills, companyNames] = await Promise.all([
+      Job.distinct("title", { isActive: true, approvalStatus: "APPROVED", title: regex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+      Job.distinct("skills", { isActive: true, approvalStatus: "APPROVED", skills: regex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+      CandidateProfile.distinct("currentTitle", { currentTitle: regex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+      CandidateProfile.distinct("skills", { skills: regex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+      Company.distinct("name", { status: "ACTIVE", name: regex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
     ]);
 
-    const merged = deduplicateCI([...titles, ...skills, ...companyNames], 5);
+    let merged = deduplicateCI([...titles, ...skills, ...candidateTitles, ...candidateSkills, ...companyNames], 8);
+
+    if (merged.length < 5) {
+      const [looseTitles, looseSkills, looseCandTitles, looseCandSkills] = await Promise.all([
+        Job.distinct("title", { isActive: true, approvalStatus: "APPROVED", title: looseRegex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+        Job.distinct("skills", { isActive: true, approvalStatus: "APPROVED", skills: looseRegex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+        CandidateProfile.distinct("currentTitle", { currentTitle: looseRegex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+        CandidateProfile.distinct("skills", { skills: looseRegex }).then(r => r.filter(Boolean).slice(0, 6)).catch(() => []),
+      ]);
+      merged = deduplicateCI([...merged, ...looseTitles, ...looseSkills, ...looseCandTitles, ...looseCandSkills], 8);
+    }
 
     return res.json({ success: true, data: { suggestions: merged } });
   } catch (error) {

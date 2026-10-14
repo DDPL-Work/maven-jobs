@@ -6231,7 +6231,7 @@ export default function EmployerProfile() {
                           >
                             View all candidates
                           </button>
-                          <button
+                          {/* <button
                             onClick={() => handleRequestChat()}
                             style={{
                               flex: 1,
@@ -6249,7 +6249,7 @@ export default function EmployerProfile() {
                             }}
                           >
                             Message top match
-                          </button>
+                          </button> */}
                         </div>
                       )}
                     </>

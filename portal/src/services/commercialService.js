@@ -109,6 +109,16 @@ const commercialService = {
     const res = await api.post("/company-panel/commercial/confirm-payment", payload);
     return res.data;
   },
+
+  /**
+   * Submit Sales Enquiry / Inbound Request
+   * Calls /api/v1/sales-enquiry
+   * @param {Object} payload
+   */
+  submitSalesInquiry: async (payload) => {
+    const res = await api.post("/sales-enquiry", payload);
+    return res.data;
+  },
 };
 
 export default commercialService;

@@ -63,7 +63,6 @@ const blogSchema = new mongoose.Schema(
 
 blogSchema.index({ status: 1, publishedAt: -1 });
 blogSchema.index({ category: 1, status: 1 });
-blogSchema.index({ slug: 1 }, { unique: true });
 
 blogSchema.statics.categories = BLOG_CATEGORIES;
 
