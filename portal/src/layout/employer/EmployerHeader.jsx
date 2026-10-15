@@ -5,7 +5,8 @@ import {
   FiChevronDown, FiChevronUp, FiSearch, FiGrid, FiSend, FiLogOut,
   FiBarChart2, FiUsers, FiStar, FiFolder, FiFileText,
   FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck, FiBookOpen, FiMessageCircle,
-  FiEye, FiEyeOff, FiClock, FiCalendar, FiTrash2, FiUser, FiExternalLink, FiBookmark
+  FiEye, FiEyeOff, FiClock, FiCalendar, FiTrash2, FiUser, FiExternalLink, FiBookmark,
+  FiArrowRight
 } from 'react-icons/fi';
 import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
