@@ -12,6 +12,7 @@ import FolderSelectorModal from '../../../../components/employer/FolderSelectorM
 import './SingleFolderPage.css';
 import '../jobs/JobResponsesDetail.css';
 import EmployerHeader from '../../../../layout/employer/EmployerHeader';
+import EmployerFooter from '../../../../layout/employer/EmployerFooter';
 
 export default function SingleFolderPage() {
   const { folderId } = useParams();
@@ -317,7 +318,7 @@ export default function SingleFolderPage() {
   }
 
   return (
-    <div className="sfp-root">
+    <div className="sfp-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{
@@ -342,7 +343,7 @@ export default function SingleFolderPage() {
       )}
 
       <EmployerHeader />
-      <div className="sfp-container">
+      <div className="sfp-container" style={{ flex: 1, width: '100%', boxSizing: 'border-box' }}>
         <EmployerBreadcrumb items={[
           { label: 'Employer Dashboard', path: '/employer-dashboard' },
           {
@@ -1058,6 +1059,8 @@ export default function SingleFolderPage() {
           </div>
         )}
       </div>
+
+      <EmployerFooter />
 
       <CreateFolderModal isOpen={showRename} onClose={() => setShowRename(false)} onSubmit={handleRename} initialData={folder} />
       {moveModalOpen && (

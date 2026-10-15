@@ -55,8 +55,10 @@ export function useEmployerAuth() {
 
   useEffect(() => {
     if (!userStored) return;
-    refreshSession();
-  }, []);
+    if (!session?.companyName) {
+      refreshSession();
+    }
+  }, [userStored]);
 
   const requireAuth = useCallback((redirectTo) => {
     if (!userStored) {

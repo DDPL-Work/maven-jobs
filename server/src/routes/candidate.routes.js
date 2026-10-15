@@ -71,7 +71,16 @@ router.get(
   }),
   candidateController.getSavedJobs,
 );
-router.get("/jobs/suggest", candidateController.getJobSuggestions);
+router.get(
+  "/jobs/suggest",
+  cacheRoute({
+    key: (req) =>
+      `cache:candidate:jobs:suggest:${encodeURIComponent(String(req.query.q || "").trim().toLowerCase())}`,
+    ttl: 300,
+    condition: (req) => Boolean(req.query.q && req.query.q.trim().length >= 1),
+  }),
+  candidateController.getJobSuggestions,
+);
 router.get(
   "/jobs/:id",
   optionalAuthCandidate,
@@ -92,7 +101,14 @@ router.patch(
   ]),
   candidateController.toggleSavedJob,
 );
-router.get("/companies/filter-options", candidateController.getCompanyFilterOptions);
+router.get(
+  "/companies/filter-options",
+  cacheRoute({
+    key: "cache:candidate:companies:filter-options",
+    ttl: 600,
+  }),
+  candidateController.getCompanyFilterOptions,
+);
 router.get(
   "/companies/stats",
   cacheRoute({

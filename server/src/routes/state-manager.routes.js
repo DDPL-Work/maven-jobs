@@ -17,7 +17,11 @@ router.use(role("STATE_MANAGER", "ADMIN"));
 router.patch("/auth/change-password", controller.changePassword);
 router.get("/profile", controller.getProfile);
 router.patch("/profile", controller.updateProfile);
-router.patch("/profile/photo", uploadProfilePhoto, controller.uploadProfilePhoto);
+router.patch(
+  "/profile/photo",
+  uploadProfilePhoto,
+  controller.uploadProfilePhoto,
+);
 
 // Leads
 router.get("/dashboard", controller.getDashboard);
@@ -32,6 +36,9 @@ router.delete("/team-members/:id", controller.deleteManagedMember);
 router.patch("/leads/:id/assign", controller.assignLead);
 router.patch("/leads/:id/status", controller.updateLeadStatus);
 router.post("/leads/:id/activity", leadGeneratorController.logLeadActivity);
-router.delete("/leads/:id/activity/:index", leadGeneratorController.deleteLeadActivity);
+router.delete(
+  "/leads/:id/activity/:index",
+  leadGeneratorController.deleteLeadActivity,
+);
 
 module.exports = router;

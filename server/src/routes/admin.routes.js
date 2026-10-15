@@ -20,13 +20,25 @@ router.delete("/users/:source/:id", protectAdmin, adminController.deleteUser);
 
 router.get("/roles", protectAdmin, adminController.getRoles);
 router.post("/roles", protectAdmin, adminController.createRole);
-router.patch("/roles/:id/permissions", protectAdmin, adminController.updateRolePermissions);
+router.patch(
+  "/roles/:id/permissions",
+  protectAdmin,
+  adminController.updateRolePermissions,
+);
 router.post("/roles/:id/assign", protectAdmin, adminController.assignRole);
 
 router.get("/payments", protectAdmin, adminController.getPayments);
 
 router.get("/notifications", protectAdmin, adminController.getNotifications);
-router.patch("/notifications/:id/read", protectAdmin, adminController.markNotificationRead);
-router.patch("/notifications/read-all", protectAdmin, adminController.markAllNotificationsRead);
+router.patch(
+  "/notifications/:id/read",
+  protectAdmin,
+  adminController.markNotificationRead,
+);
+router.patch(
+  "/notifications/read-all",
+  protectAdmin,
+  adminController.markAllNotificationsRead,
+);
 
 module.exports = router;

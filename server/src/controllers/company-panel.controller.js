@@ -326,7 +326,7 @@ const formatCompanyReview = (review) => ({
   headline: review.headline || "",
   review: review.review || "",
   isAnonymous: Boolean(review.isAnonymous),
-  reactions: Object.fromEntries(review.reactions || new Map()),
+  reactions: review.reactions instanceof Map ? Object.fromEntries(review.reactions) : (review.reactions && typeof review.reactions === "object" ? review.reactions : {}),
   createdAt: review.createdAt || null,
   lastUpdated: formatRelativeTime(review.updatedAt || review.createdAt),
 });
@@ -1140,7 +1140,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     followerFilter = { _id: null }; // Return empty array for recruiters
   }
 
-  const jobs = await Job.find(jobFilter).sort({ updatedAt: -1 });
+  const jobs = await Job.find(jobFilter).sort({ updatedAt: -1 }).lean();
   const jobIds = jobs.map((j) => j._id);
 
   let appFilter = { jobId: { $in: jobIds } };
@@ -1152,7 +1152,8 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     Application.find(appFilter)
       .sort({ updatedAt: -1 })
       .populate("jobId", "title")
-      .populate("candidateId", "name email avatar"),
+      .populate("candidateId", "name email avatar")
+      .lean(),
     PackageChangeRequest.findOne({
       companyId: company._id,
       $or: [{ status: "PENDING" }, { status: "APPROVED", appliedAt: null }],
@@ -1160,24 +1161,28 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .select(
         "currentPackageType requestedPackageType currentJobLimit requestedJobLimit status isUpgrade reason decisionNote effectiveAt appliedAt reviewedAt createdAt updatedAt",
-      ),
+      )
+      .lean(),
     PackageChangeRequest.find({ companyId: company._id })
       .sort({ createdAt: -1 })
       .limit(6)
       .select(
         "currentPackageType requestedPackageType currentJobLimit requestedJobLimit status isUpgrade reason decisionNote effectiveAt appliedAt reviewedAt createdAt updatedAt",
-      ),
+      )
+      .lean(),
     CompanyReview.find(reviewFilter)
       .sort({ createdAt: -1 })
       .limit(20)
       .populate("candidateId", "name email")
-      .select("candidateName candidateTitle candidateCity rating headline review isAnonymous createdAt updatedAt reactions candidateId"),
+      .select("candidateName candidateTitle candidateCity rating headline review isAnonymous createdAt updatedAt reactions candidateId")
+      .lean(),
 
     CandidateProfile.find(followerFilter)
       .sort({ updatedAt: -1 })
       .limit(20)
       .populate("userId", "name email")
-      .select("userId phone currentTitle totalExperience currentCity currentState updatedAt"),
+      .select("userId phone currentTitle totalExperience currentCity currentState updatedAt")
+      .lean(),
   ]);
 
   const reviewUserIds = reviews.map((r) => r.candidateId?._id || r.candidateId).filter(Boolean);
@@ -1199,7 +1204,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
   const candidateProfiles = candidateIds.length
     ? await CandidateProfile.find({ userId: { $in: candidateIds } }).select(
         "userId phone currentTitle totalExperience currentCity currentState resume",
-      )
+      ).lean()
     : [];
 
   const profileMap = new Map(

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiZap, FiCheckCircle, FiArrowLeft, FiBriefcase, FiInfo, FiChevronRight, FiClock, FiAlertCircle, FiCreditCard, FiTrendingUp, FiShoppingCart, FiRefreshCw, FiSearch, FiDownload, FiBarChart2 } from "react-icons/fi";
 import authService from "../../../../services/authService";
 import paymentService from "../../../../services/paymentService";
+import EmployerFooter from "../../../../layout/employer/EmployerFooter";
 
 const C = {
   navy: "#002366", navyD: "#001540", navyM: "#1a3a6e",
@@ -222,8 +223,8 @@ export default function Pricing() {
   }
 
   return (
-    <div style={{ background: "#f0f4f9", minHeight: "100vh", fontFamily: C.dm, color: C.s900 }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px 80px" }}>
+    <div style={{ background: "#f0f4f9", minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: C.dm, color: C.s900 }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px 80px", flex: 1, width: "100%", boxSizing: "border-box" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
@@ -494,6 +495,8 @@ export default function Pricing() {
           </div>
         </div>
       </div>
+
+      <EmployerFooter />
 
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }

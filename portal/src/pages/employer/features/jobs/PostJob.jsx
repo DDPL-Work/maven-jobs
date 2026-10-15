@@ -2678,7 +2678,7 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
     if (isEmbedded) {
       return <div className="embedded-post-job" style={{ minHeight: 'auto', padding: '10px 0' }}>{children}</div>;
     }
-    return <EmployerLayout {...props}>{children}</EmployerLayout>;
+    return <EmployerLayout hideFooter={true} {...props}>{children}</EmployerLayout>;
   }, [isEmbedded]);
   const [step, setStep] = useState(1);
   const [launched, setLaunched] = useState(false);
@@ -2737,15 +2737,98 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
   const [currentPlanName, setCurrentPlanName] = useState("Free Starter Plan");
   const [companyLiveDurationDays, setCompanyLiveDurationDays] = useState(30);
   const [companyLiveDurations, setCompanyLiveDurations] = useState(null);
+  const usageDataRef = useRef(null);
+
+  const evaluateQuotaForType = useCallback((usageData, typeToCheck) => {
+    if (!usageData) return;
+
+    const isExpired = Boolean(
+      usageData.isExpired ||
+      usageData.commercialStatus === "EXPIRED_GRACE" ||
+      usageData.commercialStatus === "EXPIRED_LOCKED"
+    );
+
+    if (isExpired) {
+      setIsPlanExpired(true);
+      setQuotaExhausted(true);
+      setAvailablePlans([]);
+      return;
+    }
+
+    let quotaData = usageData.jobPosting;
+    if (typeToCheck === "hot") {
+      quotaData = usageData.hotVacancy;
+    } else if (typeToCheck === "internship") {
+      quotaData = usageData.internship;
+    } else if (typeToCheck === "management") {
+      quotaData = usageData.smbJobPosting;
+    }
+
+    if (!quotaData || Number(quotaData.left || 0) <= 0) {
+      setQuotaExhausted(true);
+      const available = [];
+      if (typeToCheck !== "hot" && Number(usageData.hotVacancy?.left || 0) > 0) {
+        available.push({
+          label: "Hot Vacancy",
+          type: "hot",
+          url: "/post-job?type=hot",
+          left: Number(usageData.hotVacancy?.left || 0),
+          total: Number(usageData.hotVacancy?.total || 0),
+        });
+      }
+      if (typeToCheck !== "management" && Number(usageData.smbJobPosting?.left || 0) > 0) {
+        available.push({
+          label: "SMB Job",
+          type: "management",
+          url: "/post-job?type=management",
+          left: Number(usageData.smbJobPosting?.left || 0),
+          total: Number(usageData.smbJobPosting?.total || 0),
+        });
+      }
+      if (typeToCheck !== "internship" && Number(usageData.internship?.left || 0) > 0) {
+        available.push({
+          label: "Internship",
+          type: "internship",
+          url: "/post-job?type=internship",
+          left: Number(usageData.internship?.left || 0),
+          total: Number(usageData.internship?.total || 0),
+        });
+      }
+      if (typeToCheck !== "standard" && Number(usageData.jobPosting?.left || 0) > 0) {
+        available.push({
+          label: "Standard Job",
+          type: "standard",
+          url: "/post-job",
+          left: Number(usageData.jobPosting?.left || 0),
+          total: Number(usageData.jobPosting?.total || 0),
+        });
+      }
+      setAvailablePlans(available);
+    } else {
+      setQuotaExhausted(false);
+      setAvailablePlans([]);
+    }
+  }, []);
+
+  // When activeJobType updates locally, evaluate instantly from cached usage without refetching
+  useEffect(() => {
+    if (usageDataRef.current && activeJobType) {
+      evaluateQuotaForType(usageDataRef.current, activeJobType);
+    }
+  }, [activeJobType, evaluateQuotaForType]);
 
   useEffect(() => {
+    let active = true;
     const checkQuota = async () => {
       setQuotaLoading(true);
       setQuotaExhausted(false);
       try {
         const res = await authService.getQuotaUsage();
+        if (!active) return;
         const usageData = res?.data || res;
         if (usageData) {
+          usageDataRef.current = usageData;
+
           if (usageData.aiCredit && typeof usageData.aiCredit.left === "number") {
             setAiCredits(usageData.aiCredit.left);
           }
@@ -2790,32 +2873,12 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             setCurrentPlanName(usageData.planName);
           }
 
-          // Check plan expiry from quota usage and commercial status
-          let isExpired = Boolean(
+          // Check plan expiry from server-computed flags
+          const isExpired = Boolean(
             usageData.isExpired ||
             usageData.commercialStatus === "EXPIRED_GRACE" ||
             usageData.commercialStatus === "EXPIRED_LOCKED"
           );
-
-          // Secondary verification against entitlement service if isExpired is not yet true
-          if (!isExpired) {
-            try {
-              const entRes = await api.get("/company-panel/commercial/entitlements");
-              const entData = entRes.data?.data;
-              if (entData) {
-                const cPlan = entData.companyPlan;
-                const ePlan = entData.expiredPlan;
-                const cStatus = entData.commercialStatus;
-                const endDateVal = cPlan?.endDate || entData.activePlan?.endDate || ePlan?.endDate;
-                if (endDateVal && new Date(endDateVal).getTime() <= Date.now()) {
-                  isExpired = true;
-                }
-                if (cStatus === "EXPIRED_GRACE" || cStatus === "EXPIRED_LOCKED" || cPlan?.isExpired) {
-                  isExpired = true;
-                }
-              }
-            } catch (_) {}
-          }
 
           if (isExpired) {
             setIsPlanExpired(true);
@@ -2824,10 +2887,9 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
             return;
           }
 
-          // If no specific job type was requested (e.g. embedded in SendMivite or plain /post-job without ?type=),
-          // automatically select the first active category with remaining credits!
-          let effectiveType = activeJobType;
-          if (!effectiveType && !urlTypeParam && !initialJobType) {
+          // If no specific job type was requested, automatically select the first active category with remaining credits!
+          let effectiveType = activeJobType || initialJobType || urlTypeParam;
+          if (!effectiveType) {
             if (Number(usageData.smbJobPosting?.left || 0) > 0) {
               effectiveType = "management";
             } else if (Number(usageData.hotVacancy?.left || 0) > 0) {
@@ -2836,73 +2898,23 @@ export default function PostJob({ isEmbedded = false, onJobCreated = null, onCan
               effectiveType = "standard";
             } else if (Number(usageData.internship?.left || 0) > 0) {
               effectiveType = "internship";
+            } else {
+              effectiveType = "management";
             }
-            if (effectiveType) {
-              setActiveJobType(effectiveType);
-            }
+            setActiveJobType(effectiveType);
           }
 
-          let quotaData = usageData.jobPosting;
-          if (effectiveType === "hot") {
-            quotaData = usageData.hotVacancy;
-          } else if (effectiveType === "internship") {
-            quotaData = usageData.internship;
-          } else if (effectiveType === "management") {
-            quotaData = usageData.smbJobPosting;
-          }
-
-          if (!quotaData || Number(quotaData.left || 0) <= 0) {
-            setQuotaExhausted(true);
-            const available = [];
-            if (effectiveType !== "hot" && Number(usageData.hotVacancy?.left || 0) > 0) {
-              available.push({
-                label: "Hot Vacancy",
-                type: "hot",
-                url: "/post-job?type=hot",
-                left: Number(usageData.hotVacancy?.left || 0),
-                total: Number(usageData.hotVacancy?.total || 0),
-              });
-            }
-            if (effectiveType !== "management" && Number(usageData.smbJobPosting?.left || 0) > 0) {
-              available.push({
-                label: "SMB Job",
-                type: "management",
-                url: "/post-job?type=management",
-                left: Number(usageData.smbJobPosting?.left || 0),
-                total: Number(usageData.smbJobPosting?.total || 0),
-              });
-            }
-            if (effectiveType !== "internship" && Number(usageData.internship?.left || 0) > 0) {
-              available.push({
-                label: "Internship",
-                type: "internship",
-                url: "/post-job?type=internship",
-                left: Number(usageData.internship?.left || 0),
-                total: Number(usageData.internship?.total || 0),
-              });
-            }
-            if (effectiveType !== "standard" && Number(usageData.jobPosting?.left || 0) > 0) {
-              available.push({
-                label: "Standard Job",
-                type: "standard",
-                url: "/post-job",
-                left: Number(usageData.jobPosting?.left || 0),
-                total: Number(usageData.jobPosting?.total || 0),
-              });
-            }
-            setAvailablePlans(available);
-          } else {
-            setQuotaExhausted(false);
-          }
+          evaluateQuotaForType(usageData, effectiveType);
         }
       } catch (err) {
         console.error("Quota check failed", err);
       } finally {
-        setQuotaLoading(false);
+        if (active) setQuotaLoading(false);
       }
     };
     checkQuota();
-  }, [location.search, activeJobType, urlTypeParam, initialJobType]);
+    return () => { active = false; };
+  }, [location.search, urlTypeParam, initialJobType, evaluateQuotaForType]);
 
   // Auto-save draft when closing tab/window
   useEffect(() => {

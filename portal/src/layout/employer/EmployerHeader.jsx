@@ -6,7 +6,7 @@ import {
   FiBarChart2, FiUsers, FiStar, FiFolder, FiFileText,
   FiMenu, FiX, FiDollarSign, FiShoppingCart, FiSettings, FiList, FiCheck, FiBookOpen, FiMessageCircle,
   FiEye, FiEyeOff, FiClock, FiCalendar, FiTrash2, FiUser, FiExternalLink, FiBookmark,
-  FiArrowRight
+  FiArrowRight, FiCreditCard
 } from 'react-icons/fi';
 import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
@@ -59,7 +59,6 @@ export default function EmployerHeader({
     resdex: false,
     report: false,
     settings: false,
-    recentSearches: false,
   });
 
   const toggleMobileSection = (section) => {
@@ -385,6 +384,18 @@ export default function EmployerHeader({
 
   useEffect(() => {
     if (!isEmployerLoggedIn) return;
+    if (company && (company.name || company.logoUrl)) {
+      setDashboardCompany(company);
+      return;
+    }
+    try {
+      const currentSaved = JSON.parse(localStorage.getItem("employerUser") || "{}");
+      if (currentSaved.companyName) {
+        setDashboardCompany(currentSaved);
+        return;
+      }
+    } catch {}
+
     let active = true;
     authService.getEmployerDashboard()
       .then((res) => {
@@ -832,18 +843,22 @@ export default function EmployerHeader({
         }}
       >
         <PlanExpiryBanner />
-        <div style={{
-          maxWidth: 1160, margin: "0 auto", padding: "0 20px",
-          display: "flex", alignItems: "center", gap: 0, height: 58
-        }}>
+        <div
+          className="ep-header-inner"
+          style={{
+            maxWidth: 1160, margin: "0 auto", padding: "0 20px",
+            display: "flex", alignItems: "center", gap: 0, height: 58
+          }}
+        >
           <button type="button" onClick={() => navigate(localStorage.getItem("employerUser") ? "/employer-dashboard" : "/employer-login")}
             aria-label="Go to employer dashboard"
+            className="ep-header-logo-btn"
             style={{
               display: "flex", alignItems: "center", marginRight: 28, flexShrink: 0,
               border: "none", background: "transparent", padding: 0, cursor: "pointer"
             }}
           >
-            <img src={mavenLogo} alt="MavenJobs" style={{ height: 26, width: "auto" }} />
+            <img src={mavenLogo} alt="MavenJobs" className="ep-header-logo-img" style={{ height: 26, width: "auto" }} />
           </button>
 
           <nav className="ep-nav-desktop" style={{ display: "flex", alignItems: "stretch", flex: 1, paddingLeft: 12, height: 58 }}>
@@ -933,36 +948,9 @@ export default function EmployerHeader({
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: "auto" }}>
-            {/* {(location?.pathname === "/employer-dashboard" || onMessagesClick || isEmployerLoggedIn) && (
-              <>
-                <button
-                  type="button"
-                  onClick={onMessagesClick || (() => navigate("/employer-dashboard"))}
-                  className="ep-header-msg-btn"
-                  title="Messages"
-                  aria-label="Messages"
-                  style={{
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                    padding: "6px 12px", borderRadius: 10, background: "transparent",
-                    border: "none", cursor: "pointer", color: C.s500, position: "relative",
-                    transition: "all .16s", fontSize: 11, fontWeight: 600
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = C.s50; e.currentTarget.style.color = C.navy; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.s500; }}
-                >
-                  <div style={{ position: "relative", display: "inline-flex" }}>
-                    <FiMessageSquare size={17} />
-                  </div>
-                  <span className="ep-msg-text">Messages</span>
-                </button>
-
-                <div className="ep-msg-sep" style={{ width: 1, height: 30, background: C.s200 }} />
-              </>
-            )} */}
-
+          <div className="ep-topbar-actions" style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginLeft: "auto" }}>
             {/* Recent Searches Header Button & Dropdown Popover */}
-            <div style={{ position: "relative" }} ref={recentSearchesMenuRef}>
+            <div className="ep-header-recent-wrap" style={{ position: "relative" }} ref={recentSearchesMenuRef}>
               <button
                 type="button"
                 className="ep-header-recent-btn"
@@ -1091,6 +1079,44 @@ export default function EmployerHeader({
                 )}
               </div>
             </button>
+
+            {/* Subscriptions Header Button (After Login) */}
+            {isEmployerLoggedIn && (
+              <button
+                type="button"
+                className="ep-header-sub-btn"
+                onClick={() => navigate("/employer-dashboard/subscriptions")}
+                title="My Subscriptions"
+                aria-label="My Subscriptions"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 9,
+                  background: location.pathname.includes("subscriptions") ? `${C.navy}14` : C.s50,
+                  border: `1px solid ${location.pathname.includes("subscriptions") ? C.navy + '35' : C.s200}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: location.pathname.includes("subscriptions") ? C.navy : C.s500,
+                  position: "relative",
+                  transition: "all .16s",
+                  flexShrink: 0
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = "rgba(0,35,102,.25)";
+                  e.currentTarget.style.color = C.navy;
+                }}
+                onMouseLeave={e => {
+                  if (!location.pathname.includes("subscriptions")) {
+                    e.currentTarget.style.borderColor = C.s200;
+                    e.currentTarget.style.color = C.s500;
+                  }
+                }}
+              >
+                <FiCreditCard size={16} />
+              </button>
+            )}
 
             {/* Cart Header Button */}
             <button
@@ -1465,7 +1491,7 @@ export default function EmployerHeader({
                           transition: "all 0.14s",
                         }}
                       >
-                        <FiList size={18} color="#64748b" />
+                        <FiCreditCard size={18} color="#64748b" />
                         <span>My Subscriptions</span>
                       </button>
                       )}
@@ -1942,58 +1968,92 @@ export default function EmployerHeader({
             background: "linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)",
             flexShrink: 0,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                overflow: "hidden",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: displayImage ? "transparent" : "linear-gradient(135deg, #002366, #1e5eff)",
-                color: "#ffffff",
-                fontWeight: 800,
-                fontSize: 14,
-                flexShrink: 0,
-              }}>
-                {displayImage ? (
-                  <img
-                    src={displayImage}
-                    alt={displayName}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                      e.currentTarget.parentElement.style.background = "linear-gradient(135deg, #002366, #1e5eff)";
-                    }}
-                  />
-                ) : (
-                  initials
-                )}
-              </div>
-              <div style={{ minWidth: 0 }}>
+            {isEmployerLoggedIn ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <div style={{
-                  fontSize: 14,
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: displayImage ? "transparent" : "linear-gradient(135deg, #002366, #1e5eff)",
+                  color: "#ffffff",
                   fontWeight: 800,
-                  color: "#0F172A",
-                  fontFamily: C.fd,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  fontSize: 14,
+                  flexShrink: 0,
                 }}>
-                  {displayName}
+                  {displayImage ? (
+                    <img
+                      src={displayImage}
+                      alt={displayName}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        e.currentTarget.parentElement.style.background = "linear-gradient(135deg, #002366, #1e5eff)";
+                      }}
+                    />
+                  ) : (
+                    initials
+                  )}
                 </div>
-                <div style={{
-                  fontSize: 11,
-                  color: C.s500,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}>
-                  {displayEmail || displayRole}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 800,
+                    color: "#0F172A",
+                    fontFamily: C.fd,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {displayName}
+                  </div>
+                  <div style={{
+                    fontSize: 11,
+                    color: C.s500,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {displayEmail || displayRole}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "linear-gradient(135deg, #002366, #1e5eff)",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  fontSize: 14,
+                  flexShrink: 0,
+                }}>
+                  <FiBriefcase size={18} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 800,
+                    color: "#0F172A",
+                    fontFamily: C.fd,
+                  }}>
+                    Employer Portal
+                  </div>
+                  <div style={{ fontSize: 11, color: C.s500 }}>
+                    Sign in to post & manage jobs
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               type="button"
@@ -2024,6 +2084,126 @@ export default function EmployerHeader({
             >
               <FiX size={17} />
             </button>
+          </div>
+
+          {/* Quick Actions moved from header to mobile sidebar */}
+          <div className="ep-mob-quick-grid">
+            {/* 1. Notifications Tile */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setShowNotifications(true);
+              }}
+              className="ep-mob-quick-tile"
+              title="Notifications"
+            >
+              <div className="ep-mob-quick-tile-icon" style={{ background: "#EFF6FF", color: C.navy }}>
+                <FiBell size={17} />
+                {unreadNotificationsCount > 0 && (
+                  <span className="ep-mob-quick-tile-badge">
+                    {unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}
+                  </span>
+                )}
+              </div>
+              <div className="ep-mob-quick-tile-info">
+                <span className="ep-mob-quick-tile-title">Alerts</span>
+                <span className="ep-mob-quick-tile-sub">
+                  {unreadNotificationsCount > 0 ? `${unreadNotificationsCount} new` : "Notifications"}
+                </span>
+              </div>
+            </button>
+
+            {/* 2. Cart Tile */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setCartDrawerOpen(true);
+              }}
+              className="ep-mob-quick-tile"
+              title="Cart"
+            >
+              <div className="ep-mob-quick-tile-icon" style={{ background: "#FEF2F2", color: "#DC2626" }}>
+                <FiShoppingCart size={17} />
+                {cartItems.length > 0 && (
+                  <span className="ep-mob-quick-tile-badge">
+                    {cartItems.length > 99 ? "99+" : cartItems.length}
+                  </span>
+                )}
+              </div>
+              <div className="ep-mob-quick-tile-info">
+                <span className="ep-mob-quick-tile-title">My Cart</span>
+                <span className="ep-mob-quick-tile-sub">
+                  {cartItems.length > 0 ? `${cartItems.length} item${cartItems.length > 1 ? 's' : ''}` : "Empty"}
+                </span>
+              </div>
+            </button>
+
+            {/* 3. Saved Profiles Tile */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setShowSavedProfilesSidebar(true);
+              }}
+              className="ep-mob-quick-tile"
+              title="Saved Profiles"
+            >
+              <div className="ep-mob-quick-tile-icon" style={{ background: "#F0FDF4", color: "#16A34A" }}>
+                <FiBookmark size={17} />
+                {savedProfiles.length > 0 && (
+                  <span className="ep-mob-quick-tile-badge" style={{ background: "#16A34A" }}>
+                    {savedProfiles.length > 99 ? "99+" : savedProfiles.length}
+                  </span>
+                )}
+              </div>
+              <div className="ep-mob-quick-tile-info">
+                <span className="ep-mob-quick-tile-title">Saved</span>
+                <span className="ep-mob-quick-tile-sub">
+                  {savedProfiles.length > 0 ? `${savedProfiles.length} profiles` : "Bookmarks"}
+                </span>
+              </div>
+            </button>
+
+            {/* 4. Subscriptions / Pricing Tile */}
+            {isEmployerLoggedIn ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate("/employer-dashboard/subscriptions");
+                }}
+                className="ep-mob-quick-tile"
+                title="My Subscriptions"
+              >
+                <div className="ep-mob-quick-tile-icon" style={{ background: "#FAF5FF", color: "#7C3AED" }}>
+                  <FiCreditCard size={17} />
+                </div>
+                <div className="ep-mob-quick-tile-info">
+                  <span className="ep-mob-quick-tile-title">Plans</span>
+                  <span className="ep-mob-quick-tile-sub">Subscriptions</span>
+                </div>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate("/buy-online");
+                }}
+                className="ep-mob-quick-tile"
+                title="Pricing & Plans"
+              >
+                <div className="ep-mob-quick-tile-icon" style={{ background: "#FAF5FF", color: "#7C3AED" }}>
+                  <FiCreditCard size={17} />
+                </div>
+                <div className="ep-mob-quick-tile-info">
+                  <span className="ep-mob-quick-tile-title">Pricing</span>
+                  <span className="ep-mob-quick-tile-sub">Explore plans</span>
+                </div>
+              </button>
+            )}
           </div>
 
           {/* Mobile Sidebar Scrollable Navigation Tabs */}
@@ -2201,8 +2381,8 @@ export default function EmployerHeader({
               }}
               className={`ep-mob-nav-btn ${location.pathname.includes("subscriptions") ? "active" : ""}`}
             >
-              <FiList size={18} />
-              <span>My Subscription</span>
+              <FiCreditCard size={18} />
+              <span>My Subscriptions</span>
             </button>
 
             {/* Saved Profiles Mobile Button */}
@@ -2232,54 +2412,7 @@ export default function EmployerHeader({
               )}
             </button>
 
-            {/* Recent Searches Accordion */}
-            <div>
-              <button
-                type="button"
-                onClick={() => toggleMobileSection("recentSearches")}
-                className={`ep-mob-accordion-btn ${mobileSections.recentSearches ? "open" : ""}`}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <FiClock size={18} />
-                  <span>Recent Searches</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {recentSearches.length > 0 && (
-                    <span style={{ fontSize: 11, color: C.s500, fontWeight: 700 }}>
-                      {recentSearches.length}
-                    </span>
-                  )}
-                  <FiChevronDown
-                    size={16}
-                    style={{
-                      transition: "transform 0.22s ease",
-                      transform: mobileSections.recentSearches ? "rotate(180deg)" : "rotate(0deg)",
-                    }}
-                  />
-                </div>
-              </button>
-              {mobileSections.recentSearches && (
-                <div className="ep-mob-sublist">
-                  {recentSearches.length === 0 ? (
-                    <div style={{ padding: "8px 12px", color: C.s400, fontSize: 12 }}>No recent searches</div>
-                  ) : (
-                    recentSearches.map((term, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          handleSelectRecentSearch(term);
-                          setMobileMenuOpen(false);
-                        }}
-                        className="ep-mob-subbtn"
-                      >
-                        {term}
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
+
 
             {/* 8. Settings (Collapsible Accordion with all child tabs) */}
             <div>
@@ -2352,44 +2485,16 @@ export default function EmployerHeader({
 
             {/* 9. Learning Center */}
             <Link
-                        to="/employers/learning-center"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => setShowProfileSidebar(false)}
-                        className="ep-sidebar-btn"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 14,
-                          width: "100%",
-                          padding: "11px 14px",
-                          borderRadius: 10,
-                          border: "none",
-                          background: "transparent",
-                          color: "#334155",
-                          fontSize: 14.5,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          textAlign: "left",
-                          transition: "all 0.14s",
-                          textDecoration: "none"
-                        }}
-                      >
-                        <FiBookOpen size={18} color="#64748b" />
-                        <span>Learning Center</span>
-                      </Link>
-
-            {/* <button
-              type="button"
-              onClick={() => {
-                navigate("/employers/learning-center");
-                setMobileMenuOpen(false);
-              }}
-              className={`ep-mob-nav-btn ${location.pathname.includes("learning-center") ? "active" : ""}`}
+              to="/employers/learning-center"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="ep-mob-nav-btn"
+              style={{ textDecoration: "none" }}
             >
               <FiBookOpen size={18} />
               <span>Learning Center</span>
-            </button> */}
+            </Link>
 
             {/* 10. Feedback */}
             <button
@@ -3834,7 +3939,26 @@ export default function EmployerHeader({
             .ep-nav-desktop { display: none !important; }
             .ep-profile-desktop { display: none !important; }
             .ep-login-desktop { display: none !important; }
-            .ep-hamburger { display: flex !important; align-items: center; justify-content: center; }
+            .ep-header-recent-wrap { display: none !important; }
+            .ep-header-recent-btn { display: none !important; }
+            .ep-header-saved-btn { display: none !important; }
+            .ep-header-sub-btn { display: none !important; }
+            .ep-header-cart-btn { display: none !important; }
+            .ep-header-notif-btn { display: none !important; }
+            .ep-hamburger {
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              width: 36px !important;
+              height: 36px !important;
+              min-width: 36px !important;
+              max-width: 36px !important;
+              flex: 0 0 36px !important;
+              border-radius: 9px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
+            }
             .ep-header-msg-btn {
               width: 36px !important;
               height: 36px !important;
@@ -3852,6 +3976,37 @@ export default function EmployerHeader({
             }
             .ep-msg-text { display: none !important; }
             .ep-msg-sep { display: none !important; }
+
+            .ep-header-inner {
+              padding: 0 14px !important;
+              height: 56px !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              gap: 8px !important;
+              box-sizing: border-box !important;
+            }
+            .ep-header-logo-btn {
+              margin-right: 0 !important;
+              flex: 0 0 auto !important;
+            }
+            .ep-header-logo-img {
+              height: 24px !important;
+              width: auto !important;
+              max-width: 120px !important;
+            }
+            .ep-topbar-actions {
+              display: flex !important;
+              align-items: center !important;
+              gap: 0 !important;
+              margin-left: 0 !important;
+              flex: 0 0 auto !important;
+              width: auto !important;
+              padding: 0 !important;
+            }
+            .ep-topbar-actions button {
+              flex: 0 0 auto !important;
+            }
           }
           
           /* Mobile Sidebar Drawer */
@@ -3888,6 +4043,87 @@ export default function EmployerHeader({
           }
           .ep-mob-sidebar.show {
             left: 0;
+          }
+
+          /* Mobile Sidebar Quick Action Grid */
+          .ep-mob-quick-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 12px 14px 10px;
+            background: #f8fafc;
+            border-bottom: 1px solid ${C.s200};
+            flex-shrink: 0;
+          }
+          .ep-mob-quick-tile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s ease;
+            font-family: 'DM Sans', sans-serif;
+            min-width: 0;
+          }
+          .ep-mob-quick-tile:hover, .ep-mob-quick-tile:active {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+          }
+          .ep-mob-quick-tile-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+          }
+          .ep-mob-quick-tile-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 8px;
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid #ffffff;
+            line-height: 1;
+          }
+          .ep-mob-quick-tile-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+          }
+          .ep-mob-quick-tile-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .ep-mob-quick-tile-sub {
+            font-size: 10.5px;
+            color: #64748b;
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
 
           .ep-mob-nav-btn {
@@ -4388,47 +4624,123 @@ export default function EmployerHeader({
 
           @media (max-width: 1024px) {
             .ep-header-search-compact {
-              max-width: 200px;
-              min-width: 130px;
-              height: 34px;
-              padding: 0 10px;
-              margin-right: 8px;
+              display: flex !important;
+              align-items: center !important;
+              flex: 1 1 auto !important;
+              max-width: none !important;
+              min-width: 0 !important;
+              height: 36px !important;
+              padding: 0 10px !important;
+              margin: 0 !important;
+              border-radius: 9px !important;
+              box-sizing: border-box !important;
+            }
+            .ep-compact-search-badge {
+              display: none !important;
+            }
+            .ep-header-search-expanded-inner {
+              padding: 8px 14px !important;
             }
           }
 
           @media (max-width: 640px) {
-            .ep-header-search-compact {
-              max-width: 150px;
-              min-width: 95px;
-              height: 32px;
-              padding: 0 8px;
-              gap: 5px;
-              margin-right: 6px;
+            .ep-header-inner {
+              padding: 0 10px !important;
+              height: 52px !important;
+              gap: 6px !important;
             }
-            .ep-compact-search-badge {
-              display: none;
+            .ep-header-logo-btn {
+              margin-right: 0 !important;
+              flex: 0 0 auto !important;
+            }
+            .ep-header-logo-img {
+              height: 22px !important;
+              max-width: 105px !important;
+            }
+            .ep-header-search-compact {
+              display: flex !important;
+              align-items: center !important;
+              flex: 1 1 auto !important;
+              max-width: none !important;
+              min-width: 0 !important;
+              height: 34px !important;
+              padding: 0 8px !important;
+              gap: 6px !important;
+              margin: 0 !important;
+              border-radius: 8px !important;
+              box-sizing: border-box !important;
             }
             .ep-compact-search-placeholder {
-              font-size: 11px;
+              font-size: 11.5px !important;
+            }
+            .ep-hamburger {
+              width: 34px !important;
+              height: 34px !important;
+              min-width: 34px !important;
+              max-width: 34px !important;
+              flex: 0 0 34px !important;
+              border-radius: 8px !important;
             }
             .ep-header-search-expanded-inner {
-              padding: 8px 12px;
+              padding: 8px 10px !important;
             }
             .ep-search-input-field-wrap {
-              height: 38px;
-              padding: 0 10px;
+              height: 38px !important;
+              padding: 0 10px !important;
             }
             .ep-search-field-input {
-              font-size: 12.5px;
+              font-size: 12.5px !important;
             }
             .ep-search-action-btn {
-              height: 38px;
-              padding: 0 12px;
-              font-size: 12.5px;
+              height: 38px !important;
+              padding: 0 12px !important;
+              font-size: 12px !important;
             }
             .ep-search-close-action-btn {
-              width: 34px;
-              height: 38px;
+              width: 34px !important;
+              height: 38px !important;
+            }
+          }
+
+          @media (max-width: 380px) {
+            .ep-header-inner {
+              padding: 0 8px !important;
+              gap: 5px !important;
+            }
+            .ep-header-logo-img {
+              height: 20px !important;
+              max-width: 88px !important;
+            }
+            .ep-header-search-compact {
+              height: 32px !important;
+              padding: 0 6px !important;
+              gap: 5px !important;
+              border-radius: 7px !important;
+            }
+            .ep-compact-search-placeholder {
+              font-size: 10.5px !important;
+            }
+            .ep-hamburger {
+              width: 32px !important;
+              height: 32px !important;
+              min-width: 32px !important;
+              max-width: 32px !important;
+              flex: 0 0 32px !important;
+              border-radius: 7px !important;
+            }
+            .ep-mob-quick-grid {
+              gap: 6px !important;
+              padding: 10px 10px 8px !important;
+            }
+            .ep-mob-quick-tile {
+              padding: 8px 8px !important;
+              gap: 8px !important;
+            }
+            .ep-mob-quick-tile-title {
+              font-size: 11.5px !important;
+            }
+            .ep-mob-quick-tile-sub {
+              font-size: 9.5px !important;
             }
           }
         `}</style>

@@ -31,9 +31,27 @@ router.get(
   getPublicJobs,
 );
 
-router.get("/search-suggestions", getSearchSuggestions);
+router.get(
+  "/search-suggestions",
+  cacheRoute({
+    key: (req) =>
+      `cache:landing:search-sugg:${encodeURIComponent(String(req.query.q || "").trim().toLowerCase())}`,
+    ttl: 600,
+    condition: (req) => Boolean(req.query.q && req.query.q.trim().length >= 1),
+  }),
+  getSearchSuggestions,
+);
 
-router.get("/location-suggestions", getLocationSuggestions);
+router.get(
+  "/location-suggestions",
+  cacheRoute({
+    key: (req) =>
+      `cache:landing:loc-sugg:${encodeURIComponent(String(req.query.q || "").trim().toLowerCase())}`,
+    ttl: 600,
+    condition: (req) => Boolean(req.query.q && req.query.q.trim().length >= 1),
+  }),
+  getLocationSuggestions,
+);
 
 router.get("/companies/:id", cacheRoute({
   key: (req) => `cache:landing:company:${req.params.id}`,

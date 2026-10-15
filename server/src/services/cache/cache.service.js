@@ -67,16 +67,22 @@ async function delPattern(pattern) {
     const redis = getClient();
     const stream = redis.scanStream({ match: pattern, count: 100 });
     const pipeline = redis.pipeline();
+    let hasKeys = false;
 
     stream.on("data", (keys) => {
-      if (keys.length) {
+      if (keys && keys.length) {
+        hasKeys = true;
         keys.forEach((k) => pipeline.del(k));
       }
     });
 
     return new Promise((resolve) => {
-      stream.on("end", () => {
-        pipeline.exec().catch(() => {});
+      stream.on("end", async () => {
+        if (hasKeys) {
+          try {
+            await pipeline.exec();
+          } catch {}
+        }
         resolve();
       });
       stream.on("error", () => resolve());
@@ -102,10 +108,25 @@ async function cacheAside({ key, ttl, fetch }) {
 
 async function connect() {
   try {
-    await getClient().connect();
+    const c = getClient();
+    if (c.status === "ready" || c.status === "connecting" || c.status === "connect") {
+      return;
+    }
+    await c.connect();
     console.log("[Cache] Redis connected");
-  } catch {
-    console.warn("[Cache] Redis unavailable — caching disabled");
+  } catch (err) {
+    console.warn("[Cache] Redis unavailable — caching fallback to DB:", err?.message || "");
+  }
+}
+
+async function disconnect() {
+  if (client) {
+    try {
+      await client.quit();
+    } catch {
+      client.disconnect();
+    }
+    client = null;
   }
 }
 
@@ -117,5 +138,6 @@ module.exports = {
   delPattern,
   cacheAside,
   connect,
+  disconnect,
   buildKey,
 };

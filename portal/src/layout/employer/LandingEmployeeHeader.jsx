@@ -545,6 +545,28 @@ export default function LandingEmployeeHeader({
             >
               How it works
             </a>
+            <Link to="/blogs" className="elp-nav-link">
+              Blogs
+            </Link>
+            <a
+              href={
+                location.pathname === "/employer-login"
+                  ? "#faq"
+                  : "/employer-login#faq"
+              }
+              className="elp-nav-link"
+              onClick={(e) => {
+                if (location.pathname === "/employer-login") {
+                  const el = document.getElementById("faq");
+                  if (el) {
+                    e.preventDefault();
+                    el.scrollIntoView({ behavior: "smooth" });
+                  }
+                }
+              }}
+            >
+              FAQ
+            </a>
           </div>
 
           {/* Nav Actions (Right side of header) */}
@@ -692,13 +714,47 @@ export default function LandingEmployeeHeader({
                   </button>
                   {showHamburgerMenu && (
                     <div className="elp-hamburger-dropdown">
-                      <Link to="/" className="elp-jobseeker-link">
+                      <Link to="/" className="elp-jobseeker-link" onClick={() => setShowHamburgerMenu(false)}>
                         <div className="elp-jobseeker-content">
                           <h4>Are you a jobseeker?</h4>
                           <p>Takes you to the MavenJobs jobseeker page</p>
                         </div>
                         <FiArrowUpRight size={18} />
                       </Link>
+                      <div style={{ height: "1px", background: "rgba(0,0,0,0.06)", margin: "8px 0" }} />
+                      <Link
+                        to="/blogs"
+                        className="elp-jobseeker-link"
+                        style={{ padding: "10px 14px" }}
+                        onClick={() => setShowHamburgerMenu(false)}
+                      >
+                        <div className="elp-jobseeker-content">
+                          <h4 style={{ fontSize: "14px", margin: 0 }}>Hiring Blogs & Insights</h4>
+                        </div>
+                      </Link>
+                      <a
+                        href={
+                          location.pathname === "/employer-login"
+                            ? "#faq"
+                            : "/employer-login#faq"
+                        }
+                        className="elp-jobseeker-link"
+                        style={{ padding: "10px 14px" }}
+                        onClick={(e) => {
+                          setShowHamburgerMenu(false);
+                          if (location.pathname === "/employer-login") {
+                            const el = document.getElementById("faq");
+                            if (el) {
+                              e.preventDefault();
+                              el.scrollIntoView({ behavior: "smooth" });
+                            }
+                          }
+                        }}
+                      >
+                        <div className="elp-jobseeker-content">
+                          <h4 style={{ fontSize: "14px", margin: 0 }}>Employer FAQs</h4>
+                        </div>
+                      </a>
                     </div>
                   )}
                 </div>
@@ -1044,6 +1100,36 @@ export default function LandingEmployeeHeader({
               )}
             </div>
           </div>
+
+          <div className="elp-drawer-divider" />
+
+          <Link
+            to="/blogs"
+            className="elp-drawer-subitem"
+            style={{ padding: "12px 16px", fontWeight: 600, fontSize: "0.95rem", color: "var(--ep-text-1)" }}
+            onClick={() => setMobileDrawerOpen(false)}
+          >
+            Blogs & Insights
+          </Link>
+
+          <a
+            href={
+              location.pathname === "/employer-login"
+                ? "#faq"
+                : "/employer-login#faq"
+            }
+            className="elp-drawer-subitem"
+            style={{ padding: "12px 16px", fontWeight: 600, fontSize: "0.95rem", color: "var(--ep-text-1)" }}
+            onClick={() => {
+              setMobileDrawerOpen(false);
+              if (location.pathname === "/employer-login") {
+                const el = document.getElementById("faq");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+          >
+            Frequently Asked Questions (FAQ)
+          </a>
 
           <div className="elp-drawer-divider" />
 

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
 import {
   FiArrowRight,
   FiBarChart2,
   FiBookOpen,
   FiBriefcase,
+  FiChevronDown,
   FiChevronRight,
   FiClock,
   FiCompass,
@@ -39,6 +40,7 @@ import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
 import qrImage from "../../../../../assets/QR.png";
 import "./NaukriLandingPage.css";
 import LandingHeader from "../../../../layout/candidate/LandingHeader";
+import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import { useLandingHome } from "../../../../hooks/useLandingQueries";
 import { usePublishedBlogs } from "../../../../hooks/useCandidateQueries";
 import GlobalSearchForm from "../../../../components/common/GlobalSearchForm";
@@ -218,8 +220,40 @@ const expLabelToRange = (value = "") => {
   return "12+";
 };
 
+const candidateFaqs = [
+  {
+    q: "How do I create a profile and apply for jobs on Maven Jobs?",
+    a: "Creating an account takes less than 2 minutes. Sign up with your mobile number or email, complete your profile with your education and experience, upload your resume or build one using our free Resume Maker, and start applying directly to verified job postings across top companies.",
+  },
+  {
+    q: "Is applying for jobs on Maven Jobs completely free for job seekers?",
+    a: "Yes! Creating a candidate profile, searching for jobs, applying to unlimited verified positions, taking daily skill quizzes, and receiving direct recruiter views is 100% free for all job seekers. Maven Jobs does not charge candidates to apply for jobs.",
+  },
+  {
+    q: "How does Maven Jobs ensure that job postings are genuine and verified?",
+    a: "Every employer on Maven Jobs undergoes corporate verification, including GST/CIN review and official domain email checks. We maintain strict Trust & Safety policies with active fraud prevention to ensure you only apply to legitimate, verified companies.",
+  },
+  {
+    q: "What is Maven Pro and how does Priority Applicant help my job search?",
+    a: "Maven Pro and Priority Applicant services give your applications prominent highlighting directly in recruiter inboxes, provide professional resume critiques, monthly application insights, and visual resume templates designed to significantly increase your interview callback rate.",
+  },
+  {
+    q: "How can I track the status of my submitted job applications?",
+    a: "Once logged into your Candidate Dashboard, you can track all submitted applications in real time. You'll see when recruiters review your profile, download your resume, or shortlist your candidacy for upcoming interview rounds.",
+  },
+  {
+    q: "Can employers contact me directly through Maven Jobs?",
+    a: "Yes. When recruiters find your profile matching their hiring criteria in Resdex, they can send interview invitations (MIvites), schedule video interviews, or reach out via phone or email based on your contact preferences.",
+  },
+  {
+    q: "How do I prepare for technical and HR interviews on Maven Jobs?",
+    a: "Access our dedicated Interview Preparation section to practice real interview questions categorized by company and role, research salary benchmarks with our Salary Calculator, and sharpen your knowledge with our Daily Quiz.",
+  },
+];
+
 export default function NaukriLandingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTopCat, setActiveTopCat] = useState("All");
   const [activeSponsorCat, setActiveSponsorCat] = useState("All");
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -228,6 +262,18 @@ export default function NaukriLandingPage() {
   const [showAllCats, setShowAllCats] = useState(false);
   const [showAllRoles, setShowAllRoles] = useState(false);
   const [showAllSponsored, setShowAllSponsored] = useState(false);
+  const [openFaq, setOpenFaq] = useState(null);
+
+  useEffect(() => {
+    if (location.hash === "#faq") {
+      setTimeout(() => {
+        const el = document.getElementById("faq");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 120);
+    }
+  }, [location.hash]);
 
   const pageRef = useRef(null);
   const { data: landingData } = useLandingHome();
@@ -923,87 +969,60 @@ export default function NaukriLandingPage() {
           </div>
         </section>
 
-        {/* ── FOOTER ── */}
-        <footer className="lp-footer">
-          <div className="lp-footer__inner">
-            <div className="lp-footer__brand">
-              <img
-                src={mavenLogo}
-                alt="Maven Jobs"
-                className="lp-footer__logo"
-              />
-              <p>
-                India's most trusted hiring platform for the next generation of
-                careers.
+        {/* ── FREQUENTLY ASKED QUESTIONS (FAQ) ── */}
+        <section className="lp-section lp-faq-section" id="faq">
+          <div className="lp-wrap">
+            <div className="lp-faq-hd">
+              <p className="lp-eyebrow">Have Questions?</p>
+              <h2 className="lp-title">Frequently Asked Questions</h2>
+              <p className="lp-faq-sub">
+                Quick answers to common questions about job search, free applications, employer verification, and career tools on Maven Jobs.
               </p>
-              <div className="lp-footer__socials">
-                {socialLinks.map(({ label, icon: Icon, url }) => (
-                  <a
-                    key={label}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
+            </div>
+
+            <div className="lp-faq-list">
+              {candidateFaqs.map((faq, idx) => {
+                const isOpen = openFaq === idx;
+                return (
+                  <div
+                    key={idx}
+                    className={`lp-faq-item ${isOpen ? "open" : ""}`}
                   >
-                    <Icon />
-                  </a>
-                ))}
-              </div>
+                    <button
+                      type="button"
+                      className="lp-faq-btn"
+                      onClick={() => setOpenFaq(isOpen ? null : idx)}
+                      aria-expanded={isOpen}
+                    >
+                      <span>{faq.q}</span>
+                      <FiChevronDown
+                        size={18}
+                        className={`lp-faq-chevron ${isOpen ? "rotate" : ""}`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="lp-faq-ans">
+                        <p>{faq.a}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="lp-footer__col">
-              <h4>For Job Seekers</h4>
-              <Link to="/jobs">Browse jobs</Link>
-              <Link to="/companies">Companies</Link>
-              <Link to="/blogs" state={{ from: "/" }}>
-                Career advice
+
+            <div className="lp-faq-footer-cta">
+              <span className="lp-faq-footer-text">
+                Have a question not listed here? Our support team is here to help.
+              </span>
+              <Link to="/services/contact-us" className="lp-faq-cta-btn">
+                Contact Support <FiArrowRight size={14} />
               </Link>
-              <Link to="/services">Resume builder</Link>
-              <Link to="/salary-insights">Salary insights</Link>
-            </div>
-            <div className="lp-footer__col">
-              <h4>For Employers</h4>
-              <Link to="/employer-login">Employer login</Link>
-              <Link to="/post-job">Post a job</Link>
-            </div>
-            <div className="lp-footer__col">
-              <h4>Company</h4>
-              <Link to="/maven-jobs/about">About us</Link>
-              <Link to="/blogs" state={{ from: "/" }}>
-                Blog
-              </Link>
-              <Link to="/maven-jobs/press">Press</Link>
-              <Link to="/maven-jobs/careers">Careers at Maven</Link>
-              <Link to="/maven-jobs/contact">Contact</Link>
-              <Link to="/candidate/sitemap">Site Map</Link>
-            </div>
-            <div className="lp-footer__app">
-              <h4>Get the App</h4>
-              <a href="#" className="lp-app-btn">
-                <FaApple /> App Store
-              </a>
-              <a href="#" className="lp-app-btn">
-                <FaGooglePlay /> Google Play
-              </a>
-              <div className="lp-footer__qr">
-                <img src={qrImage} alt="QR" />
-                <span>Scan to download</span>
-              </div>
             </div>
           </div>
-          <div className="lp-footer__bottom">
-            <span>
-              © {new Date().getFullYear()} Maven Jobs. All rights reserved.
-            </span>
-            <div>
-              <Link to="/maven-jobs/privacy">Privacy Policy</Link>
-              <Link to="/maven-jobs/terms">Terms of Service</Link>
-              <Link to="/maven-jobs/cookies">Cookie Settings</Link>
-              <Link to="/maven-jobs/fraud-alert">Fraud Alert</Link>
-              <Link to="/maven-jobs/refund-policy">Refund Policy</Link>
-              <Link to="/maven-jobs/grievance">Grievance</Link>
-            </div>
-          </div>
-        </footer>
+        </section>
+
+        {/* ── FOOTER ── */}
+        <LandingFooter />
       </main>
     </div>
   );

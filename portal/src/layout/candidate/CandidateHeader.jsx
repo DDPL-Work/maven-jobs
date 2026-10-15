@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { FiBell, FiChevronDown, FiMenu, FiTrendingUp, FiX, FiFileText, FiMessageSquare } from "react-icons/fi";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { FiBell, FiChevronDown, FiMenu, FiTrendingUp, FiX, FiFileText, FiMessageSquare, FiCreditCard } from "react-icons/fi";
 import { useAuth } from "../../AuthContext";
 import authService from "../../services/authService";
 import { useCandidateNotifications } from "../../hooks/useCandidateQueries";
@@ -148,6 +148,7 @@ const navCols = [
 const CandidateHeader = () => {
   const { user, openLogin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeNavDropdown, setActiveNavDropdown] = useState(null);
   const [isHeaderSearchExpanded, setIsHeaderSearchExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -416,16 +417,28 @@ const CandidateHeader = () => {
               </div>
             ))}
             {user && (
-              <div className="ch-nav-item">
-                <Link
-                  to="/blogs"
-                  state={{ from: "/profile-dashboard" }}
-                  className="ch-nav-link"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Blogs
-                </Link>
-              </div>
+              <>
+                <div className="ch-nav-item">
+                  <Link
+                    to="/blogs"
+                    state={{ from: "/profile-dashboard" }}
+                    className="ch-nav-link"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Blogs
+                  </Link>
+                </div>
+                <div className="ch-nav-item">
+                  <Link
+                    to="/premium"
+                    className={`ch-nav-link${location.pathname === "/premium" || location.pathname === "/services/monthly-subscriptions" ? " active" : ""}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <FiCreditCard size={15} style={{ marginRight: 4 }} />
+                    Subscriptions
+                  </Link>
+                </div>
+              </>
             )}
             </div>
             
@@ -466,6 +479,30 @@ const CandidateHeader = () => {
           <div className="ch-user-actions">
             {user ? (
               <div className="ch-user-logged">
+                <button
+                  type="button"
+                  title="My Subscriptions"
+                  aria-label="My Subscriptions"
+                  className={`ch-icon-btn ch-sub-btn${location.pathname === "/premium" || location.pathname === "/services/monthly-subscriptions" ? " active" : ""}`}
+                  onClick={() => navigate("/premium")}
+                >
+                  <FiCreditCard size={18} />
+                  {user?.membership?.active && (
+                    <span
+                      title="Active Subscription"
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        width: "8px",
+                        height: "8px",
+                        background: "#10b981",
+                        borderRadius: "50%",
+                        border: "1.5px solid #ffffff",
+                      }}
+                    />
+                  )}
+                </button>
                 <button
                   title="Notifications"
                   className="ch-icon-btn ch-notif-btn"

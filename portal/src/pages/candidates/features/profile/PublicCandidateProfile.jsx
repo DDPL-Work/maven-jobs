@@ -28,6 +28,7 @@ import { FaWhatsapp, FaLinkedinIn } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import authService from "../../../../services/authService";
 import EmployerHeader from "../../../../layout/employer/EmployerHeader";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
 import ForwardCVModal from "../../../../components/employer/ForwardCVModal";
 import SetReminderModal from "../../../../components/employer/SetReminderModal";
@@ -1367,6 +1368,7 @@ export default function PublicCandidateProfile() {
         />
       )}
     </div>
+    <EmployerFooter />
     </>
   );
 }
