@@ -132,7 +132,13 @@ export default function TalentCloudFooter({ onSelectTab, onSelectBrand }) {
         {/* Bottom Bar */}
         <div className="mtc-footer-bottom">
           <div className="mtc-footer-copyright">
-            &copy; {new Date().getFullYear()}. All rights reserved
+            &copy; {new Date().getFullYear()} Maven Jobs. All rights reserved
+          </div>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link to="/blogs" style={{ color: 'inherit', textDecoration: 'none', fontSize: '13px' }}>Blogs</Link>
+            <Link to="/employer-login#faq" style={{ color: 'inherit', textDecoration: 'none', fontSize: '13px' }}>FAQs</Link>
+            <Link to="/employer-login" style={{ color: 'inherit', textDecoration: 'none', fontSize: '13px' }}>Employer Login</Link>
+            <Link to="/" style={{ color: 'inherit', textDecoration: 'none', fontSize: '13px' }}>Jobseeker Home</Link>
           </div>
         </div>
       </div>

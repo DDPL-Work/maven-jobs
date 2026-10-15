@@ -177,6 +177,16 @@ export default function LandingHeader() {
         },
       ],
     },
+    {
+      label: "Blogs",
+      to: "/blogs",
+      cols: [],
+    },
+    {
+      label: "FAQ",
+      to: "/#faq",
+      cols: [],
+    },
   ];
 
   return (
@@ -227,10 +237,10 @@ export default function LandingHeader() {
                 key={label}
                 className="lp-nav__item"
                 onMouseEnter={() =>
-                  !isMobileMenuOpen && setActiveNavDropdown(label)
+                  !isMobileMenuOpen && cols.length > 0 && setActiveNavDropdown(label)
                 }
                 onMouseLeave={() =>
-                  !isMobileMenuOpen && setActiveNavDropdown(null)
+                  !isMobileMenuOpen && cols.length > 0 && setActiveNavDropdown(null)
                 }
               >
                 <Link
@@ -241,8 +251,17 @@ export default function LandingHeader() {
                       setActiveNavDropdown((prev) =>
                         prev === label ? null : label,
                       );
-                    } else if (isMobileMenuOpen) {
-                      setIsMobileMenuOpen(false);
+                    } else {
+                      if (isMobileMenuOpen) {
+                        setIsMobileMenuOpen(false);
+                      }
+                      if (to === "/#faq" && window.location.pathname === "/") {
+                        const faqEl = document.getElementById("faq");
+                        if (faqEl) {
+                          e.preventDefault();
+                          faqEl.scrollIntoView({ behavior: "smooth" });
+                        }
+                      }
                     }
                   }}
                 >

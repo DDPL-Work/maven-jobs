@@ -16,6 +16,7 @@ const PENDING_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "FOLLOW_UP"];
 const FORWARDED_OR_ASSIGNED = ["FORWARDED", "ASSIGNED"];
 const DEFAULT_PAGE_LIMIT = 50;
 const MAX_PAGE_LIMIT = 200;
+const MAX_EXPORT_LIMIT = 5000;
 const FULL_NAME_MIN_LENGTH = 2;
 const FULL_NAME_MAX_LENGTH = 80;
 const FULL_NAME_PATTERN = /^[A-Za-z][A-Za-z .'-]*$/;
@@ -111,10 +112,11 @@ const zoneExpressionFromField = (fieldPath) => ({
   },
 });
 
-const resolvePagination = (page, limit) => {
+const resolvePagination = (page, limit, isExport = false) => {
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
   const requestedLimit = Number.parseInt(limit, 10) || DEFAULT_PAGE_LIMIT;
-  const safeLimit = Math.min(MAX_PAGE_LIMIT, Math.max(1, requestedLimit));
+  const ceiling = isExport ? MAX_EXPORT_LIMIT : MAX_PAGE_LIMIT;
+  const safeLimit = Math.min(ceiling, Math.max(1, requestedLimit));
 
   return {
     page: safePage,
@@ -697,7 +699,8 @@ exports.getAllLeads = asyncHandler(async (req, res) => {
 
   const { search, status, date, startDate, endDate } = req.query;
   const zone = normalizeZone(req.query.zone);
-  const { page, limit, skip } = resolvePagination(req.query.page, req.query.limit);
+  const isExport = req.query.export === "true" || req.query.isExport === "true" || Number(req.query.limit) > MAX_PAGE_LIMIT;
+  const { page, limit, skip } = resolvePagination(req.query.page, req.query.limit, isExport);
 
   let generatorIds = null;
   if (zone) {

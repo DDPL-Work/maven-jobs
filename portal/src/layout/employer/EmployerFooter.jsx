@@ -120,10 +120,11 @@ export default function EmployerFooter() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <FooterLink to="/">Jobseeker Home</FooterLink>
               <FooterLink to="/maven-jobs/about">About Us</FooterLink>
+              <FooterLink to="/blogs">Blogs & Insights</FooterLink>
+              <FooterLink to="/employer-login#faq">FAQs</FooterLink>
+              <FooterLink to="/employers/learning-center" target="_blank" rel="noopener noreferrer">Learning Center</FooterLink>
               <FooterLink to="/employer-dashboard">Clients</FooterLink>
               <FooterLink to="/maven-jobs/careers">Careers</FooterLink>
-              
-              <FooterLink to="/employers/learning-center" target="_blank" rel="noopener noreferrer">Learning Center</FooterLink>
               <FooterLink to="/employer/site-map">Site Map</FooterLink>
               <FooterLink to="/maven-jobs/zones">Find Your Zone</FooterLink>
             </div>

@@ -35,6 +35,10 @@ router.post("/non-visit-days", controller.addNonVisitDay);
 router.delete("/non-visit-days/:id", controller.deleteNonVisitDay);
 router.get("/profile", controller.getProfile);
 router.patch("/profile", controller.updateProfile);
-router.patch("/profile/photo", uploadProfilePhoto, controller.uploadProfilePhoto);
+router.patch(
+  "/profile/photo",
+  uploadProfilePhoto,
+  controller.uploadProfilePhoto,
+);
 
 module.exports = router;

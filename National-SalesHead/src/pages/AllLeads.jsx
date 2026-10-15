@@ -80,7 +80,7 @@ export default function AllLeads() {
     }
   };
 
-  const fetchRecentLeadsForExport = async () => {
+  const fetchAllLeadsForExport = async () => {
     const baseFilters = {
       search: appliedSearch,
       zone,
@@ -88,17 +88,20 @@ export default function AllLeads() {
       date,
     };
 
+    // Request all filtered records for full executive reporting
     const result = await fetchAllLeads({
       ...baseFilters,
       page: 1,
-      limit: 25,
+      limit: 5000,
+      export: "true",
     });
 
-    const items = Array.isArray(result?.data) ? result.data.slice(0, 25) : [];
+    const items = Array.isArray(result?.data) ? result.data : [];
+    const totalCount = Number(result?.total ?? items.length);
 
     return {
       items,
-      total: items.length,
+      total: totalCount,
       filters: baseFilters,
     };
   };
@@ -106,7 +109,7 @@ export default function AllLeads() {
   const handleExportPdf = async () => {
     try {
       setIsExporting(true);
-      const exportResult = await fetchRecentLeadsForExport();
+      const exportResult = await fetchAllLeadsForExport();
 
       if (!exportResult.items.length) {
         toast.error("No leads available for PDF export with current filters.");

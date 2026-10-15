@@ -7,13 +7,15 @@ const {
   getSalesEnquiryById,
   updateSalesEnquiry,
 } = require("../controllers/sales-enquiry.controller");
+const { protectSalesEnquiryAccess } = require("../middleware/auth.middleware");
 
-// Public route to submit an enquiry / request demo
+// Public route to submit an enquiry / request demo (stays public)
 router.post("/", submitSalesEnquiry);
 
-// Routes for fetching and managing enquiries
-router.get("/", getSalesEnquiries);
-router.get("/:id", getSalesEnquiryById);
-router.patch("/:id", updateSalesEnquiry);
+// Protected routes: Admin, CRM, and FSE can list, view, or modify enquiries
+router.get("/", protectSalesEnquiryAccess, getSalesEnquiries);
+router.get("/:id", protectSalesEnquiryAccess, getSalesEnquiryById);
+router.patch("/:id", protectSalesEnquiryAccess, updateSalesEnquiry);
 
 module.exports = router;
+

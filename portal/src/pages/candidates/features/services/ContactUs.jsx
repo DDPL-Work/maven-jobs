@@ -25,17 +25,17 @@ const ContactUs = () => {
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const channels = [
-    { icon: FiPhone, title: "Call Us", info: "Toll Free: 1800-102-5557", sub: "9:00 AM - 9:00 PM IST", color: "#10b981" },
-    { icon: FiMail, title: "Email Support", info: "support@mavenjobs.com", sub: "Replies within 2-4 hours", color: "#002366" },
-    { icon: FiMapPin, title: "Corporate Office", info: "Level 4, Maven Tower, Bangalore", sub: "Karnataka - 560103", color: "#6366f1" },
-    { icon: FiClock, title: "Support Hours", info: "Mon - Sat, 9 AM - 9 PM", sub: "24x7 priority support for subscribers", color: "#f59e0b" },
+    { icon: FiPhone, title: "Call Us", info: "+91 7015999431", sub: "Mon - Sat, 9:00 AM - 7:00 PM IST", color: "#10b981" },
+    { icon: FiMail, title: "Email Support", info: "crm@mavenjobs.in, info@mavenjobs.in", sub: "Replies within 2-4 hours", color: "#002366" },
+    { icon: FiMapPin, title: "Corporate Office", info: "S11, Phase 2, 2nd Floor, Mittal Mega Mall", sub: "S-11, Phase, Sector 25, Panipat, Haryana 132104", color: "#6366f1" },
+    { icon: FiClock, title: "Support Hours", info: "Mon - Sat, 9 AM - 7 PM", sub: "Priority support for employers & candidates", color: "#f59e0b" },
   ];
 
   const faqs = [
     { q: "Which service should I choose?", a: "Tell us your current stage: need a new resume, a critique of an existing one, or help standing out to recruiters. Our team will recommend the right service — or bundle." },
     { q: "How do I pay for a service?", a: "Payments are processed securely via UPI, cards or net banking. Every purchase is confirmed instantly by email with an invoice and GST receipt." },
-    { q: "What is the refund policy?", a: "Each service page lists its guarantee — most offer 7 to 60-day money-back terms. Write to support@mavenjobs.com with your order ID to start a refund." },
-    { q: "Can I get a callback instead of email support?", a: "Yes. Submit the form below with your phone number and preferred time, and a Maven Jobs specialist will call you back during support hours." },
+    { q: "What is the refund policy?", a: "Each service page lists its guarantee — most offer 7 to 60-day money-back terms. Write to info@mavenjobs.in with your order ID to start a refund." },
+    { q: "Can I get a callback instead of email support?", a: "Yes. Submit the form below with your phone number and preferred time, or call us directly at +91 7015999431." },
   ];
 
   return (
@@ -56,15 +56,15 @@ const ContactUs = () => {
             We&apos;re Here to Help<br />You Move Forward
           </h1>
           <p className="svc-sub">
-            Questions about a resume, a subscription or a refund? The Maven
+            Questions about hiring, resume, a subscription or a refund? The Maven
             Jobs support team answers every query — usually within a few hours.
           </p>
           <div className="svc-actions">
             <a href="#form" className="svc-btn svc-btn--primary">
               Send a Message <FiSend />
             </a>
-            <a href="tel:18001025557" className="svc-btn svc-btn--ghost">
-              <FiPhone /> 1800-102-5557
+            <a href="tel:+917015999431" className="svc-btn svc-btn--ghost">
+              <FiPhone /> +91 7015999431
             </a>
           </div>
         </section>

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { FiUser, FiHome, FiMap, FiLogOut, FiChevronDown, FiAward } from 'react-icons/fi';
+import { FiUser, FiHome, FiMap, FiLogOut, FiChevronDown, FiAward, FiCreditCard } from 'react-icons/fi';
 import { useAuth } from '../../AuthContext';
 import LogoutModal from './LogoutModal';
 
@@ -54,7 +54,7 @@ export default function AvatarDropdown({ dropdownAlign = 'right', variant = 'dro
   const menuItems = [
     { label: 'Profile', icon: FiUser, onClick: () => { navigate('/profile'); setOpen(false); }, active: window.location.pathname === '/profile' },
     { label: 'Home', icon: FiHome, onClick: () => { navigate('/dashboard'); setOpen(false); }, active: window.location.pathname === '/dashboard' },
-    { label: 'Premium', icon: FiAward, onClick: () => { navigate('/premium'); setOpen(false); }, active: window.location.pathname === '/premium' },
+    { label: 'Subscriptions', icon: FiCreditCard, onClick: () => { navigate('/premium'); setOpen(false); }, active: window.location.pathname === '/premium' || window.location.pathname === '/services/monthly-subscriptions' },
     { label: 'Site Map', icon: FiMap, onClick: () => { navigate('/candidate/sitemap'); setOpen(false); }, active: window.location.pathname === '/candidate/sitemap' },
     { separator: true },
     { label: 'Logout', icon: FiLogOut, onClick: () => { setOpen(false); setShowLogoutModal(true); }, danger: true },

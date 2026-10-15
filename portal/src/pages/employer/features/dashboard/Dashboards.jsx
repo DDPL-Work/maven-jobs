@@ -92,6 +92,7 @@ import {
   stopMediaStream,
 } from "../../../../utils/webrtc";
 import EmployerHeader from "../../../../layout/employer/EmployerHeader";
+import EmployerFooter from "../../../../layout/employer/EmployerFooter";
 import { SkeletonPage } from "../../../../components/Skeleton";
 import Cropper from "react-easy-crop";
 import ScheduleVideoCallModal from "../../../../components/employer/ScheduleVideoCallModal";
@@ -1303,6 +1304,7 @@ function ProgressSection({
   setResumeBusyId,
   progressBanner,
   setProgressBanner,
+  onStatusUpdated,
 }) {
   const PAGE_SIZE = 7;
   const scrollRef = useRef(null);
@@ -1380,6 +1382,9 @@ function ProgressSection({
     setProgressBanner(null);
     try {
       await authService.updateApplicationStatus(app.id, newStatus);
+      if (typeof onStatusUpdated === "function") {
+        onStatusUpdated(app.id, newStatus);
+      }
       setProgressBanner({
         type: "success",
         message: "Status updated successfully",
@@ -1908,6 +1913,7 @@ export default function EmployerProfile() {
   const [reviewPage, setReviewPage] = useState(0);
   const [showCandidateModal, setShowCandidateModal] = useState(false);
   const [selectedCandidateApp, setSelectedCandidateApp] = useState(null);
+  const [candidateSearch, setCandidateSearch] = useState("");
   const [showAboutEditor, setShowAboutEditor] = useState(false);
   const [aboutDraft, setAboutDraft] = useState({
     about: "",
@@ -2097,11 +2103,7 @@ export default function EmployerProfile() {
         let dashboardData = response?.data || null;
 
         try {
-          const hasApps =
-            dashboardData &&
-            Array.isArray(dashboardData.applications) &&
-            dashboardData.applications.length > 0;
-          if (!hasApps) {
+          if (dashboardData && !Array.isArray(dashboardData.applications)) {
             const appsResp = await authService.getEmployerApplications();
             const apps = appsResp?.data || appsResp?.applications || [];
             dashboardData = { ...(dashboardData || {}), applications: apps };
@@ -2175,9 +2177,13 @@ export default function EmployerProfile() {
 
   // Fetch AI candidate recommendations when dashboard has active jobs
   useEffect(() => {
+    const rawJobs = Array.isArray(dashboard?.jobs)
+      ? dashboard.jobs
+      : dashboard?.jobs?.data || [];
     const jobCount = Number(
       dashboard?.tracking?.activeApprovedJobs ??
         dashboard?.company?.activeJobCount ??
+        rawJobs.length ??
         0,
     );
     if (!dashboard || jobCount === 0) return;
@@ -2700,12 +2706,31 @@ export default function EmployerProfile() {
     ? dashboard.applications
     : dashboard?.applications?.data || [];
   const jobs = normalizedJobs;
-  const filteredJobs = jobs.filter(
-    (j) =>
-      jobFilter === "all" ||
-      (jobFilter === "urgent" && j.requiresPackageOverride) ||
-      (j.department || "").toLowerCase() === jobFilter,
-  );
+  const dynamicJobFilters = useMemo(() => {
+    const list = ["all"];
+    const hasUrgent = jobs.some(
+      (j) => j.isHotVacancy || j.requiresPackageOverride || j.urgentHiring,
+    );
+    if (hasUrgent) list.push("urgent");
+    const depts = new Set();
+    jobs.forEach((j) => {
+      const d = (j.department || "").trim();
+      if (d) depts.add(d);
+    });
+    depts.forEach((d) => list.push(d));
+    return list;
+  }, [jobs]);
+
+  const filteredJobs = jobs.filter((j) => {
+    if (jobFilter === "all") return true;
+    if (jobFilter === "urgent") {
+      return j.isHotVacancy || j.requiresPackageOverride || j.urgentHiring;
+    }
+    return (
+      (j.department || "").trim().toLowerCase() ===
+      jobFilter.trim().toLowerCase()
+    );
+  });
   const jobPageSize = 5;
   const totalJobPages = Math.ceil(filteredJobs.length / jobPageSize);
   const paginatedJobs = filteredJobs.slice(
@@ -2866,8 +2891,10 @@ export default function EmployerProfile() {
     Math.ceil(companyReviews.length / reviewPageSize),
   );
 
+  const callsLoadedRef = useRef(false);
   useEffect(() => {
-    if (activeTab === "Calls") {
+    if (!callsLoadedRef.current || activeTab === "Calls") {
+      callsLoadedRef.current = true;
       fetchScheduledCalls();
     }
   }, [activeTab]);
@@ -3046,22 +3073,46 @@ export default function EmployerProfile() {
     return mapped.slice(0, 5);
   }, [uniqueCandidateApplications]);
 
+  const filteredCandidateApplications = useMemo(() => {
+    const q = candidateSearch.trim().toLowerCase();
+    if (!q) return uniqueCandidateApplications;
+    return uniqueCandidateApplications.filter((application) => {
+      const name = (application.candidateName || "").toLowerCase();
+      const role = (
+        application.candidateCurrentTitle ||
+        application.jobTitle ||
+        ""
+      ).toLowerCase();
+      const loc = (application.candidateCity || "").toLowerCase();
+      const skills = Array.isArray(application.skills)
+        ? application.skills.join(" ").toLowerCase()
+        : "";
+      return (
+        name.includes(q) ||
+        role.includes(q) ||
+        loc.includes(q) ||
+        skills.includes(q)
+      );
+    });
+  }, [uniqueCandidateApplications, candidateSearch]);
+
   const CANDIDATE_PAGE_SIZE = 12;
   const candidatesTotal = uniqueCandidateApplications.length;
+  const filteredCandidatesTotal = filteredCandidateApplications.length;
   const candidatesTotalPages = Math.max(
     1,
-    Math.ceil(candidatesTotal / CANDIDATE_PAGE_SIZE),
+    Math.ceil(filteredCandidatesTotal / CANDIDATE_PAGE_SIZE),
   );
   const safeCandidatePage = Math.min(candidatePage, candidatesTotalPages);
   useEffect(() => {
     if (
       prevCandidatesRef.current !== 0 &&
-      candidatesTotal !== prevCandidatesRef.current
+      filteredCandidatesTotal !== prevCandidatesRef.current
     )
       setCandidatePage(1);
-    prevCandidatesRef.current = candidatesTotal;
-  }, [candidatesTotal]);
-  const paginatedCandidateApps = uniqueCandidateApplications.slice(
+    prevCandidatesRef.current = filteredCandidatesTotal;
+  }, [filteredCandidatesTotal]);
+  const paginatedCandidateApps = filteredCandidateApplications.slice(
     (safeCandidatePage - 1) * CANDIDATE_PAGE_SIZE,
     safeCandidatePage * CANDIDATE_PAGE_SIZE,
   );
@@ -3076,6 +3127,23 @@ export default function EmployerProfile() {
     color: CONVERSATION_COLORS[index % CONVERSATION_COLORS.length],
     app: application,
   }));
+
+  const getTabBadge = (tab) => {
+    switch (tab) {
+      case "Jobs":
+        return jobs.length;
+      case "Candidates":
+        return candidatesTotal;
+      case "Comments":
+        return companyReviews.length;
+      case "Progress":
+        return normalizedApplications.length;
+      case "Calls":
+        return scheduledCalls.length;
+      default:
+        return null;
+    }
+  };
   const candidatePageNumbers = useMemo(() => {
     const tp = candidatesTotalPages;
     if (tp <= 7) return Array.from({ length: tp }, (_, i) => i + 1);
@@ -3592,7 +3660,7 @@ export default function EmployerProfile() {
           margin: 0 0 4px;
         }
 
-        .ep-header-actions {
+        .ep-profile-banner-actions {
           display: flex;
           gap: 8px;
           flex-wrap: wrap;
@@ -3781,11 +3849,11 @@ export default function EmployerProfile() {
           .ep-profile-title {
             font-size: 18px !important;
           }
-          .ep-header-actions {
+          .ep-profile-banner-actions {
             width: 100% !important;
             margin-top: 10px !important;
           }
-          .ep-header-actions button {
+          .ep-profile-banner-actions button {
             flex: 1 1 auto !important;
             justify-content: center !important;
           }
@@ -4156,7 +4224,7 @@ export default function EmployerProfile() {
                       </div>
 
                       <div
-                        className="ep-header-actions"
+                        className="ep-profile-banner-actions"
                         style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
                       >
                         <Btn
@@ -4325,16 +4393,40 @@ export default function EmployerProfile() {
                       ref={navTabsRef}
                       className="ep-nav-tabs-wrap"
                     >
-                      {NAV_TABS.map((t) => (
-                        <button
-                          key={t}
-                          className={`ep-nav-link${activeTab === t ? " active" : ""}`}
-                          onClick={() => setActiveTab(t)}
-                          style={{ textTransform: "none" }}
-                        >
-                          {t}
-                        </button>
-                      ))}
+                      {NAV_TABS.map((t) => {
+                        const count = getTabBadge(t);
+                        return (
+                          <button
+                            key={t}
+                            className={`ep-nav-link${activeTab === t ? " active" : ""}`}
+                            onClick={() => setActiveTab(t)}
+                            style={{ textTransform: "none" }}
+                          >
+                            <span>{t}</span>
+                            {count !== null && count !== undefined && (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  minWidth: 18,
+                                  height: 18,
+                                  padding: "0 6px",
+                                  borderRadius: 100,
+                                  fontSize: 10.5,
+                                  fontWeight: 800,
+                                  fontFamily: C.fd,
+                                  background: activeTab === t ? C.navy : C.s100,
+                                  color: activeTab === t ? "#fff" : C.s600,
+                                  transition: "all .16s",
+                                }}
+                              >
+                                {count}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {canTabsScrollRight && (
@@ -4600,13 +4692,13 @@ export default function EmployerProfile() {
                     {/* ─ Header ─ */}
                     <div
                       style={{
-                        padding: "18px 20px",
+                        padding: "16px 20px",
                         borderBottom: `1px solid ${C.s100}`,
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
                         flexWrap: "wrap",
-                        gap: 10,
+                        gap: 12,
                       }}
                     >
                       <div
@@ -4625,14 +4717,74 @@ export default function EmployerProfile() {
                           style={{
                             fontSize: 12,
                             fontWeight: 700,
-                            color: C.s400,
-                            background: C.s100,
+                            color: C.navy,
+                            background: C.navy + "14",
                             padding: "2px 10px",
                             borderRadius: 100,
                           }}
                         >
-                          {candidatesTotal}
+                          {candidateSearch
+                            ? `${filteredCandidatesTotal} of ${candidatesTotal}`
+                            : candidatesTotal}
                         </span>
+                      </div>
+
+                      {/* Candidate search bar */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          position: "relative",
+                          width: "100%",
+                          maxWidth: 260,
+                        }}
+                      >
+                        <FiSearch
+                          size={14}
+                          color={C.s400}
+                          style={{ position: "absolute", left: 10 }}
+                        />
+                        <input
+                          type="text"
+                          value={candidateSearch}
+                          onChange={(e) => {
+                            setCandidateSearch(e.target.value);
+                            setCandidatePage(1);
+                          }}
+                          placeholder="Search candidates..."
+                          style={{
+                            width: "100%",
+                            padding: "6px 28px 6px 30px",
+                            borderRadius: 9,
+                            border: `1px solid ${C.s200}`,
+                            fontSize: 12.5,
+                            fontFamily: C.dm,
+                            color: C.s800,
+                            outline: "none",
+                            background: "#fff",
+                          }}
+                        />
+                        {candidateSearch && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCandidateSearch("");
+                              setCandidatePage(1);
+                            }}
+                            style={{
+                              position: "absolute",
+                              right: 8,
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: C.s400,
+                              display: "flex",
+                              padding: 2,
+                            }}
+                          >
+                            <FiX size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
                     {/* ─ Grid ─ */}
@@ -4732,6 +4884,18 @@ export default function EmployerProfile() {
                               </button>
                             </div>
                           ))
+                        ) : candidateSearch ? (
+                          <div style={{ gridColumn: "1 / -1" }}>
+                            <TabEmptyState
+                              title="No Matching Candidates"
+                              description={`No candidates matched "${candidateSearch}". Try a different keyword or clear your search.`}
+                              actionText="Clear Search"
+                              onAction={() => {
+                                setCandidateSearch("");
+                                setCandidatePage(1);
+                              }}
+                            />
+                          </div>
                         ) : (
                           <div style={{ gridColumn: "1 / -1" }}>
                             <TabEmptyState
@@ -4743,7 +4907,7 @@ export default function EmployerProfile() {
                       </div>
                     </div>
                     {/* ─ Pagination ─ */}
-                    {candidatesTotal > CANDIDATE_PAGE_SIZE && (
+                    {filteredCandidatesTotal > CANDIDATE_PAGE_SIZE && (
                       <div
                         style={{
                           padding: "12px 20px",
@@ -4768,10 +4932,10 @@ export default function EmployerProfile() {
                             {(safeCandidatePage - 1) * CANDIDATE_PAGE_SIZE + 1}-
                             {Math.min(
                               safeCandidatePage * CANDIDATE_PAGE_SIZE,
-                              candidatesTotal,
+                              filteredCandidatesTotal,
                             )}
                           </strong>{" "}
-                          of <strong>{candidatesTotal}</strong>
+                          of <strong>{filteredCandidatesTotal}</strong>
                         </div>
                         <div
                           style={{
@@ -4938,6 +5102,25 @@ export default function EmployerProfile() {
                     setResumeBusyId={setResumeBusyId}
                     progressBanner={progressBanner}
                     setProgressBanner={setProgressBanner}
+                    onStatusUpdated={(appId, newStatus) => {
+                      setDashboard((prev) => {
+                        if (!prev) return prev;
+                        const currentApps = Array.isArray(prev.applications)
+                          ? prev.applications
+                          : prev.applications?.data || [];
+                        const updatedApps = currentApps.map((a) =>
+                          a.id === appId || a._id === appId
+                            ? { ...a, status: newStatus }
+                            : a,
+                        );
+                        return {
+                          ...prev,
+                          applications: Array.isArray(prev.applications)
+                            ? updatedApps
+                            : { ...prev.applications, data: updatedApps },
+                        };
+                      });
+                    }}
                   />
                 )}
 
@@ -4972,30 +5155,30 @@ export default function EmployerProfile() {
                             alignItems: "center",
                           }}
                         >
-                          <div style={{ display: "flex", gap: 6 }}>
-                            {["all", "urgent", "design", "engineering"].map(
-                              (f) => (
-                                <button
-                                  key={f}
-                                  onClick={() => setJobFilter(f)}
-                                  style={{
-                                    padding: "5px 12px",
-                                    borderRadius: 100,
-                                    fontSize: 11.5,
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                    border: `1.5px solid ${jobFilter === f ? C.navy : C.s200}`,
-                                    background:
-                                      jobFilter === f ? C.navy : "#fff",
-                                    color: jobFilter === f ? "#fff" : C.s500,
-                                    fontFamily: C.fd,
-                                    transition: "all .14s",
-                                  }}
-                                >
-                                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                                </button>
-                              ),
-                            )}
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {dynamicJobFilters.map((f) => (
+                              <button
+                                key={f}
+                                onClick={() => setJobFilter(f)}
+                                style={{
+                                  padding: "5px 12px",
+                                  borderRadius: 100,
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  border: `1.5px solid ${jobFilter === f ? C.navy : C.s200}`,
+                                  background:
+                                    jobFilter === f ? C.navy : "#fff",
+                                  color: jobFilter === f ? "#fff" : C.s500,
+                                  fontFamily: C.fd,
+                                  transition: "all .14s",
+                                }}
+                              >
+                                {f === "all"
+                                  ? "All Roles"
+                                  : f.charAt(0).toUpperCase() + f.slice(1)}
+                              </button>
+                            ))}
                           </div>
                           <Btn
                             variant="primary"
@@ -5953,8 +6136,7 @@ export default function EmployerProfile() {
                 </Card>
 
                 {/* ─ Suggested Candidates ─ */}
-                <Card className="ep-card" style={{ padding: "18px" }}>
-                  {activeJobs === 0 ? (
+                {/* <Card className="ep-card" style={{ padding: "18px" }}>
                     <div style={{ textAlign: "center", padding: "20px 10px" }}>
                       <div
                         style={{
@@ -6019,242 +6201,7 @@ export default function EmployerProfile() {
                         />
                       </button>
                     </div>
-                  ) : (
-                    <>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: 14,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontFamily: C.fd,
-                            fontSize: 15,
-                            fontWeight: 800,
-                            color: C.s900,
-                          }}
-                        >
-                          {aiTopCandidates ? "AI Top Matches" : "Top Matches"}
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: C.green,
-                            fontWeight: 700,
-                            background: "#ecfdf5",
-                            padding: "3px 9px",
-                            borderRadius: 100,
-                            fontFamily: C.fd,
-                          }}
-                        >
-                          {aiCandidatesLoading
-                            ? "Loading�"
-                            : aiTopCandidates
-                              ? "AI-Ranked"
-                              : "Applicants"}
-                        </span>
-                      </div>
-                      {(aiTopCandidates || topMatches)
-                        .slice(0, 3)
-                        .map((c, i) => (
-                          <Link
-                            key={c.id}
-                            to={!c.isPlaceholder ? `/candidates/${c.id}` : '#'}
-                            target={!c.isPlaceholder ? "_blank" : undefined}
-                            rel={!c.isPlaceholder ? "noopener noreferrer" : undefined}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 12,
-                              padding: "12px 0",
-                              borderBottom:
-                                i <
-                                Math.min(
-                                  (aiTopCandidates || topMatches).length,
-                                  3,
-                                ) -
-                                  1
-                                  ? `1px solid ${C.s100}`
-                                  : "none",
-                              cursor: c.isPlaceholder ? "default" : "pointer",
-                              borderRadius: 8,
-                              transition: "background .15s",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!c.isPlaceholder)
-                                e.currentTarget.style.background = C.s50;
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "transparent";
-                            }}
-                          >
-                            <Avatar
-                              initials={c.avatar}
-                              color={c.color}
-                              size={44}
-                              radius={12}
-                            />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: 8,
-                                }}
-                              >
-                                <div style={{ minWidth: 0 }}>
-                                  <div
-                                    style={{
-                                      fontFamily: C.fd,
-                                      fontSize: 14,
-                                      fontWeight: 800,
-                                      color: C.s900,
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                    }}
-                                  >
-                                    {c.name}
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: 12,
-                                      color: C.s500,
-                                      marginTop: 2,
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                    }}
-                                  >
-                                    {c.role}
-                                  </div>
-                                </div>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                    marginLeft: 8,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 800,
-                                      color: C.green,
-                                    }}
-                                  >
-                                    {c.match}%
-                                  </div>
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 8,
-                                  marginTop: 8,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    flex: 1,
-                                    height: 6,
-                                    borderRadius: 999,
-                                    background: C.s100,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      height: "100%",
-                                      borderRadius: 999,
-                                      background: C.green,
-                                      width: `${c.match}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRequestChat(c.id);
-                              }}
-                              aria-label={`Message ${c.name}`}
-                              title={`Message ${c.name}`}
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 10,
-                                background: "#EEF2FF",
-                                border: "none",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                color: C.navy,
-                                flexShrink: 0,
-                              }}
-                            >
-                              <FiMail size={15} />
-                            </button>
-                          </Link>
-                        ))}
-                      {(aiTopCandidates || topMatches).length > 0 && (
-                        <div
-                          style={{
-                            marginTop: 12,
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "center",
-                          }}
-                        >
-                          <button
-                            onClick={() => navigate("/resume-search")}
-                            style={{
-                              flex: "0 0 auto",
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: "1px solid #D8E1EF",
-                              background: "#fff",
-                              color: C.navy,
-                              fontWeight: 800,
-                              cursor: "pointer",
-                              fontSize: 12.5,
-                              lineHeight: 1.2,
-                              fontFamily: C.fd,
-                            }}
-                          >
-                            View all candidates
-                          </button>
-                          {/* <button
-                            onClick={() => handleRequestChat()}
-                            style={{
-                              flex: 1,
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              border: "none",
-                              background: C.green,
-                              color: "#fff",
-                              fontWeight: 800,
-                              cursor: "pointer",
-                              fontSize: 12.5,
-                              lineHeight: 1.2,
-                              fontFamily: C.fd,
-                              boxShadow: "0 8px 18px rgba(16,185,129,.22)",
-                            }}
-                          >
-                            Message top match
-                          </button> */}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </Card>
+                </Card> */}
 
                 {/* ─ Premium X Promo ─ */}
                 {!isRecruiter && (
@@ -6476,6 +6423,8 @@ export default function EmployerProfile() {
               {/* end right sidebar */}
             </div>
           </main>
+
+          <EmployerFooter />
 
           {/* Upgrade Modal for Premium X gating */}
           {showUpgradeModal && (

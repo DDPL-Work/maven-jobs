@@ -1,10 +1,10 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FiHome, FiArrowLeft } from 'react-icons/fi';
-import { useAuth } from '../AuthContext';
-import notFoundImage from '../../assets/lost.png';
-import './NotFoundPage.css';
-import LandingEmployeeHeader from '../layout/employer/LandingEmployeeHeader';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { FiHome, FiArrowLeft } from "react-icons/fi";
+import { useAuth } from "../AuthContext";
+import notFoundImage from "../../assets/lost.png";
+import "./NotFoundPage.css";
+import LandingEmployeeHeader from "../layout/employer/LandingEmployeeHeader";
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
@@ -12,15 +12,15 @@ export default function NotFoundPage() {
 
   const handleGoHome = () => {
     if (user) {
-      if (user.role === 'CANDIDATE') {
-        navigate('/dashboard');
-      } else if (['RECRUITER', 'CLIENT', 'ADMIN'].includes(user.role)) {
-        navigate('/employer-dashboard');
+      if (user.role === "CANDIDATE") {
+        navigate("/dashboard");
+      } else if (["RECRUITER", "CLIENT", "ADMIN"].includes(user.role)) {
+        navigate("/employer-dashboard");
       } else {
-        navigate('/');
+        navigate("/");
       }
     } else {
-      navigate('/');
+      navigate("/");
     }
   };
 
@@ -36,13 +36,18 @@ export default function NotFoundPage() {
           />
         </div>
         <div className="not-found-body">
-          <h1 className="not-found-title">I think you are at the wrong place</h1>
+          <h1 className="not-found-title">
+            I think you are at the wrong place
+          </h1>
           <div className="not-found-actions">
             <button onClick={handleGoHome} className="not-found-button">
               <FiHome size={17} />
               <span>Take Me Home</span>
             </button>
-            <button onClick={() => navigate(-1)} className="not-found-back-button">
+            <button
+              onClick={() => navigate(-1)}
+              className="not-found-back-button"
+            >
               <FiArrowLeft size={17} />
               <span>Go Back</span>
             </button>

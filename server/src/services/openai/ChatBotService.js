@@ -760,6 +760,8 @@ Return ONLY valid JSON, no other text.`;
     )
       .select("userId headline currentTitle totalExperience skills currentCity preferredLocations preferredRoles itSkills education projectDescription publicShareId summary")
       .populate("userId", "name email")
+      .sort({ updatedAt: -1 })
+      .limit(20)
       .lean();
 
     if (allCandidates.length === 0) return [];

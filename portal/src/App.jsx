@@ -19,6 +19,7 @@ import MavenPro from "./pages/candidates/features/premium/MavenPro";
 import Premium from "./pages/candidates/features/premium/Premium";
 import Info from "./pages/candidates/features/dashboard/Info";
 import FooterPage from "./pages/candidates/features/landing/FooterPage";
+import ContactPage from "./pages/candidates/features/landing/ContactPage";
 import TermsOfService from "./pages/candidates/legal/TermsOfService";
 import PrivacyPolicy from "./pages/candidates/legal/PrivacyPolicy";
 import CookiePolicy from "./pages/candidates/legal/CookiePolicy";
@@ -282,6 +283,7 @@ function AppContent() {
         <Route path="/maven-jobs/trust-safety" element={<TrustAndSafety />} />
         <Route path="/maven-jobs/whitehat" element={<Whitehat />} />
         <Route path="/maven-jobs/zones" element={<ZoneMapPage />} />
+        <Route path="/maven-jobs/contact" element={<ContactPage />} />
         <Route path="/maven-jobs/:slug" element={<FooterPage />} />
 
         {/* --- Candidate Routes --- */}

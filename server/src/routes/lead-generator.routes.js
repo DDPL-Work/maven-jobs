@@ -18,7 +18,11 @@ const uploadClientJd = multer({
 router.post("/auth/login", controller.login);
 router.post("/auth/refresh", authController.refresh);
 router.post("/auth/logout", authController.logout);
-router.post("/client-intakes", uploadClientJd.array("jdFiles", 5), controller.submitClientIntake);
+router.post(
+  "/client-intakes",
+  uploadClientJd.array("jdFiles", 5),
+  controller.submitClientIntake,
+);
 
 router.use(protectCRM);
 router.use(role("LEAD_GENERATOR", "STATE_MANAGER", "APPROVER", "ADMIN"));
@@ -35,6 +39,10 @@ router.delete("/leads/:id/activity/:index", controller.deleteLeadActivity);
 router.patch("/auth/change-password", controller.changePassword);
 router.get("/profile", controller.getProfile);
 router.patch("/profile", controller.updateProfile);
-router.patch("/profile/photo", uploadProfilePhoto, controller.uploadProfilePhoto);
+router.patch(
+  "/profile/photo",
+  uploadProfilePhoto,
+  controller.uploadProfilePhoto,
+);
 
 module.exports = router;

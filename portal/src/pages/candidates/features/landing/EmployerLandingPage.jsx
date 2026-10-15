@@ -22,11 +22,15 @@ import {
   FiEyeOff,
   FiRefreshCcw,
   FiPhoneCall,
+  FiClock,
+  FiBookOpen,
+  FiHelpCircle,
 } from "react-icons/fi";
 import { FaBuilding, FaQuoteLeft } from "react-icons/fa";
 import { useAuth } from "../../../../AuthContext";
 import authService from "../../../../services/authService";
 import { useEmployerLanding } from "../../../../hooks/useLandingQueries";
+import { usePublishedBlogs } from "../../../../hooks/useCandidateQueries";
 import ForgotPassword from "../../../../auth/ForgotPassword";
 import "./EmployerLandingPage.css";
 import { SkeletonHomePage } from "../../../../components/Skeleton";
@@ -34,6 +38,79 @@ import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 import LandingEmployeeHeader from "../../../../layout/employer/LandingEmployeeHeader";
 import TalentCloudDemoForm from "../../../../components/employer/TalentCloudDemoForm";
 import mavenLogo from "../../../../../assets/maven-logo-BdiSsfJk.svg";
+
+const employerBlogPostsFallback = [
+  {
+    id: 1,
+    title: "10 AI-Powered Sourcing Strategies to Cut Time-to-Hire by 45%",
+    category: "AI & RECRUITMENT",
+    readTime: "5 min read",
+    date: "Oct 12, 2026",
+    excerpt: "Discover how top talent acquisition teams leverage algorithmic resume screening and automated pipeline triggers to connect with high-intent candidates faster.",
+    author: "Maven Talent Research",
+    link: "/blogs",
+    coverImage: {
+      url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+    },
+  },
+  {
+    id: 2,
+    title: "India Hiring Trends 2026: In-Demand Tech Skills & Compensation Benchmarks",
+    category: "SALARY & MARKET INSIGHTS",
+    readTime: "7 min read",
+    date: "Oct 8, 2026",
+    excerpt: "Comprehensive data across tier-1 and tier-2 tech hubs on developer salary expectations, remote vs hybrid flexibility, and emerging AI engineering roles.",
+    author: "Editorial Team",
+    link: "/blogs",
+    coverImage: {
+      url: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=600&q=80",
+    },
+  },
+  {
+    id: 3,
+    title: "Building an Authentic Employer Brand that Attracts Passive Top Performers",
+    category: "EMPLOYER BRANDING",
+    readTime: "4 min read",
+    date: "Oct 3, 2026",
+    excerpt: "Practical guide to showcasing team culture, transparent growth paths, and employee value propositions that convert passive profile viewers into applicants.",
+    author: "Hiring Advisory Group",
+    link: "/blogs",
+    coverImage: {
+      url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
+    },
+  },
+];
+
+const employerFaqs = [
+  {
+    q: "How does Free Job Posting work on Maven Jobs?",
+    a: "Employers can publish active job vacancies at zero cost. Free postings remain active for 7 days, accept up to 50 relevant applications, and include applicant screening questions. For urgent hiring, featured placement, or unlimited applications, premium plans are available.",
+  },
+  {
+    q: "How can I search and access candidates in the Resdex database?",
+    a: "Resdex provides access to over 2 crore verified candidate profiles across India. You can run Boolean search queries, filter by technical skills, experience, current CTC, expected salary, notice period, and location, and unlock contact details using your account search credits.",
+  },
+  {
+    q: "What is Maven Talent Cloud and what features does it include?",
+    a: "Maven Talent Cloud is an integrated recruitment suite combining AI-driven talent sourcing, automated pre-screening, interview scheduling, employer branding, and collaborative ATS tools into a unified platform for growing businesses and enterprises.",
+  },
+  {
+    q: "Can multiple recruiters and hiring managers share a company account?",
+    a: "Yes. Maven Jobs supports multi-user sub-accounts with custom role permissions. Account administrators can allocate job posting quotas and resume search limits to individual recruiters while tracking team performance through centralized analytics.",
+  },
+  {
+    q: "How quickly do candidate applications arrive and how can we manage candidate pipelines?",
+    a: "Applications appear immediately in your Employer Dashboard as candidates apply. You can review full profiles, download resumes, track candidate status across custom stages (Shortlisted, Interview, Offer, Rejected), and send video call invites directly from your dashboard.",
+  },
+  {
+    q: "What subscription plans and payment methods are available?",
+    a: "We offer flexible pay-as-you-go packs, monthly recruiter subscriptions, and custom annual enterprise contracts. Payments can be made online via credit/debit card, UPI, Net Banking, or through corporate invoicing and NEFT/RTGS for business accounts.",
+  },
+  {
+    q: "How does Maven Jobs protect candidate privacy and recruiter compliance?",
+    a: "Maven Jobs strictly adheres to the Digital Personal Data Protection Act (DPDP) and international data security standards with 256-bit encryption. Candidate contact information is unlocked only for authorized recruitment purposes, and all communications are securely logged.",
+  },
+];
 
 const getInitials = (value = "Company") =>
   String(value || "Company")
@@ -76,6 +153,7 @@ const EmployerLandingPage = () => {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [openEmployerFaq, setOpenEmployerFaq] = useState(null);
 
   useEffect(() => {
     if (isLoginModalOpen || isSalesModalOpen) {
@@ -104,6 +182,12 @@ const EmployerLandingPage = () => {
     data: employerData = { stats: [], partners: [] },
     isLoading: loading,
   } = useEmployerLanding();
+  const { data: blogsData, isLoading: blogsLoading } = usePublishedBlogs({
+    limit: 3,
+  });
+  const dynamicBlogs = blogsData?.blogs?.length
+    ? blogsData.blogs
+    : employerBlogPostsFallback;
   const [enquiry, setEnquiry] = useState({
     fullName: "",
     phone: "",
@@ -1272,6 +1356,149 @@ const EmployerLandingPage = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Hiring Blogs & Recruiter Insights ─── */}
+        <section className="elp-section elp-blog-section">
+          <div className="elp-section-inner">
+            <div className="elp-section-header">
+              <span className="elp-eyebrow-tag">Recruiter Insights</span>
+              <h2 className="elp-section-h2">From Our Hiring Blog</h2>
+              <p className="elp-section-sub">
+                Actionable talent acquisition strategies, salary benchmarks, and AI hiring trends to help you recruit smarter.
+              </p>
+            </div>
+
+            <div className="elp-blog-grid">
+              {blogsLoading
+                ? [1, 2, 3].map((n) => (
+                    <div key={n} className="elp-blog-skeleton-card">
+                      <div className="elp-blog-skeleton-img" />
+                      <div className="elp-blog-skeleton-bar" style={{ width: "35%", height: 18 }} />
+                      <div className="elp-blog-skeleton-bar" style={{ width: "90%", height: 22 }} />
+                      <div className="elp-blog-skeleton-bar" style={{ width: "75%", height: 16 }} />
+                      <div className="elp-blog-skeleton-bar" style={{ width: "100%", height: 14, marginTop: 10 }} />
+                      <div className="elp-blog-skeleton-bar" style={{ width: "85%", height: 14 }} />
+                    </div>
+                  ))
+                : dynamicBlogs.slice(0, 3).map((post) => {
+                    const slug = post.slug;
+                    const link = slug ? `/blogs/${slug}` : (post.link || "/blogs");
+                    const category = post.category || "Recruiter Insights";
+                    const readTime = post.metadata?.readTimeMinutes
+                      ? `${post.metadata.readTimeMinutes} min read`
+                      : (post.readTime || "5 min read");
+                    const authorName = post.author?.name || post.author || "Maven Jobs";
+                    const excerpt = post.excerpt || "";
+                    const title = post.title;
+                    const coverUrl = post.coverImage?.url;
+
+                    return (
+                      <Link
+                        key={post._id || post.id || slug}
+                        to={link}
+                        className="elp-blog-card"
+                      >
+                        {coverUrl && (
+                          <div className="elp-blog-img-wrap">
+                            <img
+                              src={coverUrl}
+                              alt={title}
+                              className="elp-blog-img"
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                        <div className="elp-blog-card-top">
+                          <span className="elp-blog-badge">{category}</span>
+                          <span className="elp-blog-meta">
+                            <FiClock size={12} /> {readTime}
+                          </span>
+                        </div>
+                        <h3 className="elp-blog-title">{title}</h3>
+                        {excerpt && <p className="elp-blog-excerpt">{excerpt}</p>}
+                        <div className="elp-blog-footer">
+                          <span className="elp-blog-author">{authorName}</span>
+                          <span className="elp-blog-read-more">
+                            Read article <FiArrowRight size={13} />
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+            </div>
+
+            <div className="elp-blog-cta-row">
+              <Link to="/blogs" className="elp-btn-outline">
+                <FiBookOpen size={16} /> Explore All Articles
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Recruiter FAQs ─── */}
+        <section className="elp-section elp-faq-section" id="faq">
+          <div className="elp-section-inner">
+            <div className="elp-section-header">
+              <span className="elp-eyebrow-tag">Got Questions?</span>
+              <h2 className="elp-section-h2">Frequently Asked Questions</h2>
+              <p className="elp-section-sub">
+                Everything you need to know about job posting, resume database access, pricing, and candidate verification.
+              </p>
+            </div>
+
+            <div className="elp-faq-list">
+              {employerFaqs.map((faq, idx) => {
+                const isOpen = openEmployerFaq === idx;
+                return (
+                  <div
+                    key={idx}
+                    className={`elp-faq-item ${isOpen ? "open" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="elp-faq-btn"
+                      onClick={() => setOpenEmployerFaq(isOpen ? null : idx)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="elp-faq-q-text">{faq.q}</span>
+                      <FiChevronDown
+                        size={18}
+                        className={`elp-faq-chevron ${isOpen ? "rotate" : ""}`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="elp-faq-ans">
+                        <p>{faq.a}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="elp-faq-footer-help">
+              <FiHelpCircle size={22} className="elp-faq-help-icon" />
+              <div className="elp-faq-help-content">
+                <strong>Need custom enterprise solutions or specialized hiring assistance?</strong>
+                <p>Our talent advisors and recruitment consultants are available 6 days a week.</p>
+              </div>
+              <button
+                type="button"
+                className="elp-btn-filled elp-faq-help-btn"
+                onClick={() => {
+                  if (window.innerWidth <= 1024) {
+                    setIsSalesModalOpen(true);
+                  } else {
+                    setActiveTab("sales");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+              >
+                Talk to Sales
+              </button>
             </div>
           </div>
         </section>

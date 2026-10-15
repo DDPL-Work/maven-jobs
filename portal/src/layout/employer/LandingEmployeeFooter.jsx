@@ -14,20 +14,21 @@ export default function EmployerFooter() {
             <h4>Recruiter services</h4>
             <Link to="/maven-talent-cloud">Maven Talent Cloud</Link>
             <Link to="/post-job">Job Posting</Link>
-            <a href="#">Resume Database (Resdex)</a>
-            <a href="#">Employer Branding</a>
-            <a href="#">Talent Pulse</a>
+            <Link to="/resume-database">Resume Database (Resdex)</Link>
+            <Link to="/branding">Employer Branding</Link>
+            <Link to="/talent-pulse">Talent Pulse</Link>
           </div>
           
           <div className="emp-footer-col">
             <h4>Information</h4>
             <Link to="/maven-jobs/about">About us</Link>
-            <a href="#">Clients</a>
-            <a href="#">Careers</a>
+            <Link to="/blogs">Blogs & Insights</Link>
+            <Link to="/employer-login#faq">FAQs</Link>
+            <Link to="/buy-online">Pricing & Plans</Link>
+            <Link to="/employers/learning-center">Learning Center</Link>
             <Link to="/maven-jobs/employer-terms">Terms & Conditions</Link>
             <Link to="/maven-jobs/employer-privacy">Privacy policy</Link>
-            <a href="#">Jobseeker home</a>
-            <a href="#">FAQs</a>
+            <Link to="/">Jobseeker home</Link>
           </div>
           
           <div className="emp-footer-col">

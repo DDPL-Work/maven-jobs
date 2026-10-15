@@ -113,6 +113,13 @@
   border-color: #002366;
 }
 
+.ch-sub-btn:hover,
+.ch-sub-btn.active {
+  background: #f1f5f9;
+  color: #002366;
+  border-color: #002366;
+}
+
 .ch-notif-dot {
   position: absolute;
   top: 9px;

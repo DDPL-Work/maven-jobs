@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { FiCopy, FiHeart, FiSmile, FiAward, FiStar, FiShare2 } from "react-icons/fi";
+import EmployerFooter from "../../../../layout/employer/LandingEmployeeFooter";
 
 const C = {
   navy: "#002366",
@@ -144,6 +145,9 @@ export default function ReviewSharePage() {
             </div>
           </aside>
         </section>
+      </div>
+      <div style={{ marginTop: 48 }}>
+        <EmployerFooter />
       </div>
     </div>
   );

@@ -1737,11 +1737,22 @@ class PurchaseService {
     }
   }
 
+  static _scheduledActivationCache = new Map();
+
   /**
    * Promote SCHEDULED subscriptions whose start date has arrived (Downgrade activation)
    * Can be called for a specific company or across all companies (cron/real-time)
    */
-  static async activateScheduledSubscriptions(targetCompanyId = null) {
+  static async activateScheduledSubscriptions(targetCompanyId = null, force = false) {
+    if (targetCompanyId && !force) {
+      const key = String(targetCompanyId);
+      const lastCheck = PurchaseService._scheduledActivationCache.get(key);
+      if (lastCheck && Date.now() - lastCheck < 60000) {
+        return 0;
+      }
+      PurchaseService._scheduledActivationCache.set(key, Date.now());
+    }
+
     const now = new Date();
     const query = {
       status: "SCHEDULED",

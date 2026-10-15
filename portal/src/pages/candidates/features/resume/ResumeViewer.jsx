@@ -339,7 +339,7 @@ const ResumeViewer = () => {
         </div>
       </div>
 
-      {/* <LandingFooter /> */}
+      <LandingFooter />
     </div>
   );
 };

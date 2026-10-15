@@ -155,6 +155,29 @@ api.interceptors.response.use(
   }
 );
 
+// ── In-flight GET request deduplication ────────────────────────
+const inFlightGets = new Map();
+const originalGet = api.get.bind(api);
+
+api.get = function (url, config) {
+  if (config?.skipDedupe || config?.responseType === "blob") {
+    return originalGet(url, config);
+  }
+
+  const key = `${url}?${JSON.stringify(config?.params || {})}`;
+  if (inFlightGets.has(key)) {
+    return inFlightGets.get(key);
+  }
+
+  const promise = originalGet(url, config)
+    .finally(() => {
+      setTimeout(() => inFlightGets.delete(key), 300);
+    });
+
+  inFlightGets.set(key, promise);
+  return promise;
+};
+
 export default api;
 
 

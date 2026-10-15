@@ -49,10 +49,23 @@ const PAGE_CONTENT = {
     intro: "Manage how Maven Jobs uses cookies for authentication, preferences, analytics, and platform reliability.",
     points: ["Essential cookies", "Preference storage", "Analytics controls"],
   },
+  faq: {
+    icon: FiHelpCircle,
+    title: "Frequently Asked Questions",
+    intro: "Clear answers to common questions about candidate job applications, employer hiring tools, profile safety, and verified hiring on Maven Jobs.",
+    points: ["100% free candidate job applications", "Verified employers & fraud protection", "Direct recruiter outreach & tracking", "Comprehensive salary insights & interview prep"],
+  },
 };
+
+import ContactPage from "./ContactPage";
 
 export default function FooterPage() {
   const { slug = "about" } = useParams();
+
+  if (slug === "contact") {
+    return <ContactPage />;
+  }
+
   const pageRef = useRef(null);
   const content = useMemo(() => PAGE_CONTENT[slug] || PAGE_CONTENT.about, [slug]);
   const Icon = content.icon;

@@ -37,6 +37,7 @@ export default function LandingFooter() {
           <Link to="/blogs" state={{ from: '/' }}>Career advice</Link>
           <Link to="/services">Resume builder</Link>
           <Link to="/salary-insights">Salary insights</Link>
+          <Link to="/#faq">FAQs</Link>
         </div>
         <div className="lp-footer__col">
           <h4>For Employers</h4>
@@ -47,6 +48,7 @@ export default function LandingFooter() {
           <h4>Company</h4>
           <Link to="/maven-jobs/about">About us</Link>
           <Link to="/blogs" state={{ from: '/' }}>Blog</Link>
+          <Link to="/#faq">FAQ</Link>
           <Link to="/maven-jobs/press">Press</Link>
           <Link to="/maven-jobs/careers">Careers at Maven</Link>
           <Link to="/maven-jobs/contact">Contact</Link>
