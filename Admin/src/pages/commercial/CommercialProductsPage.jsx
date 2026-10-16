@@ -543,6 +543,10 @@ export default function CommercialProductsPage() {
             <option value="INACTIVE">Inactive</option>
             <option value="ARCHIVED">Archived</option>
           </select>
+
+          <span className="ml-auto text-xs text-slate-500 font-medium whitespace-nowrap">
+            Total: {products.length} {products.length === 1 ? "product" : "products"}
+          </span>
         </div>
       </div>
 
@@ -552,6 +556,7 @@ export default function CommercialProductsPage() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 uppercase tracking-wider font-semibold">
+                <th className="px-4 py-3.5 w-16">S.No</th>
                 <th className="px-5 py-3.5">Product & Code</th>
                 <th className="px-4 py-3.5">Category</th>
                 <th className="px-4 py-3.5">Type & Unit</th>
@@ -565,13 +570,16 @@ export default function CommercialProductsPage() {
             <tbody className="divide-y divide-slate-100">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-slate-400">
+                  <td colSpan="9" className="py-12 text-center text-slate-400">
                     {loading ? "Loading products..." : "No products found matching filters."}
                   </td>
                 </tr>
               ) : (
-                products.map((prod) => (
+                products.map((prod, index) => (
                   <tr key={prod._id} className="transition hover:bg-slate-50/50">
+                    <td className="px-4 py-4 font-semibold text-slate-500">
+                      {index + 1}
+                    </td>
                     <td className="px-5 py-4">
                       <div className="font-bold text-slate-900">{prod.name}</div>
                       <div className="font-mono text-[11px] text-slate-400 font-semibold">{prod.code}</div>
@@ -1194,6 +1202,7 @@ export default function CommercialProductsPage() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50 font-semibold text-slate-500">
+                    <th className="px-4 py-2.5 w-14">S.No</th>
                     <th className="px-4 py-2.5">SKU</th>
                     <th className="px-4 py-2.5">Offer Title</th>
                     <th className="px-4 py-2.5">Quantity</th>
@@ -1206,13 +1215,16 @@ export default function CommercialProductsPage() {
                 <tbody className="divide-y divide-slate-100">
                   {offersList.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="py-8 text-center text-slate-400">
+                      <td colSpan="8" className="py-8 text-center text-slate-400">
                         {offersLoading ? "Loading offers..." : "No standalone offers created yet for this product."}
                       </td>
                     </tr>
                   ) : (
-                    offersList.map((offer) => (
+                    offersList.map((offer, index) => (
                       <tr key={offer._id}>
+                        <td className="px-4 py-3 font-semibold text-slate-500">
+                          {index + 1}
+                        </td>
                         <td className="px-4 py-3 font-mono font-bold text-slate-800">{offer.sku}</td>
                         <td className="px-4 py-3 font-medium text-slate-900">{offer.name}</td>
                         <td className="px-4 py-3 font-semibold text-indigo-700">{offer.quantity} {managingOffersProduct.unit}s</td>

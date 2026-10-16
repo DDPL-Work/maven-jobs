@@ -381,3 +381,24 @@ export function generateManagedQRCode(payload) {
 export function getQrPdfDownloadUrl(token) {
   return `${CORE_API_ROOT}/qr/download/${token}`;
 }
+
+export function getReportedJobs(params = {}) {
+  const query = new URLSearchParams();
+  if (params.status && params.status !== "ALL") query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", params.page);
+  if (params.limit) query.set("limit", params.limit);
+  const qs = query.toString();
+  return request(`/reported-jobs${qs ? `?${qs}` : ""}`);
+}
+
+export function getReportedJobById(id) {
+  return request(`/reported-jobs/${id}`);
+}
+
+export function updateReportedJob(id, payload) {
+  return request(`/reported-jobs/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}

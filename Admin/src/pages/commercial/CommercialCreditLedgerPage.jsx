@@ -185,7 +185,7 @@ export default function CommercialCreditLedgerPage() {
           </select>
         </div>
 
-        <span className="ml-auto text-xs text-slate-400 font-medium">{total} total entries</span>
+        <span className="ml-auto text-xs text-slate-500 font-medium">Total: {total} entries</span>
       </div>
 
       {/* Ledger Table */}
@@ -194,6 +194,7 @@ export default function CommercialCreditLedgerPage() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 uppercase tracking-wider font-semibold">
+                <th className="px-4 py-3.5 w-16">S.No</th>
                 <th className="px-5 py-3.5">Company</th>
                 <th className="px-4 py-3.5">Product</th>
                 <th className="px-4 py-3.5">Transaction Type</th>
@@ -207,15 +208,18 @@ export default function CommercialCreditLedgerPage() {
             <tbody className="divide-y divide-slate-100">
               {paginatedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-slate-400">
+                  <td colSpan="9" className="py-12 text-center text-slate-400">
                     {loading ? "Loading ledger..." : "No ledger transactions found."}
                   </td>
                 </tr>
               ) : (
-                paginatedEntries.map((entry) => {
+                paginatedEntries.map((entry, index) => {
                   const isPositive = entry.quantity > 0;
                   return (
                     <tr key={entry._id} className="transition hover:bg-slate-50/50">
+                      <td className="px-4 py-4 font-semibold text-slate-500">
+                        {startIndex + index + 1}
+                      </td>
                       <td className="px-5 py-4">
                         <div className="font-bold text-slate-900">{entry.companyId?.name || "Company"}</div>
                         <div className="text-[10px] text-slate-400">{entry.companyId?.email}</div>

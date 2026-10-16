@@ -145,8 +145,8 @@ export default function CommercialAuditLogsPage() {
             </select>
           </div>
 
-          <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-            {total} audit entries
+          <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+            Total: {total} audit entries
           </span>
         </div>
       </div>
@@ -157,6 +157,7 @@ export default function CommercialAuditLogsPage() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 uppercase tracking-wider font-semibold">
+                <th className="px-4 py-3.5 w-16">S.No</th>
                 <th className="px-5 py-3.5">Action & Entity</th>
                 <th className="px-4 py-3.5">Target Name / ID</th>
                 <th className="px-4 py-3.5">Performed By</th>
@@ -168,13 +169,16 @@ export default function CommercialAuditLogsPage() {
             <tbody className="divide-y divide-slate-100">
               {paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-slate-400">
+                  <td colSpan="7" className="py-12 text-center text-slate-400">
                     {loading ? "Loading audit logs..." : "No commercial audit logs found."}
                   </td>
                 </tr>
               ) : (
-                paginatedLogs.map((log) => (
+                paginatedLogs.map((log, index) => (
                   <tr key={log._id} className="transition hover:bg-slate-50/50">
+                    <td className="px-4 py-4 font-semibold text-slate-500">
+                      {startIndex + index + 1}
+                    </td>
                     <td className="px-5 py-4">
                       <span className="rounded-md bg-indigo-50 px-2 py-0.5 font-bold font-mono text-[10px] text-indigo-700">
                         {log.action}

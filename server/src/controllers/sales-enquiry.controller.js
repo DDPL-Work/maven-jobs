@@ -1,5 +1,4 @@
 const SalesEnquiryForm = require("../models/salesEnquiryForm");
-const CrmUser = require("../models/CrmUser");
 const User = require("../models/User");
 const emailService = require("../services/email.service");
 const notificationService = require("../services/notification.service");
@@ -106,43 +105,146 @@ Submitted: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} I
 };
 
 /**
- * Dispatches In-App Notification and Emails to FSEs of all zones + core team (crm@mavenjobs.in, info@mavenjobs.in)
+ * Builds HTML template for Sales Enquiry confirmation email to the person who submitted the form
+ */
+const buildEnquiryConfirmationEmailHtml = (enquiry) => {
+  return `
+  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 24px; color: #ffffff; text-align: center;">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Maven Jobs | Talent Cloud</h1>
+      <p style="margin: 6px 0 0 0; font-size: 14px; color: #93c5fd;">Thank You For Your Enquiry</p>
+    </div>
+    
+    <div style="padding: 28px 24px;">
+      <p style="font-size: 15px; color: #334155; margin: 0 0 16px 0; line-height: 1.6;">
+        Dear <strong>${enquiry.fullName || "Valued Customer"}</strong>,
+      </p>
+      <p style="font-size: 14px; color: #475569; margin: 0 0 20px 0; line-height: 1.6;">
+        Thank you for contacting Maven Jobs. We have successfully received your sales &amp; demo enquiry. Our dedicated CRM team will review your requirements and connect with you shortly.
+      </p>
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px;">
+        <strong style="color: #166534; font-size: 14px;">Your Reference ID:</strong> 
+        <span style="color: #15803d; font-weight: 700; font-size: 15px; margin-left: 6px;">${enquiry.referenceId}</span>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+        <tbody>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 10px 0; font-weight: 600; width: 40%; color: #64748b;">Full Name</td>
+            <td style="padding: 10px 0; font-weight: 700; color: #0f172a;">${enquiry.fullName}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 10px 0; font-weight: 600; color: #64748b;">Work Email</td>
+            <td style="padding: 10px 0; color: #0f172a;">${enquiry.email}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 10px 0; font-weight: 600; color: #64748b;">Mobile Number</td>
+            <td style="padding: 10px 0; color: #0f172a;">+91 ${enquiry.mobile}</td>
+          </tr>
+          ${enquiry.organizationName ? `
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 10px 0; font-weight: 600; color: #64748b;">Organization</td>
+            <td style="padding: 10px 0; color: #0f172a;">${enquiry.organizationName}</td>
+          </tr>` : ""}
+          ${enquiry.designation ? `
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 10px 0; font-weight: 600; color: #64748b;">Designation</td>
+            <td style="padding: 10px 0; color: #0f172a;">${enquiry.designation}</td>
+          </tr>` : ""}
+          ${enquiry.city ? `
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 10px 0; font-weight: 600; color: #64748b;">City / Location</td>
+            <td style="padding: 10px 0; color: #0f172a;">${enquiry.city}</td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding: 10px 0; font-weight: 600; color: #64748b;">Submitted On</td>
+            <td style="padding: 10px 0; color: #64748b;">${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.5;">
+          <strong>Need immediate assistance?</strong><br />
+          Feel free to reach out directly to our team at <a href="mailto:crm@mavenjobs.in" style="color: #2563eb; text-decoration: none; font-weight: 600;">crm@mavenjobs.in</a> or <a href="mailto:info@mavenjobs.in" style="color: #2563eb; text-decoration: none; font-weight: 600;">info@mavenjobs.in</a>.
+        </p>
+      </div>
+    </div>
+
+    <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
+      &copy; ${new Date().getFullYear()} Maven Jobs. All rights reserved.
+    </div>
+  </div>
+  `;
+};
+
+/**
+ * Builds Plaintext format for enquiry confirmation email
+ */
+const buildEnquiryConfirmationEmailText = (enquiry) => {
+  return `
+Thank You For Your Enquiry - Maven Jobs
+=======================================
+Dear ${enquiry.fullName || "Valued Customer"},
+
+Thank you for contacting Maven Jobs. We have successfully received your sales & demo enquiry.
+
+Your Reference ID: ${enquiry.referenceId}
+
+Details Submitted:
+- Full Name: ${enquiry.fullName}
+- Mobile: +91 ${enquiry.mobile}
+- Work Email: ${enquiry.email}
+- Organization: ${enquiry.organizationName || "N/A"}
+- Designation: ${enquiry.designation || "N/A"}
+- City / Location: ${enquiry.city || "N/A"}
+- Submitted: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST
+
+Our dedicated CRM team will review your requirements and reach out to you shortly.
+If you need immediate assistance, please email us at crm@mavenjobs.in or info@mavenjobs.in.
+
+Warm regards,
+The Maven Jobs Team
+https://mavenjobs.in
+`;
+};
+
+/**
+ * Sleep helper for throttled queue delay
+ */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Categorizes email delivery errors for clear audit logging
+ */
+const categorizeEmailError = (errMsg = "") => {
+  const errLower = String(errMsg).toLowerCase();
+  if (errLower.includes("circuit breaker is open")) {
+    return "CIRCUIT_OPEN";
+  }
+  if (errLower.includes("rate limit") || errLower.includes("throttling")) {
+    return "THROTTLED";
+  }
+  if (errLower.includes("554") || errLower.includes("not verified") || errLower.includes("failed the check")) {
+    return "REJECTED_UNVERIFIED";
+  }
+  return "FAILED";
+};
+
+/**
+ * Dispatches In-App Notification and Emails:
+ * 1. Immediate In-App & Socket Notification for Admin/CRM dashboard
+ * 2. Confirmation Email to the person who filled out the form (enquiry.email)
+ * 3. Notification Email to the two core CRM mailboxes: "crm@mavenjobs.in" and "info@mavenjobs.in"
+ * 4. Per-recipient delivery tracking & persistence to MongoDB
  */
 const dispatchSalesEnquiryNotifications = async (enquiry) => {
   try {
-    // 1. Fetch all FSEs of every zone
-    const [crmFseUsers, generalFseUsers] = await Promise.all([
-      CrmUser.find({
-        $or: [{ role: "FSE" }, { designations: "FSE" }],
-        isActive: { $ne: false },
-        accessStatus: { $ne: "RESTRICTED" },
-      }).select("fullName email territory state"),
-      User.find({
-        role: "FSE",
-        isActive: { $ne: false },
-        accessStatus: { $ne: "RESTRICTED" },
-      }).select("name email department scope"),
-    ]);
+    // 1. Only send CRM emails to the two specified mailboxes
+    const crmRecipients = ["crm@mavenjobs.in", "info@mavenjobs.in"];
 
-    const fseEmails = new Set();
-    crmFseUsers.forEach((u) => {
-      if (u.email && /^\S+@\S+\.\S+$/.test(u.email)) {
-        fseEmails.add(u.email.toLowerCase().trim());
-      }
-    });
-    generalFseUsers.forEach((u) => {
-      if (u.email && /^\S+@\S+\.\S+$/.test(u.email)) {
-        fseEmails.add(u.email.toLowerCase().trim());
-      }
-    });
-
-    // 2. Compile all email recipients: FSE of every zone + crm@mavenjobs.in, info@mavenjobs.in
-    const coreTeamEmails = ["crm@mavenjobs.in", "info@mavenjobs.in"];
-    const allEmailRecipients = Array.from(new Set([...fseEmails, ...coreTeamEmails]));
-
-    logger.info(`[SalesEnquiry] Dispatching notifications for ${enquiry.referenceId} to ${allEmailRecipients.length} recipients.`);
-
-    // 3. Send In-App Notification
+    // 2. Send In-App Notification for Admin/CRM Dashboard
     await notificationService.sendAdminNotification({
       title: `New Sales Enquiry: ${enquiry.organizationName || enquiry.fullName}`,
       message: `A new demo/sales enquiry was submitted by ${enquiry.fullName} (${enquiry.mobile}${enquiry.city ? `, ${enquiry.city}` : ""}). Reference ID: ${enquiry.referenceId}`,
@@ -179,27 +281,139 @@ const dispatchSalesEnquiryNotifications = async (enquiry) => {
       }
     }
 
-    // 4. Send Emails to all recipients (FSEs of all zones + crm@mavenjobs.in + info@mavenjobs.in)
-    const subject = `New Sales Enquiry: ${enquiry.organizationName || enquiry.fullName} (${enquiry.referenceId})`;
-    const html = buildEnquiryEmailHtml(enquiry);
-    const text = buildEnquiryEmailText(enquiry);
+    // 3. Send Confirmation Email to the Person Who Filled Out the Form (enquiry.email)
+    let enquirerResult = null;
+    const enquirerEmail = (enquiry.email || "").toLowerCase().trim();
+    if (enquirerEmail && /^\S+@\S+\.\S+$/.test(enquirerEmail)) {
+      const confirmSubject = `Thank you for your enquiry - Maven Jobs (${enquiry.referenceId})`;
+      const confirmHtml = buildEnquiryConfirmationEmailHtml(enquiry);
+      const confirmText = buildEnquiryConfirmationEmailText(enquiry);
 
-    const emailPromises = allEmailRecipients.map((toEmail) =>
-      emailService
-        .sendEmail({
+      try {
+        const sendRes = await emailService.sendEmail({
+          to: enquirerEmail,
+          subject: confirmSubject,
+          html: confirmHtml,
+          text: confirmText,
+        });
+
+        if (sendRes && sendRes.success) {
+          enquirerResult = {
+            email: enquirerEmail,
+            status: "SENT",
+            messageId: sendRes.messageId || null,
+            timestamp: new Date(),
+          };
+          logger.info(`[SalesEnquiry:Enquirer] Confirmation email sent successfully to ${enquirerEmail} (MessageID: ${sendRes.messageId})`);
+        } else {
+          const errorMsg = sendRes?.error || "Unknown delivery failure";
+          const status = categorizeEmailError(errorMsg);
+          enquirerResult = {
+            email: enquirerEmail,
+            status,
+            error: errorMsg,
+            timestamp: new Date(),
+          };
+          logger.warn(`[SalesEnquiry:Enquirer] Delivery failed for ${enquirerEmail}: [${status}] ${errorMsg}`);
+        }
+      } catch (err) {
+        const errorMsg = err?.message || String(err);
+        const status = categorizeEmailError(errorMsg);
+        enquirerResult = {
+          email: enquirerEmail,
+          status,
+          error: errorMsg,
+          timestamp: new Date(),
+        };
+        logger.warn(`[SalesEnquiry:Enquirer] Exception sending confirmation to ${enquirerEmail}: [${status}] ${errorMsg}`);
+      }
+    }
+
+    // Brief pause before sending CRM notifications to ensure clean sequencing
+    await sleep(800);
+
+    // 4. Send Notification Emails to CRM Team ("crm@mavenjobs.in", "info@mavenjobs.in")
+    const crmSubject = `New Sales Enquiry: ${enquiry.organizationName || enquiry.fullName} (${enquiry.referenceId})`;
+    const crmHtml = buildEnquiryEmailHtml(enquiry);
+    const crmText = buildEnquiryEmailText(enquiry);
+
+    const crmDeliveryResults = [];
+
+    for (let i = 0; i < crmRecipients.length; i++) {
+      const toEmail = crmRecipients[i];
+
+      try {
+        const sendRes = await emailService.sendEmail({
           to: toEmail,
-          subject,
-          html,
-          text,
-        })
-        .catch((err) => {
-          logger.warn(`[SalesEnquiry] Failed sending email to ${toEmail}:`, err?.message || err);
-          return null;
-        })
+          subject: crmSubject,
+          html: crmHtml,
+          text: crmText,
+        });
+
+        if (sendRes && sendRes.success) {
+          crmDeliveryResults.push({
+            email: toEmail,
+            status: "SENT",
+            messageId: sendRes.messageId || null,
+            timestamp: new Date(),
+          });
+          logger.info(`[SalesEnquiry:CRM:Delivery] [${i + 1}/${crmRecipients.length}] Delivered to ${toEmail} (MessageID: ${sendRes.messageId})`);
+        } else {
+          const errorMsg = sendRes?.error || "Unknown delivery error";
+          const status = categorizeEmailError(errorMsg);
+          crmDeliveryResults.push({
+            email: toEmail,
+            status,
+            error: errorMsg,
+            timestamp: new Date(),
+          });
+          logger.warn(`[SalesEnquiry:CRM:Delivery] [${i + 1}/${crmRecipients.length}] Delivery failed for ${toEmail}: [${status}] ${errorMsg}`);
+        }
+      } catch (err) {
+        const errorMsg = err?.message || String(err);
+        const status = categorizeEmailError(errorMsg);
+        crmDeliveryResults.push({
+          email: toEmail,
+          status,
+          error: errorMsg,
+          timestamp: new Date(),
+        });
+        logger.warn(`[SalesEnquiry:CRM:Delivery] [${i + 1}/${crmRecipients.length}] Exception for ${toEmail}: [${status}] ${errorMsg}`);
+      }
+
+      // Safe pause between the two CRM emails
+      if (i < crmRecipients.length - 1) {
+        await sleep(800);
+      }
+    }
+
+    // 5. Delivery Summary Logging
+    const sentCount = crmDeliveryResults.filter((r) => r.status === "SENT").length;
+    const failedCount = crmDeliveryResults.filter((r) => r.status !== "SENT").length;
+
+    logger.info(
+      `[SalesEnquiry:DeliverySummary] Reference ID: ${enquiry.referenceId} | ` +
+      `Enquirer Confirmation: [${enquirerResult?.status || "NOT_PROVIDED"}] | ` +
+      `CRM Recipients: Total ${crmRecipients.length} | Sent: ${sentCount} | Failed: ${failedCount}`
     );
 
-    await Promise.allSettled(emailPromises);
-    logger.info(`[SalesEnquiry] Completed email dispatch for ${enquiry.referenceId}`);
+    // 6. Persist delivery audit report on Enquiry document in MongoDB
+    await SalesEnquiryForm.findByIdAndUpdate(enquiry._id, {
+      $set: {
+        deliveryReport: {
+          enquirer: enquirerResult,
+          crmSummary: {
+            total: crmRecipients.length,
+            sentCount,
+            failedCount,
+            completedAt: new Date(),
+          },
+          crmResults: crmDeliveryResults,
+        },
+      },
+    }).catch((dbErr) => {
+      logger.warn(`[SalesEnquiry] Failed saving delivery report to DB: ${dbErr.message}`);
+    });
   } catch (error) {
     logger.error("[SalesEnquiry] Notification dispatch error:", error);
   }

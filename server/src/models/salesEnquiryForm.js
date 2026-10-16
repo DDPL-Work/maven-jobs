@@ -104,6 +104,10 @@ const salesEnquiryFormSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    deliveryReport: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   {
     timestamps: true,

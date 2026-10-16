@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const authController = require("../controllers/auth.controller");
 const candidateController = require("../controllers/candidate.controller");
+const jobReportController = require("../controllers/job-report.controller");
 const chatController = require("../controllers/chat.controller");
 const {
   protectCandidate,
@@ -91,6 +92,7 @@ router.get(
   candidateController.getJobDetail,
 );
 router.get("/jobs/:id/similar", optionalAuthCandidate, candidateController.getSimilarJobs);
+router.post("/jobs/:id/report", optionalAuthCandidate, jobReportController.submitJobReport);
 router.get("/jobs/:id/match-score", protectCandidate, candidateController.getJobMatchScore);
 router.patch(
   "/jobs/:id/save",

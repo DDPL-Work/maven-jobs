@@ -16,6 +16,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import QRCodesPage from "../pages/QRCodesPage";
 import SettingsPage from "../pages/SettingsPage";
 import AssignedClients from "../pages/AssignedClients";
+import ReportedJobsPage from "../pages/ReportedJobsPage";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
           { path: "/crm/assigned-clients", element: <AssignedClients /> },
           { path: "/crm/jobs", element: <JobsPage /> },
           { path: "/crm/approvals", element: <ApprovalsPage /> },
+          { path: "/crm/reported-jobs", element: <ReportedJobsPage /> },
           { path: "/crm/packages", element: <PackagesPage /> },
           { path: "/crm/qr-codes", element: <QRCodesPage /> },
           { path: "/crm/candidates", element: <CandidatesPage /> },
