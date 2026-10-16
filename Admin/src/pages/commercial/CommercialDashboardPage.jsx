@@ -262,7 +262,12 @@ export default function CommercialDashboardPage() {
               <LuClock className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-900">Expiring Soon (Next 7 Days)</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-slate-900">Expiring Soon (Next 7 Days)</h2>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                  Total: {stats?.expiringSoon?.length || 0}
+                </span>
+              </div>
               <p className="text-xs text-slate-500">Active company plans reaching end of validity</p>
             </div>
           </div>
@@ -281,6 +286,7 @@ export default function CommercialDashboardPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-amber-200/60 text-slate-500">
+                  <th className="pb-2 font-medium w-12">S.No</th>
                   <th className="pb-2 font-medium">Company</th>
                   <th className="pb-2 font-medium">Plan / Item</th>
                   <th className="pb-2 font-medium">Expiry Date</th>
@@ -289,8 +295,9 @@ export default function CommercialDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100/70">
-                {stats.expiringSoon.map((sub) => (
+                {stats.expiringSoon.map((sub, index) => (
                   <tr key={sub._id} className="text-slate-800">
+                    <td className="py-3 font-semibold text-slate-500">{index + 1}</td>
                     <td className="py-3 font-semibold">{sub.companyId?.name || "Client"}</td>
                     <td className="py-3">{sub.commercialSnapshot?.planName || sub.planId?.name || "Plan"}</td>
                     <td className="py-3 text-amber-700 font-medium">

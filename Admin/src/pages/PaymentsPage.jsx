@@ -292,7 +292,8 @@ export default function PaymentsPage() {
         ) : (
           <>
             <div className="mt-4 overflow-hidden rounded-[22px] border border-slate-200">
-              <div className="grid grid-cols-[1.3fr_1.1fr_0.7fr_0.8fr_0.7fr_0.9fr_0.5fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <div className="grid grid-cols-[60px_1.3fr_1.1fr_0.7fr_0.8fr_0.7fr_0.9fr_0.5fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <span>S.No</span>
                 <span>Name</span>
                 <span>Transaction ID</span>
                 <span>Plan</span>
@@ -302,11 +303,14 @@ export default function PaymentsPage() {
                 <span />
               </div>
               <div className="divide-y divide-slate-200">
-                {transactions.map((txn) => (
+                {transactions.map((txn, index) => (
                   <div
                     key={txn.id}
-                    className="grid min-h-[74px] grid-cols-[1.3fr_1.1fr_0.7fr_0.8fr_0.7fr_0.9fr_0.5fr] items-center gap-3 px-4 py-4 text-sm text-slate-700 transition-colors duration-200 hover:bg-lime-50/40"
+                    className="grid min-h-[74px] grid-cols-[60px_1.3fr_1.1fr_0.7fr_0.8fr_0.7fr_0.9fr_0.5fr] items-center gap-3 px-4 py-4 text-sm text-slate-700 transition-colors duration-200 hover:bg-lime-50/40"
                   >
+                    <span className="font-semibold text-slate-500">
+                      {startIndex + index + 1}
+                    </span>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900">
                         {txn.userName}

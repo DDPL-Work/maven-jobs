@@ -239,9 +239,14 @@ export default function UsersPage() {
       <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-              User operations
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                User operations
+              </p>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                Total: {totalEntries} {totalEntries === 1 ? "user" : "users"}
+              </span>
+            </div>
             <h2 className="mt-2 text-2xl font-bold text-slate-900">
               Create and manage system users
             </h2>
@@ -293,7 +298,8 @@ export default function UsersPage() {
         </div>
 
         <div className="mt-6 overflow-hidden rounded-[24px] border border-slate-200">
-          <div className="grid grid-cols-[1.3fr_1.1fr_0.8fr_0.9fr_0.9fr_0.7fr] gap-3 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+          <div className="grid grid-cols-[60px_1.3fr_1.1fr_0.8fr_0.9fr_0.9fr_0.7fr] gap-3 bg-slate-50 px-5 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <span>S.No</span>
             <span>User</span>
             <span>Department</span>
             <span>Role</span>
@@ -308,11 +314,14 @@ export default function UsersPage() {
                 No users found.
               </div>
             ) : (
-              paginatedUsers.map((user) => (
+              paginatedUsers.map((user, index) => (
                 <div
                   key={`${user.source}-${user.id}`}
-                  className="grid min-h-[92px] grid-cols-[1.3fr_1.1fr_0.8fr_0.9fr_0.9fr_0.7fr] items-center gap-3 px-5 py-4 text-sm transition-colors duration-200 hover:bg-lime-50/30"
+                  className="grid min-h-[92px] grid-cols-[60px_1.3fr_1.1fr_0.8fr_0.9fr_0.9fr_0.7fr] items-center gap-3 px-5 py-4 text-sm transition-colors duration-200 hover:bg-lime-50/30"
                 >
+                  <span className="font-semibold text-slate-500">
+                    {startIndex + index + 1}
+                  </span>
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-900">
                       {user.fullName}

@@ -225,7 +225,7 @@ const companySchema = new mongoose.Schema(
       services: Array,
     },
   },
-  { timestamps: true }
+  { timestamps: true, versionKey: false }
 );
 
 /**

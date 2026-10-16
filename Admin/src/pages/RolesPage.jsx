@@ -303,15 +303,21 @@ export default function RolesPage() {
             </article>
 
             <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,0.06)]">
-              <div className="flex items-center gap-2">
-                <LuShieldCheck size={16} className="text-lime-500" />
-                <h2 className="text-lg font-bold text-slate-900">
-                  Permission matrix editor
-                </h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <LuShieldCheck size={16} className="text-lime-500" />
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Permission matrix editor
+                  </h2>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  Total: {permissionDomains.length} domains
+                </span>
               </div>
 
               <div className="mt-5 overflow-hidden rounded-[22px] border border-slate-200">
-                <div className="grid grid-cols-[1.2fr_repeat(6,0.7fr)] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <div className="grid grid-cols-[60px_1.2fr_repeat(6,0.7fr)] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  <span>S.No</span>
                   <span>Domain</span>
                   {permissionActions.map((action) => (
                     <span key={action} className="text-center">
@@ -321,11 +327,14 @@ export default function RolesPage() {
                 </div>
 
                 <div className="divide-y divide-slate-200">
-                  {permissionDomains.map((domain) => (
+                  {permissionDomains.map((domain, index) => (
                     <div
                       key={domain}
-                      className="grid min-h-[78px] grid-cols-[1.2fr_repeat(6,0.7fr)] items-center gap-3 px-4 py-4 transition-colors duration-200 hover:bg-lime-50/30"
+                      className="grid min-h-[78px] grid-cols-[60px_1.2fr_repeat(6,0.7fr)] items-center gap-3 px-4 py-4 transition-colors duration-200 hover:bg-lime-50/30"
                     >
+                      <span className="font-semibold text-slate-500">
+                        {index + 1}
+                      </span>
                       <span className="font-semibold capitalize text-slate-900">
                         {domain}
                       </span>

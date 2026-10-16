@@ -166,6 +166,15 @@ const authService = {
     }
   },
 
+  reportJob: async (jobId, reportData) => {
+    try {
+      const response = await api.post(`/candidate/jobs/${jobId}/report`, reportData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to submit report' };
+    }
+  },
+
   suggestJobs: async (q) => {
     try {
       const response = await api.get('/candidate/jobs/suggest', { params: { q } });

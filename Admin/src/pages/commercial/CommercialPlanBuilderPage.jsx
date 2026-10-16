@@ -1432,6 +1432,7 @@ export default function CommercialPlanBuilderPage() {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
+                          <th className="py-2.5 px-3 w-14">S.No</th>
                           <th className="py-2.5 px-3">Product & Code</th>
                           <th className="py-2.5 px-3">Product Type</th>
                           <th className="py-2.5 px-3 text-center">Allocation Scope</th>
@@ -1448,6 +1449,9 @@ export default function CommercialPlanBuilderPage() {
 
                           return (
                             <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                              <td className="py-2.5 px-3 font-semibold text-slate-500">
+                                {idx + 1}
+                              </td>
                               <td className="py-2.5 px-3">
                                 <div className="font-bold text-slate-900">{computed.productName}</div>
                                 <div className="flex items-center gap-1.5 mt-0.5">

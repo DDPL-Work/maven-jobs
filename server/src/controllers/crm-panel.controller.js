@@ -287,7 +287,24 @@ const syncLivePackageContextForCompany = async (company, packageLimitMap = new M
   const snapshot = applyCompanyPackageSnapshot(company, packageLimitMap);
 
   if (appliedResult.updated || snapshot.dirty) {
-    await company.save();
+    try {
+      await company.save();
+    } catch (saveError) {
+      if (saveError.name === "VersionError") {
+        await Company.updateOne(
+          { _id: company._id },
+          {
+            $set: {
+              ...(company.packageType ? { packageType: company.packageType } : {}),
+              jobLimit: Number(company.jobLimit || 0),
+              grandfatheredJobLimit: Number(company.grandfatheredJobLimit || 0),
+            },
+          }
+        ).catch(() => {});
+      } else {
+        throw saveError;
+      }
+    }
   }
 
   return {

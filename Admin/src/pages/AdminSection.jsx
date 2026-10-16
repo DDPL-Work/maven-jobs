@@ -103,9 +103,14 @@ export default function AdminSection() {
 
       <section className="mt-6">
         <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_12px_35px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center gap-2">
-            <LuSparkles size={16} className="text-lime-500" />
-            <h2 className="text-lg font-bold text-slate-900">Focus areas</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <LuSparkles size={16} className="text-lime-500" />
+              <h2 className="text-lg font-bold text-slate-900">Focus areas</h2>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              Total: {totalEntries} rows
+            </span>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             {section.cards.map((card) => (
@@ -130,9 +135,10 @@ export default function AdminSection() {
             <div
               className="grid min-h-[56px] items-center gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
               style={{
-                gridTemplateColumns: `repeat(${section.tableColumns.length}, minmax(0, 1fr))`,
+                gridTemplateColumns: `70px repeat(${section.tableColumns.length}, minmax(0, 1fr))`,
               }}
             >
+              <span>S.No</span>
               {section.tableColumns.map((column) => (
                 <span key={column}>{column}</span>
               ))}
@@ -148,9 +154,12 @@ export default function AdminSection() {
                     key={`${row.join("-")}-${rowIndex}`}
                     className="grid min-h-[74px] items-center gap-3 px-4 py-4 text-sm text-slate-700 transition-colors duration-200 hover:bg-lime-50/40"
                     style={{
-                      gridTemplateColumns: `repeat(${section.tableColumns.length}, minmax(0, 1fr))`,
+                      gridTemplateColumns: `70px repeat(${section.tableColumns.length}, minmax(0, 1fr))`,
                     }}
                   >
+                    <span className="font-semibold text-slate-500">
+                      {startIndex + rowIndex + 1}
+                    </span>
                     {row.map((cell, index) => (
                       <span
                         key={`${cell}-${index}`}

@@ -2,6 +2,7 @@ const express = require("express");
 const authController = require("../controllers/auth.controller");
 const crmPanelController = require("../controllers/crm-panel.controller");
 const adminController = require("../controllers/admin.controller");
+const jobReportController = require("../controllers/job-report.controller");
 const { protectCrmPanel } = require("../middleware/crm-panel.middleware");
 const uploadQrLogo = require("../middleware/qr-logo-upload.middleware");
 
@@ -135,6 +136,23 @@ router.patch(
   "/invoice-requests/:id/status",
   protectCrmPanel,
   crmPanelController.updateInvoiceRequestStatus,
+);
+
+// Reported Jobs (allocated CRM oversight)
+router.get(
+  "/reported-jobs",
+  protectCrmPanel,
+  jobReportController.getCrmReportedJobs,
+);
+router.get(
+  "/reported-jobs/:id",
+  protectCrmPanel,
+  jobReportController.getCrmReportedJobById,
+);
+router.patch(
+  "/reported-jobs/:id",
+  protectCrmPanel,
+  jobReportController.updateCrmReportedJob,
 );
 
 module.exports = router;

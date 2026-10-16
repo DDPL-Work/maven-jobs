@@ -165,7 +165,7 @@ export default function CommercialSubscriptionsPage() {
           </select>
         </div>
 
-        <span className="ml-auto text-xs text-slate-400 font-medium">{total} total subscriptions</span>
+        <span className="ml-auto text-xs text-slate-500 font-medium">Total: {total} subscriptions</span>
       </div>
 
       {/* Table */}
@@ -174,6 +174,7 @@ export default function CommercialSubscriptionsPage() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 uppercase tracking-wider font-semibold">
+                <th className="px-4 py-3.5 w-16">S.No</th>
                 <th className="px-5 py-3.5">Company</th>
                 <th className="px-4 py-3.5">Type</th>
                 <th className="px-4 py-3.5">Plan / Product Item</th>
@@ -187,12 +188,12 @@ export default function CommercialSubscriptionsPage() {
             <tbody className="divide-y divide-slate-100">
               {paginatedSubscriptions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-slate-400">
+                  <td colSpan="9" className="py-12 text-center text-slate-400">
                     {loading ? "Loading subscriptions..." : "No subscriptions found."}
                   </td>
                 </tr>
               ) : (
-                paginatedSubscriptions.map((sub) => {
+                paginatedSubscriptions.map((sub, index) => {
                   const now = new Date();
                   const isExpiringSoon =
                     sub.status === "ACTIVE" &&
@@ -201,6 +202,9 @@ export default function CommercialSubscriptionsPage() {
 
                   return (
                     <tr key={sub._id} className="transition hover:bg-slate-50/50">
+                      <td className="px-4 py-4 font-semibold text-slate-500">
+                        {startIndex + index + 1}
+                      </td>
                       <td className="px-5 py-4">
                         <div className="font-bold text-slate-900">{sub.companyId?.name || "Company"}</div>
                         <div className="text-[11px] text-slate-400">{sub.companyId?.email}</div>

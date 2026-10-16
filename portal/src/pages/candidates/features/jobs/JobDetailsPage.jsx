@@ -47,6 +47,7 @@ import LandingFooter from "../../../../layout/candidate/LandingFooter";
 import CandidateHeader from "../../../../layout/candidate/CandidateHeader";
 import { calculateJobMatch } from "../../../../utils/jobMatching";
 import ReviewModal from "../../../../components/ReviewModal";
+import ReportJobModal from "../../../../components/ReportJobModal";
 
 const PERK_MAP = {
   "Health Insurance": { icon: FiShield, color: "#10b981", bg: "#ECFDF5" },
@@ -90,6 +91,7 @@ export default function JobDetailsPage() {
   const [showMoreSecurity, setShowMoreSecurity] = useState(false);
   const [showExternalLinkModal, setShowExternalLinkModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const followUpTimerRef = useRef(null);
 
   const matchData = React.useMemo(() => calculateJobMatch(user, job), [user, job]);
@@ -841,7 +843,14 @@ export default function JobDetailsPage() {
                   <FaLinkedinIn />
                 </div>
               </div>
-              <div className="text-blue-600 text-sm font-bold cursor-pointer hover:underline flex items-center gap-1">
+              <div
+                className="text-blue-600 text-sm font-bold cursor-pointer hover:underline flex items-center gap-1.5 transition-colors hover:text-blue-700"
+                onClick={() => setShowReportModal(true)}
+                role="button"
+                tabIndex={0}
+                title="Report this job posting"
+              >
+                <FiAlertTriangle className="text-amber-500 text-base" />
                 Report this job
               </div>
             </div>
@@ -1563,6 +1572,14 @@ export default function JobDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Report Job Modal */}
+      <ReportJobModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        job={job}
+        user={user}
+      />
     </div>
   );
 }

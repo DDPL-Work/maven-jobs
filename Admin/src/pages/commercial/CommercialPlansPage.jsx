@@ -280,11 +280,17 @@ export default function CommercialPlansPage() {
       )}
 
       {/* Plans List Table */}
+      <div className="flex items-center justify-between pb-2">
+        <span className="text-xs font-semibold text-slate-500">
+          Total: {plans.length} {plans.length === 1 ? "plan" : "plans"}
+        </span>
+      </div>
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 uppercase tracking-wider font-semibold">
+                <th className="px-4 py-3.5 w-16">S.No</th>
                 <th className="px-5 py-3.5">Plan Name & Code</th>
                 <th className="px-4 py-3.5">Type</th>
                 <th className="px-4 py-3.5">Published Version</th>
@@ -299,16 +305,19 @@ export default function CommercialPlansPage() {
             <tbody className="divide-y divide-slate-100">
               {plans.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="py-12 text-center text-slate-400">
+                  <td colSpan="10" className="py-12 text-center text-slate-400">
                     {loading ? "Loading plans..." : "No commercial plans found."}
                   </td>
                 </tr>
               ) : (
-                plans.map((plan) => {
+                plans.map((plan, index) => {
                   const ver = plan.activeVersion || {};
                   const rowPricing = computePlanPricing(ver, plan);
                   return (
                     <tr key={plan._id} className="transition hover:bg-slate-50/50">
+                      <td className="px-4 py-4 font-semibold text-slate-500">
+                        {index + 1}
+                      </td>
                       <td className="px-5 py-4">
                         <div className="font-bold text-slate-900 flex items-center gap-1.5">
                           {plan.name}
@@ -685,6 +694,7 @@ export default function CommercialPlansPage() {
                           <table className="w-full text-left text-xs">
                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                               <tr>
+                                <th className="px-4 py-3 w-14">S.No</th>
                                 <th className="px-4 py-3">Product Name & Code</th>
                                 <th className="px-4 py-3">Quota & Allocation Cadence</th>
                                 <th className="px-4 py-3">Catalog Base Price</th>
@@ -701,6 +711,9 @@ export default function CommercialPlansPage() {
 
                                 return (
                                   <tr key={idx} className="hover:bg-slate-50/50 transition">
+                                    <td className="px-4 py-3.5 font-semibold text-slate-500">
+                                      {idx + 1}
+                                    </td>
                                     <td className="px-4 py-3.5">
                                       <div className="font-bold text-slate-900 text-xs">
                                         {code === "RESDEX" || it.productName === "ResDex Resume Search" || String(it.productName).toLowerCase() === "resdex resume search"
