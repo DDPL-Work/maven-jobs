@@ -9,8 +9,11 @@ import {
   FiFileText,
   FiAlertCircle,
   FiLoader,
+  FiLock,
+  FiLogIn,
 } from "react-icons/fi";
 import authService from "../services/authService";
+import { useAuth } from "../AuthContext";
 import "./ReportJobModal.css";
 
 const REPORT_REASONS = [
@@ -52,34 +55,34 @@ const REPORT_REASONS = [
   },
 ];
 
-export default function ReportJobModal({ isOpen, onClose, job, user }) {
+export default function ReportJobModal({ isOpen, onClose, job, user: userProp }) {
+  const { user: authUser, openLogin } = useAuth();
+  const currentUser = userProp || authUser;
+
   const [selectedReason, setSelectedReason] = useState("FRAUD_SCAM");
   const [description, setDescription] = useState("");
-  const [reporterName, setReporterName] = useState("");
-  const [reporterEmail, setReporterEmail] = useState("");
   const [reporterPhone, setReporterPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Pre-fill user details if logged in
+  // Sync candidate phone when user data changes
   useEffect(() => {
-    if (user) {
-      if (user.name) setReporterName(user.name);
-      if (user.email) setReporterEmail(user.email);
-      if (user.phone) setReporterPhone(user.phone);
+    if (currentUser?.phone) {
+      setReporterPhone(currentUser.phone);
     }
-  }, [user]);
+  }, [currentUser]);
 
-  // Reset state on open
+  // Reset state when opening
   useEffect(() => {
     if (isOpen) {
       setErrorMsg("");
       setIsSuccess(false);
       setDescription("");
       if (!selectedReason) setSelectedReason("FRAUD_SCAM");
+      if (currentUser?.phone) setReporterPhone(currentUser.phone);
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   if (!isOpen) return null;
 
@@ -88,8 +91,20 @@ export default function ReportJobModal({ isOpen, onClose, job, user }) {
     job?.companyId?.name || job?.companyName || job?.company || "Company";
   const jobTitle = job?.title || job?.role || "Job Posting";
 
+  const handleLoginClick = () => {
+    if (onClose) onClose();
+    if (openLogin) openLogin();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!currentUser) {
+      setErrorMsg("You must be logged in as a candidate to report a job.");
+      handleLoginClick();
+      return;
+    }
+
     if (!selectedReason) {
       setErrorMsg("Please select a reason for reporting this job.");
       return;
@@ -102,9 +117,9 @@ export default function ReportJobModal({ isOpen, onClose, job, user }) {
       const res = await authService.reportJob(jobId, {
         reason: selectedReason,
         description: description.trim(),
-        reporterName: reporterName.trim(),
-        reporterEmail: reporterEmail.trim(),
-        reporterPhone: reporterPhone.trim(),
+        reporterName: (currentUser.name || currentUser.fullName || "Candidate").trim(),
+        reporterEmail: (currentUser.email || "").trim(),
+        reporterPhone: (reporterPhone || currentUser.phone || "").trim(),
       });
 
       if (res?.success) {
@@ -150,7 +165,37 @@ export default function ReportJobModal({ isOpen, onClose, job, user }) {
 
         {/* Modal Body */}
         <div className="rjm-body">
-          {isSuccess ? (
+          {!currentUser ? (
+            /* Candidate Login Required State */
+            <div className="rjm-login-required-wrap">
+              <div className="rjm-login-icon-wrap">
+                <FiLock />
+              </div>
+              <h4 className="rjm-login-title">Sign In Required</h4>
+              <p className="rjm-login-desc">
+                To report a job listing, you must be signed in with your candidate account.
+                This ensures reports are authentic, verified, and keeps our hiring platform safe.
+              </p>
+              <div className="rjm-login-actions">
+                <button
+                  type="button"
+                  onClick={handleLoginClick}
+                  className="rjm-login-btn"
+                >
+                  <FiLogIn />
+                  <span>Sign In as Candidate</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rjm-cancel-btn"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : isSuccess ? (
+            /* Success confirmation */
             <div className="rjm-success-state">
               <div className="rjm-success-icon-wrap">
                 <FiCheckCircle />
@@ -170,6 +215,7 @@ export default function ReportJobModal({ isOpen, onClose, job, user }) {
               </button>
             </div>
           ) : (
+            /* Report Form for Logged-In Candidate */
             <form onSubmit={handleSubmit} className="rjm-form">
               {errorMsg && (
                 <div className="rjm-error-banner">
@@ -177,6 +223,29 @@ export default function ReportJobModal({ isOpen, onClose, job, user }) {
                   <span>{errorMsg}</span>
                 </div>
               )}
+
+              {/* Logged In Candidate Identity Badge */}
+              <div>
+                <label className="rjm-label">Reporting Candidate</label>
+                <div className="rjm-reporter-card">
+                  <div className="rjm-reporter-avatar">
+                    {(currentUser.name || currentUser.email || "C")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+                  <div className="rjm-reporter-info">
+                    <div className="rjm-reporter-name-row">
+                      <span className="rjm-reporter-name">
+                        {currentUser.name || "Candidate"}
+                      </span>
+                      <span className="rjm-verified-badge">
+                        <FiCheckCircle size={11} /> Verified Account
+                      </span>
+                    </div>
+                    <span className="rjm-reporter-email">{currentUser.email}</span>
+                  </div>
+                </div>
+              </div>
 
               {/* Reasons */}
               <div>
@@ -230,30 +299,17 @@ export default function ReportJobModal({ isOpen, onClose, job, user }) {
               {/* Reporter Contact Info */}
               <div className="rjm-contact-section">
                 <label className="rjm-label">
-                  Your Contact Information (Confidential)
+                  Contact Phone (Optional)
                 </label>
-                <div className="rjm-contact-grid">
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Your Full Name"
-                      value={reporterName}
-                      onChange={(e) => setReporterName(e.target.value)}
-                      className="rjm-text-input"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="email"
-                      placeholder="Your Email Address"
-                      value={reporterEmail}
-                      onChange={(e) => setReporterEmail(e.target.value)}
-                      className="rjm-text-input"
-                    />
-                  </div>
-                </div>
+                <input
+                  type="tel"
+                  placeholder="e.g. +91 9876543210"
+                  value={reporterPhone}
+                  onChange={(e) => setReporterPhone(e.target.value)}
+                  className="rjm-text-input"
+                />
                 <p className="rjm-privacy-note">
-                  Your identity is kept strictly confidential and is not shared with the employer.
+                  Your identity is kept strictly confidential and will never be shared with the employer.
                 </p>
               </div>
 
