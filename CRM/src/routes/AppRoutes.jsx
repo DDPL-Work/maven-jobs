@@ -17,6 +17,7 @@ import QRCodesPage from "../pages/QRCodesPage";
 import SettingsPage from "../pages/SettingsPage";
 import AssignedClients from "../pages/AssignedClients";
 import ReportedJobsPage from "../pages/ReportedJobsPage";
+import EnquiryRequests from "../pages/EnquiryRequests";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
           { path: "/crm/notifications", element: <NotificationsPage /> },
           { path: "/crm/analytics", element: <AnalyticsPage /> },
           { path: "/crm/settings", element: <SettingsPage /> },
+          { path: "/crm/sales-enquiry", element: <EnquiryRequests /> },
         ],
       },
     ],

@@ -155,4 +155,9 @@ router.patch(
   jobReportController.updateCrmReportedJob,
 );
 
+// Sales Enquiries (Lead & Demo Pipeline)
+const salesEnquiryRoutes = require("./sales-enquiry.routes");
+router.use("/sales-enquiry", salesEnquiryRoutes);
+
 module.exports = router;
+
