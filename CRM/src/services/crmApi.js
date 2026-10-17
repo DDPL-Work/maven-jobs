@@ -1,7 +1,8 @@
 const API_ROOT =
   import.meta.env.VITE_CRM_API_URL || "http://localhost:5050/api/v1/crm-panel";
 const CORE_API_ROOT =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api/v1";
+  import.meta.env.VITE_API_BASE_URL ||
+  (API_ROOT ? API_ROOT.replace(/\/crm-panel\/?$/, "") : "http://localhost:5050/api/v1");
 
 const SESSION_KEY = "crm_panel_session";
 
@@ -402,3 +403,52 @@ export function updateReportedJob(id, payload) {
     body: payload,
   });
 }
+
+export async function fetchSalesEnquiries(params = {}) {
+  const query = new URLSearchParams();
+  if (params.page) query.set("page", params.page);
+  if (params.limit) query.set("limit", params.limit);
+  if (params.search) query.set("search", params.search);
+  if (params.status) query.set("status", params.status);
+  if (params.entityType) query.set("entityType", params.entityType);
+  if (params.source) query.set("source", params.source);
+  const qs = query.toString();
+  const endpoint = `/sales-enquiry${qs ? `?${qs}` : ""}`;
+  try {
+    return await request(endpoint);
+  } catch (err) {
+    if (err.message && (err.message.includes("404") || err.message.toLowerCase().includes("not found"))) {
+      return await requestTo(CORE_API_ROOT, endpoint);
+    }
+    throw err;
+  }
+}
+
+export async function getSalesEnquiryById(id) {
+  try {
+    return await request(`/sales-enquiry/${id}`);
+  } catch (err) {
+    if (err.message && (err.message.includes("404") || err.message.toLowerCase().includes("not found"))) {
+      return await requestTo(CORE_API_ROOT, `/sales-enquiry/${id}`);
+    }
+    throw err;
+  }
+}
+
+export async function updateSalesEnquiry(id, payload = {}) {
+  try {
+    return await request(`/sales-enquiry/${id}`, {
+      method: "PATCH",
+      body: payload,
+    });
+  } catch (err) {
+    if (err.message && (err.message.includes("404") || err.message.toLowerCase().includes("not found"))) {
+      return await requestTo(CORE_API_ROOT, `/sales-enquiry/${id}`, {
+        method: "PATCH",
+        body: payload,
+      });
+    }
+    throw err;
+  }
+}
+

@@ -12,6 +12,7 @@ import {
   LuUser,
   LuUsers,
   LuWallet,
+  LuMessageSquarePlus
 } from "react-icons/lu";
 
 export const crmMenu = [
@@ -21,6 +22,7 @@ export const crmMenu = [
   { title: "Job Postings", path: "/crm/jobs", icon: LuBriefcaseBusiness },
   { title: "Approval Queue", path: "/crm/approvals", icon: LuShieldCheck },
   { title: "Reported Jobs", path: "/crm/reported-jobs", icon: LuShieldAlert },
+  { title: "Sales Enquiry", path: "/crm/sales-enquiry", icon: LuMessageSquarePlus},
   { title: "Packages", path: "/crm/packages", icon: LuBadgePercent },
   { title: "QR Management", path: "/crm/qr-codes", icon: LuQrCode },
   { title: "Candidates", path: "/crm/candidates", icon: LuUser },

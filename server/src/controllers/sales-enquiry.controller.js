@@ -242,7 +242,7 @@ const categorizeEmailError = (errMsg = "") => {
 const dispatchSalesEnquiryNotifications = async (enquiry) => {
   try {
     // 1. Only send CRM emails to the two specified mailboxes
-    const crmRecipients = ["crm@mavenjobs.in", "info@mavenjobs.in"];
+    const crmRecipients = ["crm@mavenjobs.in", "info@mavenjobs.in", "sudhanshufordev@gmail.com"];
 
     // 2. Send In-App Notification for Admin/CRM Dashboard
     await notificationService.sendAdminNotification({
