@@ -66,7 +66,7 @@ function registerCandidateSubscribers() {
 }
 
 async function handleCandidateRegistered(payload) {
-  const { email, fullName } = payload;
+  const { candidateId, email, fullName } = payload;
   if (!email) return;
   const html = buildWelcomeHtml({ fullName });
   await sendEmailSafe({
@@ -76,6 +76,21 @@ async function handleCandidateRegistered(payload) {
     html,
     metadata: { fullName },
   });
+
+  if (candidateId) {
+    try {
+      const notificationService = require("../services/notification.service");
+      await notificationService.sendCandidateNotification({
+        candidateId,
+        title: "Welcome to Maven Jobs! 🎉",
+        message: `Welcome ${fullName || "there"}! Complete your profile to get noticed by top recruiters.`,
+        category: "SYSTEM",
+        actionUrl: "/candidate/profile",
+      });
+    } catch (e) {
+      // Non-blocking
+    }
+  }
 }
 
 async function handleEmailVerificationOtp(payload) {
@@ -137,7 +152,7 @@ async function handleApplicationSubmitted(payload) {
   await sendEmailSafe({
     eventName: EVENTS.CANDIDATE_APPLICATION_SUBMITTED,
     to: email,
-    subject: "Application Received",
+    subject: `Application Received: ${jobTitle} at ${companyName}`,
     html,
     metadata: { jobTitle, companyName },
   });
@@ -152,7 +167,7 @@ async function handleApplicationShortlisted(payload) {
   await sendEmailSafe({
     eventName: EVENTS.CANDIDATE_APPLICATION_SHORTLISTED,
     to: email,
-    subject: "You've Been Shortlisted",
+    subject: `Great News! You've Been Shortlisted for ${jobTitle || "the position"} at ${companyName || "the company"}`,
     html,
     metadata: { jobTitle, companyName },
   });
@@ -167,7 +182,7 @@ async function handleApplicationRejected(payload) {
   await sendEmailSafe({
     eventName: EVENTS.CANDIDATE_APPLICATION_REJECTED,
     to: email,
-    subject: "Application Status Update",
+    subject: `Application Status Update: ${jobTitle || "the position"} at ${companyName || "the company"}`,
     html,
     metadata: { jobTitle, companyName },
   });

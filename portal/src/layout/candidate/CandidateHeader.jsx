@@ -4,6 +4,10 @@ import { FiBell, FiChevronDown, FiMenu, FiTrendingUp, FiX, FiFileText, FiMessage
 import { useAuth } from "../../AuthContext";
 import authService from "../../services/authService";
 import { useCandidateNotifications } from "../../hooks/useCandidateQueries";
+import { useMarkNotificationRead, useMarkAllNotificationsRead } from "../../hooks/useCandidateMutations";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../hooks/queryKeys";
+import { registerPushNotifications, subscribeToForegroundNotifications } from "../../services/firebase";
 import NotificationSidebar from "../../components/common/NotificationSidebar";
 import SearchAutocomplete from "../../components/SearchAutocomplete";
 import AvatarDropdown from "../../components/common/AvatarDropdown";
@@ -154,7 +158,38 @@ const CandidateHeader = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState([]);
-  const { data: notificationsData = [] } = useCandidateNotifications(!!user);
+  const candidateId = user?._id || user?.id || "current";
+  const { data: notificationsData = [], refetch: refetchCandidateNotifications } = useCandidateNotifications(candidateId, !!user);
+  const markReadMutation = useMarkNotificationRead(candidateId);
+  const markAllReadMutation = useMarkAllNotificationsRead(candidateId);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Register FCM push token in background
+    registerPushNotifications(user.role || "CANDIDATE").catch(() => {});
+
+    // Listen to real-time in-app foreground notifications
+    let unsubPromise = subscribeToForegroundNotifications(() => {
+      // Refresh candidate notifications query immediately
+      refetchCandidateNotifications?.();
+      queryClient.invalidateQueries({
+        queryKey: ["candidate", "notifications"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.candidate.notifications(candidateId),
+      });
+    });
+
+    return () => {
+      if (unsubPromise && typeof unsubPromise.then === "function") {
+        unsubPromise.then((unsub) => {
+          if (typeof unsub === "function") unsub();
+        });
+      }
+    };
+  }, [user, candidateId, refetchCandidateNotifications, queryClient]);
 
   const FALLBACK_NOTIFICATIONS = [
     {
@@ -238,9 +273,7 @@ const CandidateHeader = () => {
     if (!isAlreadyRead) {
       setReadNotificationIds((prev) => [...prev, itemId]);
       if (itemId && !String(itemId).startsWith("fb-")) {
-        try {
-          await authService.markCandidateNotificationRead(itemId);
-        } catch {}
+        markReadMutation.mutate(itemId);
       }
     }
 
@@ -248,8 +281,8 @@ const CandidateHeader = () => {
       setShowNotifications(false);
       let finalUrl = item.actionUrl;
       if (finalUrl === '/mivites' || finalUrl === '/candidate/mivites') {
-        const candidateId = user?._id || user?.id;
-        finalUrl = candidateId ? `/${candidateId}/dashboard/mivites` : '/login';
+        const cId = user?._id || user?.id;
+        finalUrl = cId ? `/${cId}/dashboard/mivites` : '/login';
       }
       navigate(finalUrl);
     }
@@ -258,9 +291,7 @@ const CandidateHeader = () => {
   const handleMarkAllRead = async () => {
     if (unreadNotificationCount === 0) return;
     setReadNotificationIds(dynamicNotifications.map((n) => n.id));
-    try {
-      await authService.markAllCandidateNotificationsRead();
-    } catch {}
+    markAllReadMutation.mutate();
   };
   const headerRef = useRef(null);
 
@@ -506,7 +537,10 @@ const CandidateHeader = () => {
                 <button
                   title="Notifications"
                   className="ch-icon-btn ch-notif-btn"
-                  onClick={() => setShowNotifications(true)}
+                  onClick={() => {
+                    setShowNotifications(true);
+                    refetchCandidateNotifications?.();
+                  }}
                 >
                   <FiBell size={18} />
                   {unreadNotificationCount > 0 && (

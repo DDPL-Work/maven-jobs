@@ -1,5 +1,6 @@
 const logger = require("../../config/logger");
 const EmailDeliveryError = require("../errors/EmailDeliveryError");
+const { getRedisConfig } = require("../../config/redis.config");
 
 let _bull = null;
 try {
@@ -9,7 +10,6 @@ try {
 }
 
 const EMAIL_QUEUE_ENABLED = process.env.EMAIL_QUEUE_ENABLED === "true";
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 class EmailQueue {
   constructor(options = {}) {
@@ -46,12 +46,14 @@ class EmailQueue {
     }
 
     try {
-      const url = process.env.REDIS_URL || REDIS_URL;
-
+      const redisConfig = getRedisConfig();
       const connection = {
-        url,
+        url: redisConfig.url,
         maxRetriesPerRequest: null,
       };
+      if (redisConfig.tls) {
+        connection.tls = redisConfig.tls;
+      }
 
       this._queue = new _bull.Queue(this._name, {
         connection,

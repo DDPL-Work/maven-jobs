@@ -22,6 +22,7 @@ import {
   getStoredCrmSession,
   restoreCrmSession,
 } from "./api/leadApi";
+import { registerPushNotifications, subscribeToForegroundNotifications } from "./api/firebase";
 
 function getStoredSession() {
   return getStoredCrmSession();
@@ -87,6 +88,18 @@ export default function App() {
       window.removeEventListener("storage", syncSession);
     };
   }, []);
+
+  useEffect(() => {
+    if (session?.token) {
+      registerPushNotifications().catch(() => {});
+      const unsubPromise = subscribeToForegroundNotifications(() => {});
+      return () => {
+        Promise.resolve(unsubPromise).then((unsub) => {
+          if (typeof unsub === "function") unsub();
+        });
+      };
+    }
+  }, [session?.token]);
 
   const user = session?.user;
   const displayName = user?.fullName || user?.name || user?.email || "Zonal Manager";

@@ -1320,73 +1320,92 @@ exports.updateCandidateJobStatus = asyncHandler(async (req, res) => {
   const { applicationId } = req.params;
   const { status, callStatus } = req.body;
 
+  if (!mongoose.Types.ObjectId.isValid(applicationId)) {
+    throw createHttpError(400, "Invalid application ID");
+  }
+
+  const existingApp = await Application.findById(applicationId)
+    .populate("candidateId", "name email")
+    .populate("jobId", "title");
+
+  if (!existingApp) {
+    throw createHttpError(404, "Application not found");
+  }
+
+  const previousStatus = existingApp.status ? String(existingApp.status).toUpperCase() : "";
+
+  let normalizedStatus = null;
+  if (status) {
+    const s = String(status).trim().toUpperCase();
+    normalizedStatus = s === "REJECT" ? "REJECTED" : s;
+  }
+
   const updateFields = {};
-  if (status) updateFields.status = String(status).toUpperCase();
+  if (normalizedStatus) updateFields.status = normalizedStatus;
   if (callStatus) updateFields.callStatus = String(callStatus);
 
-  let updatedApp = null;
-  if (mongoose.Types.ObjectId.isValid(applicationId) && Object.keys(updateFields).length > 0) {
+  let updatedApp = existingApp;
+  if (Object.keys(updateFields).length > 0) {
     updatedApp = await Application.findByIdAndUpdate(applicationId, updateFields, { new: true })
       .populate("candidateId", "name email")
       .populate("jobId", "title");
   }
 
-  // If application status changed, notify candidate (strictly candidate only)
-  if (status && updatedApp?.candidateId?._id) {
-    const candidateUser = updatedApp.candidateId;
-    const jobTitle = updatedApp.jobId?.title || "the role";
-    const companyName = company.name || "The company";
-    const statusUpper = String(status).toUpperCase();
+  // Only inform the candidate when status is changed to SHORTLISTED or REJECTED
+  const hasStatusChanged = normalizedStatus && previousStatus !== normalizedStatus;
+  const isNotifyEligible = normalizedStatus === "SHORTLISTED" || normalizedStatus === "REJECTED";
 
+  if (hasStatusChanged && isNotifyEligible && updatedApp?.candidateId?._id) {
+    const candidateUser = updatedApp.candidateId;
+    const candidateId = candidateUser._id;
+    const jobTitle = updatedApp.jobId?.title || "the role";
+    const companyName = company?.name || "The company";
+    const isShortlisted = normalizedStatus === "SHORTLISTED";
+
+    const notifTitle = isShortlisted
+      ? "Application Shortlisted! 🎉"
+      : "Application Status Update";
+    const notifMessage = isShortlisted
+      ? `Congratulations! ${companyName} has shortlisted your application for the ${jobTitle} role.`
+      : `Update regarding your application for the ${jobTitle} role at ${companyName}.`;
+
+    // 1. In-App notification & Firebase FCM push notification
     await notificationService.sendCandidateNotification({
-      candidateId: candidateUser._id,
-      companyId: company._id,
-      jobId: updatedApp.jobId?._id || updatedApp.jobId,
+      candidateId,
+      companyId: company?._id || null,
+      jobId: updatedApp.jobId?._id || updatedApp.jobId || null,
       applicationId: updatedApp._id,
-      title: "Application status updated",
-      message: `${companyName} updated your application status for ${jobTitle} to ${statusUpper}.`,
+      title: notifTitle,
+      message: notifMessage,
       category: "APPLICATION",
       actionUrl: "/candidate/applications",
-      metadata: { source: "EMPLOYER_JOB_RESPONSES", status: statusUpper },
+      metadata: {
+        source: "EMPLOYER_JOB_RESPONSES",
+        status: normalizedStatus,
+        previousStatus,
+      },
     });
 
+    // 2. Email notification via EventBus
     const eventPayload = {
       email: candidateUser.email,
       fullName: candidateUser.name,
       jobTitle,
       companyName,
-      candidateId: candidateUser._id,
+      candidateId,
     };
 
-    switch (statusUpper) {
-      case "SHORTLISTED":
-        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
-        break;
-      case "REJECTED":
-        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
-        break;
-      case "INTERVIEW":
-        EventBus.emit(EVENTS.CANDIDATE_INTERVIEW_SCHEDULED, {
-          ...eventPayload,
-          interviewDate: "",
-          interviewTime: "",
-          interviewMode: "",
-          interviewLink: "",
-        });
-        break;
-      case "OFFERED":
-        EventBus.emit(EVENTS.CANDIDATE_OFFER_ISSUED, {
-          ...eventPayload,
-          offerLink: "",
-        });
-        break;
+    if (isShortlisted) {
+      EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
+    } else {
+      EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
     }
   }
 
   res.status(200).json({
     success: true,
     message: callStatus ? `Applicant call status updated to ${callStatus}` : `Applicant status updated to ${status}`,
-    data: { applicationId, status, callStatus },
+    data: { applicationId, status: normalizedStatus || status, callStatus },
   });
 });
 
@@ -1758,6 +1777,45 @@ exports.scheduleVideoCall = asyncHandler(async (req, res) => {
     link,
     reason
   });
+
+  // Send in-app notification to candidate
+  const candidateUserId = profile.userId?._id || profile.userId;
+  if (candidateUserId) {
+    notificationService.sendCandidateNotification({
+      candidateId: candidateUserId,
+      companyId: company._id,
+      title: "Video Call Scheduled",
+      message: `${company.name} has scheduled a video call with you on ${date} at ${time}.`,
+      category: "INTERVIEW",
+      actionUrl: link,
+      metadata: {
+        callId: scheduledCall._id,
+        date,
+        time,
+        link,
+        companyName: company.name,
+        reason,
+      },
+    }).catch((err) => console.error("[scheduleVideoCall] Candidate notification error:", err));
+  }
+
+  // Send in-app notification to company/recruiter
+  notificationService.sendCompanyNotification({
+    companyId: company._id,
+    recipientUserId: user._id,
+    candidateId: candidateUserId,
+    title: "Video Call Scheduled",
+    message: `Video call scheduled with ${candidateName} on ${date} at ${time}.`,
+    category: "INTERVIEW",
+    actionUrl: link,
+    metadata: {
+      callId: scheduledCall._id,
+      date,
+      time,
+      link,
+      candidateName,
+    },
+  }).catch((err) => console.error("[scheduleVideoCall] Company notification error:", err));
 
   res.status(200).json({
     success: true,

@@ -260,6 +260,16 @@ router.patch(
   ]),
   candidateController.markAllNotificationsRead,
 );
+router.post(
+  "/notifications/fcm-token",
+  protectCandidate,
+  candidateController.saveFcmToken,
+);
+router.delete(
+  "/notifications/fcm-token",
+  protectCandidate,
+  candidateController.removeFcmToken,
+);
 
 router.post("/resume/enhance", protectCandidate, aiResumeLimiter, candidateController.enhanceResumeWithAI);
 router.post("/resume/ats-score", protectCandidate, aiResumeLimiter, candidateController.analyzeResumeATS);

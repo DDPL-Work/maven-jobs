@@ -1149,6 +1149,33 @@ exports.forwardCV = asyncHandler(async (req, res) => {
     // Continue even if email fails
   }
 
+  // Send in-app notification to recipient team member
+  try {
+    let notifyUserId = receiverId;
+    if (!notifyUserId) {
+      const recipientUser = await User.findOne({ email: toEmail.toLowerCase() });
+      if (recipientUser) notifyUserId = recipientUser._id;
+    }
+    if (notifyUserId) {
+      const notificationService = require("../services/notification.service");
+      notificationService.sendCompanyNotification({
+        companyId: company._id,
+        recipientUserId: notifyUserId,
+        candidateId,
+        title: "Candidate Profile Shared",
+        message: `${user.name || user.email || "A team member"} shared ${profile?.userId?.name || candidate?.name || "a candidate"}'s profile with you.`,
+        category: "SYSTEM",
+        actionUrl: "/employer/resdex/shared-cv",
+        metadata: {
+          candidateId,
+          forwardedCVId: forwardedCV._id,
+        },
+      }).catch((err) => console.error("[ForwardCV] Notification error:", err));
+    }
+  } catch (err) {
+    console.error("[ForwardCV] In-app notification failed:", err);
+  }
+
   res.status(200).json({
     success: true,
     message: "CV forwarded successfully",

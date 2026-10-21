@@ -677,9 +677,13 @@ const buildRecruiterWelcomeHtml = ({ fullName }) => {
 /**
  * 13. Recruiter New Application Received
  */
-const buildNewApplicationReceivedHtml = ({ candidateName, jobTitle }) => {
+const buildNewApplicationReceivedHtml = ({ candidateName, candidateEmail, jobTitle, companyName, actionUrl }) => {
   const candidate = String(candidateName || "A candidate").trim();
   const role = String(jobTitle || "the position").trim();
+  const company = String(companyName || "").trim();
+  const emailRow = candidateEmail ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #475569;"><strong>Email:</strong> ${escapeHtml(candidateEmail)}</td></tr>` : "";
+  const companyRow = company ? `<tr><td style="padding: 4px 0; font-size: 14px; color: #475569;"><strong>Company:</strong> ${escapeHtml(company)}</td></tr>` : "";
+  const reviewLink = actionUrl ? (actionUrl.startsWith("http") ? actionUrl : `${APP_URL}${actionUrl}`) : `${APP_URL}/employer-dashboard`;
 
   const content = `
     <div style="text-align: center; margin-bottom: 24px;">
@@ -695,19 +699,21 @@ const buildNewApplicationReceivedHtml = ({ candidateName, jobTitle }) => {
       Hello,
     </p>
     <p style="margin: 0 0 20px 0; font-size: 15px; color: #334155; line-height: 1.7;">
-      <strong>${escapeHtml(candidate)}</strong> has applied for the <strong>${escapeHtml(role)}</strong> role.
+      <strong>${escapeHtml(candidate)}</strong> has applied for the <strong>${escapeHtml(role)}</strong> role${company ? ` at <strong>${escapeHtml(company)}</strong>` : ""}.
     </p>
 
     <!-- Details Card -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px;">
       <tr><td style="padding: 4px 0; font-size: 14px; color: #475569;"><strong>Candidate:</strong> ${escapeHtml(candidate)}</td></tr>
+      ${emailRow}
       <tr><td style="padding: 4px 0; font-size: 14px; color: #475569;"><strong>Job Position:</strong> ${escapeHtml(role)}</td></tr>
+      ${companyRow}
     </table>
 
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px auto;">
       <tr>
         <td align="center" style="background-color: #2563eb; border-radius: 9999px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);">
-          <a href="${APP_URL}/recruiter/applications" target="_blank" style="display: inline-block; padding: 13px 38px; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 9999px;">
+          <a href="${reviewLink}" target="_blank" style="display: inline-block; padding: 13px 38px; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 9999px;">
             Review application
           </a>
         </td>

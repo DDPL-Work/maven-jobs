@@ -1,32 +1,12 @@
-const Redis = require("ioredis");
+const { createRedisClient, getRedisConfig } = require("../../config/redis.config");
 
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const CACHE_PREFIX = "cache:";
 
 let client = null;
 
 function getClient() {
   if (!client) {
-    client = new Redis(REDIS_URL, {
-      maxRetriesPerRequest: 1, // Fail fast if a command fails, fallback to DB
-      commandTimeout: 2000, // 2 second timeout so commands don't hang
-      enableOfflineQueue: false, // Don't queue commands in memory if Redis is down
-      lazyConnect: true,
-      retryStrategy(times) {
-        // Reconnect indefinitely with a capped exponential backoff (max 3 seconds)
-        return Math.min(times * 100, 3000);
-      },
-    });
-
-    client.on("error", (err) => {
-      // Only suppress ECONNREFUSED in non-production environments
-      if (err.code !== "ECONNREFUSED" || process.env.NODE_ENV === "production") {
-        console.error("[Cache] Redis error:", err.message);
-      }
-    });
-
-    client.on("ready", () => console.log("[Cache] Redis ready"));
-    client.on("reconnecting", () => console.log("[Cache] Redis reconnecting..."));
+    client = createRedisClient();
   }
   return client;
 }
@@ -140,4 +120,5 @@ module.exports = {
   connect,
   disconnect,
   buildKey,
+  getRedisConfig,
 };

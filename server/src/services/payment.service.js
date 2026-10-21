@@ -128,6 +128,19 @@ async function confirmPayment({ razorpayOrderId, razorpayPaymentId, razorpaySign
       "membership.startedAt": now,
       "membership.expiresAt": expiresAt,
     });
+
+    try {
+      const notificationService = require("./notification.service");
+      await notificationService.sendCandidateNotification({
+        candidateId: transaction.userId,
+        title: "Membership Activated",
+        message: `Your ${planName} membership is now active until ${expiresAt.toLocaleDateString("en-IN")}. Enjoy all premium features!`,
+        category: "SYSTEM",
+        actionUrl: "/candidate/dashboard",
+      });
+    } catch (e) {
+      console.error("[PaymentService] Candidate notification error:", e.message);
+    }
   } else if (["CLIENT", "RECRUITER"].includes(transaction.role)) {
     const planType = transaction.planType;
     let jobLimit = 2;
@@ -138,6 +151,21 @@ async function confirmPayment({ razorpayOrderId, razorpayPaymentId, razorpaySign
       const existing = await Company.findById(transaction.companyId);
       jobLimit = (existing?.jobLimit || 0) + JOB_PACKAGE_LIMITS[planType];
       await Company.findByIdAndUpdate(transaction.companyId, { jobLimit });
+
+      try {
+        const notificationService = require("./notification.service");
+        await notificationService.sendCompanyNotification({
+          companyId: transaction.companyId,
+          recipientUserId: transaction.userId,
+          title: "Job Package Activated",
+          message: `Your ${planType} package is activated. ${JOB_PACKAGE_LIMITS[planType]} job posts added to your limit.`,
+          category: "SYSTEM",
+          actionUrl: "/employer/manage-jobs",
+        });
+      } catch (e) {
+        console.error("[PaymentService] Company notification error:", e.message);
+      }
+
       return { alreadyProcessed: false, transaction, expiresAt: null };
     }
 
@@ -146,6 +174,20 @@ async function confirmPayment({ razorpayOrderId, razorpayPaymentId, razorpaySign
       jobLimit,
       packageExpiresAt: expiresAt,
     });
+
+    try {
+      const notificationService = require("./notification.service");
+      await notificationService.sendCompanyNotification({
+        companyId: transaction.companyId,
+        recipientUserId: transaction.userId,
+        title: "Subscription Plan Activated",
+        message: `Your ${planType} subscription is now active with a limit of ${jobLimit} job posts until ${expiresAt.toLocaleDateString("en-IN")}.`,
+        category: "SYSTEM",
+        actionUrl: "/employer/manage-jobs",
+      });
+    } catch (e) {
+      console.error("[PaymentService] Company notification error:", e.message);
+    }
   }
 
   return { alreadyProcessed: false, transaction, expiresAt };

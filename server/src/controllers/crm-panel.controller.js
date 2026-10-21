@@ -2492,3 +2492,65 @@ exports.updateInvoiceRequestStatus = asyncHandler(async (req, res) => {
     data: invoiceRequest,
   });
 });
+
+exports.saveFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken, device = "web" } = req.body;
+  if (!fcmToken || typeof fcmToken !== "string") {
+    throw createHttpError(400, "Valid FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  const crmUpdated = await CrmUser.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  if (crmUpdated) {
+    await CrmUser.findByIdAndUpdate(userId, {
+      $push: {
+        fcmTokens: {
+          token: fcmToken,
+          device: String(device).slice(0, 50),
+          updatedAt: new Date(),
+        },
+      },
+    });
+  } else {
+    await User.findByIdAndUpdate(userId, {
+      $pull: { fcmTokens: { token: fcmToken } },
+    });
+    await User.findByIdAndUpdate(userId, {
+      $push: {
+        fcmTokens: {
+          token: fcmToken,
+          device: String(device).slice(0, 50),
+          updatedAt: new Date(),
+        },
+      },
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "CRM / Staff FCM token saved successfully",
+  });
+});
+
+exports.removeFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken } = req.body;
+  if (!fcmToken) {
+    throw createHttpError(400, "FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await CrmUser.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "CRM / Staff FCM token removed successfully",
+  });
+});

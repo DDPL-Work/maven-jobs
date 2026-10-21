@@ -49,7 +49,7 @@ export function getStoredCrmUser() {
   return getStoredSession()?.user || null;
 }
 
-function getStoredToken() {
+export function getStoredToken() {
   return getStoredSession()?.token || "";
 }
 

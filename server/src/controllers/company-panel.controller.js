@@ -2231,16 +2231,27 @@ exports.updateApplicationStatus = asyncHandler(async (req, res) => {
     }
   }
 
-  if (candidateId && hasStatusChanged) {
+  const isNotifyEligible = requestedStatus === "SHORTLISTED" || requestedStatus === "REJECTED";
+
+  if (candidateId && hasStatusChanged && isNotifyEligible) {
+    const isShortlisted = requestedStatus === "SHORTLISTED";
+    const jobTitle = application.jobId?.title || "the role";
+    const companyName = company.name || "The company";
+    const notifTitle = isShortlisted
+      ? "Application Shortlisted! 🎉"
+      : "Application Status Update";
+    const notifMessage = isShortlisted
+      ? `Congratulations! ${companyName} has shortlisted your application for the ${jobTitle} role.`
+      : `Update regarding your application for the ${jobTitle} role at ${companyName}.`;
+
+    // 1. In-App notification & Firebase FCM push notification
     await notificationService.sendCandidateNotification({
       candidateId,
       companyId: company._id,
       jobId: application.jobId?._id || application.jobId || null,
       applicationId: application._id,
-      title: "Application status updated",
-      message: `${company.name || "The company"} marked your application for ${
-        application.jobId?.title || "the role"
-      } as ${formatApplicationStatusLabel(requestedStatus)}.`,
+      title: notifTitle,
+      message: notifMessage,
       category: "APPLICATION",
       actionUrl: "/candidate/applications",
       metadata: {
@@ -2250,34 +2261,15 @@ exports.updateApplicationStatus = asyncHandler(async (req, res) => {
       },
     });
 
+    // 2. Email notification via EventBus
     const candidateEmail = application.candidateId?.email;
     const candidateName = application.candidateId?.name;
-    const jobTitle = application.jobId?.title || "the role";
-    const companyName = company.name || "The company";
     const eventPayload = { email: candidateEmail, fullName: candidateName, jobTitle, companyName, candidateId };
 
-    switch (requestedStatus) {
-      case "SHORTLISTED":
-        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
-        break;
-      case "REJECTED":
-        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
-        break;
-      case "INTERVIEW":
-        EventBus.emit(EVENTS.CANDIDATE_INTERVIEW_SCHEDULED, {
-          ...eventPayload,
-          interviewDate: "",
-          interviewTime: "",
-          interviewMode: "",
-          interviewLink: "",
-        });
-        break;
-      case "OFFERED":
-        EventBus.emit(EVENTS.CANDIDATE_OFFER_ISSUED, {
-          ...eventPayload,
-          offerLink: "",
-        });
-        break;
+    if (isShortlisted) {
+      EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
+    } else {
+      EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
     }
   }
 
@@ -2726,6 +2718,50 @@ exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
     data: result,
     modifiedCount: result.modifiedCount,
     alreadyRead: result.alreadyRead,
+  });
+});
+
+exports.saveFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken, device = "web" } = req.body;
+  if (!fcmToken || typeof fcmToken !== "string") {
+    throw createHttpError(400, "Valid FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  await User.findByIdAndUpdate(userId, {
+    $push: {
+      fcmTokens: {
+        token: fcmToken,
+        device: String(device).slice(0, 50),
+        updatedAt: new Date(),
+      },
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "FCM token saved successfully",
+  });
+});
+
+exports.removeFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken } = req.body;
+  if (!fcmToken) {
+    throw createHttpError(400, "FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "FCM token removed successfully",
   });
 });
 

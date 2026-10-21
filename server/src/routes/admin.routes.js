@@ -41,4 +41,15 @@ router.patch(
   adminController.markAllNotificationsRead,
 );
 
+router.post(
+  "/notifications/fcm-token",
+  protectAdmin,
+  adminController.saveFcmToken,
+);
+router.delete(
+  "/notifications/fcm-token",
+  protectAdmin,
+  adminController.removeFcmToken,
+);
+
 module.exports = router;

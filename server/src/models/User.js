@@ -47,6 +47,13 @@ const userSchema = new mongoose.Schema(
       startedAt: { type: Date, default: null },
       expiresAt: { type: Date, default: null },
     },
+    fcmTokens: [
+      {
+        token: { type: String, required: true },
+        device: { type: String, default: "web" },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

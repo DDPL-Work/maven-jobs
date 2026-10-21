@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
-  FiCheck, FiX, FiMail, FiShare2, FiDownload, FiTrash2, FiPhone,
-  FiMessageSquare, FiSmartphone, FiCopy, FiChevronDown, FiChevronUp,
-  FiMapPin, FiBriefcase, FiClock, FiDollarSign, FiUser, FiCalendar,
-  FiCheckCircle, FiExternalLink, FiArrowRight, FiGlobe, FiEye
+  FiX, FiMail, FiShare2, FiDownload, FiTrash2, FiPhone,
+  FiMessageSquare, FiSmartphone, FiCopy, FiChevronDown, FiUser,
+  FiCheckCircle, FiExternalLink, FiArrowRight, FiEye, FiPlus, FiClock, FiVideo
 } from 'react-icons/fi';
 import { FaWhatsapp, FaLinkedin, FaGithub } from 'react-icons/fa';
 import EmployerLayout from '../../../../components/employer/EmployerLayout';
 import employerJobService from '../../../../services/employerJobService';
 import authService from '../../../../services/authService';
+import ForwardCVModal from '../../../../components/employer/ForwardCVModal';
+import ScheduleVideoCallModal from '../../../../components/employer/ScheduleVideoCallModal';
+import SetReminderModal from '../../../../components/employer/SetReminderModal';
+import FolderSelectorModal from '../../../../components/employer/FolderSelectorModal';
 import './CandidateFullProfile.css';
 
 const CALL_STATUS_OPTIONS = [
@@ -35,6 +38,15 @@ export default function CandidateFullProfile() {
   const [phoneRevealed, setPhoneRevealed] = useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
 
+  // Modals state
+  const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
+  const [isVideoCallModalOpen, setIsVideoCallModalOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderType, setReminderType] = useState('For other task');
+  const [reminderMenuOpen, setReminderMenuOpen] = useState(false);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const reminderMenuRef = useRef(null);
+
   // Comments state
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -49,11 +61,14 @@ export default function CandidateFullProfile() {
 
   const dropdownRef = useRef(null);
 
-  // Close status dropdown on outside click
+  // Close status dropdown and reminder menu on outside click
   useEffect(() => {
     const handleOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setStatusDropdownOpen(false);
+      }
+      if (reminderMenuRef.current && !reminderMenuRef.current.contains(e.target)) {
+        setReminderMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutside);
@@ -189,10 +204,23 @@ export default function CandidateFullProfile() {
     showToast('Comment added');
   };
 
-  // Forward profile (copy link)
+  // Forward profile (open ForwardCVModal)
   const handleForward = () => {
-    navigator.clipboard.writeText(window.location.href);
-    showToast('Profile link copied to clipboard!');
+    setIsForwardModalOpen(true);
+  };
+
+  // Set reminder handler
+  const handleSetReminder = async (data) => {
+    try {
+      await authService.setCandidateReminder({
+        candidateId,
+        ...data,
+      });
+      window.dispatchEvent(new CustomEvent('employer-reminders-changed'));
+      showToast('Reminder set successfully!');
+    } catch (err) {
+      showToast('Failed to set reminder: ' + (err.message || 'Unknown error'));
+    }
   };
 
   // Email candidate
@@ -363,9 +391,97 @@ export default function CandidateFullProfile() {
               <span>Email</span>
             </button>
 
-            <button type="button" className="cfp-btn-action" onClick={handleForward} title="Copy profile share link">
+            <button type="button" className="cfp-btn-action" onClick={handleForward} title="Forward CV via Email">
               <FiShare2 size={15} />
               <span>Forward</span>
+            </button>
+
+            <button
+              type="button"
+              className="cfp-btn-action"
+              onClick={() => setIsFolderModalOpen(true)}
+              title="Save candidate to requirement / folder"
+            >
+              <FiPlus size={15} />
+              <span>Add to</span>
+            </button>
+
+            {/* Set Reminder Dropdown */}
+            <div style={{ position: 'relative' }} ref={reminderMenuRef}>
+              <button
+                type="button"
+                className="cfp-btn-action"
+                onClick={() => setReminderMenuOpen((prev) => !prev)}
+                title="Set a reminder for this candidate"
+              >
+                <FiClock size={15} />
+                <span>Set reminder</span>
+                <FiChevronDown size={13} />
+              </button>
+
+              {reminderMenuOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: 4,
+                    background: '#ffffff',
+                    borderRadius: 8,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                    border: '1px solid #e2e8f0',
+                    padding: '4px 0',
+                    zIndex: 50,
+                    minWidth: 190,
+                  }}
+                >
+                  {[
+                    'For call later',
+                    'For interview follow up',
+                    'For sending JD',
+                    'For other task',
+                  ].map((label, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setReminderType(label);
+                        setIsReminderModalOpen(true);
+                        setReminderMenuOpen(false);
+                      }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 16px',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        color: '#334155',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f1f5f9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'none';
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="cfp-btn-action"
+              onClick={() => setIsVideoCallModalOpen(true)}
+              title="Schedule video call"
+            >
+              <FiVideo size={15} />
+              <span>Schedule Call</span>
             </button>
 
             <button type="button" className="cfp-btn-action" onClick={handleDownloadResume} title="Download resume">
@@ -874,6 +990,38 @@ export default function CandidateFullProfile() {
           </div>
         )}
 
+        {/* ─── Modals ─── */}
+        <ForwardCVModal
+          isOpen={isForwardModalOpen}
+          onClose={() => setIsForwardModalOpen(false)}
+          candidateId={candidateId}
+          candidateName={profile?.name || 'Candidate'}
+        />
+
+        <ScheduleVideoCallModal
+          isOpen={isVideoCallModalOpen}
+          onClose={() => setIsVideoCallModalOpen(false)}
+          candidateId={candidateId}
+          candidateName={profile?.name || 'Candidate'}
+        />
+
+        <SetReminderModal
+          isOpen={isReminderModalOpen}
+          onClose={() => setIsReminderModalOpen(false)}
+          initialType={reminderType}
+          candidate={profile}
+          onSubmit={handleSetReminder}
+        />
+
+        {isFolderModalOpen && (
+          <FolderSelectorModal
+            candidateId={candidateId}
+            candidateIds={[candidateId]}
+            initialTab="REQUIREMENT"
+            onClose={() => setIsFolderModalOpen(false)}
+            onAdded={() => showToast('Saved to folder/requirement successfully!')}
+          />
+        )}
       </div>
     </EmployerLayout>
   );

@@ -187,6 +187,8 @@ router.post("/ai/suggest-skills", controller.suggestSkills);
 router.get("/notifications", controller.getNotifications);
 router.patch("/notifications/:id/read", controller.markNotificationRead);
 router.patch("/notifications/read-all", controller.markAllNotificationsRead);
+router.post("/notifications/fcm-token", controller.saveFcmToken);
+router.delete("/notifications/fcm-token", controller.removeFcmToken);
 
 // Resdex — Resume Search & Database
 router.get("/resdex/search", resdexController.searchCandidates);
