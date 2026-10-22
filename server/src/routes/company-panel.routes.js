@@ -59,13 +59,20 @@ router.post("/auth/employer/forgot-password", forgotPasswordLimiter, passwordRes
 router.post("/auth/employer/verify-reset-otp", verifyOtpLimiter, passwordResetController.employerVerifyResetOTP);
 router.post("/auth/employer/reset-password", resetPasswordLimiter, passwordResetController.employerResetPassword);
 
-const { cacheRoute, invalidateCache } = require("../middleware/cache.middleware");
+const { cacheRoute, invalidateCache, serializeQuery } = require("../middleware/cache.middleware");
 
 const companyDashboardInvalidate = [
   (req) => `cache:company-panel:dashboard:${req.company?._id || req.user?.companyId}:*`,
   (req) => `cache:company-panel:analytics:${req.company?._id || req.user?.companyId}:*`,
   (req) => `cache:company-panel:job-filters:${req.company?._id || req.user?.companyId}:*`,
   (req) => `cache:company-panel:profile:${req.company?._id || req.user?.companyId}`,
+  (req) => `cache:company-panel:jobs-responses:${req.company?._id || req.user?.companyId}:*`,
+  (req) => `cache:company-panel:job-responses:${req.company?._id || req.user?.companyId}:*`,
+  (req) => `cache:company-panel:candidate-profile:*`,
+];
+
+const companyFolderInvalidate = [
+  (req) => `cache:company-panel:folders:*:${req.company?._id || req.user?.companyId}:*`,
 ];
 
 const companySubscriptionInvalidate = [
@@ -91,7 +98,7 @@ router.get("/dashboard", cacheRoute({
     const userId = req.user?._id || req.user?.id;
     return `cache:company-panel:dashboard:${companyId}:${role}:${role === "RECRUITER" ? userId : "all"}`;
   },
-  ttl: 180,
+  ttl: 300,
 }), resolveCompanyContext, controller.getDashboard);
 
 router.get("/jobs-responses/filters", cacheRoute({
@@ -104,8 +111,7 @@ router.get("/analytics", cacheRoute({
     const companyId = req.user?.companyId;
     const role = req.user?.role || "CLIENT";
     const userId = req.user?._id || req.user?.id;
-    const q = new URLSearchParams(Object.entries(req.query || {}).map(([k, v]) => [k, String(v)])).toString();
-    return `cache:company-panel:analytics:${companyId}:${role}:${role === "RECRUITER" ? userId : "all"}:${q || "default"}`;
+    return `cache:company-panel:analytics:${companyId}:${role}:${role === "RECRUITER" ? userId : "all"}:${serializeQuery(req.query)}`;
   },
   ttl: 300,
 }), resolveCompanyContext, controller.getAnalytics);
@@ -138,10 +144,23 @@ router.get("/jobs/:id", controller.getJob);
 router.patch("/jobs/:id", invalidateCache(companyDashboardInvalidate), controller.updateJob);
 
 // Manage Jobs & Responses endpoints
-router.get("/jobs-responses", employerJobController.getEmployerJobs);
-router.get("/jobs-responses/:jobId/detail", employerJobController.getJobDetailWithResponses);
+router.get("/jobs-responses", cacheRoute({
+  key: (req) => `cache:company-panel:jobs-responses:${req.company?._id || req.user?.companyId}:${req.user?.role || "CLIENT"}:${req.user?._id || req.user?.id}:${serializeQuery(req.query)}`,
+  ttl: 120,
+}), employerJobController.getEmployerJobs);
+
+router.get("/jobs-responses/:jobId/detail", cacheRoute({
+  key: (req) => `cache:company-panel:jobs-responses:detail:${req.company?._id || req.user?.companyId}:${req.params.jobId}`,
+  ttl: 180,
+}), employerJobController.getJobDetailWithResponses);
+
 router.get("/jobs-responses/:jobId/nvite-recipients", employerJobController.getJobNviteRecipients);
-router.get("/jobs-responses/:jobId/responses", employerJobController.getJobResponses);
+
+router.get("/jobs-responses/:jobId/responses", cacheRoute({
+  key: (req) => `cache:company-panel:job-responses:${req.company?._id || req.user?.companyId}:${req.params.jobId}:${serializeQuery(req.query)}`,
+  ttl: 120,
+}), employerJobController.getJobResponses);
+
 router.patch("/jobs-responses/:jobId/applications/:applicationId/status", invalidateCache(companyDashboardInvalidate), employerJobController.updateCandidateJobStatus);
 router.post("/jobs-responses/:jobId/applications/:applicationId/comments", invalidateCache(companyDashboardInvalidate), employerJobController.addCandidateComment);
 router.patch("/jobs-responses/:jobId/close", invalidateCache(companyDashboardInvalidate), employerJobController.closeEmployerJob);
@@ -151,13 +170,17 @@ router.post("/jobs-responses/bulk-refresh", invalidateCache(companyDashboardInva
 router.post("/jobs-responses/bulk-collaborators", invalidateCache(companyDashboardInvalidate), employerJobController.updateCollaborators);
 
 // Full Candidate Profile (for employer view when clicking candidate name)
-router.get("/candidates/:candidateId/full-profile", employerJobController.getCandidateFullProfile);
+router.get("/candidates/:candidateId/full-profile", cacheRoute({
+  key: (req) => `cache:company-panel:candidate-profile:${req.params.candidateId}:${req.query.applicationId || req.query.jobId || "base"}`,
+  ttl: 300,
+}), employerJobController.getCandidateFullProfile);
 router.get("/candidates/:candidateId/also-viewed", employerJobController.getAlsoViewedCandidates);
 router.post("/candidates/:candidateId/schedule-video-call", employerJobController.scheduleVideoCall);
 router.get("/scheduled-calls", employerJobController.getScheduledCalls);
 router.patch("/scheduled-calls/:id", employerJobController.updateScheduledCall);
 router.get("/package-change-requests", controller.getPackageChangeRequests);
 router.post("/package-change-requests", invalidateCache([...companyDashboardInvalidate, ...companySubscriptionInvalidate]), controller.createPackageChangeRequest);
+
 router.get("/applications", controller.getApplications);
 router.patch("/applications/:applicationId/status", invalidateCache(companyDashboardInvalidate), controller.updateApplicationStatus);
 router.get("/applications/:applicationId/resume/preview", controller.previewApplicationResume);
@@ -191,7 +214,10 @@ router.post("/notifications/fcm-token", controller.saveFcmToken);
 router.delete("/notifications/fcm-token", controller.removeFcmToken);
 
 // Resdex — Resume Search & Database
-router.get("/resdex/search", resdexController.searchCandidates);
+router.get("/resdex/search", cacheRoute({
+  key: (req) => `cache:resdex:search:${req.company?._id || req.user?.companyId}:${serializeQuery(req.query)}`,
+  ttl: 180,
+}), resdexController.searchCandidates);
 router.post("/resdex/ai-parse", resdexController.aiParseQuery);
 router.get("/resdex/searches", resdexController.listSearches);
 router.post("/resdex/searches", resdexController.saveSearch);
@@ -211,22 +237,34 @@ router.get("/resdex/nvite/list", nviteController.listNvites);
 router.get("/resdex/nvite/stats", nviteController.getNviteStats);
 
 // Folders — Candidate Folder Management
-router.get("/folders", folderController.listFolders);
-router.get("/folders/saved-profiles", folderController.getAllSavedProfiles);
-router.post("/folders", folderController.createFolder);
-router.get("/folders/candidates/contacted", folderController.getContactedCandidates);
+router.get("/folders", cacheRoute({
+  key: (req) => `cache:company-panel:folders:list:${req.company?._id || req.user?.companyId}:${req.user?._id || req.user?.id}`,
+  ttl: 180,
+}), folderController.listFolders);
+router.get("/folders/saved-profiles", cacheRoute({
+  key: (req) => `cache:company-panel:folders:saved:${req.company?._id || req.user?.companyId}:${req.user?._id || req.user?.id}:${serializeQuery(req.query)}`,
+  ttl: 180,
+}), folderController.getAllSavedProfiles);
+router.post("/folders", invalidateCache(companyFolderInvalidate), folderController.createFolder);
+router.get("/folders/candidates/contacted", cacheRoute({
+  key: (req) => `cache:company-panel:folders:contacted:${req.company?._id || req.user?.companyId}:${req.user?._id || req.user?.id}`,
+  ttl: 180,
+}), folderController.getContactedCandidates);
 router.get("/folders/duplicate/:id", folderController.duplicateFolder);
-router.post("/folders/candidates/move", folderController.moveCandidates);
-router.post("/folders/candidates/copy", folderController.copyCandidates);
-router.get("/folders/:id", folderController.getFolder);
-router.patch("/folders/:id", folderController.updateFolder);
-router.delete("/folders/:id", folderController.deleteFolder);
-router.post("/folders/:id/candidates", folderController.addCandidate);
-router.delete("/folders/:id/candidates/:candidateId", folderController.removeCandidate);
-router.patch("/folders/:id/candidates/:candidateId", folderController.updateCandidate);
-router.post("/folders/:id/candidates/:candidateId/comments", folderController.addCandidateComment);
-router.delete("/folders/:id/candidates/:candidateId/comments/:commentId", folderController.deleteCandidateComment);
-router.post("/folders/:id/candidates/bulk-remove", folderController.bulkRemoveCandidates);
+router.post("/folders/candidates/move", invalidateCache(companyFolderInvalidate), folderController.moveCandidates);
+router.post("/folders/candidates/copy", invalidateCache(companyFolderInvalidate), folderController.copyCandidates);
+router.get("/folders/:id", cacheRoute({
+  key: (req) => `cache:company-panel:folders:detail:${req.company?._id || req.user?.companyId}:${req.params.id}`,
+  ttl: 180,
+}), folderController.getFolder);
+router.patch("/folders/:id", invalidateCache(companyFolderInvalidate), folderController.updateFolder);
+router.delete("/folders/:id", invalidateCache(companyFolderInvalidate), folderController.deleteFolder);
+router.post("/folders/:id/candidates", invalidateCache(companyFolderInvalidate), folderController.addCandidate);
+router.delete("/folders/:id/candidates/:candidateId", invalidateCache(companyFolderInvalidate), folderController.removeCandidate);
+router.patch("/folders/:id/candidates/:candidateId", invalidateCache(companyFolderInvalidate), folderController.updateCandidate);
+router.post("/folders/:id/candidates/:candidateId/comments", invalidateCache(companyFolderInvalidate), folderController.addCandidateComment);
+router.delete("/folders/:id/candidates/:candidateId/comments/:commentId", invalidateCache(companyFolderInvalidate), folderController.deleteCandidateComment);
+router.post("/folders/:id/candidates/bulk-remove", invalidateCache(companyFolderInvalidate), folderController.bulkRemoveCandidates);
 router.post("/folders/:id/test-alert", folderController.sendTestAlert);
 
 // Credits — Resume Search & Download Credits
@@ -239,15 +277,22 @@ router.post("/credits/search", creditController.searchCredits);
 router.get("/credits/check/:candidateId", creditController.checkResumeAccess);
 
 // Reports — Job Posting & Resdex usage reports
-router.get("/reports/job-posting", employerReportController.getJobPostingReport);
+router.get("/reports/job-posting", cacheRoute({
+  key: (req) => `cache:company-panel:reports:job-posting:${req.company?._id || req.user?.companyId}:${serializeQuery(req.query)}`,
+  ttl: 300,
+}), employerReportController.getJobPostingReport);
 router.get("/reports/job-posting/subscription", employerReportController.getJobPostingReportSubscription);
 router.post("/reports/job-posting/subscription", employerReportController.saveJobPostingReportSubscription);
 router.post("/reports/job-posting/send-email", employerReportController.sendJobPostingReportEmail);
 
-router.get("/reports/resdex", employerReportController.getResdexReport);
+router.get("/reports/resdex", cacheRoute({
+  key: (req) => `cache:company-panel:reports:resdex:${req.company?._id || req.user?.companyId}:${serializeQuery(req.query)}`,
+  ttl: 300,
+}), employerReportController.getResdexReport);
 router.get("/reports/resdex/subscription", employerReportController.getResdexReportSubscription);
 router.post("/reports/resdex/subscription", employerReportController.saveResdexReportSubscription);
 router.post("/reports/resdex/send-email", employerReportController.sendResdexReportEmail);
+
 
 // User Management (Sub-users & recruiters)
 router.get("/user-management/users", userManagementController.getUsers);

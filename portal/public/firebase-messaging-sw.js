@@ -24,8 +24,10 @@ try {
   if (firebaseConfig.projectId) {
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
+    console.log("[FCM SW] 🔥 Background Service Worker initialized for project:", firebaseConfig.projectId);
 
     messaging.onBackgroundMessage((payload) => {
+      console.log("[FCM SW] 🔔 Background push message received:", payload);
       const notificationTitle = payload.notification?.title || payload.data?.title || "Maven Jobs";
       const notificationOptions = {
         body: payload.notification?.body || payload.data?.message || "",

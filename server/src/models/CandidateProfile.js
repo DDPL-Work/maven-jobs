@@ -106,6 +106,8 @@ const candidateProfileSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+candidateProfileSchema.index({ followedCompanyIds: 1, updatedAt: -1 });
+
 // Automatically sync CandidateProfile changes to OpenSearch
 candidateProfileSchema.post("save", function (doc) {
   if (doc?._id) {

@@ -1,28 +1,41 @@
 import axios from "axios";
 
 const SESSION_KEY = "crm_panel_session";
+const STATE_MANAGER_SESSION_KEY = "state_manager_session";
 
 export const getStoredCrmSession = () => {
-  const raw = sessionStorage.getItem(SESSION_KEY);
+  const raw =
+    sessionStorage.getItem(STATE_MANAGER_SESSION_KEY) ||
+    sessionStorage.getItem(SESSION_KEY);
   if (!raw) {
     return null;
   }
 
   try {
-    return JSON.parse(raw);
+    const session = JSON.parse(raw);
+    const role = String(session?.user?.role || "").toUpperCase();
+    if (role && role !== "STATE_MANAGER" && role !== "ADMIN") {
+      return null;
+    }
+    return session;
   } catch {
+    sessionStorage.removeItem(STATE_MANAGER_SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
     return null;
   }
 };
 
 export const setStoredCrmSession = (session) => {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  sessionStorage.setItem(STATE_MANAGER_SESSION_KEY, serialized);
+  sessionStorage.setItem(SESSION_KEY, serialized);
   window.dispatchEvent(new Event("crm-session-updated"));
 };
 
 export const clearStoredCrmSession = () => {
+  sessionStorage.removeItem(STATE_MANAGER_SESSION_KEY);
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem("token");
   window.dispatchEvent(new Event("crm-session-updated"));
 };
 
@@ -72,6 +85,11 @@ http.interceptors.request.use((config) => {
 
 async function refreshCrmSession() {
   const { data } = await http.post("/auth/refresh", null, { _skipAuthRefresh: true });
+  const role = String(data?.user?.role || "").toUpperCase();
+  if (role && role !== "STATE_MANAGER" && role !== "ADMIN") {
+    clearStoredCrmSession();
+    throw new Error("Invalid role for State Manager");
+  }
   const token = data.accessToken || data.token;
   setStoredCrmSession({
     token,
@@ -102,7 +120,7 @@ http.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
       clearStoredCrmSession();
     }
 

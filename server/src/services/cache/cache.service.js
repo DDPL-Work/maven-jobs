@@ -89,13 +89,14 @@ async function cacheAside({ key, ttl, fetch }) {
 async function connect() {
   try {
     const c = getClient();
+    const config = getRedisConfig();
     if (c.status === "ready" || c.status === "connecting" || c.status === "connect") {
       return;
     }
     await c.connect();
-    console.log("[Cache] Redis connected");
+    console.log(`[Redis:Cache] 🚀 Connected to ${config.type.toUpperCase()} Redis at ${config.host}:${config.port}`);
   } catch (err) {
-    console.warn("[Cache] Redis unavailable — caching fallback to DB:", err?.message || "");
+    console.warn("[Redis:Cache] ⚠️ Redis unavailable — caching fallback to DB:", err?.message || "");
   }
 }
 

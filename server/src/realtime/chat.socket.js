@@ -95,16 +95,8 @@ const initChatSocket = (server) => {
   io.on("connection", (socket) => {
     const currentUser = socket.data.user;
 
-    // Auto-join personal and company notification rooms
-    if (currentUser?.id) {
-      socket.join(`user:${String(currentUser.id)}`);
-      if (currentUser.role === "CANDIDATE") {
-        socket.join(`candidate:${String(currentUser.id)}`);
-      }
-    }
-    if (currentUser?.companyId) {
-      socket.join(`company:${String(currentUser.companyId)}`);
-    }
+    // WebSockets are exclusively used for real-time Chat and Calling signaling.
+    // Notifications are delivered via Firebase Cloud Messaging (FCM).
 
     socket.on("thread:join", async ({ threadId }, ack = () => {}) => {
       try {

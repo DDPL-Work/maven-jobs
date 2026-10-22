@@ -9,6 +9,7 @@ const {
   normalizeZoneInput,
   normalizeIndianStateInput,
   inferZoneFromTerritory,
+  getZoneFromState,
   isValidStateForZone,
   getAvailableStatesForZone,
   buildZoneRegex,
@@ -30,11 +31,22 @@ const generateToken = (id) => {
 const escapeRegExp = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getUserZone = (user = {}) => {
-  return normalizeZoneInput(user.territory) || inferZoneFromTerritory(user.territory);
+  return (
+    normalizeZoneInput(user.territory) ||
+    inferZoneFromTerritory(user.territory) ||
+    getZoneFromState(user.state) ||
+    getZoneFromState(user.territory) ||
+    ""
+  );
 };
 
 const getUserState = (user = {}) => {
-  return normalizeIndianStateInput(user.state);
+  return (
+    normalizeIndianStateInput(user.state) ||
+    normalizeIndianStateInput(user.territory) ||
+    normalizeIndianStateInput(user.scope) ||
+    String(user.state || "").trim()
+  );
 };
 
 const buildTerritoryFilter = (zone = "") => {
@@ -497,9 +509,10 @@ exports.getLeads = asyncHandler(async (req, res) => {
   const { search, location, date, page = 1, limit = 50, sourceRole } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
 
-  let targetZone = req.user.role === "STATE_MANAGER" ? getUserZone(req.user) : "";
-  const managerState = getUserState(req.user);
-  if (!targetZone || !managerState) {
+  const isAdmin = String(req.user?.role || "").toUpperCase() === "ADMIN";
+  let targetZone = normalizeZoneInput(req.query.zone) || getUserZone(req.user);
+  const managerState = normalizeIndianStateInput(req.query.state) || getUserState(req.user);
+  if (!isAdmin && (!targetZone || !managerState)) {
     throw createHttpError(403, "Unable to resolve zone/state for this State Manager account.");
   }
 
@@ -595,12 +608,13 @@ exports.getLeads = asyncHandler(async (req, res) => {
 });
 
 exports.getFSEs = asyncHandler(async (req, res) => {
-  const myZone = getUserZone(req.user);
-  const myState = getUserState(req.user);
-  if (!myZone) {
+  const isAdmin = String(req.user?.role || "").toUpperCase() === "ADMIN";
+  const myZone = normalizeZoneInput(req.query.zone) || getUserZone(req.user);
+  const myState = normalizeIndianStateInput(req.query.state) || getUserState(req.user);
+  if (!isAdmin && !myZone) {
     throw createHttpError(403, "Unable to resolve zone for this State Manager account.");
   }
-  if (!myState) {
+  if (!isAdmin && !myState) {
     throw createHttpError(403, "Unable to resolve state for this State Manager account.");
   }
 
@@ -1283,11 +1297,12 @@ exports.assignLead = asyncHandler(async (req, res) => {
 });
 
 exports.getDashboard = asyncHandler(async (req, res) => {
-  const myZone = getUserZone(req.user);
-  const myState = getUserState(req.user);
+  const isAdmin = String(req.user?.role || "").toUpperCase() === "ADMIN";
+  const myZone = normalizeZoneInput(req.query.zone) || getUserZone(req.user);
+  const myState = normalizeIndianStateInput(req.query.state) || getUserState(req.user);
   const { startDate, endDate, memberId } = req.query;
 
-  if (!myZone || !myState) {
+  if (!isAdmin && (!myZone || !myState)) {
     throw createHttpError(403, "Unable to resolve zone/state for this State Manager account.");
   }
 
@@ -1298,31 +1313,41 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
   }
 
+  const lgQuery = {
+    ...buildManagedRoleQuery("LEAD_GENERATOR"),
+    isActive: true,
+    accessStatus: { $ne: "RESTRICTED" },
+  };
+  const fseQuery = {
+    ...buildManagedRoleQuery("FSE"),
+    isActive: true,
+    accessStatus: { $ne: "RESTRICTED" },
+  };
+
+  if (myZone) {
+    Object.assign(lgQuery, buildTerritoryFilter(myZone));
+    Object.assign(fseQuery, buildTerritoryFilter(myZone));
+  }
+  if (myState) {
+    lgQuery.state = myState;
+    fseQuery.state = myState;
+  }
+
   const [zoneLGUsers, zoneFSEUsers] = await Promise.all([
-    CrmUser.find({
-      ...buildManagedRoleQuery("LEAD_GENERATOR"),
-      ...buildTerritoryFilter(myZone),
-      state: myState,
-      isActive: true,
-      accessStatus: { $ne: "RESTRICTED" },
-    }).select("_id fullName email territory state profileImageUrl targets"),
-    CrmUser.find({
-      ...buildManagedRoleQuery("FSE"),
-      ...buildTerritoryFilter(myZone),
-      state: myState,
-      isActive: true,
-      accessStatus: { $ne: "RESTRICTED" },
-    }).select("_id fullName email territory state profileImageUrl targets"),
+    CrmUser.find(lgQuery).select("_id fullName email territory state profileImageUrl targets"),
+    CrmUser.find(fseQuery).select("_id fullName email territory state profileImageUrl targets"),
   ]);
 
   const generatorIds = memberId ? [memberId] : zoneLGUsers.map((user) => user._id);
   const fseIds = memberId ? [memberId] : zoneFSEUsers.map((user) => user._id);
 
+  const leadStateFilter = myState ? { state: myState } : {};
+
   const [scopedLeads, fsePerformanceRows, generatorPerformanceRows, recentAssigned] = await Promise.all([
     generatorIds.length
       ? Lead.find({
           createdBy: { $in: generatorIds },
-          state: myState,
+          ...leadStateFilter,
           ...dateFilter
         }).sort({ updatedAt: -1 })
       : Promise.resolve([]),
@@ -1331,7 +1356,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
           {
             $match: {
               assignedTo: { $in: fseIds },
-              state: myState,
+              ...leadStateFilter,
               ...dateFilter
             },
           },
@@ -1359,7 +1384,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
           {
             $match: {
               createdBy: { $in: generatorIds },
-              state: myState,
+              ...leadStateFilter,
               ...dateFilter
             },
           },
@@ -1390,7 +1415,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       : Promise.resolve([]),
     fseIds.length
       ? Lead.find({
-          state: myState,
+          ...leadStateFilter,
           assignedTo: { $in: fseIds },
           status: { $in: ["ASSIGNED", "CONVERTED", "LOST", "REJECTED", "FORWARDED"] },
           ...dateFilter

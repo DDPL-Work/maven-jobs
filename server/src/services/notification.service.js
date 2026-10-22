@@ -88,23 +88,9 @@ const formatCompanyNotification = (item) => {
 
 class NotificationService {
   /**
-   * Push real-time notification to socket rooms safely
+   * Push notification via Firebase Cloud Messaging (FCM)
+   * WebSockets are strictly reserved for 1-on-1 Chat and Calling signaling.
    */
-  _emitSocketNotification(rooms, eventName, payload) {
-    try {
-      const io = global.chatSocketServer;
-      if (!io) return;
-
-      const roomList = Array.isArray(rooms) ? rooms : [rooms];
-      roomList.forEach((room) => {
-        if (room) {
-          io.to(room).emit(eventName, payload);
-        }
-      });
-    } catch (err) {
-      logger.warn("[NotificationService] Socket emit error:", err?.message || err);
-    }
-  }
 
   /**
    * Push notification via Firebase Cloud Messaging (FCM)
@@ -241,12 +227,7 @@ class NotificationService {
 
       const formatted = formatCandidateNotification(notification);
 
-      // Emit real-time socket event to candidate's room
-      this._emitSocketNotification(
-        [`user:${String(candidateId)}`, `candidate:${String(candidateId)}`],
-        "notification:new",
-        formatted
-      );
+      // Push exclusively via Firebase FCM
 
       // Push via Firebase FCM
       this._sendFirebaseNotification(candidateId, formatted).catch(() => {});
@@ -390,13 +371,7 @@ class NotificationService {
 
       const formatted = formatCompanyNotification(notification);
 
-      // Socket rooms: notify whole company, and if specific user, their user room
-      const rooms = [`company:${String(companyId)}`];
-      if (recipientUserId) {
-        rooms.push(`user:${String(recipientUserId)}`);
-      }
-
-      this._emitSocketNotification(rooms, "notification:new", formatted);
+      // Push exclusively via Firebase FCM
 
       // Push via Firebase FCM
       if (recipientUserId) {
@@ -615,7 +590,7 @@ class NotificationService {
         status: "UNREAD",
       });
 
-      this._emitSocketNotification("admin", "notification:new", notification);
+      // Push exclusively via Firebase FCM to admin users
 
       // Push via Firebase FCM to admin users
       User.find({ role: "ADMIN", isActive: true })

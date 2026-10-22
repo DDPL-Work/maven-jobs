@@ -90,4 +90,8 @@ const applicationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+applicationSchema.index({ companyId: 1, updatedAt: -1 });
+applicationSchema.index({ jobId: 1, updatedAt: -1 });
+applicationSchema.index({ candidateId: 1 });
+
 module.exports = mongoose.model("Application", applicationSchema);

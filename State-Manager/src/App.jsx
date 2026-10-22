@@ -31,7 +31,11 @@ function getStoredSession() {
 }
 
 function RequireAuth({ children }) {
-  const [status, setStatus] = useState(() => (getStoredSession()?.token ? "authenticated" : "checking"));
+  const currentSession = getStoredSession();
+  const currentRole = String(currentSession?.user?.role || "").toUpperCase();
+  const isValidRole = currentRole === "STATE_MANAGER" || currentRole === "ADMIN";
+
+  const [status, setStatus] = useState(() => (currentSession?.token && isValidRole ? "authenticated" : "checking"));
 
   useEffect(() => {
     let isMounted = true;
@@ -42,10 +46,23 @@ function RequireAuth({ children }) {
       };
     }
 
+    const session = getStoredSession();
+    if (session?.token && !isValidRole) {
+      clearStoredCrmSession();
+      if (isMounted) setStatus("unauthenticated");
+      return;
+    }
+
     restoreCrmSession()
-      .then(() => {
+      .then((restored) => {
+        const restoredRole = String(restored?.user?.role || "").toUpperCase();
         if (isMounted) {
-          setStatus("authenticated");
+          if (restoredRole === "STATE_MANAGER" || restoredRole === "ADMIN") {
+            setStatus("authenticated");
+          } else {
+            clearStoredCrmSession();
+            setStatus("unauthenticated");
+          }
         }
       })
       .catch(() => {
@@ -57,7 +74,7 @@ function RequireAuth({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [status]);
+  }, [status, isValidRole]);
 
   if (status === "checking") {
     return null;

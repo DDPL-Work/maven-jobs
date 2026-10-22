@@ -2438,7 +2438,7 @@ export default function EmployerHeader({
             </button>
 
             {/* Saved Profiles Mobile Button */}
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -2462,7 +2462,7 @@ export default function EmployerHeader({
                   {savedProfiles.length}
                 </span>
               )}
-            </button>
+            </button> */}
 
 
 

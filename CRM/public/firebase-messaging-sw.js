@@ -24,8 +24,10 @@ try {
   if (firebaseConfig.projectId) {
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
+    console.log("[FCM SW:CRM] 🔥 Background Service Worker initialized for project:", firebaseConfig.projectId);
 
     messaging.onBackgroundMessage((payload) => {
+      console.log("[FCM SW:CRM] 🔔 Background push message received:", payload);
       const notificationTitle = payload.notification?.title || payload.data?.title || "CRM Notification";
       const notificationOptions = {
         body: payload.notification?.body || payload.data?.message || "",
@@ -41,7 +43,7 @@ try {
     });
   }
 } catch (err) {
-  console.warn("[FCM SW] Service Worker initialization error:", err);
+  console.warn("[FCM SW:CRM] Service Worker initialization error:", err);
 }
 
 self.addEventListener("notificationclick", (event) => {

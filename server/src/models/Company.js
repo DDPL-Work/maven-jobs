@@ -228,6 +228,8 @@ const companySchema = new mongoose.Schema(
   { timestamps: true, versionKey: false }
 );
 
+companySchema.index({ createdAt: -1 });
+
 /**
  * Automatically zero out balances when plan has expired
  */

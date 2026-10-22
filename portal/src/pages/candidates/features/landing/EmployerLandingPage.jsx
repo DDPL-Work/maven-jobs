@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   FiArrowRight,
   FiUsers,
@@ -124,6 +124,8 @@ const getInitials = (value = "Company") =>
 const EmployerLandingPage = () => {
   const navigate = useNavigate();
   useAuth();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [employerSession, setEmployerSession] = useState(() => {
     const userStr = localStorage.getItem("employerUser");
     if (!userStr || userStr === "undefined") return null;
@@ -139,7 +141,39 @@ const EmployerLandingPage = () => {
       return null;
     }
   });
-  const [activeTab, setActiveTab] = useState("sales");
+
+  const getInitialTab = () => {
+    const tab = searchParams.get("tab");
+    if (tab === "sales" || location.hash === "#sales" || location.hash === "#sales-enquiry") {
+      return "sales";
+    }
+    return "login"; // Default to Employer Login
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  // Sync tab with URL query or hash
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "sales" || location.hash === "#sales" || location.hash === "#sales-enquiry") {
+      setActiveTab("sales");
+    } else if (tab === "login" || location.hash === "#login") {
+      setActiveTab("login");
+    }
+  }, [searchParams, location.hash]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "login") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   const [hiringFor, setHiringFor] = useState("company");
   const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
@@ -199,8 +233,6 @@ const EmployerLandingPage = () => {
   });
   const [showEmployerForgotPassword, setShowEmployerForgotPassword] =
     useState(false);
-
-  const location = useLocation();
 
   useEffect(() => {
     if (location.hash) {
@@ -696,17 +728,17 @@ const EmployerLandingPage = () => {
                 <div className="elp-card-top-pill">
                   <button
                     type="button"
-                    className={`elp-card-pill-btn ${activeTab === "sales" ? "active" : ""}`}
-                    onClick={() => setActiveTab("sales")}
+                    className={`elp-card-pill-btn ${activeTab === "login" ? "active" : ""}`}
+                    onClick={() => handleTabChange("login")}
                   >
-                    Sales enquiry
+                    Employer Login
                   </button>
                   <button
                     type="button"
-                    className={`elp-card-pill-btn ${activeTab !== "sales" ? "active" : ""}`}
-                    onClick={() => setActiveTab("login")}
+                    className={`elp-card-pill-btn ${activeTab === "sales" ? "active" : ""}`}
+                    onClick={() => handleTabChange("sales")}
                   >
-                    Register/Log in
+                    Sales Enquiry
                   </button>
                 </div>
               )}
@@ -1570,20 +1602,21 @@ const EmployerLandingPage = () => {
             <div className="elp-card-top-pill" style={{ marginBottom: "20px" }}>
               <button
                 type="button"
-                className="elp-card-pill-btn active"
-                onClick={() => {}}
-              >
-                Sales enquiry
-              </button>
-              <button
-                type="button"
                 className="elp-card-pill-btn"
                 onClick={() => {
                   setIsSalesModalOpen(false);
                   setIsLoginModalOpen(true);
+                  handleTabChange("login");
                 }}
               >
-                Register/Log in
+                Employer Login
+              </button>
+              <button
+                type="button"
+                className="elp-card-pill-btn active"
+                onClick={() => {}}
+              >
+                Sales Enquiry
               </button>
             </div>
 
@@ -1654,20 +1687,21 @@ const EmployerLandingPage = () => {
             <div className="elp-card-top-pill" style={{ marginBottom: "20px" }}>
               <button
                 type="button"
+                className="elp-card-pill-btn active"
+                onClick={() => {}}
+              >
+                Employer Login
+              </button>
+              <button
+                type="button"
                 className="elp-card-pill-btn"
                 onClick={() => {
                   setIsLoginModalOpen(false);
                   setIsSalesModalOpen(true);
+                  handleTabChange("sales");
                 }}
               >
-                Sales enquiry
-              </button>
-              <button
-                type="button"
-                className="elp-card-pill-btn active"
-                onClick={() => {}}
-              >
-                Register/Log in
+                Sales Enquiry
               </button>
             </div>
 

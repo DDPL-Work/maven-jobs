@@ -9,7 +9,7 @@ const {
   protectCandidateManagers,
   optionalAuthCandidate,
 } = require("../middleware/candidate.middleware");
-const { cacheRoute, invalidateCache } = require("../middleware/cache.middleware");
+const { cacheRoute, invalidateCache, serializeQuery } = require("../middleware/cache.middleware");
 const { aiResumeLimiter, authLimiter } = require("../middleware/rateLimit.middleware");
 
 const router = express.Router();
@@ -45,7 +45,14 @@ router.get(
   }),
   candidateController.getDashboard,
 );
-router.get("/quiz/ranking", candidateController.getQuizRanking);
+router.get(
+  "/quiz/ranking",
+  cacheRoute({
+    key: "cache:candidate:quiz:ranking",
+    ttl: 300,
+  }),
+  candidateController.getQuizRanking,
+);
 router.get("/quiz/today", protectCandidate, candidateController.getTodayQuiz);
 router.post("/quiz/today/submit", protectCandidate, candidateController.submitTodayQuiz);
 
@@ -91,7 +98,15 @@ router.get(
   }),
   candidateController.getJobDetail,
 );
-router.get("/jobs/:id/similar", optionalAuthCandidate, candidateController.getSimilarJobs);
+router.get(
+  "/jobs/:id/similar",
+  optionalAuthCandidate,
+  cacheRoute({
+    key: (req) => `cache:candidate:jobs:similar:${req.params.id}`,
+    ttl: 300,
+  }),
+  candidateController.getSimilarJobs,
+);
 router.post("/jobs/:id/report", optionalAuthCandidate, jobReportController.submitJobReport);
 router.get("/jobs/:id/match-score", protectCandidate, candidateController.getJobMatchScore);
 router.patch(
@@ -175,10 +190,21 @@ router.post(
   invalidateCache([
     (req) => `cache:candidate:applications:${req.user?._id || req.user?.id}`,
     (req) => `cache:candidate:dashboard:${req.user?._id || req.user?.id}`,
+    "cache:company-panel:jobs-responses:*",
+    "cache:company-panel:job-responses:*",
+    "cache:company-panel:dashboard:*",
   ]),
   candidateController.createApplication,
 );
-router.get("/nvites", protectCandidate, candidateController.getNvites);
+router.get(
+  "/nvites",
+  protectCandidate,
+  cacheRoute({
+    key: (req) => `cache:candidate:nvites:${req.user?._id || req.user?.id}:${serializeQuery(req.query)}`,
+    ttl: 180,
+  }),
+  candidateController.getNvites,
+);
 router.get("/chats", protectCandidate, chatController.getCandidateThreads);
 router.get("/chats/:threadId/messages", protectCandidate, chatController.getCandidateThreadMessages);
 router.post("/chats/:threadId/messages", protectCandidate, chatController.sendCandidateMessage);
@@ -198,6 +224,7 @@ router.patch(
   invalidateCache([
     (req) => `cache:candidate:profile:${req.user?._id || req.user?.id}`,
     (req) => `cache:candidate:dashboard:${req.user?._id || req.user?.id}`,
+    (req) => `cache:company-panel:candidate-profile:${req.user?._id || req.user?.id}:*`,
   ]),
   candidateController.updateProfile,
 );
@@ -288,8 +315,22 @@ router.get(
   candidateController.exportCandidateResumes,
 );
 
-router.get("/:id", candidateController.getPublicCandidateById);
-router.get("/:id/similar", candidateController.getSimilarCandidates);
+router.get(
+  "/:id",
+  cacheRoute({
+    key: (req) => `cache:candidate:public-profile:${req.params.id}`,
+    ttl: 300,
+  }),
+  candidateController.getPublicCandidateById,
+);
+router.get(
+  "/:id/similar",
+  cacheRoute({
+    key: (req) => `cache:candidate:similar:${req.params.id}`,
+    ttl: 600,
+  }),
+  candidateController.getSimilarCandidates,
+);
 router.get("/:id/resume", candidateController.getPublicCandidateResume);
 router.get("/:id/resume/download", candidateController.downloadPublicCandidateResume);
 

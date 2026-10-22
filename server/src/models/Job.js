@@ -137,6 +137,8 @@ const jobSchema = new mongoose.Schema(
 );
 
 jobSchema.index({ companyId: 1, isActive: 1 });
+jobSchema.index({ companyId: 1, updatedAt: -1 });
+jobSchema.index({ createdByClient: 1, updatedAt: -1 });
 jobSchema.index({ isActive: 1, approvalStatus: 1, isHotVacancy: -1, updatedAt: -1 });
 
 jobSchema.pre("save", function (next) {

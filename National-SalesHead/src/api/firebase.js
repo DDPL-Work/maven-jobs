@@ -12,6 +12,23 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
 };
 
+// Immediate log to confirm Firebase status in browser DevTools
+if (typeof window !== "undefined") {
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    console.log(
+      `%c🔥 [Firebase] Running & Initialized ✓%c Project: "${firebaseConfig.projectId}"`,
+      "background: #ff9800; color: #fff; font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 11px;",
+      "color: #e65100; font-weight: bold; margin-left: 6px;"
+    );
+  } else {
+    console.warn(
+      `%c⚠️ [Firebase] Config Incomplete%c Missing VITE_FIREBASE_API_KEY or VITE_FIREBASE_PROJECT_ID in .env.`,
+      "background: #f44336; color: #fff; font-weight: bold; padding: 2px 8px; border-radius: 4px;",
+      "color: #f44336; margin-left: 6px;"
+    );
+  }
+}
+
 let app = null;
 let messaging = null;
 
@@ -20,6 +37,7 @@ export async function getFirebaseMessaging() {
 
   const supported = await isSupported().catch(() => false);
   if (!supported) {
+    console.info("[Firebase] Web push messaging is not supported in this browser environment.");
     return null;
   }
 
@@ -29,6 +47,11 @@ export async function getFirebaseMessaging() {
 
   if (!app) {
     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    console.log(
+      `%c🔥 [Firebase] App Instance Ready%c ${app.name} (${firebaseConfig.projectId})`,
+      "background: #ffb74d; color: #000; font-weight: bold; padding: 2px 6px; border-radius: 3px;",
+      "color: #666; margin-left: 6px;"
+    );
   }
 
   if (!messaging) {
