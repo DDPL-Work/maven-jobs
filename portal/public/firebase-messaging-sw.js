@@ -27,10 +27,24 @@ try {
     console.log("[FCM SW] 🔥 Background Service Worker initialized for project:", firebaseConfig.projectId);
 
     messaging.onBackgroundMessage((payload) => {
-      console.log("[FCM SW] 🔔 Background push message received:", payload);
       const notificationTitle = payload.notification?.title || payload.data?.title || "Maven Jobs";
+      const notificationBody = payload.notification?.body || payload.data?.message || payload.data?.body || "";
+
+      console.group(
+        `%c🔔 [FCM SW:Portal] Background Push Received via Google FCM ✓%c "${notificationTitle}"`,
+        "background: #0288d1; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 3px;",
+        "color: #0288d1; font-weight: bold; margin-left: 6px;"
+      );
+      console.log("📌 Title:", notificationTitle);
+      console.log("💬 Body:", notificationBody);
+      console.log("🆔 Google FCM Message ID:", payload.messageId || "N/A");
+      console.log("📡 Google Sender ID (from):", payload.from || "Google FCM");
+      console.log("📦 Data:", payload.data);
+      console.log("🔍 Full Payload:", payload);
+      console.groupEnd();
+
       const notificationOptions = {
-        body: payload.notification?.body || payload.data?.message || "",
+        body: notificationBody,
         icon: "/favicon.ico",
         badge: "/favicon.ico",
         data: {

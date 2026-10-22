@@ -390,7 +390,7 @@
 ═══════════════════════════════ */
 .pd-cover {
   position: relative;
-  margin-top: 64px;
+  margin-top: 0;
   height: 280px;
   background-size: cover;
   background-position: center;
@@ -955,13 +955,13 @@
 }
 
 .hd-page {
-  padding-top: 64px;
+  padding-top: 0;
 }
 
 .hd-main {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 28px 28px 0;
+  padding: 20px 28px 0;
   display: grid;
   grid-template-columns: 240px 1fr 288px;
   gap: 24px;

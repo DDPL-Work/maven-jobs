@@ -137,11 +137,38 @@ export async function subscribeToForegroundNotifications(onReceive) {
     if (!msg) return () => {};
 
     return onMessage(msg, (payload) => {
-      console.log(
-        `%c🔔 [Firebase] Foreground Notification Received:%c`,
-        "background: #7b1fa2; color: #fff; font-weight: bold; padding: 2px 6px; border-radius: 3px;",
-        payload
+      const title = payload.notification?.title || payload.data?.title || "Notification";
+      const body = payload.notification?.body || payload.data?.message || payload.data?.body || "";
+      const messageId = payload.messageId || "N/A";
+      const from = payload.from || "Google FCM";
+
+      console.group(
+        `%c🔔 [Firebase:Portal] Push Notification Arrived via Google FCM ✓%c "${title}"`,
+        "background: #7b1fa2; color: #fff; font-weight: bold; padding: 3px 8px; border-radius: 4px;",
+        "color: #7b1fa2; font-weight: bold; margin-left: 6px;"
       );
+      console.log(`📌 Title:`, title);
+      console.log(`💬 Body:`, body);
+      console.log(`🆔 Google FCM Message ID:`, messageId);
+      console.log(`📡 Google Sender ID (from):`, from);
+      console.log(`📦 Data Payload:`, payload.data || {});
+      console.log(`🔍 Raw FCM Object:`, payload);
+      console.groupEnd();
+
+      // Show system desktop notification banner even in foreground if permitted
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification(title, {
+            body,
+            icon: "/favicon.ico",
+            badge: "/favicon.ico",
+            data: payload.data || {},
+          });
+        } catch {
+          // Ignore notification constructor errors in unsupported window contexts
+        }
+      }
+
       if (typeof onReceive === "function") {
         onReceive(payload);
       }

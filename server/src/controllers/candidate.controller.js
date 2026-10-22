@@ -1402,248 +1402,259 @@ exports.getLandingByToken = asyncHandler(async (req, res) => {
 });
 
 exports.getDashboard = asyncHandler(async (req, res) => {
-  const profile = await ensureCandidateProfile(req.user);
-  const quizKey = new Date().toISOString().slice(0, 10);
-  const followedIds = profile.followedCompanyIds || [];
-  const [
-    applications,
-    notifications,
-    recommended,
-    applicationStats,
-    companyIds,
-    extraJobs,
-    todayQuizResult,
-    quizXp,
-    followedCompanyJobs,
-    followedCompanies,
-    nviteRecords,
-  ] = await Promise.all([
-    Application.find({ candidateId: req.user._id })
-      .sort({ updatedAt: -1 })
-      .limit(DASHBOARD_PIPELINE_LIMIT)
-      .populate("companyId", "name")
-      .populate("jobId", "title location experience skills department"),
-    CandidateNotification.find({ candidateId: req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(DASHBOARD_ALERTS_LIMIT),
-    getRecommendedJobs(profile, req.user._id),
-    Application.find({ candidateId: req.user._id }).select("status"),
-    Application.distinct("companyId", { candidateId: req.user._id }),
-    Job.find({ isActive: true, approvalStatus: "APPROVED" })
-      .sort({ isHotVacancy: -1, createdAt: -1 })
-      .limit(10)
-      .populate("companyId", "name logoUrl planSnapshot"),
-    CandidateQuizResult.findOne({ candidateId: req.user._id, quizKey }),
-    calculateCandidateXp(req.user._id),
-    followedIds.length > 0
-      ? Job.find({
-          companyId: { $in: followedIds },
-          isActive: true,
-          approvalStatus: "APPROVED",
-        })
+  const candidateId = req.user?._id || req.user?.id;
+  const cacheKey = `dashboard_response:${candidateId}`;
+
+  const data = await cacheService.cacheAside({
+    key: cacheKey,
+    ttl: 120,
+    fetch: async () => {
+      const profile = await ensureCandidateProfile(req.user);
+      const quizKey = new Date().toISOString().slice(0, 10);
+      const followedIds = profile.followedCompanyIds || [];
+      const [
+        applications,
+        notifications,
+        recommended,
+        applicationStats,
+        companyIds,
+        extraJobs,
+        todayQuizResult,
+        quizXp,
+        followedCompanyJobs,
+        followedCompanies,
+        nviteRecords,
+      ] = await Promise.all([
+        Application.find({ candidateId: req.user._id })
+          .sort({ updatedAt: -1 })
+          .limit(DASHBOARD_PIPELINE_LIMIT)
+          .populate("companyId", "name")
+          .populate("jobId", "title location experience skills department"),
+        CandidateNotification.find({ candidateId: req.user._id })
+          .sort({ createdAt: -1 })
+          .limit(DASHBOARD_ALERTS_LIMIT),
+        getRecommendedJobs(profile, req.user._id),
+        Application.find({ candidateId: req.user._id }).select("status"),
+        Application.distinct("companyId", { candidateId: req.user._id }),
+        Job.find({ isActive: true, approvalStatus: "APPROVED" })
           .sort({ isHotVacancy: -1, createdAt: -1 })
-          .limit(20)
-          .populate("companyId", "name industry logoUrl planSnapshot")
-      : Promise.resolve([]),
-    followedIds.length > 0
-      ? Company.find({ _id: { $in: followedIds } })
-        .select("name logoUrl industry location.city updatedAt")
-        .lean()
-      : Promise.resolve([]),
-    Nvite.find({ "recipients.userId": req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate("companyId", "name logoUrl")
-      .populate("recruiterId", "name avatar")
-      .lean(),
-  ]);
+          .limit(10)
+          .populate("companyId", "name logoUrl planSnapshot"),
+        CandidateQuizResult.findOne({ candidateId: req.user._id, quizKey }),
+        calculateCandidateXp(req.user._id),
+        followedIds.length > 0
+          ? Job.find({
+              companyId: { $in: followedIds },
+              isActive: true,
+              approvalStatus: "APPROVED",
+            })
+              .sort({ isHotVacancy: -1, createdAt: -1 })
+              .limit(20)
+              .populate("companyId", "name industry logoUrl planSnapshot")
+          : Promise.resolve([]),
+        followedIds.length > 0
+          ? Company.find({ _id: { $in: followedIds } })
+            .select("name logoUrl industry location.city updatedAt")
+            .lean()
+          : Promise.resolve([]),
+        Nvite.find({ "recipients.userId": req.user._id })
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .populate("companyId", "name logoUrl")
+          .populate("recruiterId", "name avatar")
+          .lean(),
+      ]);
 
-  const unreadAlerts = await CandidateNotification.countDocuments({
-    candidateId: req.user._id,
-    status: "UNREAD",
-  });
+      const unreadAlerts = await CandidateNotification.countDocuments({
+        candidateId: req.user._id,
+        status: "UNREAD",
+      });
 
-  const recruiterActionCount = await CandidateNotification.countDocuments({
-    candidateId: req.user._id,
-    category: "APPLICATION",
-  });
+      const recruiterActionCount = await CandidateNotification.countDocuments({
+        candidateId: req.user._id,
+        category: "APPLICATION",
+      });
 
-  const historicalProfileViews = companyIds.filter(Boolean).length || 0;
+      const historicalProfileViews = companyIds.filter(Boolean).length || 0;
 
-  const effectiveProfileViews = Math.max(
-    profile.profileViews || 0,
-    historicalProfileViews,
-  );
-  const effectiveRecruiterActions = Math.max(
-    profile.recruiterActions || 0,
-    recruiterActionCount,
-  );
-
-  const allDashboardJobIds = [...extraJobs, ...followedCompanyJobs]
-    .map((j) => String(j.companyId?._id || j.companyId || ""))
-    .filter(Boolean);
-  const dashboardRatingsMap = await getCompanyRatingsMap(allDashboardJobIds);
-
-  const enrichedApplications = await Promise.all(
-    applications.map(async (item) => {
-      const matchData =
-        item.jobId && typeof item.jobId === "object"
-          ? computeMatchScore(item.jobId, profile)
-          : null;
-      return formatApplication(item, matchData);
-    }),
-  );
-
-  const enrichedExtraJobs = await Promise.all(
-    extraJobs.map(async (job) => {
-      const matchData = computeMatchScore(job, profile);
-      const cid = String(job.companyId?._id || job.companyId || "");
-      return formatJob(
-        job,
-        new Map(),
-        matchData,
-        dashboardRatingsMap.get(cid) || null,
+      const effectiveProfileViews = Math.max(
+        profile.profileViews || 0,
+        historicalProfileViews,
       );
-    }),
-  );
+      const effectiveRecruiterActions = Math.max(
+        profile.recruiterActions || 0,
+        recruiterActionCount,
+      );
 
-  const hiringCompanyPool = extraJobs
-    .filter((j) => j.companyId && j.companyId._id)
-    .map((j) => ({
-      id: String(j.companyId._id),
-      name: j.companyId.name || "Unknown",
-      logoUrl: j.companyId.logoUrl || "",
-    }))
-    .filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i);
+      const allDashboardJobIds = [...extraJobs, ...followedCompanyJobs]
+        .map((j) => String(j.companyId?._id || j.companyId || ""))
+        .filter(Boolean);
+      const dashboardRatingsMap = await getCompanyRatingsMap(allDashboardJobIds);
 
-  const enrichedExtraJobsWithHiring = enrichedExtraJobs.map((job, idx) => {
-    const ownCompany =
-      hiringCompanyPool.find((c) => c.id === job.companyId) || null;
-    const others = hiringCompanyPool.filter((c) => c.id !== job.companyId);
-    const shuffled = others.sort(() => 0.5 - Math.random()).slice(0, 4);
-    const hiringCompanies = ownCompany ? [ownCompany, ...shuffled] : shuffled;
-    return { ...job, hiringCompanies };
-  });
+      const enrichedApplications = await Promise.all(
+        applications.map(async (item) => {
+          const matchData =
+            item.jobId && typeof item.jobId === "object"
+              ? computeMatchScore(item.jobId, profile)
+              : null;
+          return formatApplication(item, matchData);
+        }),
+      );
 
-  const formattedNvites = nviteRecords.map((n) => {
-    const companyName = n.companyId?.name || "Unknown Company";
-    const recruiterName = n.recruiterId?.name || "Recruiter";
-    const candidateName = req.user?.name || "Candidate";
-    const recipient = (n.recipients || []).find(
-      (r) => r.userId && String(r.userId) === String(req.user._id),
-    );
-    const resolveVars = (str) =>
-      (str || "")
-        .replace(/\{\{candidate_name\}\}/g, candidateName)
-        .replace(/\{\{company_name\}\}/g, companyName)
-        .replace(/\{\{recruiter_name\}\}/g, recruiterName);
-    const resolvedSubject = resolveVars(n.subject);
-    const resolvedBody = resolveVars(n.body);
-    const initials = companyName
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-    const ago = timeAgo(n.createdAt);
-    const hash = initials.charCodeAt(0) || 100;
-    const hue = (hash * 47) % 360;
-    return {
-      id: n._id,
-      title: resolvedSubject,
-      body: resolvedBody,
-      company: companyName,
-      ago,
-      code: initials,
-      bg: `linear-gradient(135deg, hsl(${hue},70%,65%), hsl(${(hue + 40) % 360},70%,55%))`,
-      col: "#fff",
-      status: recipient?.status || "sent",
-      sentAt: recipient?.sentAt || n.createdAt,
-      recruiterName,
-      logoUrl: n.companyId?.logoUrl || null,
-    };
-  });
+      const enrichedExtraJobs = await Promise.all(
+        extraJobs.map(async (job) => {
+          const matchData = computeMatchScore(job, profile);
+          const cid = String(job.companyId?._id || job.companyId || "");
+          return formatJob(
+            job,
+            new Map(),
+            matchData,
+            dashboardRatingsMap.get(cid) || null,
+          );
+        }),
+      );
 
-  const followedJobAppMap = await buildApplicationMap(
-    req.user._id,
-    followedCompanyJobs
-      .filter(Boolean)
-      .map((j) => j._id)
-      .filter(Boolean),
-  );
+      const hiringCompanyPool = extraJobs
+        .filter((j) => j.companyId && j.companyId._id)
+        .map((j) => ({
+          id: String(j.companyId._id),
+          name: j.companyId.name || "Unknown",
+          logoUrl: j.companyId.logoUrl || "",
+        }))
+        .filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i);
 
-  const enrichedFollowedJobs = (
-    await Promise.all(
-      followedCompanyJobs.map(async (job) => {
-        const matchData = computeMatchScore(job, profile);
-        const cid = String(job.companyId?._id || job.companyId || "");
-        return formatJob(
-          job,
-          followedJobAppMap,
-          matchData,
-          dashboardRatingsMap.get(cid) || null,
+      const enrichedExtraJobsWithHiring = enrichedExtraJobs.map((job, idx) => {
+        const ownCompany =
+          hiringCompanyPool.find((c) => c.id === job.companyId) || null;
+        const others = hiringCompanyPool.filter((c) => c.id !== job.companyId);
+        const shuffled = others.sort(() => 0.5 - Math.random()).slice(0, 4);
+        const hiringCompanies = ownCompany ? [ownCompany, ...shuffled] : shuffled;
+        return { ...job, hiringCompanies };
+      });
+
+      const formattedNvites = nviteRecords.map((n) => {
+        const companyName = n.companyId?.name || "Unknown Company";
+        const recruiterName = n.recruiterId?.name || "Recruiter";
+        const candidateName = req.user?.name || "Candidate";
+        const recipient = (n.recipients || []).find(
+          (r) => r.userId && String(r.userId) === String(req.user._id),
         );
-      }),
-    )
-  ).filter((job) => !job.hasApplied);
+        const resolveVars = (str) =>
+          (str || "")
+            .replace(/\{\{candidate_name\}\}/g, candidateName)
+            .replace(/\{\{company_name\}\}/g, companyName)
+            .replace(/\{\{recruiter_name\}\}/g, recruiterName);
+        const resolvedSubject = resolveVars(n.subject);
+        const resolvedBody = resolveVars(n.body);
+        const initials = companyName
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2);
+        const ago = timeAgo(n.createdAt);
+        const hash = initials.charCodeAt(0) || 100;
+        const hue = (hash * 47) % 360;
+        return {
+          id: n._id,
+          title: resolvedSubject,
+          body: resolvedBody,
+          company: companyName,
+          ago,
+          code: initials,
+          bg: `linear-gradient(135deg, hsl(${hue},70%,65%), hsl(${(hue + 40) % 360},70%,55%))`,
+          col: "#fff",
+          status: recipient?.status || "sent",
+          sentAt: recipient?.sentAt || n.createdAt,
+          recruiterName,
+          logoUrl: n.companyId?.logoUrl || null,
+        };
+      });
+
+      const followedJobAppMap = await buildApplicationMap(
+        req.user._id,
+        followedCompanyJobs
+          .filter(Boolean)
+          .map((j) => j._id)
+          .filter(Boolean),
+      );
+
+      const enrichedFollowedJobs = (
+        await Promise.all(
+          followedCompanyJobs.map(async (job) => {
+            const matchData = computeMatchScore(job, profile);
+            const cid = String(job.companyId?._id || job.companyId || "");
+            return formatJob(
+              job,
+              followedJobAppMap,
+              matchData,
+              dashboardRatingsMap.get(cid) || null,
+            );
+          }),
+        )
+      ).filter((job) => !job.hasApplied);
+
+      return {
+        profile: formatProfile(profile, req.user),
+        summary: {
+          totalApplications: applicationStats.length,
+          shortlisted: applicationStats.filter((item) =>
+            ["SHORTLISTED", "INTERVIEW", "OFFERED", "HIRED"].includes(
+              item.status,
+            ),
+          ).length,
+          interviews: applicationStats.filter((item) =>
+            ["INTERVIEW", "OFFERED", "HIRED"].includes(item.status),
+          ).length,
+          companiesApplied: companyIds.filter(Boolean).length,
+          unreadAlerts,
+          quizXp: Number(quizXp.totalXp || 0),
+          profileViews: effectiveProfileViews,
+          recruiterActions: effectiveRecruiterActions,
+          jobMatches: recommended.jobs
+            ? new Set(
+              Object.values(recommended.jobs).flatMap((arr) =>
+                Array.isArray(arr) ? arr.map((j) => String(j._id || j.id)) : [],
+              ),
+            ).size
+            : 0,
+        },
+        quiz: {
+          isAvailable: !todayQuizResult,
+          hasPlayedToday: Boolean(todayQuizResult),
+          title: "Your Daily Quiz is Ready!",
+          subtitle: todayQuizResult
+            ? "You have completed today's challenge. Come back tomorrow for more XP."
+            : "Sharpen your skills with today's challenge and earn XP.",
+          xpReward: DAILY_QUIZ_QUESTION_COUNT * DAILY_QUIZ_XP_PER_CORRECT,
+          questionCount: DAILY_QUIZ_QUESTION_COUNT,
+          durationSeconds: DAILY_QUIZ_QUESTION_COUNT * 15,
+          totalXp: Number(quizXp.totalXp || 0),
+          quizzesPlayed: Number(quizXp.quizzesPlayed || 0),
+        },
+        mappedCompany: recommended.mappedCompany,
+        recommendedJobs: recommended.jobs,
+        nvites: formattedNvites,
+        earlyAccess: enrichedExtraJobsWithHiring.slice(3, 10),
+        followedCompanyJobs: enrichedFollowedJobs,
+        followedCompanies: followedCompanies.map((c) => ({
+          id: String(c._id),
+          name: c.name,
+          logoUrl: c.logoUrl || "",
+          industry: c.industry || "",
+          city: c.location?.city || "",
+          followedAt: c.updatedAt || null,
+        })),
+        recentApplications: enrichedApplications,
+        notifications: notifications.map((item) => formatNotification(item)),
+      };
+    },
+  });
 
   res.status(200).json({
     success: true,
-    data: {
-      profile: formatProfile(profile, req.user),
-      summary: {
-        totalApplications: applicationStats.length,
-        shortlisted: applicationStats.filter((item) =>
-          ["SHORTLISTED", "INTERVIEW", "OFFERED", "HIRED"].includes(
-            item.status,
-          ),
-        ).length,
-        interviews: applicationStats.filter((item) =>
-          ["INTERVIEW", "OFFERED", "HIRED"].includes(item.status),
-        ).length,
-        companiesApplied: companyIds.filter(Boolean).length,
-        unreadAlerts,
-        quizXp: Number(quizXp.totalXp || 0),
-        profileViews: effectiveProfileViews,
-        recruiterActions: effectiveRecruiterActions,
-        jobMatches: recommended.jobs
-          ? new Set(
-            Object.values(recommended.jobs).flatMap((arr) =>
-              Array.isArray(arr) ? arr.map((j) => String(j._id || j.id)) : [],
-            ),
-          ).size
-          : 0,
-      },
-      quiz: {
-        isAvailable: !todayQuizResult,
-        hasPlayedToday: Boolean(todayQuizResult),
-        title: "Your Daily Quiz is Ready!",
-        subtitle: todayQuizResult
-          ? "You have completed today's challenge. Come back tomorrow for more XP."
-          : "Sharpen your skills with today's challenge and earn XP.",
-        xpReward: DAILY_QUIZ_QUESTION_COUNT * DAILY_QUIZ_XP_PER_CORRECT,
-        questionCount: DAILY_QUIZ_QUESTION_COUNT,
-        durationSeconds: DAILY_QUIZ_QUESTION_COUNT * 15,
-        totalXp: Number(quizXp.totalXp || 0),
-        quizzesPlayed: Number(quizXp.quizzesPlayed || 0),
-      },
-      mappedCompany: recommended.mappedCompany,
-      recommendedJobs: recommended.jobs,
-      nvites: formattedNvites,
-      earlyAccess: enrichedExtraJobsWithHiring.slice(3, 10),
-      followedCompanyJobs: enrichedFollowedJobs,
-      followedCompanies: followedCompanies.map((c) => ({
-        id: String(c._id),
-        name: c.name,
-        logoUrl: c.logoUrl || "",
-        industry: c.industry || "",
-        city: c.location?.city || "",
-        followedAt: c.updatedAt || null,
-      })),
-      recentApplications: enrichedApplications,
-      notifications: notifications.map((item) => formatNotification(item)),
-    },
+    data,
   });
 });
 
@@ -2852,6 +2863,11 @@ exports.submitTodayQuiz = asyncHandler(async (req, res) => {
       xpEarned: data.xpEarned,
     },
   });
+
+  await Promise.all([
+    cacheService.del(`dashboard_response:${req.user._id}`),
+    cacheService.del(`cache:candidate:dashboard:${req.user._id}`),
+  ]).catch(() => {});
 
   res.status(201).json({
     success: true,
