@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getAdminPageMeta } from "../config/adminMenuConfig";
 import { clearStoredSession, getNotifications, getStoredToken } from "../services/adminApi";
+import { registerPushNotifications, subscribeToForegroundNotifications } from "../services/firebase";
 import NotificationPanel from "./NotificationPanel";
 
 export default function AdminHeader({ toggleSidebar }) {
@@ -29,6 +30,16 @@ export default function AdminHeader({ toggleSidebar }) {
     if (getStoredToken()) {
       fetchUnreadCount();
       intervalRef.current = setInterval(fetchUnreadCount, 30000);
+      registerPushNotifications().catch(() => {});
+      const unsubPromise = subscribeToForegroundNotifications(() => {
+        fetchUnreadCount();
+      });
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        Promise.resolve(unsubPromise).then((unsub) => {
+          if (typeof unsub === "function") unsub();
+        });
+      };
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

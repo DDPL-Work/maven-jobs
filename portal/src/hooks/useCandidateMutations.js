@@ -95,6 +95,7 @@ export function useSubmitCompanyReview(userId) {
 
 export function useMarkNotificationRead(userId) {
   const queryClient = useQueryClient();
+  const resolvedKey = typeof userId === "string" ? userId : (userId && typeof userId === "object" && (userId._id || userId.id)) || "current";
   return useMutation({
     mutationFn: async (notificationId) => {
       const res = await authService.markCandidateNotificationRead(notificationId);
@@ -102,7 +103,24 @@ export function useMarkNotificationRead(userId) {
       return res;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["candidate", "notifications", userId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.candidate.notifications(resolvedKey) });
+      queryClient.invalidateQueries({ queryKey: ["candidate", "notifications"] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead(userId) {
+  const queryClient = useQueryClient();
+  const resolvedKey = typeof userId === "string" ? userId : (userId && typeof userId === "object" && (userId._id || userId.id)) || "current";
+  return useMutation({
+    mutationFn: async () => {
+      const res = await authService.markAllCandidateNotificationsRead();
+      if (!res.success) throw new Error("Failed to mark all notifications as read");
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.candidate.notifications(resolvedKey) });
+      queryClient.invalidateQueries({ queryKey: ["candidate", "notifications"] });
     },
   });
 }

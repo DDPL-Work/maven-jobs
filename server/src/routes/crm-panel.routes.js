@@ -159,5 +159,17 @@ router.patch(
 const salesEnquiryRoutes = require("./sales-enquiry.routes");
 router.use("/sales-enquiry", salesEnquiryRoutes);
 
+// Push notifications (FCM Token Registration)
+router.post(
+  "/notifications/fcm-token",
+  protectCrmPanel,
+  crmPanelController.saveFcmToken,
+);
+router.delete(
+  "/notifications/fcm-token",
+  protectCrmPanel,
+  crmPanelController.removeFcmToken,
+);
+
 module.exports = router;
 

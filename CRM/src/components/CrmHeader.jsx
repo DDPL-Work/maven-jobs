@@ -1,12 +1,26 @@
 import { LuBell, LuLogOut, LuMenu } from "react-icons/lu";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getCrmPageMeta } from "../config/crmMenuConfig";
-import { clearStoredSession } from "../services/crmApi";
+import { clearStoredSession, getStoredToken } from "../services/crmApi";
+import { registerPushNotifications, subscribeToForegroundNotifications } from "../services/firebase";
+import { useEffect } from "react";
 
 export default function CrmHeader({ toggleSidebar }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const pageMeta = getCrmPageMeta(pathname);
+
+  useEffect(() => {
+    if (getStoredToken()) {
+      registerPushNotifications().catch(() => {});
+      const unsubPromise = subscribeToForegroundNotifications(() => {});
+      return () => {
+        Promise.resolve(unsubPromise).then((unsub) => {
+          if (typeof unsub === "function") unsub();
+        });
+      };
+    }
+  }, []);
 
   const handleLogout = () => {
     clearStoredSession();

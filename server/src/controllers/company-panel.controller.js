@@ -354,18 +354,26 @@ const formatApplicationStatusLabel = (status = "") =>
     .map((segment) => (segment ? `${segment[0].toUpperCase()}${segment.slice(1)}` : ""))
     .join(" ");
 
-const formatCompanyApplication = (application, profileMap = new Map()) => {
+const formatCompanyApplication = (
+  application,
+  profileMap = new Map(),
+  userMap = new Map(),
+  jobMap = new Map(),
+) => {
   const candidateId = getCandidateIdFromApplication(application);
   const profile = profileMap.get(candidateId);
+  const user = userMap.get(candidateId);
+  const jobId = application.jobId?._id ? String(application.jobId._id) : String(application.jobId || "");
+  const jobTitle = application.jobId?.title || jobMap.get(jobId) || "Unknown job";
 
   return {
     id: String(application._id),
-    jobId: application.jobId?._id ? String(application.jobId._id) : String(application.jobId || ""),
-    jobTitle: application.jobId?.title || "Unknown job",
+    jobId,
+    jobTitle,
     candidateId,
-    candidateName: application.candidateId?.name || "Candidate",
-    candidateEmail: application.candidateId?.email || "",
-    candidateLogoUrl: application.candidateId?.avatar || "",
+    candidateName: application.candidateId?.name || user?.name || "Candidate",
+    candidateEmail: application.candidateId?.email || user?.email || "",
+    candidateLogoUrl: application.candidateId?.avatar || user?.avatar || "",
     candidatePhone: profile?.phone || "",
     candidateCurrentTitle: profile?.currentTitle || "",
     candidateExperience: profile?.totalExperience || "",
@@ -397,13 +405,15 @@ const formatPackageChangeRequestForCompany = (request, company) =>
     requestedByName: company?.name || "Client",
   });
 
-const syncCompanyPackageContext = async (company) => {
-  try {
-    const PurchaseService = require("../services/commercial/purchase.service");
-    await PurchaseService.activateScheduledSubscriptions(company._id);
-    const refreshed = await Company.findById(company._id);
-    if (refreshed) company = refreshed;
-  } catch (_) {}
+const syncCompanyPackageContext = async (company, options = {}) => {
+  if (!options?.skipSubscriptionActivation) {
+    try {
+      const PurchaseService = require("../services/commercial/purchase.service");
+      await PurchaseService.activateScheduledSubscriptions(company._id);
+      const refreshed = await Company.findById(company._id);
+      if (refreshed) company = refreshed;
+    } catch (_) {}
+  }
 
   const { packageCatalog, packageLimitMap } = await loadPackageCatalog();
 
@@ -1144,71 +1154,98 @@ exports.register = asyncHandler(async (req, res) => {
 });
 
 exports.getDashboard = asyncHandler(async (req, res) => {
-  const { company } = await resolveClientUserAndCompany(req.user._id);
-  const { packageCatalog, packageSnapshot, appliedPackageChange } = await syncCompanyPackageContext(company);
+  const company = req.company || (await resolveClientUserAndCompany(req.user._id)).company;
+  const { packageCatalog, packageSnapshot, appliedPackageChange } = await syncCompanyPackageContext(company, {
+    skipSubscriptionActivation: Boolean(req.company),
+  });
 
+  const isRecruiter = req.user.role === "RECRUITER";
   let jobFilter = { companyId: company._id };
+  let appFilter = { companyId: company._id };
   let reviewFilter = { companyId: company._id, status: "PUBLISHED" };
   let followerFilter = { followedCompanyIds: company._id };
 
-  if (req.user.role === "RECRUITER") {
+  let jobs = [];
+  let applications = [];
+  let activePackageRequest = null;
+  let recentPackageRequests = [];
+  let reviews = [];
+  let followers = [];
+
+  const jobSelect = "title summary description department location experience approvalStatus rejectionReason isActive createdBySource requiresPackageOverride createdAt updatedAt salaryMin salaryMax skills workplaceType jobType externalLink deadline";
+  const appSelect = "jobId candidateId companyId status resumeUrl resumeFileName sourceQrToken sourceJobId appliedFrom createdAt updatedAt answers";
+  const pkgSelect = "currentPackageType requestedPackageType currentJobLimit requestedJobLimit status isUpgrade reason decisionNote effectiveAt appliedAt reviewedAt createdAt updatedAt";
+
+  if (isRecruiter) {
     jobFilter.createdByClient = req.user._id;
-    reviewFilter = { _id: null }; // Return empty array for recruiters
-    followerFilter = { _id: null }; // Return empty array for recruiters
-  }
+    reviewFilter = { _id: null };
+    followerFilter = { _id: null };
 
-  const jobs = await Job.find(jobFilter).sort({ updatedAt: -1 }).lean();
-  const jobIds = jobs.map((j) => j._id);
-
-  let appFilter = { jobId: { $in: jobIds } };
-  if (req.user.role === "RECRUITER") {
-    // Already scoped by jobIds which are filtered by recruiter above
-  }
-
-  const [applications, activePackageRequest, recentPackageRequests, reviews, followers] = await Promise.all([
-    Application.find(appFilter)
+    jobs = await Job.find(jobFilter)
+      .select(jobSelect)
       .sort({ updatedAt: -1 })
-      .populate("jobId", "title")
-      .populate("candidateId", "name email avatar")
-      .lean(),
-    PackageChangeRequest.findOne({
-      companyId: company._id,
-      $or: [{ status: "PENDING" }, { status: "APPROVED", appliedAt: null }],
-    })
-      .sort({ createdAt: -1 })
-      .select(
-        "currentPackageType requestedPackageType currentJobLimit requestedJobLimit status isUpgrade reason decisionNote effectiveAt appliedAt reviewedAt createdAt updatedAt",
-      )
-      .lean(),
-    PackageChangeRequest.find({ companyId: company._id })
-      .sort({ createdAt: -1 })
-      .limit(6)
-      .select(
-        "currentPackageType requestedPackageType currentJobLimit requestedJobLimit status isUpgrade reason decisionNote effectiveAt appliedAt reviewedAt createdAt updatedAt",
-      )
-      .lean(),
-    CompanyReview.find(reviewFilter)
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .populate("candidateId", "name email")
-      .select("candidateName candidateTitle candidateCity rating headline review isAnonymous createdAt updatedAt reactions candidateId")
-      .lean(),
+      .lean();
+    const jobIds = jobs.map((j) => j._id);
+    appFilter = { jobId: { $in: jobIds } };
 
-    CandidateProfile.find(followerFilter)
-      .sort({ updatedAt: -1 })
-      .limit(20)
-      .populate("userId", "name email")
-      .select("userId phone currentTitle totalExperience currentCity currentState updatedAt")
-      .lean(),
-  ]);
+    const [apps, activeReq, recentReq] = await Promise.all([
+      Application.find(appFilter)
+        .select(appSelect)
+        .sort({ updatedAt: -1 })
+        .lean(),
+      PackageChangeRequest.findOne({
+        companyId: company._id,
+        $or: [{ status: "PENDING" }, { status: "APPROVED", appliedAt: null }],
+      })
+        .sort({ createdAt: -1 })
+        .select(pkgSelect)
+        .lean(),
+      PackageChangeRequest.find({ companyId: company._id })
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .select(pkgSelect)
+        .lean(),
+    ]);
 
-  const reviewUserIds = reviews.map((r) => r.candidateId?._id || r.candidateId).filter(Boolean);
-  const reviewProfilePics = reviewUserIds.length
-    ? await CandidateProfile.find({ userId: { $in: reviewUserIds } })
-        .select("userId profilePic.url")
-        .lean()
-        .then((profiles) => new Map(profiles.map((p) => [String(p.userId), p.profilePic?.url || ""])))
-    : new Map();
+    applications = apps;
+    activePackageRequest = activeReq;
+    recentPackageRequests = recentReq;
+  } else {
+    [jobs, applications, activePackageRequest, recentPackageRequests, reviews, followers] = await Promise.all([
+      Job.find(jobFilter)
+        .select(jobSelect)
+        .sort({ updatedAt: -1 })
+        .lean(),
+      Application.find(appFilter)
+        .select(appSelect)
+        .sort({ updatedAt: -1 })
+        .lean(),
+      PackageChangeRequest.findOne({
+        companyId: company._id,
+        $or: [{ status: "PENDING" }, { status: "APPROVED", appliedAt: null }],
+      })
+        .sort({ createdAt: -1 })
+        .select(pkgSelect)
+        .lean(),
+      PackageChangeRequest.find({ companyId: company._id })
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .select(pkgSelect)
+        .lean(),
+      CompanyReview.find(reviewFilter)
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .populate("candidateId", "name email")
+        .select("candidateName candidateTitle candidateCity rating headline review isAnonymous createdAt updatedAt reactions candidateId")
+        .lean(),
+      CandidateProfile.find(followerFilter)
+        .sort({ updatedAt: -1 })
+        .limit(20)
+        .populate("userId", "name email")
+        .select("userId phone currentTitle totalExperience currentCity currentState updatedAt")
+        .lean(),
+    ]);
+  }
 
   const candidateIds = [
     ...new Set(
@@ -1218,22 +1255,33 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     ),
   ];
 
-  const candidateProfiles = candidateIds.length
-    ? await CandidateProfile.find({ userId: { $in: candidateIds } }).select(
-        "userId phone currentTitle totalExperience currentCity currentState resume",
-      ).lean()
-    : [];
+  const reviewUserIds = reviews.map((r) => r.candidateId?._id || r.candidateId).filter(Boolean);
+  const allCandidateUserIds = [...new Set([...candidateIds, ...reviewUserIds])];
 
-  const profileMap = new Map(
-    candidateProfiles.map((profile) => [String(profile.userId), profile]),
+  const [candidateUsers, candidateProfiles] = await Promise.all([
+    candidateIds.length
+      ? User.find({ _id: { $in: candidateIds } }).select("name email avatar").lean()
+      : [],
+    allCandidateUserIds.length
+      ? CandidateProfile.find({ userId: { $in: allCandidateUserIds } })
+          .select("userId profilePic.url phone currentTitle totalExperience currentCity currentState resume")
+          .lean()
+      : [],
+  ]);
+
+  const userMap = new Map(candidateUsers.map((u) => [String(u._id), u]));
+  const profileMap = new Map(candidateProfiles.map((p) => [String(p.userId), p]));
+  const jobMap = new Map(jobs.map((j) => [String(j._id), j.title || ""]));
+  const reviewProfilePics = new Map(
+    candidateProfiles
+      .filter((p) => p.profilePic?.url)
+      .map((p) => [String(p.userId), p.profilePic.url])
   );
 
   const applicationCountByJob = new Map();
   applications.forEach((application) => {
     const jobId = application.jobId?._id ? String(application.jobId._id) : String(application.jobId || "");
-    if (!jobId) {
-      return;
-    }
+    if (!jobId) return;
     applicationCountByJob.set(jobId, Number(applicationCountByJob.get(jobId) || 0) + 1);
   });
 
@@ -1263,9 +1311,9 @@ exports.getDashboard = asyncHandler(async (req, res) => {
     deadline: job.deadline || null,
   }));
 
-  const applicationRows = applications.map((application) => {
-    return formatCompanyApplication(application, profileMap);
-  });
+  const applicationRows = applications.map((application) =>
+    formatCompanyApplication(application, profileMap, userMap, jobMap)
+  );
 
   const approvedJobs = jobs.filter((job) => job.approvalStatus === "APPROVED");
   const pendingJobs = jobs.filter((job) => job.approvalStatus === "PENDING");
@@ -1280,7 +1328,10 @@ exports.getDashboard = asyncHandler(async (req, res) => {
   company.activeJobCount = nextActiveJobCount;
   company.openRoles = company.activeJobCount;
   if (shouldPersist) {
-    await company.save();
+    Company.updateOne(
+      { _id: company._id },
+      { $set: { activeJobCount: nextActiveJobCount, openRoles: nextActiveJobCount } }
+    ).catch(() => {});
   }
 
   res.status(200).json({
@@ -2231,16 +2282,27 @@ exports.updateApplicationStatus = asyncHandler(async (req, res) => {
     }
   }
 
-  if (candidateId && hasStatusChanged) {
+  const isNotifyEligible = requestedStatus === "SHORTLISTED" || requestedStatus === "REJECTED";
+
+  if (candidateId && hasStatusChanged && isNotifyEligible) {
+    const isShortlisted = requestedStatus === "SHORTLISTED";
+    const jobTitle = application.jobId?.title || "the role";
+    const companyName = company.name || "The company";
+    const notifTitle = isShortlisted
+      ? "Application Shortlisted! 🎉"
+      : "Application Status Update";
+    const notifMessage = isShortlisted
+      ? `Congratulations! ${companyName} has shortlisted your application for the ${jobTitle} role.`
+      : `Update regarding your application for the ${jobTitle} role at ${companyName}.`;
+
+    // 1. In-App notification & Firebase FCM push notification
     await notificationService.sendCandidateNotification({
       candidateId,
       companyId: company._id,
       jobId: application.jobId?._id || application.jobId || null,
       applicationId: application._id,
-      title: "Application status updated",
-      message: `${company.name || "The company"} marked your application for ${
-        application.jobId?.title || "the role"
-      } as ${formatApplicationStatusLabel(requestedStatus)}.`,
+      title: notifTitle,
+      message: notifMessage,
       category: "APPLICATION",
       actionUrl: "/candidate/applications",
       metadata: {
@@ -2250,34 +2312,15 @@ exports.updateApplicationStatus = asyncHandler(async (req, res) => {
       },
     });
 
+    // 2. Email notification via EventBus
     const candidateEmail = application.candidateId?.email;
     const candidateName = application.candidateId?.name;
-    const jobTitle = application.jobId?.title || "the role";
-    const companyName = company.name || "The company";
     const eventPayload = { email: candidateEmail, fullName: candidateName, jobTitle, companyName, candidateId };
 
-    switch (requestedStatus) {
-      case "SHORTLISTED":
-        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
-        break;
-      case "REJECTED":
-        EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
-        break;
-      case "INTERVIEW":
-        EventBus.emit(EVENTS.CANDIDATE_INTERVIEW_SCHEDULED, {
-          ...eventPayload,
-          interviewDate: "",
-          interviewTime: "",
-          interviewMode: "",
-          interviewLink: "",
-        });
-        break;
-      case "OFFERED":
-        EventBus.emit(EVENTS.CANDIDATE_OFFER_ISSUED, {
-          ...eventPayload,
-          offerLink: "",
-        });
-        break;
+    if (isShortlisted) {
+      EventBus.emit(EVENTS.CANDIDATE_APPLICATION_SHORTLISTED, eventPayload);
+    } else {
+      EventBus.emit(EVENTS.CANDIDATE_APPLICATION_REJECTED, eventPayload);
     }
   }
 
@@ -2726,6 +2769,50 @@ exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
     data: result,
     modifiedCount: result.modifiedCount,
     alreadyRead: result.alreadyRead,
+  });
+});
+
+exports.saveFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken, device = "web" } = req.body;
+  if (!fcmToken || typeof fcmToken !== "string") {
+    throw createHttpError(400, "Valid FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  await User.findByIdAndUpdate(userId, {
+    $push: {
+      fcmTokens: {
+        token: fcmToken,
+        device: String(device).slice(0, 50),
+        updatedAt: new Date(),
+      },
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "FCM token saved successfully",
+  });
+});
+
+exports.removeFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken } = req.body;
+  if (!fcmToken) {
+    throw createHttpError(400, "FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "FCM token removed successfully",
   });
 });
 

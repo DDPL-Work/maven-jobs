@@ -69,6 +69,13 @@ const crmUserSchema = new mongoose.Schema(
       conversions: { type: Number, default: 0 },
       meetings: { type: Number, default: 0 },
     },
+    fcmTokens: [
+      {
+        token: { type: String, required: true },
+        device: { type: String, default: "web" },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

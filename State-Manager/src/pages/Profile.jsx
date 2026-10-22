@@ -4,26 +4,20 @@ import {
   fetchStateManagerProfile,
   updateStateManagerProfile,
   uploadStateManagerProfilePhoto,
+  getStoredCrmSession,
+  setStoredCrmSession,
 } from "../api/leadApi";
 
-const SESSION_KEY = "crm_panel_session";
-
 const updateSessionUser = (patch = {}) => {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    const session = raw ? JSON.parse(raw) : {};
-    const next = {
-      ...session,
-      user: {
-        ...(session?.user || {}),
-        ...patch,
-      },
-    };
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event("crm-session-updated"));
-  } catch {
-    // Ignore storage parse failures.
-  }
+  const session = getStoredCrmSession() || {};
+  const next = {
+    ...session,
+    user: {
+      ...(session?.user || {}),
+      ...patch,
+    },
+  };
+  setStoredCrmSession(next);
 };
 
 function InfoCard({ icon, label, value }) {

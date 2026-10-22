@@ -10,7 +10,7 @@ const {
   getSearchSuggestions,
   getLocationSuggestions,
 } = require("../controllers/landing.controller");
-const { cacheRoute, invalidateCache } = require("../middleware/cache.middleware");
+const { cacheRoute, invalidateCache, serializeQuery } = require("../middleware/cache.middleware");
 const { optionalAuthCandidate } = require("../middleware/candidate.middleware");
 
 router.get("/home", cacheRoute({ key: "cache:landing:home", ttl: 120 }), getHomeLandingData);
@@ -19,14 +19,9 @@ router.get(
   "/jobs",
   optionalAuthCandidate,
   cacheRoute({
-    key: (req) => {
-      const q = new URLSearchParams(
-        Object.entries(req.query).map(([k, v]) => [k, String(v)]),
-      );
-      return `cache:landing:jobs:${q.toString() || "all"}`;
-    },
+    key: (req) => `cache:landing:jobs:${serializeQuery(req.query)}`,
     ttl: 300,
-    condition: (req) => !req.user && (!req.query.page || req.query.page === "1"),
+    condition: (req) => !req.user,
   }),
   getPublicJobs,
 );
@@ -60,6 +55,10 @@ router.get("/companies/:id", cacheRoute({
 
 router.get("/employer", cacheRoute({ key: "cache:landing:employer", ttl: 300 }), getEmployerLandingData);
 
-router.get("/:token", getLandingPageData);
+router.get("/:token", cacheRoute({
+  key: (req) => `cache:landing:token:${req.params.token}`,
+  ttl: 600,
+}), getLandingPageData);
 
 module.exports = router;
+

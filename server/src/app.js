@@ -158,6 +158,32 @@ app.get(["/download", `${BASE_ROUTE}/download`, `${BASE_ROUTE}/app/download`], (
   return res.redirect(WEB_DOWNLOAD_URL);
 });
 
+app.get([`${BASE_ROUTE}/redis-health`, "/redis-health"], async (req, res) => {
+  try {
+    const client = cacheService.getClient();
+    const pong = await client.ping();
+    const { getRedisConfig } = require("./config/redis.config");
+    const config = getRedisConfig();
+    return res.status(200).json({
+      success: true,
+      message: "Redis is connected and healthy",
+      redis: {
+        status: client.status,
+        ping: pong,
+        mode: config.type,
+        host: config.host,
+        port: config.port,
+      },
+    });
+  } catch (err) {
+    return res.status(503).json({
+      success: false,
+      message: "Redis is unavailable",
+      error: err?.message || "Unknown error",
+    });
+  }
+});
+
 app.get("/", (req, res) => {
   res.json({
     success: true,

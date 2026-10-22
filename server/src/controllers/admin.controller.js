@@ -544,6 +544,40 @@ const syncSystemRoleMembers = async () => {
   );
 };
 
+let isAdminSetupCompleted = false;
+let adminSetupPromise = null;
+
+const ensureAdminSetupOnce = async () => {
+  if (isAdminSetupCompleted) return;
+  if (!adminSetupPromise) {
+    adminSetupPromise = (async () => {
+      await ensureAdminSetup();
+      isAdminSetupCompleted = true;
+    })().finally(() => {
+      adminSetupPromise = null;
+    });
+  }
+  return adminSetupPromise;
+};
+
+let lastSyncTime = 0;
+let syncPromise = null;
+const syncSystemRoleMembersThrottled = async (force = false) => {
+  const now = Date.now();
+  if (!force && now - lastSyncTime < 10 * 60 * 1000) {
+    return;
+  }
+  if (!syncPromise) {
+    syncPromise = (async () => {
+      await syncSystemRoleMembers();
+      lastSyncTime = Date.now();
+    })().finally(() => {
+      syncPromise = null;
+    });
+  }
+  return syncPromise;
+};
+
 const fetchAdminUsers = async () => {
   const [users, crmUsers] = await Promise.all([
     User.find().select("name email role department scope accessStatus isActive createdAt updatedAt"),
@@ -973,16 +1007,16 @@ exports.me = asyncHandler(async (req, res) => {
 });
 
 exports.getDashboard = asyncHandler(async (req, res) => {
-  await ensureAdminSetup();
-  await syncSystemRoleMembers();
+  await ensureAdminSetupOnce();
+  syncSystemRoleMembersThrottled().catch(() => {});
 
   const [
     companiesTotal,
     overLimitClients,
     liveJobsTotal,
-    candidateTotal,
     applicationsTotal,
-    allUsers,
+    userStats,
+    crmStats,
     roles,
     settings,
     recentCompanies,
@@ -995,34 +1029,78 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       $expr: { $gt: ["$activeJobCount", "$jobLimit"] },
     }),
     Job.countDocuments(),
-    User.countDocuments({ role: "CANDIDATE" }),
     Application.countDocuments(),
-    fetchAdminUsers(),
-    AdminRole.find().sort({ isSystemRole: -1, name: 1 }),
-    AdminSetting.find().sort({ module: 1 }),
-    Company.find().sort({ createdAt: -1 }).limit(5),
-    Job.find().sort({ createdAt: -1 }).limit(5).populate("companyId", "name"),
-    Application.find().sort({ createdAt: -1 }).limit(5).populate("companyId", "name").populate("jobId", "title"),
-    AdminAuditLog.find().sort({ createdAt: -1 }).limit(6),
+    User.aggregate([
+      {
+        $group: {
+          _id: {
+            role: "$role",
+            status: { $ifNull: ["$accessStatus", { $cond: ["$isActive", "ACTIVE", "RESTRICTED"] }] },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    CrmUser.aggregate([
+      {
+        $group: {
+          _id: {
+            role: "$role",
+            status: { $ifNull: ["$accessStatus", { $cond: ["$isActive", "ACTIVE", "RESTRICTED"] }] },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    AdminRole.find().sort({ isSystemRole: -1, name: 1 }).select("name isSystemRole members").lean(),
+    AdminSetting.find().sort({ module: 1 }).select("module risk").lean(),
+    Company.find().sort({ createdAt: -1 }).limit(5).select("name openRoles activeJobCount status _id").lean(),
+    Job.find().sort({ createdAt: -1 }).limit(5).select("_id").lean(),
+    Application.find().sort({ createdAt: -1 }).limit(5).select("companyId").lean(),
+    AdminAuditLog.find().sort({ createdAt: -1 }).limit(6).select("message entityType createdAt").lean(),
   ]);
 
-  const roleCounts = displayRoleOrder.reduce((accumulator, role) => {
-    accumulator[role] = allUsers.filter((user) => user.role === role).length;
-    return accumulator;
-  }, {});
+  const roleCounts = { ADMIN: 0, CRM: 0, FSE: 0, CLIENT: 0, CANDIDATE: 0 };
+  let activeUsers = 0;
+  let pendingInvites = 0;
+  let restrictedUsers = 0;
+  let allUsersCount = 0;
+
+  for (const item of userStats) {
+    const role = item._id.role;
+    const status = item._id.status;
+    const count = item.count;
+    allUsersCount += count;
+    if (roleCounts[role] !== undefined) roleCounts[role] += count;
+    if (status === "ACTIVE") activeUsers += count;
+    else if (status === "PENDING_INVITE") pendingInvites += count;
+    else if (status === "RESTRICTED") restrictedUsers += count;
+    else activeUsers += count;
+  }
+
+  for (const item of crmStats) {
+    const rawRole = item._id.role;
+    const status = item._id.status;
+    const count = item.count;
+    allUsersCount += count;
+    const displayRole = rawRole === "ADMIN" ? "ADMIN" : rawRole === "FSE" ? "FSE" : "CRM";
+    if (roleCounts[displayRole] !== undefined) roleCounts[displayRole] += count;
+    if (status === "ACTIVE") activeUsers += count;
+    else if (status === "PENDING_INVITE") pendingInvites += count;
+    else if (status === "RESTRICTED") restrictedUsers += count;
+    else activeUsers += count;
+  }
+
+  const candidateTotal = roleCounts.CANDIDATE || 0;
 
   const oversightFeeds = recentCompanies.map((company) => ({
     company: company.name,
     jobs: Number(company.openRoles || company.activeJobCount || 0),
     candidates: recentApplications.filter(
-      (application) => String(application.companyId?._id || "") === String(company._id),
+      (application) => String(application.companyId?._id || application.companyId || "") === String(company._id),
     ).length,
     status: company.status === "ACTIVE" ? "Operational" : "Needs attention",
   }));
-
-  const activeUsers = allUsers.filter((user) => user.status === "ACTIVE").length;
-  const pendingInvites = allUsers.filter((user) => user.status === "PENDING_INVITE").length;
-  const restrictedUsers = allUsers.filter((user) => user.status === "RESTRICTED").length;
 
   res.status(200).json({
     success: true,
@@ -1059,7 +1137,7 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       governanceCards: [
         {
           title: "System users",
-          value: String(allUsers.length),
+          value: String(allUsersCount),
           note: `${pendingInvites} pending access actions`,
           iconKey: "users",
         },
@@ -1080,14 +1158,14 @@ exports.getDashboard = asyncHandler(async (req, res) => {
       platformSignals: [
         {
           label: "Admin access health",
-          value: `${allUsers.length ? Math.round((activeUsers / allUsers.length) * 100) : 0}%`,
-          progress: allUsers.length ? Math.round((activeUsers / allUsers.length) * 100) : 0,
+          value: `${allUsersCount ? Math.round((activeUsers / allUsersCount) * 100) : 0}%`,
+          progress: allUsersCount ? Math.round((activeUsers / allUsersCount) * 100) : 0,
           tone: "bg-emerald-500",
         },
         {
           label: "Role compliance",
-          value: `${roles.filter((role) => role.members.length > 0).length}/${roles.length}`,
-          progress: roles.length ? Math.round((roles.filter((role) => role.members.length > 0).length / roles.length) * 100) : 0,
+          value: `${roles.filter((role) => (role.members || []).length > 0).length}/${roles.length}`,
+          progress: roles.length ? Math.round((roles.filter((role) => (role.members || []).length > 0).length / roles.length) * 100) : 0,
           tone: "bg-blue-500",
         },
         {
@@ -1630,5 +1708,49 @@ exports.getPayments = asyncHandler(async (req, res) => {
         pages: Math.ceil(total / limitNum),
       },
     },
+  });
+});
+
+exports.saveFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken, device = "web" } = req.body;
+  if (!fcmToken || typeof fcmToken !== "string") {
+    throw createHttpError(400, "Valid FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  await User.findByIdAndUpdate(userId, {
+    $push: {
+      fcmTokens: {
+        token: fcmToken,
+        device: String(device).slice(0, 50),
+        updatedAt: new Date(),
+      },
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Admin FCM token saved successfully",
+  });
+});
+
+exports.removeFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken } = req.body;
+  if (!fcmToken) {
+    throw createHttpError(400, "FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Admin FCM token removed successfully",
   });
 });

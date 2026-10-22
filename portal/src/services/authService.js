@@ -829,6 +829,26 @@ const authService = {
     }
   },
 
+  saveCandidateFcmToken: async (fcmToken, device = 'web') => {
+    try {
+      const response = await api.post('/candidate/notifications/fcm-token', { fcmToken, device });
+      return response.data;
+    } catch (error) {
+      console.warn('Failed to save candidate FCM token:', error);
+      return null;
+    }
+  },
+
+  saveEmployerFcmToken: async (fcmToken, device = 'web') => {
+    try {
+      const response = await api.post('/company-panel/notifications/fcm-token', { fcmToken, device });
+      return response.data;
+    } catch (error) {
+      console.warn('Failed to save employer FCM token:', error);
+      return null;
+    }
+  },
+
   getSavedJobs: async () => {
     try {
       const response = await api.get('/candidate/jobs/saved');

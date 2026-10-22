@@ -21,6 +21,7 @@ import {
   deleteLeadActivity,
   fetchFSEs,
   assignLeadToFSE,
+  getStoredCrmSession,
 } from "../api/leadApi";
 import LeadDetailModal from "../components/LeadDetailModal";
 import LogActivityModal from "../components/LogActivityModal";
@@ -81,16 +82,9 @@ export default function LeadgenQueue() {
   };
 
   useEffect(() => {
-    try {
-      const crmSession = sessionStorage.getItem("crm_panel_session");
-      if (crmSession) {
-        const parsed = JSON.parse(crmSession);
-        if (parsed?.user?.zone) {
-          setMyZone(parsed.user.zone);
-        }
-      }
-    } catch {
-      // Ignore parse failures.
+    const session = getStoredCrmSession();
+    if (session?.user?.zone) {
+      setMyZone(session.user.zone);
     }
   }, []);
 

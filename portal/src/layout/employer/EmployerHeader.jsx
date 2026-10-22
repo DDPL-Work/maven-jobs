@@ -12,9 +12,11 @@ import { VscFeedback } from "react-icons/vsc";
 import mavenLogo from '../../../assets/maven-logo-BdiSsfJk.svg';
 import notAllowedImg from '../../../assets/notAllowed.png';
 import authService from '../../services/authService';
+import { registerPushNotifications, subscribeToForegroundNotifications } from '../../services/firebase';
 import FeedbackModal from '../../components/employer/FeedbackModal';
 import PlanExpiryBanner from '../../components/employer/PlanExpiryBanner';
 import { getCartItems, removeFromCart, clearCart, getCartTotals } from '../../utils/cartStorage';
+import { getSavedCandidates, removeSavedCandidateFromStorage, resolveAvatarUrl } from '../../utils/savedProfilesStorage';
 
 const C = {
   navy: "#002366",
@@ -215,42 +217,49 @@ export default function EmployerHeader({
     return () => window.removeEventListener("resdex-recent-searches-updated", handler);
   }, []);
 
-  const loadSavedProfiles = useCallback(async () => {
-    if (!isEmployerLoggedIn) return;
+  const loadSavedProfiles = useCallback(() => {
     try {
       setSavedProfilesLoading(true);
       setSavedProfilesError("");
-      const res = await authService.getSavedProfiles();
-      const list = res?.data || [];
-      setSavedProfiles(Array.isArray(list) ? list : []);
+
+      // Strictly load candidates saved in local storage (local DB)
+      const localCandidates = getSavedCandidates();
+      setSavedProfiles(Array.isArray(localCandidates) ? localCandidates : []);
     } catch (err) {
       setSavedProfilesError((err?.message || "Failed to load saved profiles").toString());
     } finally {
       setSavedProfilesLoading(false);
     }
-  }, [isEmployerLoggedIn]);
+  }, []);
+
+  const handleRemoveSavedProfile = useCallback((candidateId, e) => {
+    if (e) e.stopPropagation();
+    removeSavedCandidateFromStorage(candidateId);
+    setSavedProfiles((prev) =>
+      prev.filter((c) => {
+        const id = String(c.candidateId || c._id || c.id || (c.userId && (c.userId._id || c.userId.id || c.userId)) || '');
+        return id !== String(candidateId);
+      })
+    );
+  }, []);
 
   useEffect(() => {
-    if (isEmployerLoggedIn) {
-      loadSavedProfiles();
-    }
-  }, [isEmployerLoggedIn, loadSavedProfiles]);
+    loadSavedProfiles();
+  }, [loadSavedProfiles]);
 
   useEffect(() => {
-    if (showSavedProfilesSidebar && isEmployerLoggedIn) {
+    if (showSavedProfilesSidebar) {
       loadSavedProfiles();
     }
-  }, [showSavedProfilesSidebar, isEmployerLoggedIn, loadSavedProfiles]);
+  }, [showSavedProfilesSidebar, loadSavedProfiles]);
 
   useEffect(() => {
     const handler = () => loadSavedProfiles();
     window.addEventListener("employer-saved-profiles-changed", handler);
-    window.addEventListener("candidate-saved-to-folder", handler);
-    window.addEventListener("folder-candidates-updated", handler);
+    window.addEventListener("storage", handler);
     return () => {
       window.removeEventListener("employer-saved-profiles-changed", handler);
-      window.removeEventListener("candidate-saved-to-folder", handler);
-      window.removeEventListener("folder-candidates-updated", handler);
+      window.removeEventListener("storage", handler);
     };
   }, [loadSavedProfiles]);
 
@@ -262,9 +271,8 @@ export default function EmployerHeader({
       const title = (p.currentTitle || p.headline || "").toLowerCase();
       const company = (p.currentCompany || "").toLowerCase();
       const city = (p.currentCity || "").toLowerCase();
-      const folder = (p.folderName || "").toLowerCase();
       const skills = (Array.isArray(p.skills) ? p.skills.join(" ") : "").toLowerCase();
-      return name.includes(q) || title.includes(q) || company.includes(q) || city.includes(q) || folder.includes(q) || skills.includes(q);
+      return name.includes(q) || title.includes(q) || company.includes(q) || city.includes(q) || skills.includes(q);
     });
   }, [savedProfiles, savedProfilesSearch]);
 
@@ -544,26 +552,70 @@ export default function EmployerHeader({
     };
   }, [refreshCredits]);
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (silent = false) => {
     if (!isEmployerLoggedIn) return;
     try {
-      setNotificationsLoading(true);
-      setNotificationsError("");
+      if (!silent) {
+        setNotificationsLoading(true);
+        setNotificationsError("");
+      }
       const resp = await authService.getEmployerNotifications();
       const list = resp?.data?.notifications || resp?.data || resp?.notifications || resp || [];
       setEmployerNotifications(Array.isArray(list) ? list : []);
     } catch (err) {
-      setNotificationsError((err?.message || err?.error || "Failed to load notifications").toString());
+      if (!silent) {
+        setNotificationsError((err?.message || err?.error || "Failed to load notifications").toString());
+      }
     } finally {
-      setNotificationsLoading(false);
+      if (!silent) {
+        setNotificationsLoading(false);
+      }
     }
   }, [isEmployerLoggedIn]);
 
   useEffect(() => {
     if (isEmployerLoggedIn) {
       loadNotifications();
+
+      // Register employer FCM push token
+      const role = isSuperUser ? "CLIENT" : "RECRUITER";
+      registerPushNotifications(role).catch(() => {});
+
+      // Listen for foreground in-app push notifications
+      let unsubPromise = subscribeToForegroundNotifications(() => {
+        loadNotifications(true);
+      });
+
+      // Background AJAX polling (every 20s) while tab is visible
+      const interval = setInterval(() => {
+        if (document.visibilityState === "visible") {
+          loadNotifications(true);
+        }
+      }, 20000);
+
+      // Immediate AJAX refetch when window or tab regains focus
+      const onFocus = () => {
+        loadNotifications(true);
+      };
+      window.addEventListener("focus", onFocus);
+
+      const onRefreshEvent = () => {
+        loadNotifications(true);
+      };
+      window.addEventListener("employer-notifications-refresh", onRefreshEvent);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener("focus", onFocus);
+        window.removeEventListener("employer-notifications-refresh", onRefreshEvent);
+        if (unsubPromise && typeof unsubPromise.then === "function") {
+          unsubPromise.then((unsub) => {
+            if (typeof unsub === "function") unsub();
+          });
+        }
+      };
     }
-  }, [isEmployerLoggedIn, loadNotifications]);
+  }, [isEmployerLoggedIn, isSuperUser, loadNotifications]);
 
   useEffect(() => {
     if (showNotifications && isEmployerLoggedIn) {
@@ -2386,7 +2438,7 @@ export default function EmployerHeader({
             </button>
 
             {/* Saved Profiles Mobile Button */}
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -2410,7 +2462,7 @@ export default function EmployerHeader({
                   {savedProfiles.length}
                 </span>
               )}
-            </button>
+            </button> */}
 
 
 
@@ -2616,14 +2668,12 @@ export default function EmployerHeader({
                   <button
                     type="button"
                     className="pd-notif-mark-read"
-                    onClick={async () => {
+                    onClick={() => {
                       if (unreadNotificationsCount === 0) return;
-                      try {
-                        await authService.markAllEmployerNotificationsRead();
-                      } catch {}
                       setEmployerNotifications((curr) =>
                         curr.map((x) => ({ ...x, status: "READ" }))
                       );
+                      authService.markAllEmployerNotificationsRead().catch(() => {});
                     }}
                   >
                     Mark all as read
@@ -2673,13 +2723,9 @@ export default function EmployerHeader({
                   <div
                     className="pd-notif-item"
                     key={id || title + time}
-                    onClick={async () => {
+                    onClick={() => {
                       if (!id) return;
                       if (!isRead) {
-                        try {
-                          await authService.markEmployerNotificationRead(id);
-                        } catch {}
-
                         setEmployerNotifications((current) =>
                           current.map((x) => {
                             const xid = String(x?.id || x?._id || "");
@@ -2687,6 +2733,7 @@ export default function EmployerHeader({
                             return { ...x, status: "READ" };
                           })
                         );
+                        authService.markEmployerNotificationRead(id).catch(() => {});
                       }
 
                       if (n?.actionUrl) {
@@ -2877,7 +2924,7 @@ export default function EmployerHeader({
                   Saved Profiles
                 </h3>
                 <span style={{ fontSize: 12, color: C.s500, fontWeight: 500 }}>
-                  {savedProfiles.length} candidate{savedProfiles.length === 1 ? '' : 's'} saved across folders
+                  {savedProfiles.length} candidate{savedProfiles.length === 1 ? '' : 's'} saved
                 </span>
               </div>
             </div>
@@ -2896,7 +2943,7 @@ export default function EmployerHeader({
               <FiSearch size={14} color={C.s400} />
               <input
                 type="text"
-                placeholder="Filter saved profiles by name, skill, folder..."
+                placeholder="Filter saved profiles by name, skill, title..."
                 value={savedProfilesSearch}
                 onChange={(e) => setSavedProfilesSearch(e.target.value)}
                 className="pd-saved-search-input"
@@ -2938,7 +2985,7 @@ export default function EmployerHeader({
                 </h4>
                 <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 16px", lineHeight: 1.5, maxWidth: 280 }}>
                   {savedProfiles.length === 0
-                    ? "When you save candidate profiles from Resdex search into folders, they will appear here for fast access."
+                    ? "When you save candidate profiles from Resdex search, they will appear here for fast access."
                     : `No saved profiles match "${savedProfilesSearch}". Try checking another keyword.`}
                 </p>
                 {savedProfiles.length === 0 && (
@@ -2967,19 +3014,69 @@ export default function EmployerHeader({
               const skills = Array.isArray(cand.skills) ? cand.skills.slice(0, 4) : [];
               const savedDate = cand.savedAt ? new Date(cand.savedAt).toLocaleDateString([], { month: "short", day: "numeric" }) : "";
 
+              const avatarUrl = resolveAvatarUrl(cand);
+
               return (
-                <div key={cand._id || `${cId}_${cand.folderId}`} className="pd-saved-card">
+                <div
+                  key={cand._id || `${cId}_${cand.folderId || ''}`}
+                  className="pd-saved-card"
+                  onClick={() => {
+                    setShowSavedProfilesSidebar(false);
+                    window.open(`/employer/candidate/${cId}`, "_blank", "noopener,noreferrer");
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                    <div className="pd-saved-card-avatar">
-                      {cand.avatar ? (
-                        <img src={cand.avatar} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        name.slice(0, 2).toUpperCase()
-                      )}
+                    <div
+                      className="pd-saved-card-avatar"
+                      style={{
+                        position: "relative",
+                        background: avatarUrl ? "transparent" : `linear-gradient(135deg, ${C.navy}, #1e5eff)`,
+                      }}
+                    >
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            borderRadius: 10,
+                            display: "block",
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                            const fallback = e.currentTarget.parentElement?.querySelector(".pd-saved-avatar-fallback");
+                            if (fallback) fallback.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="pd-saved-avatar-fallback"
+                        style={{
+                          display: avatarUrl ? "none" : "flex",
+                          width: "100%",
+                          height: "100%",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: 10,
+                          background: `linear-gradient(135deg, ${C.navy}, #1e5eff)`,
+                          color: "#ffffff",
+                          fontWeight: 700,
+                          fontSize: 14,
+                        }}
+                      >
+                        {name.trim() ? name.trim().slice(0, 2).toUpperCase() : "CA"}
+                      </div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <h4 className="pd-saved-cand-name" title={name}>
+                        <h4
+                          className="pd-saved-cand-name"
+                          title={`View profile of ${name}`}
+                          style={{ cursor: "pointer" }}
+                        >
                           {name}
                         </h4>
                         {savedDate && <span className="pd-saved-card-date">{savedDate}</span>}
@@ -2995,8 +3092,8 @@ export default function EmployerHeader({
                         {exp && <span>{exp}</span>}
                         {exp && city && <span>•</span>}
                         {city && <span>{city}</span>}
-                        <span className="pd-saved-folder-tag" title={`Folder: ${folderName}`}>
-                          📁 {folderName}
+                        <span className="pd-saved-folder-tag" style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}>
+                          <FiBookmark size={11} style={{ marginRight: 3, verticalAlign: 'middle' }} /> Saved Profile
                         </span>
                       </div>
 
@@ -3009,6 +3106,36 @@ export default function EmployerHeader({
                       )}
 
                       <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveSavedProfile(cId, e)}
+                          title="Remove from saved profiles"
+                          style={{
+                            background: "none",
+                            border: `1px solid ${C.s200}`,
+                            borderRadius: 7,
+                            padding: "5px 10px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#dc2626",
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#fef2f2";
+                            e.currentTarget.style.borderColor = "#fecaca";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "none";
+                            e.currentTarget.style.borderColor = C.s200;
+                          }}
+                        >
+                          <FiTrash2 size={12} />
+                          <span>Remove</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {

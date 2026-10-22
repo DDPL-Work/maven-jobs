@@ -37,7 +37,8 @@ const {
 } = require("../services/auth.service");
 const QuizService = require("../services/quiz.service");
 const { fetchHomeLandingData } = require("./landing.controller");
-const aiService = require("../services/ai/AIService");
+const AIService = require("../services/ai/AIService");
+const aiService = AIService;
 
 const OpenAIService = require("../services/openai/OpenAIService");
 const { scoreJob } = require("../recommendations/engine/scoringEngine");
@@ -1950,7 +1951,10 @@ exports.createApplication = asyncHandler(async (req, res) => {
 
   const profile = await ensureCandidateProfile(req.user);
 
-  const job = await Job.findById(jobId).populate("companyId", "name");
+  const job = await Job.findById(jobId)
+    .populate("companyId", "name email contactPerson")
+    .populate("createdByClient", "name email")
+    .populate("collaborators", "name email");
 
   if (!job || !isJobLiveForCandidate(job)) {
     throw createHttpError(404, "This job posting has expired and is no longer accepting applications");
@@ -2056,6 +2060,54 @@ exports.createApplication = asyncHandler(async (req, res) => {
     companyName: job.companyId?.name || "the company",
     applicationId: application._id,
   });
+
+  // Emit email notification to company and assigned recruiters
+  try {
+    const candidateDisplayName = req.user.name || "A candidate";
+    const companyDisplayName = job.companyId?.name || "Your Company";
+    const recipientEmails = new Set();
+
+    if (job.companyId?.email) {
+      recipientEmails.add(job.companyId.email);
+    }
+    if (job.createdByClient?.email) {
+      recipientEmails.add(job.createdByClient.email);
+    }
+    if (Array.isArray(job.collaborators)) {
+      job.collaborators.forEach((c) => {
+        if (c && c.email) recipientEmails.add(c.email);
+      });
+    }
+
+    // Fallback: If no direct emails on job, find active recruiters/clients for the company
+    if (recipientEmails.size === 0 && resolvedCompanyId) {
+      const companyUsers = await User.find({
+        companyId: resolvedCompanyId,
+        role: { $in: ["CLIENT", "RECRUITER"] },
+        isActive: true,
+      })
+        .select("email")
+        .lean();
+      companyUsers.forEach((u) => {
+        if (u.email) recipientEmails.add(u.email);
+      });
+    }
+
+    for (const recipientEmail of recipientEmails) {
+      EventBus.emit(EVENTS.RECRUITER_NEW_APPLICATION_RECEIVED, {
+        email: recipientEmail,
+        candidateName: candidateDisplayName,
+        candidateEmail: req.user.email,
+        jobTitle: job.title,
+        companyName: companyDisplayName,
+        actionUrl: `/employer/job-responses/${job._id}`,
+        applicationId: application._id,
+        jobId: job._id,
+      });
+    }
+  } catch (emitErr) {
+    console.warn("[createApplication] Failed to emit recruiter application email:", emitErr.message);
+  }
 
   // Log recruiter activity (fire & forget) — a candidate applied
   activityService.fireAndForget({
@@ -2857,6 +2909,51 @@ exports.markAllNotificationsRead = asyncHandler(async (req, res) => {
     alreadyRead: result.alreadyRead,
   });
 });
+
+exports.saveFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken, device = "web" } = req.body;
+  if (!fcmToken || typeof fcmToken !== "string") {
+    throw createHttpError(400, "Valid FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  await User.findByIdAndUpdate(userId, {
+    $push: {
+      fcmTokens: {
+        token: fcmToken,
+        device: String(device).slice(0, 50),
+        updatedAt: new Date(),
+      },
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "FCM token saved successfully",
+  });
+});
+
+exports.removeFcmToken = asyncHandler(async (req, res) => {
+  const { fcmToken } = req.body;
+  if (!fcmToken) {
+    throw createHttpError(400, "FCM token is required");
+  }
+
+  const userId = req.user._id || req.user.id;
+  await User.findByIdAndUpdate(userId, {
+    $pull: { fcmTokens: { token: fcmToken } },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "FCM token removed successfully",
+  });
+});
+
 
 exports.exportCandidateProfiles = asyncHandler(async (req, res) => {
   const users = await User.find({ role: "CANDIDATE" }).select(

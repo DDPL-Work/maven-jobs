@@ -95,8 +95,11 @@ export function useCandidateNotifications(userId, enabled) {
       return Array.isArray(list) ? list : [];
     },
     enabled: isEnabled,
-    staleTime: 30 * 1000,
+    staleTime: 10 * 1000,
     gcTime: 60 * 1000,
+    refetchInterval: 15 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -11,19 +11,11 @@ import {
   LuUser,
   LuFilter
 } from "react-icons/lu";
-import { fetchLeadDashboard } from "../api/leadApi";
+import { fetchLeadDashboard, getStoredCrmSession } from "../api/leadApi";
 import MemberReportModal from "../components/MemberReportModal";
 
-const SESSION_KEY = "crm_panel_session";
-
 const getSessionUser = () => {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed?.user || null;
-  } catch {
-    return null;
-  }
+  return getStoredCrmSession()?.user || null;
 };
 
 export default function Dashboard() {

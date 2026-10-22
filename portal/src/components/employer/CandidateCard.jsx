@@ -6,11 +6,13 @@ import {
   FiBook, FiAward, FiX, FiCheck, FiFolderPlus,
   FiMoreVertical, FiTrash2, FiFolder, FiPhone, FiPhoneCall,
   FiClock, FiPaperclip, FiSend, FiCreditCard,
-  FiDownload,
+  FiDownload, FiBookmark,
 } from 'react-icons/fi';
 import { useVisibility } from '../../hooks/useLazyAI';
 import { aiService } from '../../services/aiService';
 import authService from '../../services/authService';
+import { useToast } from '../../context/ToastContext';
+import { isCandidateSaved, toggleSaveCandidateInStorage } from '../../utils/savedProfilesStorage';
 
 const HighlightText = ({ text, keyword, keywords }) => {
   if (!text) return null;
@@ -265,6 +267,40 @@ const CandidateCard = memo(function CandidateCard({
   const avatarColor = useMemo(() => getAvatarLetterColor(candidate.name), [candidate.name]);
   const candidateId = (candidate.userId?._id || candidate.userId?.id || (typeof candidate.userId === "string" ? candidate.userId : null)) || candidate.id || candidate._id || candidate.publicShareId;
   const matchScore = lazyMatchScore ?? candidate.matchScore;
+
+  const toast = useToast();
+  const showToast = toast?.showToast || (() => {});
+  const [isSaved, setIsSaved] = useState(() => isCandidateSaved(candidateId));
+
+  useEffect(() => {
+    setIsSaved(isCandidateSaved(candidateId));
+  }, [candidateId]);
+
+  useEffect(() => {
+    const handleSavedChange = () => {
+      setIsSaved(isCandidateSaved(candidateId));
+    };
+    window.addEventListener("employer-saved-profiles-changed", handleSavedChange);
+    window.addEventListener("storage", handleSavedChange);
+    return () => {
+      window.removeEventListener("employer-saved-profiles-changed", handleSavedChange);
+      window.removeEventListener("storage", handleSavedChange);
+    };
+  }, [candidateId]);
+
+  const handleToggleSave = useCallback((e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const result = toggleSaveCandidateInStorage(candidate);
+    setIsSaved(result);
+    if (result) {
+      showToast(`${candidate.name || 'Candidate'} saved to your saved profiles list`, "success");
+    } else {
+      showToast(`Removed from saved profiles`, "info");
+    }
+  }, [candidate, showToast]);
 
   // Extract all matching basis terms (matching skills, search keywords, URL filters)
   const allHighlightKeywords = useMemo(() => {
@@ -791,6 +827,33 @@ const CandidateCard = memo(function CandidateCard({
                 </span>
               )}
 
+              {/* Quick Bookmark / Save icon beside candidate name */}
+              <button
+                type="button"
+                onClick={handleToggleSave}
+                className="cc-save-profile-btn"
+                title={isSaved ? "Saved to your profiles (click to remove)" : "Save profile to LocalStorage"}
+                aria-label={isSaved ? "Unsave profile" : "Save profile"}
+                style={{
+                  background: isSaved ? "#eff6ff" : "#f8fafc",
+                  border: `1px solid ${isSaved ? "#3b82f6" : "#cbd5e1"}`,
+                  borderRadius: 6,
+                  padding: "3px 8px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  cursor: "pointer",
+                  color: isSaved ? "#1d4ed8" : "#475569",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  transition: "all 0.15s ease",
+                  userSelect: "none",
+                }}
+              >
+                <FiBookmark size={13} style={isSaved ? { fill: "#1d4ed8", color: "#1d4ed8" } : {}} />
+                <span>{isSaved ? "Saved" : "Save"}</span>
+              </button>
+
               {candidate.hasApplied && (
                 <span className="cc-badge-applied">Applied</span>
               )}
@@ -1054,6 +1117,17 @@ const CandidateCard = memo(function CandidateCard({
           </div>
 
           <div className="cc-footer-actions">
+            {/* Save Profile Button */}
+            <button
+              type="button"
+              className={`cc-action-btn ${isSaved ? "saved" : ""}`}
+              onClick={handleToggleSave}
+              title={isSaved ? "Remove from saved profiles" : "Save candidate profile to LocalStorage"}
+              style={isSaved ? { borderColor: "#3b82f6", background: "#eff6ff", color: "#1d4ed8" } : {}}
+            >
+              <FiBookmark size={13} style={isSaved ? { fill: "#1d4ed8", color: "#1d4ed8" } : {}} />
+              <span>{isSaved ? "Saved" : "Save"}</span>
+            </button>
             {candidate.email && (
               <button
                 type="button"

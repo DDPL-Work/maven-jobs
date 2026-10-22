@@ -24,13 +24,18 @@ import {
   getStoredCrmSession,
   restoreCrmSession,
 } from "./api/leadApi";
+import { registerPushNotifications, subscribeToForegroundNotifications } from "./api/firebase";
 
 function getStoredSession() {
   return getStoredCrmSession();
 }
 
 function RequireAuth({ children }) {
-  const [status, setStatus] = useState(() => (getStoredSession()?.token ? "authenticated" : "checking"));
+  const currentSession = getStoredSession();
+  const currentRole = String(currentSession?.user?.role || "").toUpperCase();
+  const isValidRole = currentRole === "STATE_MANAGER" || currentRole === "ADMIN";
+
+  const [status, setStatus] = useState(() => (currentSession?.token && isValidRole ? "authenticated" : "checking"));
 
   useEffect(() => {
     let isMounted = true;
@@ -41,10 +46,23 @@ function RequireAuth({ children }) {
       };
     }
 
+    const session = getStoredSession();
+    if (session?.token && !isValidRole) {
+      clearStoredCrmSession();
+      if (isMounted) setStatus("unauthenticated");
+      return;
+    }
+
     restoreCrmSession()
-      .then(() => {
+      .then((restored) => {
+        const restoredRole = String(restored?.user?.role || "").toUpperCase();
         if (isMounted) {
-          setStatus("authenticated");
+          if (restoredRole === "STATE_MANAGER" || restoredRole === "ADMIN") {
+            setStatus("authenticated");
+          } else {
+            clearStoredCrmSession();
+            setStatus("unauthenticated");
+          }
         }
       })
       .catch(() => {
@@ -56,7 +74,7 @@ function RequireAuth({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [status]);
+  }, [status, isValidRole]);
 
   if (status === "checking") {
     return null;
@@ -89,6 +107,18 @@ export default function App() {
       window.removeEventListener("storage", syncSession);
     };
   }, []);
+
+  useEffect(() => {
+    if (session?.token) {
+      registerPushNotifications().catch(() => {});
+      const unsubPromise = subscribeToForegroundNotifications(() => {});
+      return () => {
+        Promise.resolve(unsubPromise).then((unsub) => {
+          if (typeof unsub === "function") unsub();
+        });
+      };
+    }
+  }, [session?.token]);
 
   const user = session?.user;
   const displayName = user?.fullName || user?.name || user?.email || "State Manager";

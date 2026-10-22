@@ -88,21 +88,102 @@ const formatCompanyNotification = (item) => {
 
 class NotificationService {
   /**
-   * Push real-time notification to socket rooms safely
+   * Push notification via Firebase Cloud Messaging (FCM)
+   * WebSockets are strictly reserved for 1-on-1 Chat and Calling signaling.
    */
-  _emitSocketNotification(rooms, eventName, payload) {
-    try {
-      const io = global.chatSocketServer;
-      if (!io) return;
 
-      const roomList = Array.isArray(rooms) ? rooms : [rooms];
-      roomList.forEach((room) => {
-        if (room) {
-          io.to(room).emit(eventName, payload);
+  /**
+   * Push notification via Firebase Cloud Messaging (FCM)
+   */
+  async _sendFirebaseNotification(userIds, payload = {}) {
+    try {
+      const firebaseConfig = require("../config/firebase");
+      if (!firebaseConfig.isConfigured()) return;
+      const messaging = firebaseConfig.getMessaging();
+      if (!messaging) return;
+
+      const ids = (Array.isArray(userIds) ? userIds : [userIds]).filter(Boolean);
+      if (!ids.length) return;
+
+      const CrmUser = require("../models/CrmUser");
+      const [users, crmUsers] = await Promise.all([
+        User.find({ _id: { $in: ids } }).select("fcmTokens"),
+        CrmUser.find({ _id: { $in: ids } }).select("fcmTokens"),
+      ]);
+
+      const tokens = [
+        ...users.flatMap((u) => (u.fcmTokens || []).map((t) => t.token)),
+        ...crmUsers.flatMap((u) => (u.fcmTokens || []).map((t) => t.token)),
+      ].filter(Boolean);
+
+      if (!tokens.length) return;
+
+      // Deduplicate tokens
+      const uniqueTokens = [...new Set(tokens)];
+
+      const title = String(payload.title || "Maven Jobs").trim();
+      const body = String(payload.message || payload.desc || "").trim();
+      const actionUrl = String(payload.actionUrl || "/dashboard");
+
+      const messagePayload = {
+        tokens: uniqueTokens,
+        notification: {
+          title,
+          body,
+        },
+        data: {
+          id: String(payload.id || payload._id || ""),
+          title,
+          message: body,
+          category: String(payload.category || "SYSTEM"),
+          actionUrl,
+          status: String(payload.status || "UNREAD"),
+          time: String(payload.time || "Just now"),
+        },
+        webpush: {
+          fcmOptions: {
+            link: actionUrl,
+          },
+          notification: {
+            icon: "/favicon.ico",
+            badge: "/favicon.ico",
+          },
+        },
+      };
+
+      const response = await messaging.sendEachForMulticast(messagePayload);
+
+      // Self-healing: clean up unregistered / expired tokens from DB
+      if (response.failureCount > 0) {
+        const invalidTokens = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            const errCode = resp.error?.code || "";
+            if (
+              errCode.includes("registration-token-not-registered") ||
+              errCode.includes("invalid-registration-token") ||
+              errCode.includes("invalid-argument")
+            ) {
+              invalidTokens.push(uniqueTokens[idx]);
+            }
+          }
+        });
+
+        if (invalidTokens.length > 0) {
+          await Promise.all([
+            User.updateMany(
+              { "fcmTokens.token": { $in: invalidTokens } },
+              { $pull: { fcmTokens: { token: { $in: invalidTokens } } } }
+            ),
+            CrmUser.updateMany(
+              { "fcmTokens.token": { $in: invalidTokens } },
+              { $pull: { fcmTokens: { token: { $in: invalidTokens } } } }
+            ),
+          ]).catch((e) => logger.warn("[NotificationService] Token cleanup error:", e.message));
         }
-      });
+      }
     } catch (err) {
-      logger.warn("[NotificationService] Socket emit error:", err?.message || err);
+      logger.warn("[NotificationService] Firebase push error:", err?.message || err);
     }
   }
 
@@ -146,12 +227,10 @@ class NotificationService {
 
       const formatted = formatCandidateNotification(notification);
 
-      // Emit real-time socket event to candidate's room
-      this._emitSocketNotification(
-        [`user:${String(candidateId)}`, `candidate:${String(candidateId)}`],
-        "notification:new",
-        formatted
-      );
+      // Push exclusively via Firebase FCM
+
+      // Push via Firebase FCM
+      this._sendFirebaseNotification(candidateId, formatted).catch(() => {});
 
       // Invalidate candidate notifications cache
       try {
@@ -292,13 +371,26 @@ class NotificationService {
 
       const formatted = formatCompanyNotification(notification);
 
-      // Socket rooms: notify whole company, and if specific user, their user room
-      const rooms = [`company:${String(companyId)}`];
-      if (recipientUserId) {
-        rooms.push(`user:${String(recipientUserId)}`);
-      }
+      // Push exclusively via Firebase FCM
 
-      this._emitSocketNotification(rooms, "notification:new", formatted);
+      // Push via Firebase FCM
+      if (recipientUserId) {
+        this._sendFirebaseNotification(recipientUserId, formatted).catch(() => {});
+      } else {
+        User.find({
+          companyId,
+          isActive: true,
+          ...(targetRole !== "ALL" ? { role: targetRole } : {}),
+        })
+          .select("_id")
+          .lean()
+          .then((companyUsers) => {
+            if (companyUsers && companyUsers.length) {
+              this._sendFirebaseNotification(companyUsers.map((u) => u._id), formatted).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
 
       return notification;
     } catch (error) {
@@ -498,10 +590,69 @@ class NotificationService {
         status: "UNREAD",
       });
 
-      this._emitSocketNotification("admin", "notification:new", notification);
+      // Push exclusively via Firebase FCM to admin users
+
+      // Push via Firebase FCM to admin users
+      User.find({ role: "ADMIN", isActive: true })
+        .select("_id")
+        .lean()
+        .then((admins) => {
+          if (admins && admins.length) {
+            this._sendFirebaseNotification(admins.map((a) => a._id), notification).catch(() => {});
+          }
+        })
+        .catch(() => {});
+
       return notification;
     } catch (err) {
       logger.error("[NotificationService] sendAdminNotification error:", err);
+      return null;
+    }
+  }
+
+  /**
+   * Push notification to CRM / Field staff (FSE, Lead Generator, Managers, etc.)
+   */
+  async sendStaffNotification({
+    roles = [],
+    userIds = [],
+    title,
+    message,
+    category = "SYSTEM",
+    actionUrl = "",
+    metadata = null,
+  }) {
+    try {
+      const CrmUser = require("../models/CrmUser");
+      const targetQuery = { isActive: true };
+
+      if (Array.isArray(userIds) && userIds.length > 0) {
+        targetQuery._id = { $in: userIds };
+      } else if (Array.isArray(roles) && roles.length > 0) {
+        targetQuery.$or = [
+          { role: { $in: roles } },
+          { designations: { $in: roles } },
+        ];
+      }
+
+      const staffMembers = await CrmUser.find(targetQuery).select("_id role").lean();
+      if (!staffMembers.length) return null;
+
+      const targetIds = staffMembers.map((s) => s._id);
+      const payload = {
+        title,
+        message,
+        category,
+        actionUrl,
+        metadata,
+      };
+
+      // Push via Firebase FCM
+      await this._sendFirebaseNotification(targetIds, payload);
+
+      return { success: true, count: targetIds.length };
+    } catch (err) {
+      logger.error("[NotificationService] sendStaffNotification error:", err);
       return null;
     }
   }

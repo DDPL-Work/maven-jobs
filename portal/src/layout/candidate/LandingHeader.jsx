@@ -378,8 +378,32 @@ export default function LandingHeader() {
                     <Link
                       to="/employer-login"
                       className="lp-employer-drop__item"
+                      onClick={() => {
+                        setIsEmployerDropdownOpen(false);
+                        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+                      }}
                     >
                       Employer Login <FiArrowRight />
+                    </Link>
+                    <Link
+                      to="/buy-online"
+                      className="lp-employer-drop__item"
+                      onClick={() => {
+                        setIsEmployerDropdownOpen(false);
+                        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      Buy Online <FiArrowRight />
+                    </Link>
+                    <Link
+                      to="/employer-login?tab=sales"
+                      className="lp-employer-drop__item"
+                      onClick={() => {
+                        setIsEmployerDropdownOpen(false);
+                        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      Sales Enquiry <FiArrowRight />
                     </Link>
                   </div>
                 )}

@@ -75,15 +75,15 @@ async function handleJobPosted(payload) {
 }
 
 async function handleNewApplication(payload) {
-  const { email, candidateName, jobTitle } = payload;
+  const { email, candidateName, candidateEmail, jobTitle, companyName, actionUrl, applicationId } = payload;
   if (!email) return;
-  const html = buildNewApplicationReceivedHtml({ candidateName, jobTitle });
+  const html = buildNewApplicationReceivedHtml({ candidateName, candidateEmail, jobTitle, companyName, actionUrl });
   await sendEmailSafe({
     eventName: EVENTS.RECRUITER_NEW_APPLICATION_RECEIVED,
     to: email,
-    subject: "New Application Received",
+    subject: `New Application: ${candidateName || "A candidate"} applied for ${jobTitle}`,
     html,
-    metadata: { candidateName, jobTitle },
+    metadata: { candidateName, candidateEmail, jobTitle, companyName, applicationId },
   });
 }
 
