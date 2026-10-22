@@ -166,6 +166,7 @@ router.patch(
   invalidateCache([
     (req) => `cache:candidate:company:${req.params.id}`,
     (req) => `cache:candidate:dashboard:${req.user?._id || req.user?.id}`,
+    (req) => `dashboard_response:${req.user?._id || req.user?.id}`,
   ]),
   candidateController.toggleCompanyFollow,
 );
@@ -190,6 +191,7 @@ router.post(
   invalidateCache([
     (req) => `cache:candidate:applications:${req.user?._id || req.user?.id}`,
     (req) => `cache:candidate:dashboard:${req.user?._id || req.user?.id}`,
+    (req) => `dashboard_response:${req.user?._id || req.user?.id}`,
     "cache:company-panel:jobs-responses:*",
     "cache:company-panel:job-responses:*",
     "cache:company-panel:dashboard:*",
@@ -224,6 +226,7 @@ router.patch(
   invalidateCache([
     (req) => `cache:candidate:profile:${req.user?._id || req.user?.id}`,
     (req) => `cache:candidate:dashboard:${req.user?._id || req.user?.id}`,
+    (req) => `dashboard_response:${req.user?._id || req.user?.id}`,
     (req) => `cache:company-panel:candidate-profile:${req.user?._id || req.user?.id}:*`,
   ]),
   candidateController.updateProfile,
